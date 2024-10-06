@@ -839,7 +839,7 @@ static int neko_key_press(lua_State *L) {
 static int neko_mouse_down(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
     if (n >= 0 && n < array_size(g_app->mouse_state)) {
-        lua_pushboolean(L, g_app->mouse_state[n]);
+        lua_pushboolean(L, input_mouse_down((MouseCode)n));
     } else {
         lua_pushboolean(L, false);
     }
@@ -872,8 +872,11 @@ static int neko_mouse_click(lua_State *L) {
 }
 
 static int neko_mouse_pos(lua_State *L) {
-    lua_pushnumber(L, g_app->mouse_x);
-    lua_pushnumber(L, g_app->mouse_y);
+
+    vec2 pos = input_get_mouse_pos_pixels();
+
+    lua_pushnumber(L, pos.x);
+    lua_pushnumber(L, pos.y);
     return 2;
 }
 

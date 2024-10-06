@@ -196,23 +196,6 @@ void input_add_scroll_callback(ScrollCallback f);
 void input_init();
 void input_fini();
 
-NEKO_SCRIPT(keyboard_controlled,
-
-            // NEKO_EXPORT void keyboard_controlled_add(NativeEntity ent);
-
-            // NEKO_EXPORT void keyboard_controlled_remove(NativeEntity ent);
-
-            // NEKO_EXPORT bool keyboard_controlled_has(NativeEntity ent);
-
-            // NEKO_EXPORT void keyboard_controlled_set_v(NativeEntity ent, f32 v);
-
-)
-
-struct App;
-int keyboard_controlled_update_all(App* app, event_t evt);
-void keyboard_controlled_save_all(Store* s);
-void keyboard_controlled_load_all(Store* s);
-
 typedef enum {
     INPUT_WRAP_NONE = 0,
     INPUT_WRAP_WINDOW_MOVED = 1 << 1,

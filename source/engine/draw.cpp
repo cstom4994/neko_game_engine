@@ -115,31 +115,7 @@ void renderer_translate(float x, float y) {
     renderer_set_top_matrix(top);
 }
 
-void renderer_rotate(float angle) {
-    Matrix4 top = renderer_peek_matrix();
 
-#ifdef SSE_AVAILABLE
-    __m128 v0 = top.sse[0];
-    __m128 v1 = top.sse[1];
-    __m128 c = _mm_set1_ps(cos(-angle));
-    __m128 s = _mm_set1_ps(sin(-angle));
-
-    top.sse[0] = _mm_sub_ps(_mm_mul_ps(c, v0), _mm_mul_ps(s, v1));
-    top.sse[1] = _mm_add_ps(_mm_mul_ps(s, v0), _mm_mul_ps(c, v1));
-#else
-    float c = cos(-angle);
-    float s = sin(-angle);
-
-    for (i32 i = 0; i < 4; i++) {
-        float x = c * top.cols[0][i] - s * top.cols[1][i];
-        float y = s * top.cols[0][i] + c * top.cols[1][i];
-        top.cols[0][i] = x;
-        top.cols[1][i] = y;
-    }
-#endif
-
-    renderer_set_top_matrix(top);
-}
 
 void renderer_scale(float x, float y) {
     Matrix4 top = renderer_peek_matrix();
@@ -332,6 +308,32 @@ void draw_line(float x0, float y0, float x1, float y1) {
 
 #endif
 
+mat4 _rotate(float angle) {
+    mat4 top = mat4_identity();
+
+#ifdef SSE_AVAILABLE
+    __m128 v0 = top.sse[0];
+    __m128 v1 = top.sse[1];
+    __m128 c = _mm_set1_ps(cos(-angle));
+    __m128 s = _mm_set1_ps(sin(-angle));
+
+    top.sse[0] = _mm_sub_ps(_mm_mul_ps(c, v0), _mm_mul_ps(s, v1));
+    top.sse[1] = _mm_add_ps(_mm_mul_ps(s, v0), _mm_mul_ps(c, v1));
+#else
+    float c = cos(-angle);
+    float s = sin(-angle);
+
+    for (i32 i = 0; i < 4; i++) {
+        float x = c * top.m[0][i] - s * top.m[1][i];
+        float y = s * top.m[0][i] + c * top.m[1][i];
+        top.m[0][i] = x;
+        top.m[1][i] = y;
+    }
+#endif
+
+    return top;
+}
+
 DrawDescription draw_description_args(lua_State *L, i32 arg_start) {
     DrawDescription dd;
 
@@ -399,15 +401,47 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     float u2 = f.u1;
     float v2 = f.v1;
 
-    batch_push_vertex(g_app->batch, desc->x, desc->y, u1, v1);
-    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
-    batch_push_vertex(g_app->batch, desc->x, desc->y + (view.data.height * desc->sy), u1, v2);
+    // 计算旋转角度的 cos 和 sin
+    float cos_rot = std::cos(desc->rotation);
+    float sin_rot = std::sin(desc->rotation);
 
-    batch_push_vertex(g_app->batch, desc->x, desc->y, u1, v1);
-    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y, u2, v1);
-    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
+    float hw = view.data.width * 0.5f * desc->sx;   // 半宽
+    float hh = view.data.height * 0.5f * desc->sy;  // 半高
 
-    // batch_flush(g_app->batch);  // TODO: 优化不要每一draw都刷新
+    // 计算四个角的旋转后坐标
+    float x1 = -hw;
+    float y1 = -hh;
+    float x2 = hw;
+    float y2 = hh;
+
+    // 左上角
+    float x1_rot = cos_rot * x1 - sin_rot * y1 + desc->x + hw;
+    float y1_rot = sin_rot * x1 + cos_rot * y1 + desc->y + hh;
+
+    // 右下角
+    float x2_rot = cos_rot * x2 - sin_rot * y2 + desc->x + hw;
+    float y2_rot = sin_rot * x2 + cos_rot * y2 + desc->y + hh;
+
+    // 左下角
+    float x3_rot = cos_rot * x1 - sin_rot * y2 + desc->x + hw;
+    float y3_rot = sin_rot * x1 + cos_rot * y2 + desc->y + hh;
+
+    // 右上角
+    float x4_rot = cos_rot * x2 - sin_rot * y1 + desc->x + hw;
+    float y4_rot = sin_rot * x2 + cos_rot * y1 + desc->y + hh;
+
+    // 绘制两个三角形
+    batch_push_vertex(g_app->batch, x1_rot, y1_rot, u1, v1);  // 左上
+    batch_push_vertex(g_app->batch, x2_rot, y2_rot, u2, v2);  // 右下
+    batch_push_vertex(g_app->batch, x3_rot, y3_rot, u1, v2);  // 左下
+
+    batch_push_vertex(g_app->batch, x1_rot, y1_rot, u1, v1);  // 左上
+    batch_push_vertex(g_app->batch, x4_rot, y4_rot, u2, v1);  // 右上
+    batch_push_vertex(g_app->batch, x2_rot, y2_rot, u2, v2);  // 右下
+
+    g_app->batch->outline = desc->outline;
+
+    if (desc->flush) batch_flush(g_app->batch);  // TODO: 优化不要每一draw都刷新
 }
 
 // static GLuint font_program;
@@ -790,7 +824,6 @@ int neko_font_load(lua_State *L) {
 #include "engine/edit.h"
 #include "engine/graphics.h"
 
-
 // deps
 #include "vendor/cute_aseprite.h"
 
@@ -826,7 +859,16 @@ static int mt_sprite_draw(lua_State *L) {
     AseSprite *spr = check_sprite_udata(L, 1);
     DrawDescription dd = draw_description_args(L, 2);
 
+    dd.outline = spr->outline;
+    if (spr->outline) dd.flush = true;
+
     draw_sprite(spr, &dd);
+    return 0;
+}
+
+static int mt_sprite_effect(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    spr->outline = lua_toboolean(L, 2);
     return 0;
 }
 
@@ -864,13 +906,8 @@ static int mt_sprite_total_frames(lua_State *L) {
 
 int open_mt_sprite(lua_State *L) {
     luaL_Reg reg[] = {
-            {"play", mt_sprite_play},
-            {"update", mt_sprite_update},
-            {"draw", mt_sprite_draw},
-            {"width", mt_sprite_width},
-            {"height", mt_sprite_height},
-            {"set_frame", mt_sprite_set_frame},
-            {"total_frames", mt_sprite_total_frames},
+            {"play", mt_sprite_play},   {"update", mt_sprite_update}, {"draw", mt_sprite_draw},           {"effect", mt_sprite_effect},
+            {"width", mt_sprite_width}, {"height", mt_sprite_height}, {"set_frame", mt_sprite_set_frame}, {"total_frames", mt_sprite_total_frames},
             {nullptr, nullptr},
     };
 
@@ -1000,6 +1037,8 @@ void batch_flush(batch_renderer *renderer) {
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, renderer->texture);
+
+    glUniform1i(glGetUniformLocation(sid, "outline_enable"), renderer->outline);
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
     // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);

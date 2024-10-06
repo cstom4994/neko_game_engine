@@ -1,16 +1,14 @@
 #include "event.h"
 
-#include "data.h"
-
 void eventhandler_init(eventhandler_t* eventhandler, const char* name) {
     assert(NUM_EVENTS < 32);
-    queue_init(&eventhandler->queue, sizeof(event_t));
+    eventhandler->queue.make();
     eventhandler->delegate_map.reserve(NUM_EVENTS);
 }
 
 void eventhandler_fini(eventhandler_t* eventhandler) {
 
-    queue_free(&eventhandler->queue);
+    eventhandler->queue.trash();
 
     for (int i = 0; i < NUM_EVENTS; i++) {
         delegate_list_t* list = event_getdelegates(eventhandler, i);
@@ -68,13 +66,18 @@ void event_dispatch(eventhandler_t* eventhandler, event_t evt) {
 }
 
 // 将事件放入队列
-int event_post(eventhandler_t* eventhandler, event_t evt) { return queue_put(&eventhandler->queue, &evt); }
+int event_post(eventhandler_t* eventhandler, event_t evt) {
+    eventhandler->queue.enqueue(evt);
+    return 1;
+}
 
 // 清空事件队列并将事件分派给所有监听器
 void event_pump(eventhandler_t* handler) {
-    event_t evt;
-    queue_t* b = &handler->queue;
-    while (queue_get(b, &evt)) event_dispatch(handler, evt);
+    handler->prev_len = handler->queue.len;
+    while (handler->queue.len > 0) {
+        event_t evt = handler->queue.demand();
+        event_dispatch(handler, evt);
+    }
 }
 
 // event_t.listen(obj, evt, func [, filter])

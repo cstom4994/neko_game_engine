@@ -2,7 +2,6 @@
 #define NEKO_ASSET_H
 
 #include "engine/base.hpp"
-#include "engine/data.h"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
@@ -80,6 +79,7 @@ struct AseSprite {
     u64 loop;    // index into AseSpriteData::by_tag
     float elapsed;
     i32 current_frame;
+    bool outline;
 
     void make();
     bool play(String tag);

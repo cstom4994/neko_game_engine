@@ -7,8 +7,8 @@
 #include "engine/base.h"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 #include "engine/event.h"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"
@@ -197,9 +197,7 @@ static const char **nekogame_ffi[] = {
         // &nekogame_ffi_sound,
         // &nekogame_ffi_physics,
         &nekogame_ffi_edit,
-        &nekogame_ffi_inspector,
-
-        &nekogame_ffi_keyboard_controlled,
+        &nekogame_ffi_inspector
 };
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
@@ -465,11 +463,11 @@ void script_draw_ui() {
 void script_draw_all() {
     lua_State *L = ENGINE_LUA();
 
-    luax_get(ENGINE_LUA(), "neko", "game_render");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-
     script_push_event("draw_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    luax_get(ENGINE_LUA(), "neko", "game_render");
+    luax_pcall(ENGINE_LUA(), 0, 0);
 }
 
 void script_key_down(KeyCode key) {

@@ -916,8 +916,6 @@ function ng.__fire_event(event, args)
     end
 end
 
-local serpent = hot_require("libs/serpent")
-
 function ng.__save_all()
     local data = {}
 
@@ -931,11 +929,12 @@ function ng.__save_all()
         print("saving system: " .. name)
     end
 
-    return serpent.dump(data, {
-        indent = '  ',
-        nocode = true
-    })
-    -- return table.show(data)
+    -- return serpent.dump(data, {
+    --     indent = '  ',
+    --     nocode = true
+    -- })
+    -- return common.pack(data)
+    return table.show(data)
 end
 
 function ng.__load_all(str)

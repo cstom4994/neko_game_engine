@@ -63,15 +63,15 @@ end
 function ns.edit._mode_exec_bind(up, codestr)
     -- modifier prefixes
     local mods = {
-        [ng.KC_LEFT_CONTROL] = 'C-',
-        [ng.KC_RIGHT_CONTROL] = 'C-',
-        [ng.KC_LEFT_ALT] = 'M-',
-        [ng.KC_RIGHT_ALT] = 'M-',
-        [ng.KC_LEFT_SHIFT] = 'S-',
-        [ng.KC_RIGHT_SHIFT] = 'S-'
+        ["lctrl"] = 'C-',
+        ["rctrl"] = 'C-',
+        ["lalt"] = 'M-',
+        ["ralt"] = 'M-',
+        ["lshift"] = 'S-',
+        ["rshift"] = 'S-'
     }
     for mod, prefix in pairs(mods) do
-        if ns.input.key_down(mod) then
+        if neko.key_down(mod) then
             codestr = prefix .. codestr
         end
     end

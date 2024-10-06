@@ -155,30 +155,4 @@ NEKO_API() void physics_draw_all();
 NEKO_API() void physics_save_all(Store *s);
 NEKO_API() void physics_load_all(Store *s);
 
-// NEKO_SCRIPT(sound,
-//
-//        NEKO_EXPORT void sound_add(NativeEntity ent);
-//        NEKO_EXPORT void sound_remove(NativeEntity ent);
-//        NEKO_EXPORT bool sound_has(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_path(NativeEntity ent, const char *path);
-//        NEKO_EXPORT const char *sound_get_path(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_playing(NativeEntity ent, bool playing);
-//        NEKO_EXPORT bool sound_get_playing(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_seek(NativeEntity ent, int seek);
-//        NEKO_EXPORT int sound_get_seek(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_finish_destroy(NativeEntity ent, bool finish_destroy);
-//        NEKO_EXPORT bool sound_get_finish_destroy(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_loop(NativeEntity ent, bool loop);
-//        NEKO_EXPORT bool sound_get_loop(NativeEntity ent);
-//
-//        NEKO_EXPORT void sound_set_gain(NativeEntity ent, Scalar gain);
-//        NEKO_EXPORT Scalar sound_get_gain(NativeEntity ent);
-//     )
-
-
 #endif

@@ -622,8 +622,6 @@ static void _saveload_all(void* s, bool save) {
     saveload(edit);
     saveload(sound);
 
-    saveload(keyboard_controlled);
-
     saveload(script);
 
     entity_load_all_end();

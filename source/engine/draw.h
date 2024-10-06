@@ -23,6 +23,10 @@ struct DrawDescription {
     float v0;
     float u1;
     float v1;
+
+    bool outline;
+
+    bool flush;
 };
 
 struct RectDescription {
@@ -128,6 +132,8 @@ typedef struct batch_renderer {
     float scale;
 
     GLuint texture;
+
+    bool outline;
 } batch_renderer;
 
 struct App;

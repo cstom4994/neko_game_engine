@@ -56,9 +56,6 @@ function haha()
     --     -- }
     -- }
 
-    -- keyboard_controlled_add(ng.cent(player_ent))
-    -- keyboard_controlled_set_v(ng.cent(player_ent), 100.0)
-
     local ffi = FFI
 
     ffi.cdef [[
@@ -141,7 +138,7 @@ function haha()
         neko.game_init_thread = function()
         end
         neko.game_init = function()
-            test_ase = neko.sprite_load("assets/B_witch.ase")
+            test_ase = neko.sprite_load("assets/workingman.ase")
 
             LocalGame.b2 = neko.b2_world {
                 gx = 0,
@@ -151,7 +148,15 @@ function haha()
 
             LocalGame.world = World()
 
-            LocalGame.world:add(CPlayer(0, 0))
+            player = CPlayer(0, 0)
+
+            LocalGame.world:add(player)
+            LocalGame.world:add(Chort(20, 20))
+
+            cursor = Cursor(neko.sprite_load "assets/cursor.ase")
+
+            bow_img = neko.sprite_load "assets/bow.ase"
+            arrow_img = neko.sprite_load "assets/arrow.ase"
 
         end
         neko.game_fini = function()
@@ -163,18 +168,23 @@ function haha()
             LocalGame.b2:step(dt)
             LocalGame.world:update(dt)
 
+            cursor:update(dt)
+
         end
 
         neko.game_render = function()
-
-            LocalGame.world:draw()
 
             local dt = ng.get_timing_instance().dt
 
             test_ase:update(dt)
             local ox = test_ase:width() / 2
             local oy = -test_ase:height()
-            test_ase:draw(0, 0, 0, 1, -1, ox, oy)
+            test_ase:draw(40, -80, 0, 1.5, -1.5, ox, oy)
+
+            LocalGame.world:draw()
+
+            cursor:draw()
+
         end
 
         neko.game_ui = function()
@@ -553,5 +563,368 @@ function haha()
     ]]
 
     print("haha.lua loaded")
+
+end
+
+function haha_test_gui()
+
+    win = ng.add {
+        gui_window = {
+            title = 'parent window!'
+        },
+        gui = {
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MAX
+        }
+    }
+
+    text1 = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'body is a very very long text\nof many lines!'
+        }
+    }
+
+    win2 = ng.add {
+        gui_window = {
+            title = 'child window!'
+        },
+        gui_rect = {
+            hfill = true
+        },
+        transform = {
+            parent = ns.gui_window.get_body(win)
+        },
+        gui = {
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        }
+    }
+
+    text2 = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win2)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'prop1: x, y, z'
+        }
+    }
+
+    win = ng.add {
+        gui_window = {
+            title = 'parent window 2!',
+            closeable = false
+        },
+        gui = {
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MAX
+        }
+    }
+
+    win2 = ng.add {
+        gui_window = {
+            title = 'child window!'
+        },
+        gui_rect = {
+            hfill = true
+        },
+        transform = {
+            parent = ns.gui_window.get_body(win)
+        },
+        gui = {
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        }
+    }
+
+    text2 = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win2)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'body is a very very long text\nof many lines!'
+        }
+    }
+
+    win = ng.add {
+        transform = {
+            position = ng.vec2(42, -42)
+        },
+        gui_window = {
+            title = 'free window!'
+        }
+    }
+
+    text1 = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'drag titlebar to move'
+        }
+    }
+
+    win2 = ng.add {
+        gui_window = {
+            title = 'child window!'
+        },
+        gui_rect = {
+            hfill = true
+        },
+        transform = {
+            parent = ns.gui_window.get_body(win)
+        },
+        gui = {
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        }
+    }
+
+    text2 = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win2)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'I move with my parent!'
+        }
+    }
+
+    textedit = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win2)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = 'edit me!!'
+        },
+        gui_event = {
+            key_down = function(e, k)
+                if k == ng.KC_A then
+                    print('A!')
+                end
+            end
+        },
+        gui_textedit = {}
+    }
+
+    textedit = ng.add {
+        transform = {
+            parent = ns.gui_window.get_body(win2)
+        },
+        gui = {
+            color = ng.color_white,
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MIN
+        },
+        gui_text = {
+            str = "I'm editable too..."
+        },
+        gui_textedit = {}
+    }
+
+end
+
+function haha_huge()
+
+    hot_require 'oscillator'
+    hot_require 'rotator'
+
+    ns.sprite.set_atlas('assets/atlas.ase')
+
+    -- add camera: 32 pixels is one unit
+
+    camera = ns.entity.create()
+    ns.transform.add(camera)
+    ns.camera.add(camera)
+    ns.camera.set_viewport_height(camera, 18)
+
+    -- add some blocks
+
+    math.randomseed(os.time())
+
+    function symrand()
+        return 2 * math.random() - 1
+    end
+
+    local n_blocks = ng.args[2] or 3000
+    print('creating ' .. n_blocks .. ' blocks')
+    for i = 0, n_blocks do
+        local block = ns.entity.create()
+
+        local y = 8 * symrand()
+        while math.abs(y) < 1.5 do
+            y = 8 * symrand()
+        end
+        local pos = ng.vec2(8 * symrand(), y)
+
+        ns.transform.add(block)
+        ns.transform.set_position(block, pos)
+
+        ns.sprite.add(block)
+        if symrand() < 0 then
+            ns.sprite.set_texcell(block, ng.vec2(0.0, 32.0))
+            ns.edit.select[block] = true
+        else
+            ns.sprite.set_texcell(block, ng.vec2(32.0, 32.0))
+        end
+        ns.sprite.set_texsize(block, ng.vec2(32.0, 32.0))
+
+        ns.oscillator.add(block, {
+            amp = 3 * math.random(),
+            freq = math.random()
+        })
+        ns.rotator.add(block, math.random() * math.pi)
+    end
+
+    -- add player
+
+    player = ns.entity.create()
+
+    ns.transform.add(player)
+    ns.transform.set_position(player, ng.vec2(0.0, 0.0))
+
+    ns.sprite.add(player)
+    ns.sprite.set_texcell(player, ng.vec2(0.0, 32.0))
+    ns.sprite.set_texsize(player, ng.vec2(32.0, 32.0))
+
+    ns.transform.set_scale(player, ng.vec2(2, 2))
+
+end
+
+function haha_basic()
+
+    hot_require 'oscillator'
+    hot_require 'rotator'
+
+    ns.sprite.set_atlas('assets/atlas.ase')
+
+    -- add camera: 32 pixels is one unit
+
+    print("basic.lua loading")
+
+    camera = ns.entity.create()
+
+    ns.transform.add(camera)
+    ns.camera.add(camera)
+    ns.camera.set_viewport_height(camera, 18)
+
+    -- add some blocks
+
+    local n_blocks = 20
+    for i = 0, n_blocks do
+        local block = ng.add {
+            transform = {
+                position = ng.vec2(i - 8, i - 8)
+            },
+            sprite = {
+                texcell = ng.vec2(i / 2 == math.floor(i / 2) and 0 or 32, 32),
+                texsize = ng.vec2(32, 32)
+            }
+        }
+
+        ns.oscillator.add(block, {
+            amp = 1,
+            freq = 1,
+            phase = 5 * i / n_blocks
+        })
+        ns.rotator.add(block, 2 * math.pi)
+    end
+
+    -- add player
+
+    player = ng.add {
+        transform = {
+            position = ng.vec2(0, 0),
+            scale = ng.vec2(2, 2),
+            rotation = math.pi / 16
+        },
+        sprite = {
+            texcell = ng.vec2(0, 32),
+            texsize = ng.vec2(32, 32)
+        }
+    }
+
+    rchild = ng.add {
+        transform = {
+            parent = player,
+            position = ng.vec2(1, 0),
+            scale = ng.vec2(0.5, 0.5)
+        },
+        sprite = {
+            texcell = ng.vec2(32, 32),
+            texsize = ng.vec2(32, 32)
+        }
+    }
+
+    lchild = ng.add {
+        transform = {
+            parent = player,
+            position = ng.vec2(-1, 0),
+            scale = ng.vec2(0.5, 0.5)
+        },
+        sprite = {
+            texcell = ng.vec2(32, 32),
+            texsize = ng.vec2(32, 32)
+        }
+    }
+
+    -- local tiletype, layers = TiledMap_Parse("assets/maps/map.tmx")
+
+    -- print(type(tiletype))
+
+    -- local pink = hot_require("libs/ink/ink")
+    -- local story = pink('game.ink')
+
+    -- while true do
+    --     -- 2) Game content, line by line
+    --     while story.canContinue do
+    --         print(story.continue())
+    --     end
+    --     -- 3) Display story.currentChoices list, allow player to choose one
+    --     if #story.currentChoices == 0 then
+    --         break
+    --     end -- cannot continue and there are no choices
+    --     for i = 1, #story.currentChoices do
+    --         print(i .. "> " .. story.currentChoices[i].text)
+    --     end
+
+    --     local answer = io.read("*number")
+    --     story.chooseChoiceIndex(tonumber(answer))
+    -- end
+
+    -- entity destruction
+
+    print("basic.lua loaded")
 
 end

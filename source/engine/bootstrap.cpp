@@ -24,7 +24,6 @@
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
-
 // deps
 #include "vendor/sokol_time.h"
 
@@ -167,8 +166,6 @@ int _game_draw(App *app, event_t evt) {
 
     if (!g_app->error_mode.load()) {
 
-        script_draw_all();
-
         // 底层图片
         char background_text[64] = "Project: unknown";
 
@@ -185,8 +182,9 @@ int _game_draw(App *app, event_t evt) {
         {
 
             // script_draw_all();
-            // tiled_draw_all();
             tiled_draw_all();
+
+            script_draw_all();
 
             sprite_draw_all();
             batch_draw_all(g_app->batch);
@@ -358,7 +356,6 @@ static void _game_init(int argc, char **argv) {
 
             {update, (evt_callback_t)scratch_update},
             {update, (evt_callback_t)script_update_all},
-            {update, (evt_callback_t)keyboard_controlled_update_all},
             {update, (evt_callback_t)physics_update_all},
             {update, (evt_callback_t)transform_update_all},
 
@@ -618,9 +615,6 @@ void test_native_script() {
     sprite_add(player);
     sprite_set_texcell(player, luavec2(0.0f, 32.0f));
     sprite_set_texsize(player, luavec2(32.0f, 32.0f));
-
-    // who gets keyboard control?
-    // keyboard_controlled_add(camera);
 }
 
 AppTime *get_timing_instance() { return &g_app->timing_instance; }

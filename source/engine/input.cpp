@@ -177,12 +177,6 @@ static void _scroll_callback(GLFWwindow *window, double x, double y) {
     for (auto f : scroll_cbs) (*f)(luavec2(x, y));
 }
 
-int keyboard_controlled_add(lua_State *L);
-int keyboard_controlled_remove(lua_State *L);
-int keyboard_controlled_has(lua_State *L);
-int keyboard_controlled_set_v(lua_State *L);
-int keyboard_controlled_is_moving(lua_State *L);
-
 void input_init() {
     PROFILE_FUNC();
 
@@ -191,14 +185,6 @@ void input_init() {
     glfwSetMouseButtonCallback(g_app->game_window, _mouse_callback);
     glfwSetCursorPosCallback(g_app->game_window, _cursor_pos_callback);
     glfwSetScrollCallback(g_app->game_window, _scroll_callback);
-
-    auto L = ENGINE_LUA();
-
-    lua_register(L, "keyboard_controlled_add", keyboard_controlled_add);
-    lua_register(L, "keyboard_controlled_remove", keyboard_controlled_remove);
-    lua_register(L, "keyboard_controlled_has", keyboard_controlled_has);
-    lua_register(L, "keyboard_controlled_set_v", keyboard_controlled_set_v);
-    lua_register(L, "keyboard_controlled_is_moving", keyboard_controlled_is_moving);
 }
 
 void input_fini() {
@@ -213,119 +199,6 @@ void input_fini() {
 
     key_up_cbs.trash();
     key_down_cbs.trash();
-}
-
-// TODO: 应该使用entity_nil来表示不存在
-static bool kc_exists = false;
-static bool is_moving = false;
-static NativeEntity kc_entity;
-static f32 v = 5.f;
-
-int keyboard_controlled_add(lua_State *L) {
-
-    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
-
-    transform_add(ent);
-
-    kc_exists = true;
-    kc_entity = ent;
-
-    return 0;
-}
-
-int keyboard_controlled_remove(lua_State *L) {
-
-    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
-
-    if (native_entity_eq(ent, kc_entity)) kc_exists = false;
-
-    return 0;
-}
-
-int keyboard_controlled_has(lua_State *L) {
-    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
-    bool ret = kc_exists && native_entity_eq(kc_entity, ent);
-    lua_pushboolean(L, ret);
-    return 1;
-}
-
-int keyboard_controlled_set_v(lua_State *L) {
-    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
-
-    f32 _v = lua_tonumber(L, 2);
-
-    console_log("keyboard_controlled_set_v %d %f", ent.id, _v);
-    v = _v;
-
-    return 0;
-}
-
-int keyboard_controlled_is_moving(lua_State *L) {
-    lua_pushboolean(L, is_moving);
-    return 1;
-}
-
-int keyboard_controlled_update_all(App *app, event_t evt) {
-    vec2 dpos = luavec2(0, 0), sca;
-    Scalar rot, aspect;
-
-    // v = 5.f;
-
-    if (kc_exists) {
-        if (entity_destroyed(kc_entity)) {
-            // keyboard_controlled_remove(kc_entity);
-            kc_exists = false;
-            return 0;
-        }
-
-        if (timing_get_paused()) return 0;
-        if (gui_has_focus()) return 0;
-
-        AppTime *time = get_timing_instance();
-
-        rot = transform_get_rotation(kc_entity);
-        sca = transform_get_scale(kc_entity);
-        aspect = sca.y / sca.x;
-
-        if (input_key_down(KC_A)) dpos = vec2_add(dpos, luavec2(-v * time->dt, 0));
-        if (input_key_down(KC_D)) dpos = vec2_add(dpos, luavec2(v * time->dt, 0));
-        if (input_key_down(KC_W)) dpos = vec2_add(dpos, luavec2(0, v * time->dt));
-        if (input_key_down(KC_S)) dpos = vec2_add(dpos, luavec2(0, -v * time->dt));
-
-        if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * time->dt;
-        if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * time->dt;
-
-        if (input_key_down(KC_K)) {
-            sca.x += 12 * time->dt;
-            sca.y = aspect * sca.x;
-        }
-        if (sca.x > 12 * time->dt && input_key_down(KC_I)) {
-            sca.x -= 12 * time->dt;
-            sca.y = aspect * sca.x;
-        }
-
-        dpos = vec2_rot(dpos, rot);
-        transform_translate(kc_entity, dpos);
-        transform_set_rotation(kc_entity, rot);
-        transform_set_scale(kc_entity, sca);
-
-        is_moving = (v * time->dt - 0.0001f) > 0;
-    }
-
-    return 0;
-}
-
-void keyboard_controlled_save_all(Store *s) {
-    Store *t;
-
-    if (store_child_save(&t, "keyboard_controlled", s))
-        if (kc_exists && entity_get_save_filter(kc_entity)) entity_save(&kc_entity, "kc_entity", t);
-}
-void keyboard_controlled_load_all(Store *s) {
-    Store *t;
-
-    if (store_child_load(&t, "keyboard_controlled", s))
-        if (entity_load(&kc_entity, "kc_entity", kc_entity, t)) kc_exists = true;
 }
 
 INPUT_WRAP_event *input_wrap_new_event(event_queue *equeue) {
