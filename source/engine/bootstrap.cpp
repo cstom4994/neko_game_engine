@@ -12,8 +12,9 @@
 #include <time.h>
 
 #include "engine/asset.h"
-#include "engine/base.h"
 #include "engine/base.hpp"
+#include "engine/base/os.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -166,6 +167,20 @@ int _game_draw(App *app, event_t evt) {
 
     if (!g_app->error_mode.load()) {
 
+        if (ImGui::BeginMainMenuBar()) {
+            ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
+
+            // if (g_app->debug_on) {
+            // sgimgui_draw_menu(&sgimgui, "gfx");
+            // }
+
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
+            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), get_timing_instance()->true_dt * 1000.f,
+                        1.f / get_timing_instance()->true_dt);
+
+            ImGui::EndMainMenuBar();
+        }
+
         // 底层图片
         char background_text[64] = "Project: unknown";
 
@@ -192,8 +207,8 @@ int _game_draw(App *app, event_t evt) {
             physics_draw_all();
             gui_draw_all();
 
-            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy += draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
+            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy += draw_font(g_app->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
             fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
         }
 

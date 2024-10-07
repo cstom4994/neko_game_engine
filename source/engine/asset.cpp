@@ -12,6 +12,8 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
+#include "engine/base/os.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"

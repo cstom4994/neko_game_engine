@@ -1,7 +1,7 @@
 #ifndef SCRIPT_H
 #define SCRIPT_H
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/event.h"
 #include "engine/input.h"
 #include "engine/scripting/luax.h"

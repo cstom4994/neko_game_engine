@@ -2,20 +2,6 @@
 
 #include "engine/base/base.hpp"
 
-template <typename T, size_t size>
-class size_checker {
-    static_assert(sizeof(T) == size, "check the size of integral types");
-};
-
-template class size_checker<i64, 8>;
-template class size_checker<i32, 4>;
-template class size_checker<i16, 2>;
-template class size_checker<i8, 1>;
-template class size_checker<u64, 8>;
-template class size_checker<u32, 4>;
-template class size_checker<u16, 2>;
-template class size_checker<u8, 1>;
-
 template <typename F>
 struct Defer {
     F f;

@@ -2,7 +2,8 @@
 #define NEKO_COMPONENT_H
 
 #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/base.hpp"
+#include "engine/base/color.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"

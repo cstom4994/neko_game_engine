@@ -1,5 +1,6 @@
 #include "luax.h"
 
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/scripting/scripting.h"
 #include "lua_wrapper.hpp"

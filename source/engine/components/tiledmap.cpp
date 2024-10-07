@@ -1,5 +1,6 @@
 
 
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 

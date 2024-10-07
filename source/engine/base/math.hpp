@@ -1,620 +1,89 @@
-#ifndef NEKO_BASE_H
-#define NEKO_BASE_H
+#pragma once
 
 #include "engine/base/base.hpp"
 
-FORMAT_ARGS(1)
-inline void neko_panic(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
+/*========================
+// NEKO_MATH
+========================*/
 
-    fprintf(stderr, "\n");
+// Defines
+#define neko_pi 3.14159265358979323846264f
+#define neko_tau 2.0 * neko_pi
+#define neko_e 2.71828182845904523536f  // e
+#define neko_epsilon (1e-6)
 
-    exit(1);
+// 实用
+#define neko_v2(...) vec2_ctor(__VA_ARGS__)
+#define neko_v3(...) vec3_ctor(__VA_ARGS__)
+#define neko_v4(...) vec4_ctor(__VA_ARGS__)
+
+#define neko_v2s(__S) vec2_ctor((__S), (__S))
+#define neko_v3s(__S) vec3_ctor((__S), (__S), (__S))
+#define neko_v4s(__S) vec4_ctor((__S), (__S), (__S), (__S))
+
+#define neko_v4_xy_v(__X, __Y, __V) vec4_ctor((__X), (__Y), (__V).x, (__V).y)
+#define neko_v4_xyz_s(__XYZ, __S) vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
+
+#define NEKO_XAXIS neko_v3(1.f, 0.f, 0.f)
+#define NEKO_YAXIS neko_v3(0.f, 1.f, 0.f)
+#define NEKO_ZAXIS neko_v3(0.f, 0.f, 1.f)
+
+/*================================================================================
+// Useful Common Math Functions
+================================================================================*/
+
+#define neko_rad2deg(__R) (float)((__R * 180.0f) / neko_pi)
+
+#define neko_deg2rad(__D) (float)((__D * neko_pi) / 180.0f)
+
+// Interpolation
+// Source: https://codeplea.com/simple-interpolation
+
+// Returns v based on t
+inline float neko_interp_linear(float a, float b, float t) { return (a + t * (b - a)); }
+
+// Returns t based on v
+inline float neko_interp_linear_inv(float a, float b, float v) { return (v - a) / (b - a); }
+
+inline float neko_interp_smoothstep(float a, float b, float t) { return neko_interp_linear(a, b, t * t * (3.0f - 2.0f * t)); }
+
+inline float neko_interp_cosine(float a, float b, float t) { return neko_interp_linear(a, b, (float)-cos(neko_pi * t) * 0.5f + 0.5f); }
+
+inline float neko_interp_acceleration(float a, float b, float t) { return neko_interp_linear(a, b, t * t); }
+
+inline float neko_interp_deceleration(float a, float b, float t) { return neko_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t)); }
+
+inline float neko_round(float val) { return (float)floor(val + 0.5f); }
+
+inline float neko_map_range(float input_start, float input_end, float output_start, float output_end, float val) {
+    float slope = (output_end - output_start) / (input_end - input_start);
+    return (output_start + (slope * (val - input_start)));
 }
 
-void profile_setup();
-void profile_shutdown();
-
-#ifndef NDEBUG
-#if !defined(USE_PROFILER) && !defined(__EMSCRIPTEN__)
-// #define USE_PROFILER
-#endif
-#endif
-
-/*===================================
-// Resource Handles
-===================================*/
-
-// Useful typedefs for typesafe, internal resource handles
-
-#define neko_handle(TYPE) neko_handle_##TYPE
-
-#define neko_handle_decl(TYPE)                                              \
-    typedef struct {                                                        \
-        u32 id;                                                             \
-    } neko_handle(TYPE);                                                    \
-    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
-        neko_handle(TYPE) h;                                                \
-        h.id = UINT32_MAX;                                                  \
-        return h;                                                           \
-    }                                                                       \
-                                                                            \
-    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
-        neko_handle(TYPE) h;                                                \
-        h.id = id;                                                          \
-        return h;                                                           \
-    }
-
-#define neko_handle_invalid(__TYPE) neko_handle_invalid_##__TYPE()
-
-#define neko_handle_create(__TYPE, __ID) neko_handle_create_##__TYPE(__ID)
-
-#define neko_handle_is_valid(HNDL) ((HNDL.id) != UINT32_MAX)
-
-neko_handle_decl(gfx_texture_t);
-typedef neko_handle(gfx_texture_t) gfx_texture_t;
-
-/*===================================
-// String Utils
-===================================*/
-
-inline uint8_t wtf8_decode(const char* input, uint32_t* res) {
-    uint8_t b1 = input[0];
-    if (b1 <= 0x7F) {
-        *res = b1;
-        return 1;
-    }
-    if (b1 < 0xC2) {
-        return 0;
-    }
-    uint32_t code_point = b1;
-    uint8_t b2 = input[1];
-    if ((b2 & 0xC0) != 0x80) {
-        return 0;
-    }
-    code_point = (code_point << 6) | (b2 & 0x3F);
-    if (b1 <= 0xDF) {
-        *res = 0x7FF & code_point;
-        return 2;
-    }
-
-    uint8_t b3 = input[2];
-    if ((b3 & 0xC0) != 0x80) {
-        return 0;
-    }
-    code_point = (code_point << 6) | (b3 & 0x3F);
-    if (b1 <= 0xEF) {
-        *res = 0xFFFF & code_point;
-        return 3;
-    }
-
-    uint8_t b4 = input[3];
-    if ((b4 & 0xC0) != 0x80) {
-        return 0;
-    }
-    code_point = (code_point << 6) | (b4 & 0x3F);
-    if (b1 <= 0xF4) {
-        code_point &= 0x1FFFFF;
-        if (code_point <= 0x10FFFF) {
-            *res = code_point;
-            return 4;
-        }
-    }
-    return 0;
+// 缓动来自：https://github.com/raysan5/raylib/blob/ea0f6c7a26f3a61f3be542aa8f066ce033766a9f/examples/others/easings.h
+inline float neko_ease_cubic_in(float t, float b, float c, float d) {
+    t /= d;
+    return (c * t * t * t + b);
 }
 
-inline size_t wtf8_to_utf16_length(const char* input, size_t length) {
-    size_t output_len = 0;
-    uint32_t code_point;
-    for (size_t i = 0; i < length;) {
-        uint8_t n = wtf8_decode(&input[i], &code_point);
-        if (n == 0) {
-            return (size_t)-1;
-        }
-        if (code_point > 0xFFFF) {
-            output_len += 2;
-        } else {
-            output_len += 1;
-        }
-        i += n;
+inline float neko_ease_cubic_out(float t, float b, float c, float d) {
+    t = t / d - 1.0f;
+    return (c * (t * t * t + 1.0f) + b);
+}
+
+inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
+    if ((t /= d / 2.0f) < 1.0f) {
+        return (c / 2.0f * t * t * t + b);
     }
-    return output_len;
+    t -= 2.0f;
+    return (c / 2.0f * (t * t * t + 2.0f) + b);
 }
 
-inline void wtf8_to_utf16(const char* input, size_t length, wchar_t* output, size_t output_len) {
-    uint32_t code_point;
-    for (size_t i = 0; i < length;) {
-        uint8_t n = wtf8_decode(&input[i], &code_point);
-        neko_assert(n > 0);
-        if (code_point > 0x10000) {
-            neko_assert(code_point < 0x10FFFF);
-            *output++ = (((code_point - 0x10000) >> 10) + 0xD800);
-            *output++ = ((code_point - 0x10000) & 0x3FF) + 0xDC00;
-            output_len -= 2;
-        } else {
-            *output++ = code_point;
-            output_len -= 1;
-        }
-        i += n;
-    }
-    (void)output_len;
-    neko_assert(output_len == 0);
-}
+/*================================================================================
+// Vec2
+================================================================================*/
 
-inline uint32_t wtf8_surrogate(const wchar_t* input, bool eof) {
-    uint32_t u = input[0];
-    if (u >= 0xD800 && u <= 0xDBFF && !eof) {
-        uint32_t next = input[1];
-        if (next >= 0xDC00 && next <= 0xDFFF) {
-            return 0x10000 + ((u - 0xD800) << 10) + (next - 0xDC00);
-        }
-    }
-    return u;
-}
-
-inline size_t wtf8_from_utf16_length(const wchar_t* input, size_t length) {
-    size_t output_len = 0;
-    for (size_t i = 0; i < length; ++i) {
-        uint32_t code_point = wtf8_surrogate(&input[i], length == i + 1);
-        if (code_point == 0) {
-            break;
-        }
-        if (code_point < 0x80) {
-            output_len += 1;
-        } else if (code_point < 0x800) {
-            output_len += 2;
-        } else if (code_point < 0x10000) {
-            output_len += 3;
-        } else {
-            output_len += 4;
-            i++;
-        }
-    }
-    return output_len;
-}
-
-inline void wtf8_from_utf16(const wchar_t* input, size_t length, char* output, size_t output_len) {
-    for (size_t i = 0; i < length; ++i) {
-        uint32_t code_point = wtf8_surrogate(&input[i], length == i + 1);
-        if (code_point == 0) {
-            break;
-        }
-        if (code_point < 0x80) {
-            *output++ = code_point;
-            output_len -= 1;
-        } else if (code_point < 0x800) {
-            *output++ = 0xC0 | (code_point >> 6);
-            *output++ = 0x80 | (code_point & 0x3F);
-            output_len -= 2;
-        } else if (code_point < 0x10000) {
-            *output++ = 0xE0 | (code_point >> 12);
-            *output++ = 0x80 | ((code_point >> 6) & 0x3F);
-            *output++ = 0x80 | (code_point & 0x3F);
-            output_len -= 3;
-        } else {
-            *output++ = 0xF0 | (code_point >> 18);
-            *output++ = 0x80 | ((code_point >> 12) & 0x3F);
-            *output++ = 0x80 | ((code_point >> 6) & 0x3F);
-            *output++ = 0x80 | (code_point & 0x3F);
-            output_len -= 4;
-            i++;
-        }
-    }
-    (void)output_len;
-    neko_assert(output_len == 0);
-}
-
-NEKO_FORCE_INLINE u32 neko_string_length(const char* txt) {
-    u32 sz = 0;
-    while (txt != NULL && txt[sz] != '\0') sz++;
-    return sz;
-}
-
-#define neko_strlen(str) neko_string_length((const char*)str)
-
-// Expects null terminated strings
-NEKO_FORCE_INLINE bool neko_string_compare_equal(const char* txt, const char* cmp) {
-    // Grab sizes of both strings
-    u32 a_sz = neko_string_length(txt);
-    u32 b_sz = neko_string_length(cmp);
-
-    // Return false if sizes do not match
-    if (a_sz != b_sz) {
-        return false;
-    }
-
-    for (u32 i = 0; i < a_sz; ++i) {
-        if (*txt++ != *cmp++) {
-            return false;
-        }
-    };
-
-    return true;
-}
-
-NEKO_FORCE_INLINE bool neko_string_compare_equal_n(const char* txt, const char* cmp, u32 n) {
-    u32 a_sz = neko_string_length(txt);
-    u32 b_sz = neko_string_length(cmp);
-
-    // Not enough characters to do operation
-    if (a_sz < n || b_sz < n) {
-        return false;
-    }
-
-    for (u32 i = 0; i < n; ++i) {
-        if (*txt++ != *cmp++) {
-            return false;
-        }
-    };
-
-    return true;
-}
-
-// NEKO_FORCE_INLINE char* neko_util_string_concat(char* s1, const char* s2) {
-//     const size_t a = strlen(s1);
-//     const size_t b = strlen(s2);
-//     const size_t ab = a + b + 1;
-//     s1 = (char*)neko_safe_realloc((void*)s1, ab);
-//     memcpy(s1 + a, s2, b + 1);
-//     return s1;
-// }
-
-NEKO_FORCE_INLINE void neko_util_str_to_lower(const char* src, char* buffer, size_t buffer_sz) {
-    size_t src_sz = neko_string_length(src);
-    size_t len = NEKO_MIN(src_sz, buffer_sz - 1);
-
-    for (u32 i = 0; i < len; ++i) {
-        buffer[i] = tolower(src[i]);
-    }
-    if (len) buffer[len] = '\0';
-}
-
-NEKO_FORCE_INLINE bool neko_util_str_is_numeric(const char* str) {
-    const char* at = str;
-    while (at && *at) {
-        while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;
-        ;
-        char c = *at++;
-        if (c < '0' || c > '9') {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-NEKO_FORCE_INLINE void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
-    neko_assert(buffer && buffer_size);
-    const_str extension = strrchr(file_path, '.');
-    if (extension) {
-        uint32_t extension_len = strlen(extension + 1);
-        uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
-        memcpy(buffer, extension + 1, len);
-        buffer[len] = '\0';
-    } else {
-        buffer[0] = '\0';
-    }
-}
-
-NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size, const char* file_path) {
-    u32 str_len = neko_string_length(file_path);
-    const char* end = (file_path + str_len);
-    for (u32 i = 0; i < str_len; ++i) {
-        if (file_path[i] == '/' || file_path[i] == '\\') {
-            end = &file_path[i];
-        }
-    }
-
-    size_t dir_len = end - file_path;
-    memcpy(buffer, file_path, NEKO_MIN(buffer_size, dir_len + 1));
-    if (dir_len + 1 <= buffer_size) {
-        buffer[dir_len] = '\0';
-    }
-}
-
-NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
-    neko_assert(path);
-    int len = strlen(path);
-    for (int i = len - 1; i >= 0; i--) {
-        if (path[i] == '\\' || path[i] == '/') {
-            return path + i + 1;
-        }
-    }
-    return path;
-}
-
-NEKO_FORCE_INLINE void neko_util_string_substring(const char* src, char* dst, size_t sz, u32 start, u32 end) {
-    u32 str_len = neko_string_length(src);
-    if (end > str_len) {
-        end = str_len;
-    }
-    if (start > str_len) {
-        start = str_len;
-    }
-
-    const char* at = src + start;
-    const char* e = src + end;
-    u32 ct = 0;
-    while (at && *at != '\0' && at != e) {
-        dst[ct] = *at;
-        at++;
-        ct++;
-    }
-}
-
-NEKO_FORCE_INLINE void neko_util_string_remove_character(const char* src, char* buffer, u32 buffer_size, char delimiter) {
-    u32 ct = 0;
-    u32 str_len = neko_string_length(src);
-    const char* at = src;
-    while (at && *at != '\0' && ct < buffer_size) {
-        char c = *at;
-        if (c != delimiter) {
-            buffer[ct] = c;
-            ct++;
-        }
-        at++;
-    }
-}
-
-NEKO_FORCE_INLINE void neko_util_string_replace(char* buffer, size_t buffer_sz, const char* replace, char fallback) {
-    // Replace all characters with characters of keyword, then the rest replace with spaces
-    size_t len = neko_string_length(replace);
-    for (u32 c = 0; c < buffer_sz; ++c) {
-        if (c < len) {
-            buffer[c] = replace[c];
-        } else {
-            buffer[c] = fallback;
-        }
-    }
-}
-
-NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char* source_str, char* buffer, u32 buffer_size, char delimiter, char replace) {
-    u32 str_len = neko_string_length(source_str);
-    const char* at = source_str;
-    while (at && *at != '\0') {
-        char c = *at;
-        if (c == delimiter) {
-            c = replace;
-        }
-        buffer[(at - source_str)] = c;
-        at++;
-    }
-}
-
-#ifdef __MINGW32__
-#define neko_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__)
-#else
-NEKO_FORCE_INLINE void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buffer, buffer_size, fmt, args);
-    va_end(args);
-}
-#endif
-
-#define neko_transient_buffer(__N, __SZ) \
-    char __N[__SZ] = NEKO_DEFAULT_VAL(); \
-    memset(__N, 0, __SZ);
-
-#define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
-    char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
-    neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
-
-NEKO_FORCE_INLINE u32 neko_util_safe_truncate_u64(u64 value) {
-    neko_assert(value <= 0xFFFFFFFF);
-    u32 result = (u32)value;
-    return result;
-}
-
-NEKO_FORCE_INLINE u32 neko_hash_u32(u32 x) {
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = (x >> 16) ^ x;
-    return x;
-}
-
-#define neko_hash_u32_ip(__X, __OUT)                 \
-    do {                                             \
-        __OUT = ((__X >> 16) ^ __X) * 0x45d9f3b;     \
-        __OUT = ((__OUT >> 16) ^ __OUT) * 0x45d9f3b; \
-        __OUT = (__OUT >> 16) ^ __OUT;               \
-    } while (0)
-
-NEKO_FORCE_INLINE u32 neko_hash_u64(u64 x) {
-    x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
-    x = (x ^ (x >> 27) ^ (x >> 54)) * UINT64_C(0x96de1b173f119089);
-    x = x ^ (x >> 30) ^ (x >> 60);
-    return (u32)x;
-}
-
-// Note: source: http://www.cse.yorku.ca/~oz/hash.html
-// djb2 hash by dan bernstein
-NEKO_FORCE_INLINE u32 neko_hash_str(const char* str) {
-    u32 hash = 5381;
-    i32 c;
-    while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-    return hash;
-}
-
-NEKO_FORCE_INLINE u64 neko_hash_str64(const char* str) {
-    u32 hash1 = 5381;
-    u32 hash2 = 52711;
-    u32 i = neko_string_length(str);
-    while (i--) {
-        char c = str[i];
-        hash1 = (hash1 * 33) ^ c;
-        hash2 = (hash2 * 33) ^ c;
-    }
-
-    return (hash1 >> 0) * 4096 + (hash2 >> 0);
-}
-
-NEKO_FORCE_INLINE bool neko_compare_bytes(void* b0, void* b1, size_t len) { return 0 == memcmp(b0, b1, len); }
-
-// Hash generic bytes using (ripped directly from Sean Barret's stb_ds.h)
-#define NEKO_SIZE_T_BITS ((sizeof(size_t)) * 8)
-#define NEKO_SIPHASH_C_ROUNDS 1
-#define NEKO_SIPHASH_D_ROUNDS 1
-#define neko_rotate_left(__V, __N) (((__V) << (__N)) | ((__V) >> (NEKO_SIZE_T_BITS - (__N))))
-#define neko_rotate_right(__V, __N) (((__V) >> (__N)) | ((__V) << (NEKO_SIZE_T_BITS - (__N))))
-
-NEKO_FORCE_INLINE size_t neko_hash_siphash_bytes(void* p, size_t len, size_t seed) {
-    unsigned char* d = (unsigned char*)p;
-    size_t i, j;
-    size_t v0, v1, v2, v3, data;
-
-    // hash that works on 32- or 64-bit registers without knowing which we have
-    // (computes different results on 32-bit and 64-bit platform)
-    // derived from siphash, but on 32-bit platforms very different as it uses 4 32-bit state not 4 64-bit
-    v0 = ((((size_t)0x736f6d65 << 16) << 16) + 0x70736575) ^ seed;
-    v1 = ((((size_t)0x646f7261 << 16) << 16) + 0x6e646f6d) ^ ~seed;
-    v2 = ((((size_t)0x6c796765 << 16) << 16) + 0x6e657261) ^ seed;
-    v3 = ((((size_t)0x74656462 << 16) << 16) + 0x79746573) ^ ~seed;
-
-#ifdef STBDS_TEST_SIPHASH_2_4
-    // hardcoded with key material in the siphash test vectors
-    v0 ^= 0x0706050403020100ull ^ seed;
-    v1 ^= 0x0f0e0d0c0b0a0908ull ^ ~seed;
-    v2 ^= 0x0706050403020100ull ^ seed;
-    v3 ^= 0x0f0e0d0c0b0a0908ull ^ ~seed;
-#endif
-
-#define neko_sipround()                                  \
-    do {                                                 \
-        v0 += v1;                                        \
-        v1 = neko_rotate_left(v1, 13);                   \
-        v1 ^= v0;                                        \
-        v0 = neko_rotate_left(v0, NEKO_SIZE_T_BITS / 2); \
-        v2 += v3;                                        \
-        v3 = neko_rotate_left(v3, 16);                   \
-        v3 ^= v2;                                        \
-        v2 += v1;                                        \
-        v1 = neko_rotate_left(v1, 17);                   \
-        v1 ^= v2;                                        \
-        v2 = neko_rotate_left(v2, NEKO_SIZE_T_BITS / 2); \
-        v0 += v3;                                        \
-        v3 = neko_rotate_left(v3, 21);                   \
-        v3 ^= v0;                                        \
-    } while (0)
-
-    for (i = 0; i + sizeof(size_t) <= len; i += sizeof(size_t), d += sizeof(size_t)) {
-        data = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-        data |= (size_t)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16;  // discarded if size_t == 4
-
-        v3 ^= data;
-        for (j = 0; j < NEKO_SIPHASH_C_ROUNDS; ++j) neko_sipround();
-        v0 ^= data;
-    }
-    data = len << (NEKO_SIZE_T_BITS - 8);
-    switch (len - i) {
-        case 7:
-            data |= ((size_t)d[6] << 24) << 24;  // fall through
-        case 6:
-            data |= ((size_t)d[5] << 20) << 20;  // fall through
-        case 5:
-            data |= ((size_t)d[4] << 16) << 16;  // fall through
-        case 4:
-            data |= (d[3] << 24);  // fall through
-        case 3:
-            data |= (d[2] << 16);  // fall through
-        case 2:
-            data |= (d[1] << 8);  // fall through
-        case 1:
-            data |= d[0];  // fall through
-        case 0:
-            break;
-    }
-    v3 ^= data;
-    for (j = 0; j < NEKO_SIPHASH_C_ROUNDS; ++j) neko_sipround();
-    v0 ^= data;
-    v2 ^= 0xff;
-    for (j = 0; j < NEKO_SIPHASH_D_ROUNDS; ++j) neko_sipround();
-
-#if 0
-  return v0^v1^v2^v3;
-#else
-    return v1 ^ v2 ^ v3;  // slightly stronger since v0^v3 in above cancels out final round operation? I tweeted at the authors of SipHash about this but they didn't reply
-#endif
-}
-
-NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
-#if 0
-  return neko_hash_siphash_bytes(p,len,seed);
-#else
-    unsigned char* d = (unsigned char*)p;
-
-    // Len == 4 (off for now, so to force 64 bit hash)
-    if (len == 4) {
-        unsigned int hash = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-        hash ^= seed;
-        hash *= 0xcc9e2d51;
-        hash = (hash << 17) | (hash >> 15);
-        hash *= 0x1b873593;
-        hash ^= seed;
-        hash = (hash << 19) | (hash >> 13);
-        hash = hash * 5 + 0xe6546b64;
-        hash ^= hash >> 16;
-        hash *= 0x85ebca6b;
-        hash ^= seed;
-        hash ^= hash >> 13;
-        hash *= 0xc2b2ae35;
-        hash ^= hash >> 16;
-        return (((size_t)hash << 16 << 16) | hash) ^ seed;
-    } else if (len == 8 && sizeof(size_t) == 8) {
-        size_t hash = d[0] | (d[1] << 8) | (d[2] << 16) | (d[3] << 24);
-        hash |= (size_t)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16;  // avoid warning if size_t == 4
-        hash ^= seed;
-        hash = (~hash) + (hash << 21);
-        hash ^= neko_rotate_right(hash, 24);
-        hash *= 265;
-        hash ^= neko_rotate_right(hash, 14);
-        hash ^= seed;
-        hash *= 21;
-        hash ^= neko_rotate_right(hash, 28);
-        hash += (hash << 31);
-        hash = (~hash) + (hash << 18);
-        return hash;
-    } else {
-        return neko_hash_siphash_bytes(p, len, seed);
-    }
-#endif
-}
-
-#if 1
-
-// 在内存中存储连续的对象
-// 对象可能会在内存中移动 因此不要依赖指向 CArray 中对象的指针
-typedef struct CArray CArray;
-
-CArray* array_new_(size_t object_size);  // object_size 是每个元素的大小
-void array_free(CArray* arr);
-void* array_get(CArray* arr, unsigned int i);
-void* array_top(CArray* arr);
-unsigned int array_length(CArray* arr);  // 数组中的对象数
-
-// 添加/删除可能会更改开始/结束 因此在迭代时要小心
-void* array_begin(CArray* arr);                                         // 指向第一个元素的指针
-void* array_end(CArray* arr);                                           // 指向one past last元素的指针
-void* array_add(CArray* arr);                                           // 添加新对象, index is length - 1
-void array_reset(CArray* arr, unsigned int num);                        // 将数据未定义的对象调整为 num 对象
-void array_pop(CArray* arr);                                            // 删除具有最高索引的对象
-bool array_quick_remove(CArray* arr, unsigned int i);                   // 快速删除, 可以将其他一些元素交换成 arr[i] 如果是这样 则返回 true
-void array_sort(CArray* arr, int (*compar)(const void*, const void*));  // compare 是一个比较器函数
-
-#define array_clear(arr) array_reset(arr, 0)  //
-#define array_add_val(type, arr) (*((type*)array_add(arr)))
-#define array_top_val(type, arr) (*((type*)array_top(arr)))
-#define array_get_val(type, arr, i) (*((type*)array_get(arr, i)))
-#define array_new(type) array_new_(sizeof(type))
-
-#define array_foreach(var, arr) for (void* __end = (var = (decltype(var))array_begin(arr), array_end(arr)); var != __end; ++var)
-
-#endif
+struct Store;
 
 NEKO_SCRIPT(scalar,
 
@@ -654,116 +123,6 @@ NEKO_SCRIPT(scalar,
 #define scalar_max fmaxf
 
 #define scalar_floor floor
-
-NEKO_SCRIPT(saveload,
-
-            // 请记住 *_close(...) 当完成以释放资源时
-
-            typedef struct Store Store;
-
-            NEKO_EXPORT Store * store_open();
-
-            NEKO_EXPORT Store * store_open_str(const char* str);
-
-            NEKO_EXPORT const char* store_write_str(Store* s);
-
-            NEKO_EXPORT Store * store_open_file(const char* filename);
-
-            NEKO_EXPORT void store_write_file(Store* s, const char* filename);
-
-            NEKO_EXPORT void store_close(Store* s);
-
-)
-
-// 存储树有助于向后兼容 save/load
-bool store_child_save(Store** sp, const char* name, Store* parent);
-bool store_child_save_compressed(Store** sp, const char* name, Store* parent);
-bool store_child_load(Store** sp, const char* name, Store* parent);
-void scalar_save(const Scalar* f, const char* name, Store* s);
-bool scalar_load(Scalar* f, const char* name, Scalar d, Store* s);
-void uint_save(const unsigned int* u, const char* name, Store* s);
-bool uint_load(unsigned int* u, const char* name, unsigned int d, Store* s);
-void int_save(const int* i, const char* name, Store* s);
-bool int_load(int* i, const char* name, int d, Store* s);
-
-#define enum_save(val, n, s)    \
-    do {                        \
-        int e__;                \
-        e__ = *(val);           \
-        int_save(&e__, n, (s)); \
-    } while (0)
-#define enum_load(val, n, d, s)         \
-    do {                                \
-        int e__;                        \
-        int_load(&e__, n, (int)d, (s)); \
-        *((int*)val) = e__;             \
-    } while (0)
-
-void bool_save(const bool* b, const char* name, Store* s);
-bool bool_load(bool* b, const char* name, bool d, Store* s);
-
-void string_save(const char** c, const char* name, Store* s);
-bool string_load(char** c, const char* name, const char* d, Store* s);
-
-typedef struct AssetTexture {
-    u32 id;  // 如果未初始化或纹理错误 则为 0
-    int width;
-    int height;
-    int components;
-    bool flip_image_vertical;
-} AssetTexture;
-
-typedef enum neko_resource_type_t {
-    NEKO_RESOURCE_STRING,
-    NEKO_RESOURCE_BINARY,
-    NEKO_RESOURCE_TEXTURE,
-    NEKO_RESOURCE_SHADER,
-    NEKO_RESOURCE_ASSEMBLY,
-    NEKO_RESOURCE_SCRIPT,
-    NEKO_RESOURCE_MODEL,
-    NEKO_RESOURCE_MATERIAL,
-    NEKO_RESOURCE_FONT
-} neko_resource_type_t;
-
-typedef struct neko_resource_t {
-    neko_resource_type_t type;
-
-    void* payload;
-    u32 payload_size;
-
-    i64 modtime;
-
-    char* file_name;
-    u32 file_name_length;
-    u32 file_name_hash;
-} neko_resource_t;
-
-NEKO_SCRIPT(
-        fs,
-
-        typedef struct vfs_file {
-            const_str data;
-            size_t len;
-            u64 offset;
-        } vfs_file;
-
-        NEKO_EXPORT size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
-
-        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
-
-        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
-
-        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
-
-        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-
-        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
-
-)
 
 NEKO_SCRIPT(
         vec2,
@@ -865,171 +224,6 @@ NEKO_SCRIPT(
 )
 
 #define luamat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (mat3{.m = {{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
-
-NEKO_SCRIPT(
-        bbox,
-
-        typedef struct BBox BBox;
-        struct BBox {
-            vec2 min;
-            vec2 max;
-        };
-
-        NEKO_EXPORT BBox bbox(vec2 min, vec2 max);
-
-        NEKO_EXPORT BBox bbox_bound(vec2 a, vec2 b);
-
-        NEKO_EXPORT BBox bbox_merge(BBox a, BBox b);
-
-        NEKO_EXPORT bool bbox_contains(BBox b, vec2 p);
-
-        // 返回 bbox 围绕改造后的盒子
-        NEKO_EXPORT BBox bbox_transform(mat3 m, BBox b);
-
-)
-
-NEKO_SCRIPT(
-        color,
-
-        typedef struct Color Color;
-        struct Color { Scalar r, g, b, a; };
-
-        typedef struct Color256 Color256; struct Color256 {
-            union {
-                uint8_t rgba[4];
-                struct {
-                    uint8_t r, g, b, a;
-                };
-            };
-        };
-
-        NEKO_EXPORT Color color(Scalar r, Scalar g, Scalar b, Scalar a);
-
-        NEKO_EXPORT Color color_opaque(Scalar r, Scalar g, Scalar b);
-
-        NEKO_EXPORT Color color_black;
-
-        NEKO_EXPORT Color color_white;
-
-        NEKO_EXPORT Color color_gray;
-
-        NEKO_EXPORT Color color_red;
-
-        NEKO_EXPORT Color color_green;
-
-        NEKO_EXPORT Color color_blue;
-
-        NEKO_EXPORT Color color_clear;  // zero alpha
-
-        NEKO_EXPORT void color_save(Color* c, const char* name, Store* s);
-
-        NEKO_EXPORT bool color_load(Color* c, const char* name, Color d, Store* s);
-
-)
-
-#ifdef __cplusplus
-#define color(r, g, b, a) (Color{(r), (g), (b), (a)})
-#define color_opaque(r, g, b, a) color(r, g, b, 1)
-#define color256(r, g, b, a) (Color256{(r), (g), (b), (a)})
-#else
-#define color(r, g, b, a) ((Color){(r), (g), (b), (a)})
-#define color_opaque(r, g, b, a) color(r, g, b, 1)
-#define color256(r, g, b, a) ((Color256){(r), (g), (b), (a)})
-#endif
-
-#define NEKO_COLOR_BLACK color256(0, 0, 0, 255)
-#define NEKO_COLOR_WHITE color256(255, 255, 255, 255)
-#define NEKO_COLOR_RED color256(255, 0, 0, 255)
-#define NEKO_COLOR_GREEN color256(0, 255, 0, 255)
-#define NEKO_COLOR_BLUE color256(0, 0, 255, 255)
-#define NEKO_COLOR_ORANGE color256(255, 100, 0, 255)
-#define NEKO_COLOR_YELLOW color256(255, 255, 0, 255)
-#define NEKO_COLOR_PURPLE color256(128, 0, 128, 255)
-#define NEKO_COLOR_MAROON color256(128, 0, 0, 255)
-#define NEKO_COLOR_BROWN color256(165, 42, 42, 255)
-
-inline Color256 color256_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }
-
-/*========================
-// NEKO_MATH
-========================*/
-
-// Defines
-#define neko_pi 3.14159265358979323846264f
-#define neko_tau 2.0 * neko_pi
-#define neko_e 2.71828182845904523536f  // e
-#define neko_epsilon (1e-6)
-
-// 实用
-#define neko_v2(...) vec2_ctor(__VA_ARGS__)
-#define neko_v3(...) vec3_ctor(__VA_ARGS__)
-#define neko_v4(...) vec4_ctor(__VA_ARGS__)
-
-#define neko_v2s(__S) vec2_ctor((__S), (__S))
-#define neko_v3s(__S) vec3_ctor((__S), (__S), (__S))
-#define neko_v4s(__S) vec4_ctor((__S), (__S), (__S), (__S))
-
-#define neko_v4_xy_v(__X, __Y, __V) vec4_ctor((__X), (__Y), (__V).x, (__V).y)
-#define neko_v4_xyz_s(__XYZ, __S) vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
-
-#define NEKO_XAXIS neko_v3(1.f, 0.f, 0.f)
-#define NEKO_YAXIS neko_v3(0.f, 1.f, 0.f)
-#define NEKO_ZAXIS neko_v3(0.f, 0.f, 1.f)
-
-/*================================================================================
-// Useful Common Math Functions
-================================================================================*/
-
-#define neko_rad2deg(__R) (float)((__R * 180.0f) / neko_pi)
-
-#define neko_deg2rad(__D) (float)((__D * neko_pi) / 180.0f)
-
-// Interpolation
-// Source: https://codeplea.com/simple-interpolation
-
-// Returns v based on t
-inline float neko_interp_linear(float a, float b, float t) { return (a + t * (b - a)); }
-
-// Returns t based on v
-inline float neko_interp_linear_inv(float a, float b, float v) { return (v - a) / (b - a); }
-
-inline float neko_interp_smoothstep(float a, float b, float t) { return neko_interp_linear(a, b, t * t * (3.0f - 2.0f * t)); }
-
-inline float neko_interp_cosine(float a, float b, float t) { return neko_interp_linear(a, b, (float)-cos(neko_pi * t) * 0.5f + 0.5f); }
-
-inline float neko_interp_acceleration(float a, float b, float t) { return neko_interp_linear(a, b, t * t); }
-
-inline float neko_interp_deceleration(float a, float b, float t) { return neko_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t)); }
-
-inline float neko_round(float val) { return (float)floor(val + 0.5f); }
-
-inline float neko_map_range(float input_start, float input_end, float output_start, float output_end, float val) {
-    float slope = (output_end - output_start) / (input_end - input_start);
-    return (output_start + (slope * (val - input_start)));
-}
-
-// 缓动来自：https://github.com/raysan5/raylib/blob/ea0f6c7a26f3a61f3be542aa8f066ce033766a9f/examples/others/easings.h
-inline float neko_ease_cubic_in(float t, float b, float c, float d) {
-    t /= d;
-    return (c * t * t * t + b);
-}
-
-inline float neko_ease_cubic_out(float t, float b, float c, float d) {
-    t = t / d - 1.0f;
-    return (c * (t * t * t + 1.0f) + b);
-}
-
-inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
-    if ((t /= d / 2.0f) < 1.0f) {
-        return (c / 2.0f * t * t * t + b);
-    }
-    t -= 2.0f;
-    return (c / 2.0f * (t * t * t + 2.0f) + b);
-}
-
-/*================================================================================
-// Vec2
-================================================================================*/
 
 inline vec2 vec2_ctor(f32 _x, f32 _y) {
     vec2 v;
@@ -1770,5 +964,3 @@ inline rect_t rect_ctor(f32 _x, f32 _y, f32 _w, f32 _h) {
     v.h = _h;
     return v;
 }
-
-#endif

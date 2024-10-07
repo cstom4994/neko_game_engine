@@ -2170,12 +2170,12 @@ inline auto LuaGet(lua_State *L, int index) -> T {
 template <typename T, std::size_t I>
 void LuaRawStructGet(lua_State *L, int arg, T &v);
 
-template <typename T>
-    requires std::is_pointer_v<T>
-T LuaGet(lua_State *L, int arg) {
-    luaL_checktype(L, arg, LUA_TLIGHTUSERDATA);
-    return static_cast<T>(lua_touserdata(L, arg));
-}
+// template <typename T>
+//     requires std::is_pointer_v<T>
+// T LuaGet(lua_State *L, int arg) {
+//     luaL_checktype(L, arg, LUA_TLIGHTUSERDATA);
+//     return static_cast<T>(lua_touserdata(L, arg));
+// }
 
 template <>
 inline std::string_view LuaGet<std::string_view>(lua_State *L, int arg) {

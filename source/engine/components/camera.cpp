@@ -1,8 +1,9 @@
 
 
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 
 DECL_ENT(Camera, Scalar viewport_height;);
 

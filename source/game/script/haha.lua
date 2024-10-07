@@ -45,6 +45,12 @@ function haha()
         }
     }
 
+    local game_tick = 0
+
+    local ttttttttt = ng.add {
+        -- gui_test = {}
+    }
+
     -- local player_ent = ng.add {
     --     transform = {
     --         position = ng.vec2(0, 0),
@@ -75,6 +81,27 @@ function haha()
         uint32_t v[6];
     } __lua_quad_idata_t;
     ]]
+
+    local function random_spawn_npc(n)
+        n = n or 10
+        for i = 1, n do
+            local v = {
+                id = choose({"Chort"}),
+                x = random(0, 360),
+                y = random(-360, 0)
+            }
+            local mt = _G[v.id]
+            if mt ~= nil then
+                local obj = LocalGame.world:add(mt(v.x, v.y))
+                if v.id == "Player" then
+                    player = obj
+                end
+                -- print(v.id, v.x, v.y)
+            else
+                print("no " .. v.id .. " class exists")
+            end
+        end
+    end
 
     local function Npc_load_prefab(self)
         local prefab_tb
@@ -162,6 +189,13 @@ function haha()
         neko.game_fini = function()
         end
         neko.game_pre_update = function()
+
+            game_tick = game_tick + 1
+
+            if game_tick % 400 == 1 then
+                random_spawn_npc()
+                print("生成怪物")
+            end
         end
         neko.game_loop = function(dt)
 
@@ -185,101 +219,13 @@ function haha()
 
             cursor:draw()
 
+            -- neko.default_font():draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
+
         end
 
         neko.game_ui = function()
 
-            -- print("haha")
-
             neko.core.inspector_draw(neko.core.inspector_get())
-
-            if mu.begin_window("UI Test Window", mu.rect(40, 40, 300, 450)) then
-
-                mu.label "Test:"
-
-                -- local win = mu.get_current_container()
-                -- local rect = win:rect()
-                -- win:set_rect{
-                --     x = rect.x,
-                --     y = rect.y,
-                --     w = math.max(rect.w, 240),
-                --     h = math.max(rect.h, 300)
-                -- }
-
-                -- -- window info
-                if mu.header "Window Info" then
-                    local win = mu.get_current_container()
-                    local rect = win:rect()
-                    -- mu.layout_row({54, -1}, 0)
-                    mu.label "Position:"
-                    mu.label(("%d, %d"):format(rect.x, rect.y))
-                    mu.label "Size:"
-                    mu.label(("%d, %d"):format(rect.w, rect.h))
-                end
-
-                if mu.button("Test") then
-                    -- print(ng)
-                    print(ng.api.core.ltype(player_ent))
-                end
-
-                if mu.button("Test event") then
-                    print(event)
-                end
-
-                if mu.button("Test luadb") then
-                    local mydb = {
-                        name = "Skeleton"
-                    }
-                    Npc_load_prefab(mydb)
-                    print(mydb)
-                end
-
-                if mu.button("test_http") then
-                    local http = require 'http'
-
-                    local status, data = http.request('https://www.7ed.net/ruozi/api')
-
-                    print('welcome')
-                    print(status)
-                    print(data)
-
-                    local json_data = ng.api.json_read(common.decode_unicode_escape(data))
-
-                    print(table.show(json_data))
-
-                    print(ng.api.json_write(json_data))
-                end
-
-                -- mu.layout_row({140, -1}, 0)
-                mu.layout_begin_column()
-                if mu.begin_treenode "Test 1" then
-                    if mu.begin_treenode "Test 1a" then
-                        mu.label "Hello"
-                        mu.label "World"
-                        mu.end_treenode()
-                    end
-                    if mu.begin_treenode "Test 1b" then
-                        if mu.button "Button 1" then
-                        end
-                        mu.end_treenode()
-                    end
-                    mu.end_treenode()
-                end
-                if mu.begin_treenode "Test 3" then
-                    mu.checkbox("Checkbox 1", checks[1])
-                    mu.checkbox("Checkbox 2", checks[2])
-                    mu.checkbox("Checkbox 3", checks[3])
-                    mu.end_treenode()
-                end
-                mu.layout_end_column()
-
-                for name, _ in pairs(package.loaded) do
-                    mu.label(name)
-                end
-
-                mu.end_window()
-            end
-
         end
 
         neko.before_quit = function()
@@ -927,4 +873,86 @@ function haha_basic()
 
     print("basic.lua loaded")
 
+end
+
+function test_ecs(dt)
+
+    ecs:update()
+
+    for id, e in ecs:select{"pos", "vel"} do
+        e.pos = e.pos + e.vel * vec2(dt, dt)
+
+        if neko.key_down "p" then
+            e.vel = nil
+        end
+
+        if neko.key_down "k" then
+            ecs:kill(id)
+        end
+    end
+
+    for id, e in ecs:select{"pos", "follow"} do
+        local other = ecs:get(e.follow)
+        if other ~= nil then
+            e.pos = e.pos:lerp(other.pos, dt)
+        end
+    end
+
+    for id, e in ecs:select{"pos", "rot"} do
+        e.rot.angle = e.rot.angle + e.rot.delta * dt
+    end
+
+    for id, e in ecs:query{
+        select = {"pos", "img", "z_index"},
+        where = function(e)
+            return e.pos.x < neko.window_width() / 2
+        end,
+        order_by = function(lhs, rhs)
+            return lhs.entity.z_index < rhs.entity.z_index
+        end
+    } do
+        local ox = e.img:width() * 0.5
+        local oy = e.img:height() * 0.5
+        local angle = e.rot and e.rot.angle or 0
+        local scale = e.scale or 1
+
+        e.img:draw(e.pos.x, e.pos.y, angle, scale * 3, scale * 3, ox, oy)
+
+        if e.vel == nil and neko.key_down "v" then
+            e.vel = vec2(4, 1)
+        end
+    end
+
+end
+
+local function load_world()
+    local b2 = neko.b2_world {
+        gx = 0,
+        gy = 0,
+        meter = 16
+    }
+    local world = World()
+
+    local tilemap = neko.tilemap_load "assets/map.ldtk"
+    tilemap:make_collision(b2, "Collision", {1})
+
+    for k, v in ipairs(tilemap:entities()) do
+        local mt
+        if v.id == "Skeleton" then
+            mt = _G["Npc"]
+        else
+            mt = _G[v.id]
+        end
+
+        if mt ~= nil then
+            local obj = world:add(mt(v.x, v.y, v.id))
+            if v.id == "Player" then
+                player = obj
+            end
+            -- print(v.id, v.x, v.y)
+        else
+            print("no " .. v.id .. " class exists")
+        end
+    end
+    return world, b2, tilemap
 end

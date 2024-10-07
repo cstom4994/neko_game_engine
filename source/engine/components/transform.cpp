@@ -1,8 +1,9 @@
 
 
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 
 DECL_ENT(Transform, vec2 position; Scalar rotation; vec2 scale; NativeEntity parent;  // 如果entity_nil 则为 root
          CArray * children;                                                           // 如果为 NULL 则为空

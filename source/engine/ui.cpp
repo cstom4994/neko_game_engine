@@ -7,8 +7,8 @@
 #include <string.h>
 
 #include "engine/asset.h"
-#include "engine/base.h"
 #include "engine/base.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/draw.h"

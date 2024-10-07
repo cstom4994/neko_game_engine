@@ -2,9 +2,11 @@
 
 #include <filesystem>
 
+#include "editor/editor.hpp"
 #include "engine/asset.h"
-#include "engine/base.h"
 #include "engine/base.hpp"
+#include "engine/base/os.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -888,7 +890,7 @@ static int neko_mouse_delta(lua_State *L) {
 
 static int neko_show_mouse(lua_State *L) {
     bool show = lua_toboolean(L, 1);
-    // sapp_show_mouse(show);
+    glfwSetInputMode(g_app->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
     return 0;
 }
 
@@ -984,17 +986,6 @@ static int neko_pop_color(lua_State *L) {
     return ok ? 0 : luaL_error(L, "color stack can't be less than 1");
 }
 
-
-static int neko_default_font(lua_State *L) {
-    if (g_app->default_font == nullptr) {
-        g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-        g_app->default_font->load_default();
-    }
-
-    luax_ptr_userdata(L, g_app->default_font, "mt_font");
-    return 1;
-}
-
 static int neko_draw_filled_rect(lua_State *L) {
     RectDescription rd = rect_description_args(L, 1);
     draw_filled_rect(&rd);
@@ -1027,6 +1018,11 @@ static int neko_draw_line(lua_State *L) {
 }
 
 #endif
+
+static int neko_draw_default_font(lua_State *L) {
+    luax_ptr_userdata(L, neko_default_font(), "mt_font");
+    return 1;
+}
 
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
@@ -2753,19 +2749,6 @@ static void typeclosure(lua_State *L) {
     lua_pushcclosure(L, ltype, n);
 }
 
-static int breakpoint(lua_State *L) {
-    std::breakpoint();
-    return 0;
-}
-static int is_debugger_present(lua_State *L) {
-    lua_pushboolean(L, std::is_debugger_present());
-    return 1;
-}
-static int breakpoint_if_debugging(lua_State *L) {
-    std::breakpoint_if_debugging();
-    return 0;
-}
-
 static int open_embed_core(lua_State *L) {
 
     luaL_checkversion(L);
@@ -2789,10 +2772,6 @@ static int open_embed_core(lua_State *L) {
 
             // reg
             {"from_registry", from_registry},
-
-            {"breakpoint", breakpoint},
-            {"is_debugger_present", is_debugger_present},
-            {"breakpoint_if_debugging", breakpoint_if_debugging},
 
             {"inspector_init", neko::luainspector::luainspector_init},
             {"inspector_draw", neko::luainspector::luainspector_draw},
@@ -3020,7 +2999,7 @@ static int open_neko(lua_State *L) {
             // {"clear_color", neko_clear_color},
             // {"push_color", neko_push_color},
             // {"pop_color", neko_pop_color},
-            // {"default_font", neko_default_font},
+            {"default_font", neko_draw_default_font},
             // {"draw_filled_rect", neko_draw_filled_rect},
             // {"draw_line_rect", neko_draw_line_rect},
             // {"draw_line_circle", neko_draw_line_circle},

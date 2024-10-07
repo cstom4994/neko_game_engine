@@ -4,6 +4,7 @@
 #include <bitset>
 
 #include "engine/base.hpp"
+#include "engine/base/color.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"

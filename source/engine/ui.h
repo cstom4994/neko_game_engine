@@ -3,7 +3,7 @@
 
 #include <forward_list>
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/base.hpp"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"

@@ -2,6 +2,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
@@ -822,7 +823,7 @@ int neko_font_load(lua_State *L) {
 #include <string.h>
 
 #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/draw.h"

@@ -2,7 +2,7 @@
 #ifndef NEKO_ECS_H
 #define NEKO_ECS_H
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/event.h"
 
 // 测试 ECS 用
@@ -192,7 +192,7 @@ NEKO_API() void entitypool_elem_load(NativeEntityPool* pool, void* elem, Store* 
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/ecs/entity.h"
 
 NEKO_SCRIPT(system,

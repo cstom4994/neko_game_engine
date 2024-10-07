@@ -2,7 +2,7 @@
 #define NEKO_DRAW_H
 
 #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/graphics.h"
 
 // deps

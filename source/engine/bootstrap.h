@@ -4,7 +4,7 @@
 #include <atomic>
 
 #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/base.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"

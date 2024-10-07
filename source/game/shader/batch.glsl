@@ -41,31 +41,40 @@ uniform int bloom_enable = 0;
 uniform float bloom_spread = 1;
 uniform float bloom_intensity = 0.2;
 
+uniform int bitrate = 8;
+
+vec4 channelBitrate(vec4 incol, int bit)
+{
+	float bitdepth = pow(2.0, abs(float(bit)));
+	vec4 outcol = floor(incol * bitdepth) /bitdepth;
+	return outcol;
+}
+
 void main() {
-    f_color = texture(u_texture, v_texindex);
+    //  f_color = channelBitrate(texture(u_texture, v_texindex),8);
+
+     f_color = texture(u_texture, v_texindex);
 
     if (outline_enable == 1 && f_color.a <= outline_threshold) {
         ivec2 size = textureSize(u_texture, 0);
 
+        // 计算当前纹理坐标
         float uv_x = v_texindex.x * size.x;
-        float uv_y = v_texindex.y * size.y;
-
         float sum = 0.0;
+
+        // 垂直方向的轮廓采样
         for (int n = 0; n < 9; ++n) {
-            uv_y = (v_texindex.y * size.y) + (outline_thickness * float(n - 4.5));
+            float uv_y = (v_texindex.y * size.y) + outline_thickness * (float(n) - 4.5);
             float h_sum = 0.0;
-            h_sum += texelFetch(u_texture, ivec2(uv_x - (4.0 * outline_thickness), uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x - (3.0 * outline_thickness), uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x - (2.0 * outline_thickness), uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x - outline_thickness, uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x, uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x + outline_thickness, uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x + (2.0 * outline_thickness), uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x + (3.0 * outline_thickness), uv_y), 0).a;
-            h_sum += texelFetch(u_texture, ivec2(uv_x + (4.0 * outline_thickness), uv_y), 0).a;
+
+            // 水平方向的轮廓采样
+            for (int m = -4; m <= 4; ++m) {
+                h_sum += texelFetch(u_texture, ivec2(uv_x + float(m) * outline_thickness, uv_y), 0).a;
+            }
             sum += h_sum / 9.0;
         }
 
+        // 判断是否应用轮廓颜色
         if (sum / 9.0 >= 0.0001) {
             f_color = vec4(outline_colour, 1);
         }

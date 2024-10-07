@@ -1,6 +1,7 @@
 
 #include "engine/sound.h"
 
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 
 #if NEKO_AUDIO == 1

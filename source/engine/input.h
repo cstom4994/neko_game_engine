@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 

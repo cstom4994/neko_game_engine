@@ -3,8 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "editor/editor.hpp"
 #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/base.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
@@ -174,31 +176,12 @@ void createStructTables(lua_State *L) {
     LuaStruct<NativeEntity>(L, "NativeEntity");
 }
 
-static const char **nekogame_ffi[] = {
-        &nekogame_ffi_scalar,
-        &nekogame_ffi_saveload,
-        &nekogame_ffi_vec2,
-        &nekogame_ffi_mat3,
-        &nekogame_ffi_bbox,
-        &nekogame_ffi_color,
-        &nekogame_ffi_fs,
-        &nekogame_ffi_game,
-        &nekogame_ffi_system,
-        &nekogame_ffi_input,
-        &nekogame_ffi_entity,
-        &nekogame_ffi_prefab,
-        &nekogame_ffi_timing,
-        &nekogame_ffi_transform,
-        &nekogame_ffi_camera,
-        &nekogame_ffi_sprite,
-        &nekogame_ffi_tiled,
-        &nekogame_ffi_gui,
-        &nekogame_ffi_console,
-        // &nekogame_ffi_sound,
-        // &nekogame_ffi_physics,
-        &nekogame_ffi_edit,
-        &nekogame_ffi_inspector
-};
+static const char **nekogame_ffi[] = {&nekogame_ffi_scalar, &nekogame_ffi_saveload, &nekogame_ffi_vec2, &nekogame_ffi_mat3, &nekogame_ffi_bbox, &nekogame_ffi_color, &nekogame_ffi_fs,
+                                      &nekogame_ffi_game, &nekogame_ffi_system, &nekogame_ffi_input, &nekogame_ffi_entity, &nekogame_ffi_prefab, &nekogame_ffi_timing, &nekogame_ffi_transform,
+                                      &nekogame_ffi_camera, &nekogame_ffi_sprite, &nekogame_ffi_tiled, &nekogame_ffi_gui, &nekogame_ffi_console,
+                                      // &nekogame_ffi_sound,
+                                      // &nekogame_ffi_physics,
+                                      &nekogame_ffi_edit, &nekogame_ffi_inspector};
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 

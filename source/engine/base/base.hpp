@@ -225,3 +225,22 @@ NEKO_API() void errorf(const char* fmt, ...);
 #define normal_assert(cond, ...) ((cond) ? 0 : (neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n" __VA_ARGS__, #cond, __func__, __FILE__, __LINE__), 0))
 
 #define neko_assert normal_assert
+
+#ifdef __MINGW32__
+#define neko_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__)
+#else
+inline void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, buffer_size, fmt, args);
+    va_end(args);
+}
+#endif
+
+#define neko_transient_buffer(__N, __SZ) \
+    char __N[__SZ] = NEKO_DEFAULT_VAL(); \
+    memset(__N, 0, __SZ);
+
+#define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
+    char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
+    neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
