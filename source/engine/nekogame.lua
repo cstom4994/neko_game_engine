@@ -928,11 +928,6 @@ function ng.__save_all()
         end
         print("saving system: " .. name)
     end
-
-    -- return serpent.dump(data, {
-    --     indent = '  ',
-    --     nocode = true
-    -- })
     -- return common.pack(data)
     return table.show(data)
 end

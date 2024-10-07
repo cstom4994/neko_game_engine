@@ -890,7 +890,7 @@ static int neko_mouse_delta(lua_State *L) {
 
 static int neko_show_mouse(lua_State *L) {
     bool show = lua_toboolean(L, 1);
-    glfwSetInputMode(g_app->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
+    glfwSetInputMode(g_app->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     return 0;
 }
 

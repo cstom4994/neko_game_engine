@@ -3,7 +3,6 @@
 #include <variant>
 
 #include "engine/base.hpp"
-#include "engine/scripting/luax.h"
 
 #define Event_mt "event"
 
@@ -65,6 +64,8 @@ enum event_mask {
     EVENT_TYPES
 #undef X
 };
+
+struct lua_State;
 
 using event_variant_t = struct {
     int t;

@@ -875,7 +875,7 @@ static int mt_sprite_effect(lua_State *L) {
     int te = lua_type(L, 2);
     if (te == LUA_TSTRING) {
         const char *bits = lua_tostring(L, 2);
-        spr->effects = neko::BitSet<3>(bits);
+        spr->effects = neko::util::BitSet<3>(bits);
     } else if (te == LUA_TNUMBER) {
         int bits = lua_tointeger(L, 2);
         spr->effects = std::bitset<3>(bits);

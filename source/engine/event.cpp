@@ -1,5 +1,7 @@
 #include "event.h"
 
+#include "engine/scripting/luax.h"
+
 void eventhandler_init(eventhandler_t* eventhandler, const char* name) {
     assert(NUM_EVENTS < 32);
     eventhandler->queue.make();

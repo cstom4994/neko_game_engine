@@ -22,6 +22,7 @@
 #include "engine/event.h"
 #include "engine/graphics.h"
 #include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/nativescript.hpp"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
@@ -85,6 +86,13 @@ App *g_app;
 
 Allocator *g_allocator;
 
+native_script_context_t *sc;
+
+unsigned int fbo;
+unsigned int fbo_tex;
+unsigned int quadVAO, quadVBO;
+Asset posteffect_shader = {};
+
 int main(int argc, char **argv) {
     game_run(argc, argv);
     return 0;
@@ -130,8 +138,78 @@ int scratch_update(App *app, event_t evt) {
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
-static void _opengl_error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
-    fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+static void APIENTRY gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char *message, const void *up) {
+
+    if (id == 131169 || id == 131185 || id == 131218 || id == 131204) {
+        return;
+    }
+
+    const char *s;
+    const char *t;
+
+    switch (source) {
+        case GL_DEBUG_SOURCE_API:
+            s = "API";
+            break;
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+            s = "window system";
+            break;
+        case GL_DEBUG_SOURCE_SHADER_COMPILER:
+            s = "shader compiler";
+            break;
+        case GL_DEBUG_SOURCE_THIRD_PARTY:
+            s = "third party";
+            break;
+        case GL_DEBUG_SOURCE_APPLICATION:
+            s = "application";
+            break;
+        case GL_DEBUG_SOURCE_OTHER:
+            s = "other";
+            break;
+    }
+
+    switch (type) {
+        case GL_DEBUG_TYPE_ERROR:
+            t = "type error";
+            break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+            t = "deprecated behaviour";
+            break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+            t = "undefined behaviour";
+            break;
+        case GL_DEBUG_TYPE_PORTABILITY:
+            t = "portability";
+            break;
+        case GL_DEBUG_TYPE_PERFORMANCE:
+            t = "performance";
+            break;
+        case GL_DEBUG_TYPE_MARKER:
+            t = "marker";
+            break;
+        case GL_DEBUG_TYPE_PUSH_GROUP:
+            t = "push group";
+            break;
+        case GL_DEBUG_TYPE_POP_GROUP:
+            t = "pop group";
+            break;
+        case GL_DEBUG_TYPE_OTHER:
+            t = "other";
+            break;
+    }
+
+    switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            break;
+        case GL_DEBUG_SEVERITY_LOW:
+            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            break;
+    }
 }
 
 // 窗口大小改变的回调函数
@@ -156,6 +234,8 @@ int _game_draw(App *app, event_t evt) {
     luax_neko_get(L, "__timer_update");
     lua_pushnumber(L, get_timing_instance()->delta);
     luax_pcall(L, 1, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -206,6 +286,20 @@ int _game_draw(App *app, event_t evt) {
             edit_draw_all();
             physics_draw_all();
             gui_draw_all();
+
+            // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDisable(GL_DEPTH_TEST);  // 禁用深度测试，以便屏幕空间四边形不会因深度测试而被丢弃。
+            // 清除所有相关缓冲区
+            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);  // 将透明颜色设置为白色
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            GLuint sid = posteffect_shader.shader.id;
+            glUseProgram(sid);
+
+            glBindVertexArray(quadVAO);
+            glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
+            glDrawArrays(GL_TRIANGLES, 0, 6);
 
             f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
             fy += draw_font(g_app->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
@@ -301,7 +395,7 @@ static void _game_init(int argc, char **argv) {
 
     // create glfw window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     g_app->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
@@ -322,7 +416,9 @@ static void _game_init(int argc, char **argv) {
 
 #if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(_opengl_error_callback, 0);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(gl_debug_callback, NULL);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 #endif
 
     // some GL settings
@@ -394,10 +490,115 @@ static void _game_init(int argc, char **argv) {
     for (auto evt : evt_list) {
         event_register(eh, g_app, evt.evt, evt.cb, NULL);
     }
+
+    sc = native_new_script_context(g_app, "game_debug_x64.dll");
+
+    native_new_script(sc, {1}, "get_test_script_instance_size", "on_test_script_init", "on_test_script_update", "on_physics_update_name", "on_test_script_free", false);
+
+    native_init_scripts(sc);
+
+    // if (cfg.splash_image && cfg.splash_shader)
+    {
+
+        String contents = {};
+        bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
+        if (!ok) {
+            return;
+        }
+        neko_defer(mem_free(contents.data));
+
+        neko_texture_t *splash_texture = neko_new_texture_from_memory(contents.data, contents.len, NEKO_TEXTURE_ANTIALIASED);
+
+        // neko_shader_t *shader = neko_load_shader(cfg.splash_shader);
+        Asset splash_shader = {};
+
+        ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &splash_shader);
+        error_assert(ok);
+
+        GLuint sid = splash_shader.shader.id;
+
+        float verts[] = {/* position     UV */
+                         0.5f, 0.5f, 1.0f, 0.0f, 0.5f, -0.5f, 1.0f, 1.0f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, 0.5f, 0.0f, 0.0f};
+
+        u32 indices[] = {0, 1, 3, 1, 2, 3};
+
+        neko_vertex_buffer_t *quad = neko_new_vertex_buffer(neko_vertex_buffer_flags_t(NEKO_VERTEXBUFFER_STATIC_DRAW | NEKO_VERTEXBUFFER_DRAW_TRIANGLES));
+
+        neko_bind_vertex_buffer_for_edit(quad);
+        neko_push_vertices(quad, verts, sizeof(verts) / sizeof(float));
+        neko_push_indices(quad, indices, sizeof(indices) / sizeof(u32));
+        neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
+        neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
+
+        mat4 projection = mat4_ortho(-((float)g_app->cfg.width / 2.0f), (float)g_app->cfg.width / 2.0f, (float)g_app->cfg.height / 2.0f, -((float)g_app->cfg.height / 2.0f), -1.0f, 1.0f);
+        mat4 model = mat4_scalev(vec3{splash_texture->width / 2.0f, splash_texture->height / 2.0f, 0.0f});
+
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        neko_bind_shader(sid);
+        neko_bind_texture(splash_texture, 0);
+        neko_shader_set_int(sid, "image", 0);
+        neko_shader_set_m4f(sid, "transform", model);
+        neko_shader_set_m4f(sid, "projection", projection);
+
+        neko_bind_vertex_buffer_for_draw(quad);
+        neko_draw_vertex_buffer(quad);
+
+        // neko_update_application();
+        glfwSwapBuffers(g_app->game_window);
+
+        neko_free_vertex_buffer(quad);
+
+        neko_free_texture(splash_texture);
+    }
+
+    neko_check_gl_error();
+
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
+        console_log("framebuffer good");
+    }
+
+    glGenTextures(1, &fbo_tex);
+    glBindTexture(GL_TEXTURE_2D, fbo_tex);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_app->cfg.width, g_app->cfg.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
+
+    float quadVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+                            // positions   // texCoords
+                            -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+
+                            -1.0f, 1.0f, 0.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 0.0f, 1.0f, 1.0f,  1.0f, 1.0f};
+
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/posteffect.glsl", &posteffect_shader);
+    error_assert(ok);
 }
 
 static void _game_fini() {
     PROFILE_FUNC();
+
+    glDeleteFramebuffers(1, &fbo);
 
     bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
 
@@ -406,6 +607,8 @@ static void _game_fini() {
         mem_free(g_app->ui);
         neko_deinit_ui_renderer();
     }
+
+    native_free_scripts(sc);
 
     // fini systems
     system_fini();

@@ -108,12 +108,14 @@ do
 
     add_files("source/engine/**.lua")
     add_files("source/engine/**.cpp")
+    add_files("source/editor/**.cpp")
     add_files("source/vendor/luaalloc.c")
     add_files("source/vendor/http.c")
     add_files("source/vendor/miniz.c")
     add_files("source/vendor/ui.cpp")
 
-    add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/engine2/**.h", "source/vendor/**.h")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/editor/**.hpp", "source/engine2/**.h",
+        "source/vendor/**.h")
 
     if NEKO_CFFI then
         add_files("source/vendor/bit.c")
@@ -139,6 +141,47 @@ do
     end
 
     set_basename("neko_$(mode)_$(arch)")
+    set_targetdir("./bin")
+    set_rundir("./bin")
+end
+
+target("game")
+do
+    set_kind("shared")
+
+    add_rules("utils.bin2c", {
+        extensions = {".lua"}
+    })
+
+    -- add_files("source/game/**.lua")
+    add_files("source/game/**.cpp")
+
+    add_headerfiles("source/game/**.h", "source/game/**.hpp")
+
+    -- if NEKO_CFFI then
+    --     add_files("source/vendor/bit.c")
+    --     add_files("source/vendor/cffi/**.cc")
+    --     add_headerfiles("source/vendor/cffi/**.hh")
+
+    --     add_packages("libffi")
+    --     add_packages("lua")
+    -- else
+    --     add_packages("openrestry-luajit")
+    -- end
+
+    -- add_packages("glfw", "glew", "imgui", "box2d")
+
+    -- add_defines("NEKO_BOX2D=1")
+
+    -- if NEKO_AUDIO == "miniaudio" then
+    --     add_packages("miniaudio")
+    --     add_defines("NEKO_AUDIO=1")
+    -- elseif NEKO_AUDIO == "fmod" then
+    --     add_links("fmod_vc", "fmodstudio_vc")
+    --     add_defines("NEKO_AUDIO=2")
+    -- end
+
+    set_basename("game_$(mode)_$(arch)")
     set_targetdir("./bin")
     set_rundir("./bin")
 end

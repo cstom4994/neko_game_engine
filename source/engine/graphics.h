@@ -466,4 +466,31 @@ NEKO_API() void neko_deinit_texture(neko_texture_t* texture);
 NEKO_API() void neko_free_texture(neko_texture_t* texture);
 NEKO_API() void neko_bind_texture(neko_texture_t* texture, u32 slot);
 
+#define BUFFER_FRAMES 3
+
+typedef struct {
+	char* stream[2];
+} VertexData;
+
+typedef struct {
+    GLuint vbo;
+    GLsync syncs[BUFFER_FRAMES];
+    char* data;
+    size_t size;
+    size_t offset;
+    int index;
+} StreamBuffer;
+
+// typedef struct {
+//     int quad_count;
+//     u64 texture;
+//     u64 shader;
+//     StreamBuffer buffer[2];
+//     VertexData map;
+//     GLuint vao;
+//     GLuint vbo;
+//     GLuint ebo;
+//     uint16_t indexes[2];
+// } StreamState;
+
 #endif
