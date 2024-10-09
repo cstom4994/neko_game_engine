@@ -13,6 +13,7 @@
 #include "engine/ecs/lua_ecs.hpp"
 #include "engine/edit.h"
 #include "engine/graphics.h"
+#include "engine/imgui.hpp"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "engine/scripting/scripting.h"

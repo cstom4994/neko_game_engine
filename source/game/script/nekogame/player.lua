@@ -141,11 +141,12 @@ function CPlayer:update(dt)
         -- 播放弓箭音效
         -- choose({sound_bow_1, sound_bow_2, sound_bow_3}):start()
 
+        audio_play_event(choose({"event:/Player/Bow/Bow1", "event:/Player/Bow/Bow2"}))
+
         local ox = self.x
         local oy = self.y
 
-        local pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
-        local mx, my = pos.x, pos.y
+        local mx, my = LocalGame.mouse_pos.x, LocalGame.mouse_pos.y
 
         local angle = direction(ox, oy, mx, my)
         self.shoot_angle = angle
@@ -201,9 +202,9 @@ function CPlayer:draw()
     end
 end
 
-class "Chort"
+class "CEnemy"
 
-function Chort:new(x, y)
+function CEnemy:new(x, y, name)
     self.x, self.y = x, y
     self.sprite = neko.sprite_load "assets/enemy.ase"
     self.facing_left = false
@@ -214,9 +215,11 @@ function Chort:new(x, y)
     self.update_thread = coroutine.create(self.co_update)
     self.hpbar = Hpbar(self)
     self.type = "enemy"
+
+    self.name = name or "chort"
 end
 
-function Chort:on_create()
+function CEnemy:on_create()
     self.body = LocalGame.b2:make_dynamic_body{
         x = self.x,
         y = self.y,
@@ -228,17 +231,17 @@ function Chort:on_create()
         y = -9,
         radius = 6,
         udata = self.id,
-        begin_contact = Chort.begin_contact
+        begin_contact = CEnemy.begin_contact
     }
     self.body:make_circle_fixture{
         y = -6,
         radius = 6,
         udata = self.id,
-        begin_contact = Chort.begin_contact
+        begin_contact = CEnemy.begin_contact
     }
 end
 
-function Chort:on_death()
+function CEnemy:on_death()
     self.body:destroy()
 
     for i = 1, 8 do
@@ -248,7 +251,7 @@ function Chort:on_death()
     end
 end
 
-function Chort:hit(other, damage)
+function CEnemy:hit(other, damage)
     damage = damage or 1
     if self.hit_cooldown > 0 then
         return
@@ -268,8 +271,8 @@ function Chort:hit(other, damage)
 
 end
 
-function Chort:co_update(dt)
-    self.sprite:play "chort_idle"
+function CEnemy:co_update(dt)
+    self.sprite:play(self.name .. "_idle")
     while true do
         local dist = distance(self.x, self.y, player.x, player.y)
         if dist < 128 or self.hit_cooldown > 0 then
@@ -279,7 +282,7 @@ function Chort:co_update(dt)
         self, dt = coroutine.yield()
     end
 
-    self.sprite:play "chort_run"
+    self.sprite:play(self.name .. "_run")
     while true do
         if self.hit_cooldown < 0 then
             local dx = player.x - self.x
@@ -295,7 +298,7 @@ function Chort:co_update(dt)
     end
 end
 
-function Chort:update(dt)
+function CEnemy:update(dt)
     self.hit_cooldown = self.hit_cooldown - dt
     self.x, self.y = self.body:position()
     self.sprite:update(dt)
@@ -317,7 +320,7 @@ function Chort:update(dt)
     -- end
 end
 
-function Chort:draw()
+function CEnemy:draw()
     local sx = 1 - self.spring.x
     local sy = 1 + self.spring.x
 
@@ -327,14 +330,14 @@ function Chort:draw()
     local oy = -self.sprite:height() / 2
     self.sprite:draw(self.x, self.y, 0, sx * 1, -1, ox, oy)
 
-    self.hpbar:draw()
+    self.hpbar:draw(self.x + 3, self.y - 15)
 
     if draw_fixtures then
         self.body:draw_fixtures()
     end
 end
 
-function Chort.begin_contact(a, b)
+function CEnemy.begin_contact(a, b)
     local self = LocalGame.world:query_id(a:udata())
     local other = LocalGame.world:query_id(b:udata())
 
@@ -366,8 +369,7 @@ end
 
 function Cursor:draw()
     -- local x, y = neko.mouse_pos()
-    local pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
-    local x, y = pos.x, pos.y
+    local x, y = LocalGame.mouse_pos.x, LocalGame.mouse_pos.y
     if x == 0 and y == 0 then
         return
     end
@@ -629,7 +631,7 @@ function Target:draw()
                 local enemy_mt = getmetatable(v)
                 if local_pos:distance(enemy_pos) <= 100 then
                     neko.draw_line(self.x, self.y - 40, v.x, v.y)
-                    if enemy_mt == Chort then
+                    if enemy_mt == CEnemy then
                         v:hit(self, 30)
                     else
                         v:hit(self)

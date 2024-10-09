@@ -12,8 +12,6 @@
 #include "engine/scripting/lua_wrapper.hpp"
 
 // deps
-#include <imgui.h>
-
 #include "vendor/ui.h"
 
 #ifdef __cplusplus
@@ -108,11 +106,6 @@ i32 neko_ui_text_height(ui_font font);
 void neko_update_ui(ui_context_t* context);
 void neko_render_ui(ui_context_t* context, u32 width, u32 height);
 engine_ui_renderer_t* neko_get_ui_renderer();
-
-void imgui_draw_post();
-void imgui_draw_pre();
-void imgui_init();
-void imgui_fini();
 
 #endif
 

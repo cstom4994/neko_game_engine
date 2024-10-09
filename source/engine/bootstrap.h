@@ -5,7 +5,6 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -29,12 +28,6 @@
 #define default_font_size 22.f
 
 using namespace neko::ecs;
-
-struct NEKO_PACKS {
-    static constexpr const_str GAMEDATA = "default_pack";
-    static constexpr const_str LUACODE = "luacode";
-    static constexpr const_str DEFAULT_FONT = "assets/fonts/Monocraft.ttf";
-};
 
 typedef struct Store Store;
 
@@ -132,15 +125,7 @@ struct App {
 
 extern App *g_app;
 
-inline void fatal_error(String str) {
-    if (!g_app->error_mode.load()) {
-        LockGuard<Mutex> lock{g_app->error_mtx};
-
-        g_app->fatal_error = to_cstr(str);
-        fprintf(stderr, "%s\n", g_app->fatal_error.data);
-        g_app->error_mode.store(true);
-    }
-}
+void fatal_error(String str);
 
 inline lua_State *&ENGINE_LUA() { return g_app->L; }
 inline EcsWorld *&ENGINE_ECS() { return g_app->ECS; }

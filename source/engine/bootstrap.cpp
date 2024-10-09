@@ -21,6 +21,7 @@
 #include "engine/edit.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
+#include "engine/imgui.hpp"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "engine/scripting/nativescript.hpp"
 #include "engine/scripting/scripting.h"
@@ -58,6 +59,16 @@ REFL_FIELDS(engine_cfg_t, batch_vertex_capacity);
 );
 
 // clang-format on
+
+void fatal_error(String str) {
+    if (!g_app->error_mode.load()) {
+        LockGuard<Mutex> lock{g_app->error_mtx};
+
+        g_app->fatal_error = to_cstr(str);
+        fprintf(stderr, "%s\n", g_app->fatal_error.data);
+        g_app->error_mode.store(true);
+    }
+}
 
 i32 neko_buildnum(void) {
     static const char *__build_date = __DATE__;
@@ -138,7 +149,7 @@ int scratch_update(App *app, event_t evt) {
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
-static void APIENTRY gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char *message, const void *up) {
+static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char *message, const void *up) {
 
     if (id == 131169 || id == 131185 || id == 131218 || id == 131204) {
         return;
@@ -235,17 +246,17 @@ int _game_draw(App *app, event_t evt) {
     lua_pushnumber(L, get_timing_instance()->delta);
     luax_pcall(L, 1, 0);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    imgui_draw_pre();
-
     if (!g_app->error_mode.load()) {
+
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDisable(GL_DEPTH_TEST);
+        glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        imgui_draw_pre();
 
         if (ImGui::BeginMainMenuBar()) {
             ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
@@ -260,6 +271,8 @@ int _game_draw(App *app, event_t evt) {
 
             ImGui::EndMainMenuBar();
         }
+
+        neko::imgui::perf();
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -319,7 +332,15 @@ int _game_draw(App *app, event_t evt) {
 
         neko_render_ui(ui, g_app->cfg.width, g_app->cfg.height);
 
+        imgui_draw_post();
+
     } else {
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDisable(GL_DEPTH_TEST);
+        glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         auto font = neko_default_font();
 
@@ -346,8 +367,6 @@ int _game_draw(App *app, event_t evt) {
             }
         }
     }
-
-    imgui_draw_post();
 
     neko_check_gl_error();
 
@@ -497,8 +516,7 @@ static void _game_init(int argc, char **argv) {
 
     native_init_scripts(sc);
 
-    // if (cfg.splash_image && cfg.splash_shader)
-    {
+    if (0) {
 
         String contents = {};
         bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
@@ -590,6 +608,8 @@ static void _game_init(int argc, char **argv) {
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     bool ok = asset_load_kind(AssetKind_Shader, "shader/posteffect.glsl", &posteffect_shader);
     error_assert(ok);

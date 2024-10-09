@@ -16,13 +16,7 @@
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 
-inline ImVec4 rgba_to_imvec(int r, int g, int b, int a = 255) {
-    f32 newr = r / 255.f;
-    f32 newg = g / 255.f;
-    f32 newb = b / 255.f;
-    f32 newa = a / 255.f;
-    return ImVec4(newr, newg, newb, newa);
-}
+using namespace neko::imgui;
 
 static int __luainspector_echo(lua_State* L) {
     neko::luainspector* m = *static_cast<neko::luainspector**>(lua_touserdata(L, lua_upvalueindex(1)));
@@ -1357,4 +1351,3 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
 void inspector_set_visible(bool visible) { neko::luainspector::visible = visible; }
 bool inspector_get_visible() { return neko::luainspector::visible; }
-

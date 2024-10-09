@@ -510,33 +510,6 @@ typedef struct neko_resource_t {
 } neko_resource_t;
 
 NEKO_SCRIPT(
-        fs,
-
-        typedef struct vfs_file {
-            const_str data;
-            size_t len;
-            u64 offset;
-        } vfs_file;
-
-        NEKO_EXPORT size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence);
-
-        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
-
-        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
-
-        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file *vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file *vf, const char *format, ...);
-
-        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-
-        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size);
-
-)
-
-NEKO_SCRIPT(
         bbox,
 
         typedef struct BBox BBox;

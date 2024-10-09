@@ -83,16 +83,23 @@ function haha()
     ]]
 
     local function random_spawn_npc(n)
-        n = n or 10
+        n = n or 8
         for i = 1, n do
             local v = {
-                id = choose({"Chort"}),
+                -- id = choose({"CEnemy"}),
+                id = "CEnemy",
                 x = random(0, 360),
                 y = random(-360, 0)
             }
+
+            local dist = distance(v.x, v.y, player.x, player.y)
+            if dist < 100 then
+                break
+            end
+
             local mt = _G[v.id]
             if mt ~= nil then
-                local obj = LocalGame.world:add(mt(v.x, v.y))
+                local obj = LocalGame.world:add(mt(v.x, v.y, choose({"chort", "skel", "zb"})))
                 if v.id == "Player" then
                     player = obj
                 end
@@ -165,7 +172,7 @@ function haha()
         neko.game_init_thread = function()
         end
         neko.game_init = function()
-            test_ase = neko.sprite_load("assets/workingman.ase")
+            -- test_ase = neko.sprite_load("assets/workingman.ase")
 
             LocalGame.b2 = neko.b2_world {
                 gx = 0,
@@ -178,7 +185,8 @@ function haha()
             player = CPlayer(0, 0)
 
             LocalGame.world:add(player)
-            LocalGame.world:add(Chort(20, 20))
+            LocalGame.world:add(CEnemy(20, 20))
+            LocalGame.world:add(WorkingMan(50, -50))
 
             cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
@@ -189,6 +197,8 @@ function haha()
         neko.game_fini = function()
         end
         neko.game_pre_update = function()
+
+            LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
 
             game_tick = game_tick + 1
 
@@ -210,10 +220,10 @@ function haha()
 
             local dt = ng.get_timing_instance().dt
 
-            test_ase:update(dt)
-            local ox = test_ase:width() / 2
-            local oy = -test_ase:height()
-            test_ase:draw(40, -80, 0, 1.5, -1.5, ox, oy)
+            -- test_ase:update(dt)
+            -- local ox = test_ase:width() / 2
+            -- local oy = -test_ase:height()
+            -- test_ase:draw(40, -80, 0, 1.5, -1.5, ox, oy)
 
             LocalGame.world:draw()
 

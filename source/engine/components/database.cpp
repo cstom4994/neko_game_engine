@@ -1,3 +1,4 @@
+#include "engine/base/vfs.hpp"
 #include "engine/component.h"
 #include "engine/scripting/lua_wrapper.hpp"
 

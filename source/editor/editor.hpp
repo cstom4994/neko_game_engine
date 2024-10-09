@@ -1,10 +1,7 @@
 #pragma once
 
+#include "engine/imgui.hpp"
 #include "engine/scripting/scripting.h"
-
-// deps
-#include <imgui.h>
-#include <imgui_internal.h>
 
 namespace neko {
 
@@ -221,7 +218,6 @@ public:
     }
 };
 }  // namespace neko
-
 
 NEKO_SCRIPT(inspector,
 
