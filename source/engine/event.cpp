@@ -2,27 +2,28 @@
 
 #include "engine/scripting/luax.h"
 
-void eventhandler_init(eventhandler_t* eventhandler, const char* name) {
+void EventHandler::init() {
+
     assert(NUM_EVENTS < 32);
-    eventhandler->queue.make();
-    eventhandler->delegate_map.reserve(NUM_EVENTS);
+    queue.make();
+    delegate_map.reserve(NUM_EVENTS);
 }
 
-void eventhandler_fini(eventhandler_t* eventhandler) {
+void EventHandler::fini() {
 
-    eventhandler->queue.trash();
+    queue.trash();
 
     for (int i = 0; i < NUM_EVENTS; i++) {
-        delegate_list_t* list = event_getdelegates(eventhandler, i);
+        delegate_list_t* list = event_getdelegates(this, i);
         if (list == nullptr) continue;
         list->trash();
     }
-    eventhandler->delegate_map.trash();
-
-    mem_free(eventhandler);  // TODO 自动释放GLOBAL_SINGLETON
+    delegate_map.trash();
 }
 
-void event_register(eventhandler_t* handler, void* receiver, int evt, evt_callback_t cb, lua_State* L) {
+void EventHandler::update() {}
+
+void EventHandler::event_register(void* receiver, int evt, evt_callback_t cb, lua_State* L) {
     for (int i = 0; i < NUM_EVENTS; i++) {
         if ((1 << i) & evt) {
 
@@ -32,21 +33,21 @@ void event_register(eventhandler_t* handler, void* receiver, int evt, evt_callba
             l.receiver = receiver;
             l.L = L;
 
-            delegate_list_t* list = event_getdelegates(handler, i);
+            delegate_list_t* list = event_getdelegates(this, i);
             if (list != nullptr) {
                 list->push(l);
             } else {
                 delegate_list_t new_list = {};
                 new_list.push(l);
-                handler->delegate_map[i] = new_list;
+                delegate_map[i] = new_list;
             }
         }
     }
 }
 
 // 立即调用事件监听器
-void event_dispatch(eventhandler_t* eventhandler, event_t evt) {
-    delegate_list_t* list = event_getdelegates(eventhandler, evt.type);
+void EventHandler::event_dispatch(event_t evt) {
+    delegate_list_t* list = event_getdelegates(this, evt.type);
     if (list == nullptr) {
         console_log("event_dispatch: no event cb called %s", event_string(evt.type));
         return;
@@ -68,17 +69,17 @@ void event_dispatch(eventhandler_t* eventhandler, event_t evt) {
 }
 
 // 将事件放入队列
-int event_post(eventhandler_t* eventhandler, event_t evt) {
-    eventhandler->queue.enqueue(evt);
+int EventHandler::event_post(event_t evt) {
+    queue.enqueue(evt);
     return 1;
 }
 
 // 清空事件队列并将事件分派给所有监听器
-void event_pump(eventhandler_t* handler) {
-    handler->prev_len = handler->queue.len;
-    while (handler->queue.len > 0) {
-        event_t evt = handler->queue.demand();
-        event_dispatch(handler, evt);
+void EventHandler::event_pump() {
+    prev_len = queue.len;
+    while (queue.len > 0) {
+        event_t evt = queue.demand();
+        event_dispatch(evt);
     }
 }
 
@@ -92,7 +93,8 @@ static int w_event_listen(lua_State* L) {
         lua_pushvalue(L, 3);
         cb = luaL_ref(L, LUA_REGISTRYINDEX);
     }
-    event_register(eventhandler_instance(), reinterpret_cast<void*>(ref), evt, reinterpret_cast<evt_callback_t>(cb), L);
+    auto& eh = neko::the<EventHandler>();
+    eh.event_register(reinterpret_cast<void*>(ref), evt, reinterpret_cast<evt_callback_t>(cb), L);
     return 0;
 }
 
@@ -125,14 +127,16 @@ static int w_event_new(lua_State* L) {
 // event_t.dispatch(evt, [, data])
 static int w_event_postnow(lua_State* L) {
     event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
-    event_dispatch(eventhandler_instance(), *evt);
+    auto& eh = neko::the<EventHandler>();
+    eh.event_dispatch(*evt);
     return 0;
 }
 
 // event_t.post(evt [, data])
 static int w_event_postlater(lua_State* L) {
     event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
-    event_post(eventhandler_instance(), *evt);
+    auto& eh = neko::the<EventHandler>();
+    eh.event_post(*evt);
     return 0;
 }
 

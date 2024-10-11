@@ -244,3 +244,29 @@ inline void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...
 #define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
     char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
+
+#if defined(_MSC_VER)
+#define LOGURU_PREDICT_FALSE(x) (x)
+#define LOGURU_PREDICT_TRUE(x) (x)
+#else
+#define LOGURU_PREDICT_FALSE(x) (__builtin_expect(x, 0))
+#define LOGURU_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
+#endif
+
+#define CHECK_WITH_INFO_F(test, info, ...) LOGURU_PREDICT_TRUE((test) == true) ? (void)0 : console_log("CHECK FAILED:  " info "  ", ##__VA_ARGS__)
+
+/* Checked at runtime too. Will print error, then call fatal_handler (if any), then 'abort'.
+   Note that the test must be boolean.
+   CHECK_F(ptr); will not compile, but CHECK_F(ptr != nullptr); will. */
+#define CHECK_F(test, ...) CHECK_WITH_INFO_F(test, #test, ##__VA_ARGS__)
+
+#define CHECK_NOTNULL_F(x, ...) CHECK_WITH_INFO_F((x) != nullptr, #x " != nullptr", ##__VA_ARGS__)
+
+#define LOGURU_CONCATENATE_IMPL(s1, s2) s1##s2
+#define LOGURU_CONCATENATE(s1, s2) LOGURU_CONCATENATE_IMPL(s1, s2)
+
+#ifdef __COUNTER__
+#define LOGURU_ANONYMOUS_VARIABLE(str) LOGURU_CONCATENATE(str, __COUNTER__)
+#else
+#define LOGURU_ANONYMOUS_VARIABLE(str) LOGURU_CONCATENATE(str, __LINE__)
+#endif

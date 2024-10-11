@@ -350,7 +350,8 @@ void script_init() {
 
     lua_channels_setup();
 
-    event_register(eventhandler_instance(), g_app, quit, (evt_callback_t)app_stop, NULL);
+    auto &eh = neko::the<EventHandler>();
+    eh.event_register(g_app, quit, (evt_callback_t)app_stop, NULL);
 
     luax_run_bootstrap(L);
 
@@ -391,7 +392,8 @@ void script_fini() {
             neko_panic("%s", err.data);
         }
 
-        event_dispatch(eventhandler_instance(), event_t{.type = on_quit, .p0 = {.v = 199.14f}});
+        auto &eh = neko::the<EventHandler>();
+        eh.event_dispatch(event_t{.type = on_quit, .p0 = {.v = 199.14f}});
     }
 
     luax_get(ENGINE_LUA(), "neko", "game_fini");

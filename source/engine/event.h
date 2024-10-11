@@ -3,6 +3,7 @@
 #include <variant>
 
 #include "engine/base.hpp"
+#include "engine/base/singleton.hpp"
 
 #define Event_mt "event"
 
@@ -94,32 +95,23 @@ typedef struct delegate_t {
     lua_State* L;
 } delegate_t;
 
-using delegate_list_t = Array<delegate_t>;
+class EventHandler : public neko::SingletonClass<EventHandler> {
+    using delegate_list_t = Array<delegate_t>;
 
-typedef struct {
+private:
     Queue<event_t> queue;
     HashMap<delegate_list_t> delegate_map;
     u64 prev_len;
-} eventhandler_t;
 
-void eventhandler_init(eventhandler_t* eventhandler, const char* name);
-void eventhandler_fini(eventhandler_t* eventhandler);
-void event_register(eventhandler_t* eventhandler, void* receiver, int evt, evt_callback_t cb, lua_State* L);
-int event_post(eventhandler_t* eventhandler, event_t evt);
-void event_dispatch(eventhandler_t* eventhandler, event_t evt);
-void event_pump(eventhandler_t* eventhandler);
+public:
+    void init() override;
+    void fini() override;
+    void update() override;
 
-#define GLOBAL_SINGLETON(_type, _fname, _name)          \
-    _type* _fname##_instance() {                        \
-        static _type* manager = NULL;                   \
-        if (!manager) {                                 \
-            manager = (_type*)mem_alloc(sizeof(_type)); \
-            memset(manager, 0, sizeof(_type));          \
-            _fname##_init(manager, _name);              \
-        }                                               \
-        return manager;                                 \
-    }
-
-inline GLOBAL_SINGLETON(eventhandler_t, eventhandler, "EventHandler");
+    void event_register(void* receiver, int evt, evt_callback_t cb, lua_State* L);
+    int event_post(event_t evt);
+    void event_dispatch(event_t evt);
+    void event_pump();
+};
 
 int openlib_Event(lua_State* L);

@@ -4,8 +4,10 @@
 
 #define DeferLoop(start, end) for (int _i_ = ((start), 0); _i_ == 0; _i_ += 1, (end))
 
+#define ENABLE_IF(x) typename std::enable_if<(x), bool>::type
+
 template <typename... Args>
-auto println(const std::string &fmt, Args &&...args) {
+auto println(const std::string& fmt, Args&&... args) {
     std::string str = std::vformat(fmt, std::make_format_args(args...));
     std::cout << str << std::endl;
 }
@@ -24,7 +26,7 @@ constexpr auto BitSet(const char (&str)[N]) {
 }
 
 template <std::size_t N>
-constexpr auto BitSet(const char *str) {
+constexpr auto BitSet(const char* str) {
     std::bitset<N> bits;
     std::size_t len = std::strlen(str);  // 计算字符串长度
     for (std::size_t i = 0; i < len && i < bits.size(); ++i) {
@@ -48,16 +50,79 @@ Defer<F> defer_func(F f) {
 template <typename T>
 using Scope = std::unique_ptr<T>;
 template <typename T, typename... Args>
-constexpr Scope<T> create_scope(Args &&...args) {
+constexpr Scope<T> create_scope(Args&&... args) {
     return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 template <typename T>
 using Ref = std::shared_ptr<T>;
 template <typename T, typename... Args>
-constexpr Ref<T> create_ref(Args &&...args) {
+constexpr Ref<T> create_ref(Args&&... args) {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
+
+struct FormatStr {
+    constexpr FormatStr(const char* str) noexcept : str(str) {}
+    const char* str;
+};
+
+template <FormatStr F>
+constexpr auto operator""_f() {
+    return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
+}
+
+namespace tuple {
+
+template <int N>
+class Int_ {};
+
+namespace detail {
+
+// 初始
+template <std::size_t N, typename... Args, typename Iterator>
+ENABLE_IF(N == 0)
+iterate(std::tuple<Args...>&, Iterator&&) {
+    return true;
+}
+
+// 递归
+template <std::size_t N, typename... Args, typename Iterator>
+ENABLE_IF(N >= 1)
+iterate(std::tuple<Args...>& tup, Iterator&& it) {
+    if (iterate<N - 1>(tup, it)) {
+        auto&& val = std::get<N - 1>(tup);
+        return it(Int_<N - 1>(), val);
+    } else {
+        return false;
+    }
+}
+}  // namespace detail
+
+// Func 要求
+// template<int N, class T>
+// bool operator()(Int_<N>, T)
+template <typename Func, typename... Args>
+bool for_each_tuple(std::tuple<Args...>& tup, Func&& func) {
+    return detail::iterate<sizeof...(Args)>(tup, func);
+}
+
+template <std::size_t N>
+struct TupleArrayRef {
+    template <class Tuple>
+    static auto ref_to_members(Tuple&& tup, int ix) {
+        return std::tuple_cat(TupleArrayRef<N - 1>::ref_to_members(tup, ix), std::tie(std::get<N - 1>(tup)[ix]));
+    }
+};
+
+template <>
+struct TupleArrayRef<0> {
+    template <class Tuple>
+    static std::tuple<> ref_to_members(Tuple&&, int) {
+        return std::tuple<>();
+    }
+};
+
+}  // namespace tuple
 
 }  // namespace util
 

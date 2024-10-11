@@ -100,6 +100,7 @@ Allocator *g_allocator;
 native_script_context_t *sc;
 
 unsigned int fbo;
+unsigned int rbo;
 unsigned int fbo_tex;
 unsigned int quadVAO, quadVBO;
 Asset posteffect_shader = {};
@@ -375,6 +376,67 @@ int _game_draw(App *app, event_t evt) {
     return 0;
 }
 
+void bootstrap_splash() {
+
+    if (1) {
+
+        String contents = {};
+        bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
+        if (!ok) {
+            return;
+        }
+        neko_defer(mem_free(contents.data));
+
+        neko_texture_t *splash_texture = neko_new_texture_from_memory(contents.data, contents.len, NEKO_TEXTURE_ANTIALIASED);
+
+        // neko_shader_t *shader = neko_load_shader(cfg.splash_shader);
+        Asset splash_shader = {};
+
+        ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
+        error_assert(ok);
+
+        GLuint sid = splash_shader.shader.id;
+
+        float verts[] = {/* position     UV */
+                         0.5f, 0.5f, 1.0f, 0.0f, 0.5f, -0.5f, 1.0f, 1.0f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, 0.5f, 0.0f, 0.0f};
+
+        u32 indices[] = {0, 1, 3, 1, 2, 3};
+
+        neko_vertex_buffer_t *quad = neko_new_vertex_buffer(neko_vertex_buffer_flags_t(NEKO_VERTEXBUFFER_STATIC_DRAW | NEKO_VERTEXBUFFER_DRAW_TRIANGLES));
+
+        neko_bind_vertex_buffer_for_edit(quad);
+        neko_push_vertices(quad, verts, sizeof(verts) / sizeof(float));
+        neko_push_indices(quad, indices, sizeof(indices) / sizeof(u32));
+        neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
+        neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
+
+        mat4 projection = mat4_ortho(-((float)g_app->cfg.width / 2.0f), (float)g_app->cfg.width / 2.0f, (float)g_app->cfg.height / 2.0f, -((float)g_app->cfg.height / 2.0f), -1.0f, 1.0f);
+        mat4 model = mat4_scalev(vec3{splash_texture->width / 2.0f, splash_texture->height / 2.0f, 0.0f});
+
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        neko_bind_shader(sid);
+        neko_bind_texture(splash_texture, 0);
+        neko_shader_set_int(sid, "image", 0);
+        neko_shader_set_m4f(sid, "transform", model);
+        neko_shader_set_m4f(sid, "projection", projection);
+
+        neko_bind_vertex_buffer_for_draw(quad);
+        neko_draw_vertex_buffer(quad);
+
+        // neko_update_application();
+        glfwSwapBuffers(g_app->game_window);
+
+        neko_free_vertex_buffer(quad);
+
+        neko_free_texture(splash_texture);
+
+        neko_check_gl_error();
+    }
+}
+
 static void _game_init(int argc, char **argv) {
 
 #ifndef NDEBUG
@@ -454,6 +516,8 @@ static void _game_init(int argc, char **argv) {
     get_timing_instance()->startup = stm_now();
     get_timing_instance()->last = stm_now();
 
+    neko::modules::initialize<EventHandler>();
+
     // init systems
     console_puts("welcome to neko!");
     system_init();
@@ -474,7 +538,7 @@ static void _game_init(int argc, char **argv) {
         neko_init_ui_renderer();
     }
 
-    eventhandler_t *eh = eventhandler_instance();
+    auto &eh = neko::the<EventHandler>();
 
     struct {
         int evt;
@@ -507,7 +571,7 @@ static void _game_init(int argc, char **argv) {
     };
 
     for (auto evt : evt_list) {
-        event_register(eh, g_app, evt.evt, evt.cb, NULL);
+        eh.event_register(g_app, evt.evt, evt.cb, NULL);
     }
 
     sc = native_new_script_context(g_app, "game_debug_x64.dll");
@@ -515,64 +579,6 @@ static void _game_init(int argc, char **argv) {
     native_new_script(sc, {1}, "get_test_script_instance_size", "on_test_script_init", "on_test_script_update", "on_physics_update_name", "on_test_script_free", false);
 
     native_init_scripts(sc);
-
-    if (0) {
-
-        String contents = {};
-        bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
-        if (!ok) {
-            return;
-        }
-        neko_defer(mem_free(contents.data));
-
-        neko_texture_t *splash_texture = neko_new_texture_from_memory(contents.data, contents.len, NEKO_TEXTURE_ANTIALIASED);
-
-        // neko_shader_t *shader = neko_load_shader(cfg.splash_shader);
-        Asset splash_shader = {};
-
-        ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &splash_shader);
-        error_assert(ok);
-
-        GLuint sid = splash_shader.shader.id;
-
-        float verts[] = {/* position     UV */
-                         0.5f, 0.5f, 1.0f, 0.0f, 0.5f, -0.5f, 1.0f, 1.0f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, 0.5f, 0.0f, 0.0f};
-
-        u32 indices[] = {0, 1, 3, 1, 2, 3};
-
-        neko_vertex_buffer_t *quad = neko_new_vertex_buffer(neko_vertex_buffer_flags_t(NEKO_VERTEXBUFFER_STATIC_DRAW | NEKO_VERTEXBUFFER_DRAW_TRIANGLES));
-
-        neko_bind_vertex_buffer_for_edit(quad);
-        neko_push_vertices(quad, verts, sizeof(verts) / sizeof(float));
-        neko_push_indices(quad, indices, sizeof(indices) / sizeof(u32));
-        neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
-        neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
-
-        mat4 projection = mat4_ortho(-((float)g_app->cfg.width / 2.0f), (float)g_app->cfg.width / 2.0f, (float)g_app->cfg.height / 2.0f, -((float)g_app->cfg.height / 2.0f), -1.0f, 1.0f);
-        mat4 model = mat4_scalev(vec3{splash_texture->width / 2.0f, splash_texture->height / 2.0f, 0.0f});
-
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
-        neko_bind_shader(sid);
-        neko_bind_texture(splash_texture, 0);
-        neko_shader_set_int(sid, "image", 0);
-        neko_shader_set_m4f(sid, "transform", model);
-        neko_shader_set_m4f(sid, "projection", projection);
-
-        neko_bind_vertex_buffer_for_draw(quad);
-        neko_draw_vertex_buffer(quad);
-
-        // neko_update_application();
-        glfwSwapBuffers(g_app->game_window);
-
-        neko_free_vertex_buffer(quad);
-
-        neko_free_texture(splash_texture);
-    }
-
-    neko_check_gl_error();
 
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -593,6 +599,13 @@ static void _game_init(int argc, char **argv) {
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
 
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, g_app->cfg.width, g_app->cfg.height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n";
+
     float quadVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
                             // positions   // texCoords
                             -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
@@ -610,15 +623,21 @@ static void _game_init(int argc, char **argv) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
     bool ok = asset_load_kind(AssetKind_Shader, "shader/posteffect.glsl", &posteffect_shader);
     error_assert(ok);
+
+    neko_check_gl_error();
 }
 
 static void _game_fini() {
     PROFILE_FUNC();
 
     glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &fbo_tex);
+    glDeleteRenderbuffers(1, &rbo);
 
     bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
 
@@ -651,7 +670,10 @@ static void _game_fini() {
     }
     mem_free(g_app->args.data);
 
-    eventhandler_fini(eventhandler_instance());
+    auto &eh = neko::the<EventHandler>();
+    eh.fini();
+
+    neko::modules::shutdown<EventHandler>();
 
     g_app->~App();
     mem_free(g_app);
@@ -675,18 +697,18 @@ void game_run(int argc, char **argv) {
     _game_init(argc, argv);
     while (!g_app->g_quit) {
         App *app = g_app;
-        eventhandler_t *handler = eventhandler_instance();
+        auto &eh = neko::the<EventHandler>();
         glfwPollEvents();
         if (glfwWindowShouldClose(g_app->game_window)) game_quit();
-        event_pump(handler);
+        eh.event_pump();
 
-        event_dispatch(handler, event_t{.type = on_preupdate});
+        eh.event_dispatch(event_t{.type = on_preupdate});
         if (!g_app->error_mode.load()) {
-            event_dispatch(handler, event_t{.type = on_update});
+            eh.event_dispatch(event_t{.type = on_update});
         }
-        event_dispatch(handler, event_t{.type = on_postupdate});
+        eh.event_dispatch(event_t{.type = on_postupdate});
 
-        event_dispatch(handler, event_t{.type = on_draw});
+        eh.event_dispatch(event_t{.type = on_draw});
     }
     _game_fini();
 }

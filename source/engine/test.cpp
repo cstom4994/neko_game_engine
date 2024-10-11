@@ -494,9 +494,8 @@ void draw_gui() {
                     ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
                     ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-                    eventhandler_t *eh = eventhandler_instance();
-
-                    ui_labelf("Event queue: %llu", eh->prev_len);
+                    // eventhandler_t *eh = eventhandler_instance();
+                    // ui_labelf("Event queue: %llu", eh->prev_len);
 
                     // ui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 

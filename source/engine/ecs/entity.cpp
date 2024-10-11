@@ -434,6 +434,8 @@ static void _mouse_up(MouseCode mouse) {
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
 static void _scroll(vec2 scroll) { script_scroll(scroll); }
 
+void bootstrap_splash();
+
 void system_init() {
     PROFILE_FUNC();
 
@@ -486,6 +488,8 @@ void system_init() {
 
     g_render = gfx_create();
     gfx_init(g_render);
+
+    bootstrap_splash();
 
     neko_default_font();
 
