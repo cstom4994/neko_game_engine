@@ -1,6 +1,5 @@
 #include "engine/asset.h"
 
-#include <GL/glew.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -19,6 +18,7 @@
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/scripting/lua_wrapper.hpp"
+#include "vendor/glad/glad.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>

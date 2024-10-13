@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 // 确保在 GLFW 标头之前包含 GLEW 标头
-#include <GL/glew.h>
+#include "vendor/glad/glad.h"
 
 // GLFW
 #include <GLFW/glfw3.h>
@@ -469,7 +469,7 @@ NEKO_API() void neko_bind_texture(neko_texture_t* texture, u32 slot);
 #define BUFFER_FRAMES 3
 
 typedef struct {
-	char* stream[2];
+    char* stream[2];
 } VertexData;
 
 typedef struct {

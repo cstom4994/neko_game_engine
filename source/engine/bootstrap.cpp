@@ -15,6 +15,7 @@
 #include "engine/base.hpp"
 #include "engine/base/os.hpp"
 #include "engine/base/profiler.hpp"
+#include "engine/base/singleton.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -47,6 +48,7 @@ REFL_FIELDS(engine_cfg_t, height);
 REFL_FIELDS(engine_cfg_t, width); 
 REFL_FIELDS(engine_cfg_t, game_proxy); 
 REFL_FIELDS(engine_cfg_t, default_font); 
+REFL_FIELDS(engine_cfg_t, lite_init_path); 
 REFL_FIELDS(engine_cfg_t, dump_allocs_detailed);
 REFL_FIELDS(engine_cfg_t, hot_reload);
 REFL_FIELDS(engine_cfg_t, startup_load_scripts);
@@ -224,13 +226,30 @@ static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severi
     }
 }
 
+void rescale_framebuffer(float width, float height) {
+    glBindTexture(GL_TEXTURE_2D, fbo_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+}
+
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_app->cfg.width = width;
     g_app->cfg.height = height;
+
+    rescale_framebuffer(width, height);
+
     // 更新视口
     glViewport(0, 0, width, height);
 }
+
+float posteffect_intensity = 2.0f;
 
 int _game_draw(App *app, event_t evt) {
     static bool first = true;
@@ -311,10 +330,11 @@ int _game_draw(App *app, event_t evt) {
             GLuint sid = posteffect_shader.shader.id;
             glUseProgram(sid);
 
+            glUniform1f(glGetUniformLocation(sid, "intensity"), posteffect_intensity);
+
             glBindVertexArray(quadVAO);
             glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
             glDrawArrays(GL_TRIANGLES, 0, 6);
-
             f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
             fy += draw_font(g_app->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
             fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
@@ -323,6 +343,13 @@ int _game_draw(App *app, event_t evt) {
         auto ui = g_app->ui;
 
         // ImGui::ShowDemoWindow();
+
+        if (ImGui::Begin("Hello")) {
+
+            ImGui::InputFloat("posteffect_intensity", &posteffect_intensity);
+
+            ImGui::End();
+        }
 
         neko_update_ui(ui);
 
@@ -458,8 +485,6 @@ static void _game_init(int argc, char **argv) {
     for (i32 i = 0; i < argc; i++) {
         g_app->args[i] = to_cstr(argv[i]);
     }
-    g_app->argc = argc;
-    g_app->argv = argv;
 
 #if defined(NDEBUG)
     console_log("neko %d", neko_buildnum());
@@ -488,12 +513,9 @@ static void _game_init(int argc, char **argv) {
     glfwSetFramebufferSizeCallback(g_app->game_window, framebuffer_size_callback);
 
     // initialize GLEW
-    glewExperimental = GL_TRUE;
-    GLenum err = glewInit();
-    if (err != GLEW_OK) {
-        console_log("glewInit failed: ", glewGetErrorString(err));
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        console_log("Failed to initialize GLAD");
     }
-    bool gl_dsa_support = glewIsSupported("GL_ARB_direct_state_access");
 
 #if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
     glEnable(GL_DEBUG_OUTPUT);
@@ -517,6 +539,7 @@ static void _game_init(int argc, char **argv) {
     get_timing_instance()->last = stm_now();
 
     neko::modules::initialize<EventHandler>();
+    neko::modules::initialize<Input>();
 
     // init systems
     console_puts("welcome to neko!");
@@ -542,32 +565,32 @@ static void _game_init(int argc, char **argv) {
 
     struct {
         int evt;
-        evt_callback_t cb;
+        EventCallback cb;
     } evt_list[] = {
-            {preupdate, (evt_callback_t)assets_perform_hot_reload_changes},  //
-            {preupdate, (evt_callback_t)edit_clear},                         //
-            {preupdate, (evt_callback_t)timing_update},                      //
+            {preupdate, (EventCallback)assets_perform_hot_reload_changes},  //
+            {preupdate, (EventCallback)edit_clear},                         //
+            {preupdate, (EventCallback)timing_update},                      //
 
-            {update, (evt_callback_t)scratch_update},
-            {update, (evt_callback_t)script_update_all},
-            {update, (evt_callback_t)physics_update_all},
-            {update, (evt_callback_t)transform_update_all},
+            {update, (EventCallback)scratch_update},
+            {update, (EventCallback)script_update_all},
+            {update, (EventCallback)physics_update_all},
+            {update, (EventCallback)transform_update_all},
 
-            {update, (evt_callback_t)camera_update_all},
-            {update, (evt_callback_t)gui_update_all},
-            {update, (evt_callback_t)sprite_update_all},
-            {update, (evt_callback_t)batch_update_all},
-            {update, (evt_callback_t)sound_update_all},
-            {update, (evt_callback_t)tiled_update_all},
-            {update, (evt_callback_t)edit_update_all},
+            {update, (EventCallback)camera_update_all},
+            {update, (EventCallback)gui_update_all},
+            {update, (EventCallback)sprite_update_all},
+            {update, (EventCallback)batch_update_all},
+            {update, (EventCallback)sound_update_all},
+            {update, (EventCallback)tiled_update_all},
+            {update, (EventCallback)edit_update_all},
 
-            {postupdate, (evt_callback_t)script_post_update_all},
-            {postupdate, (evt_callback_t)physics_post_update_all},
-            {postupdate, (evt_callback_t)sound_postupdate},
-            {postupdate, (evt_callback_t)entity_update_all},
-            {postupdate, (evt_callback_t)gui_event_clear},
+            {postupdate, (EventCallback)script_post_update_all},
+            {postupdate, (EventCallback)physics_post_update_all},
+            {postupdate, (EventCallback)sound_postupdate},
+            {postupdate, (EventCallback)entity_update_all},
+            {postupdate, (EventCallback)gui_event_clear},
 
-            {draw, (evt_callback_t)_game_draw},
+            {draw, (EventCallback)_game_draw},
     };
 
     for (auto evt : evt_list) {
@@ -694,12 +717,14 @@ static void _game_fini() {
 // -------------------------------------------------------------------------
 
 void game_run(int argc, char **argv) {
-    _game_init(argc, argv);
+    neko::modules::initialize<Game>(argc, argv);
+    auto &game = neko::the<Game>();
+    game.init();
     while (!g_app->g_quit) {
         App *app = g_app;
         auto &eh = neko::the<EventHandler>();
         glfwPollEvents();
-        if (glfwWindowShouldClose(g_app->game_window)) game_quit();
+        if (glfwWindowShouldClose(g_app->game_window)) game.quit();
         eh.event_pump();
 
         eh.event_dispatch(event_t{.type = on_preupdate});
@@ -713,32 +738,41 @@ void game_run(int argc, char **argv) {
     _game_fini();
 }
 
-void game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
+void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
-void game_set_window_size(vec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
+void Game::set_window_size(vec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
 
-vec2 game_get_window_size() {
+vec2 Game::get_window_size() {
     int w, h;
     glfwGetWindowSize(g_app->game_window, &w, &h);
     return luavec2(w, h);
 }
-vec2 game_unit_to_pixels(vec2 p) {
-    vec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
+vec2 Game::unit_to_pixels(vec2 p) {
+    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
     p = vec2_mul(p, hw);
     p = luavec2(p.x + hw.x, p.y - hw.y);
     return p;
 }
-vec2 game_pixels_to_unit(vec2 p) {
-    vec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
+vec2 Game::pixels_to_unit(vec2 p) {
+    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
     p = luavec2(p.x - hw.x, p.y + hw.y);
     p = vec2_div(p, hw);
     return p;
 }
 
-void game_quit() { g_app->g_quit = true; }
+void Game::quit() { g_app->g_quit = true; }
 
-int game_get_argc() { return g_app->argc; }
-char **game_get_argv() { return g_app->argv; }
+Game::Game(int argc, char **argv) {
+    this->argc = argc;
+    this->argv = argv;
+}
+
+void Game::init() { _game_init(argc, argv); }
+void Game::fini() {}
+void Game::update() {}
+
+int Game::game_get_argc() const { return this->argc; }
+char **Game::game_get_argv() const { return this->argv; }
 
 int game_set_window_minsize(int width, int height) {
     glfwSetWindowSizeLimits(g_app->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
@@ -804,7 +838,7 @@ static int get_current_monitor(GLFWmonitor **monitor, GLFWwindow *window) {
     return 1;
 }
 
-int game_set_window_title(const char *title) {
+int Game::set_window_title(const char *title) {
 #if defined(__EMSCRIPTEN__)
     emscripten_set_window_title(title);
 #else
@@ -823,6 +857,8 @@ int game_set_window_vsync(bool vsync) {
 }
 
 const char *window_clipboard() { return glfwGetClipboardString(g_app->game_window); }
+
+int window_prompt(const char *msg, const char *title) { return (MessageBoxA(0, msg, title, MB_YESNO | MB_ICONWARNING) == IDYES); }
 
 void window_setclipboard(const char *text) { glfwSetClipboardString(g_app->game_window, text); }
 

@@ -524,7 +524,7 @@ void draw_gui() {
         g_console.autoscroll = !g_console.autoscroll;
     }
 
-    vec2 fb = game_get_window_size();
+    vec2 fb = neko::the<Game>().get_window_size();
     rect_t screen = neko_rect(0, 0, fb.x, fb.y);
     // ui_Layout l;
     //            if (embeded)

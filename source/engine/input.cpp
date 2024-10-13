@@ -14,14 +14,6 @@
 
 using namespace neko::luabind;
 
-static Array<KeyCallback> key_down_cbs;
-static Array<KeyCallback> key_up_cbs;
-static Array<CharCallback> char_down_cbs;
-static Array<MouseCallback> mouse_down_cbs;
-static Array<MouseCallback> mouse_up_cbs;
-static Array<MouseMoveCallback> mouse_move_cbs;
-static Array<ScrollCallback> scroll_cbs;
-
 static int _keycode_to_glfw(KeyCode key) { return key; }
 static KeyCode _glfw_to_keycode(int key) { return (KeyCode)key; }
 static int _mousecode_to_glfw(MouseCode mouse) { return mouse; }
@@ -113,32 +105,32 @@ vec2 input_get_mouse_pos_pixels() {
     glfwGetCursorPos(g_app->game_window, &x, &y);
     return luavec2(x, -y);
 }
-vec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
+vec2 input_get_mouse_pos_unit() { return neko::the<Game>().pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
     return glfwGetMouseButton(g_app->game_window, glfwmouse) == GLFW_PRESS;
 }
 
-void input_add_key_down_callback(KeyCallback f) { key_down_cbs.push(f); }
-void input_add_key_up_callback(KeyCallback f) { key_up_cbs.push(f); }
-void input_add_char_down_callback(CharCallback f) { char_down_cbs.push(f); }
-void input_add_mouse_down_callback(MouseCallback f) { mouse_down_cbs.push(f); }
-void input_add_mouse_up_callback(MouseCallback f) { mouse_up_cbs.push(f); }
-void input_add_mouse_move_callback(MouseMoveCallback f) { mouse_move_cbs.push(f); }
-void input_add_scroll_callback(ScrollCallback f) { scroll_cbs.push(f); }
+void input_add_key_down_callback(KeyCallback f) { neko::the<Input>().key_down_cbs.push(f); }
+void input_add_key_up_callback(KeyCallback f) { neko::the<Input>().key_up_cbs.push(f); }
+void input_add_char_down_callback(CharCallback f) { neko::the<Input>().char_down_cbs.push(f); }
+void input_add_mouse_down_callback(MouseCallback f) { neko::the<Input>().mouse_down_cbs.push(f); }
+void input_add_mouse_up_callback(MouseCallback f) { neko::the<Input>().mouse_up_cbs.push(f); }
+void input_add_mouse_move_callback(MouseMoveCallback f) { neko::the<Input>().mouse_move_cbs.push(f); }
+void input_add_scroll_callback(ScrollCallback f) { neko::the<Input>().scroll_cbs.push(f); }
 
 static void _key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
 
     switch (action) {
         case GLFW_PRESS: {
-            for (auto f : key_down_cbs) {
+            for (auto f : neko::the<Input>().key_down_cbs) {
                 (*f)(_glfw_to_keycode(key), scancode, mods);
             }
             break;
         }
         case GLFW_RELEASE: {
-            for (auto f : key_up_cbs) {
+            for (auto f : neko::the<Input>().key_up_cbs) {
                 (*f)(_glfw_to_keycode(key), scancode, mods);
             }
             break;
@@ -147,7 +139,7 @@ static void _key_callback(GLFWwindow *window, int key, int scancode, int action,
 }
 
 static void _char_callback(GLFWwindow *window, unsigned int c) {
-    for (auto f : char_down_cbs) {
+    for (auto f : neko::the<Input>().char_down_cbs) {
         (*f)(c);
     }
 }
@@ -155,12 +147,12 @@ static void _char_callback(GLFWwindow *window, unsigned int c) {
 static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods) {
     switch (action) {
         case GLFW_PRESS: {
-            for (auto f : mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
+            for (auto f : neko::the<Input>().mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
             break;
         }
 
         case GLFW_RELEASE: {
-            for (auto f : mouse_up_cbs) (*f)(_glfw_to_mousecode(mouse));
+            for (auto f : neko::the<Input>().mouse_up_cbs) (*f)(_glfw_to_mousecode(mouse));
             break;
         }
     }
@@ -169,16 +161,16 @@ static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods)
 static void _cursor_pos_callback(GLFWwindow *window, double x, double y) {
     MouseMoveCallback *f;
 
-    for (auto f : mouse_move_cbs) (*f)(luavec2(x, -y));
+    for (auto f : neko::the<Input>().mouse_move_cbs) (*f)(luavec2(x, -y));
 }
 
 static void _scroll_callback(GLFWwindow *window, double x, double y) {
     ScrollCallback *f;
 
-    for (auto f : scroll_cbs) (*f)(luavec2(x, y));
+    for (auto f : neko::the<Input>().scroll_cbs) (*f)(luavec2(x, y));
 }
 
-void input_init() {
+void Input::init() {
     PROFILE_FUNC();
 
     glfwSetKeyCallback(g_app->game_window, _key_callback);
@@ -188,7 +180,7 @@ void input_init() {
     glfwSetScrollCallback(g_app->game_window, _scroll_callback);
 }
 
-void input_fini() {
+void Input::fini() {
     scroll_cbs.trash();
 
     mouse_move_cbs.trash();
@@ -201,6 +193,8 @@ void input_fini() {
     key_up_cbs.trash();
     key_down_cbs.trash();
 }
+
+void Input::update() {}
 
 INPUT_WRAP_event *input_wrap_new_event(event_queue *equeue) {
     INPUT_WRAP_event *event = equeue->events + equeue->head;

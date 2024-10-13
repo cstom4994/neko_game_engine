@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "editor/editor.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
 #include "engine/base/os.hpp"
@@ -19,6 +20,7 @@
 #include "engine/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
+#include "lua.h"
 
 using namespace neko::luabind;
 using namespace neko::ecs;
@@ -477,8 +479,8 @@ void system_init() {
     lua_pop(L, 1);  // conf table
 
     // 刷新状态
-    game_set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
-    game_set_window_title(g_app->cfg.title.cstr());
+    neko::the<Game>().set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
+    neko::the<Game>().set_window_title(g_app->cfg.title.cstr());
 
     if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
         // neko::neko_lua_run_string(L, R"lua(
@@ -493,7 +495,9 @@ void system_init() {
 
     neko_default_font();
 
-    input_init();
+    auto& input = neko::the<Input>();
+    input.init();
+
     entity_init();
     transform_init();
     camera_init();
@@ -512,6 +516,9 @@ void system_init() {
     g_app->reload_interval.store(g_app->cfg.reload_interval);
 
     luax_run_nekogame(L);
+
+    neko::luainspector::luainspector_init(ENGINE_LUA());
+    lua_setglobal(L, "__neko_inspector");
 
     if (!g_app->error_mode.load() && g_app->cfg.startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
@@ -583,8 +590,9 @@ void system_fini() {
     camera_fini();
     transform_fini();
     entity_fini();
-    input_fini();
     imgui_fini();
+    auto& input = neko::the<Input>();
+    input.fini();
 
     if (g_app->default_font != nullptr) {
         g_app->default_font->trash();

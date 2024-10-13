@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "engine/base.hpp"
+#include "engine/base/singleton.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 
@@ -193,8 +194,21 @@ void input_add_mouse_move_callback(MouseMoveCallback f);
 typedef void (*ScrollCallback)(vec2 scroll);
 void input_add_scroll_callback(ScrollCallback f);
 
-void input_init();
-void input_fini();
+class Input : public neko::SingletonClass<Input> {
+public:
+    Array<KeyCallback> key_down_cbs;
+    Array<KeyCallback> key_up_cbs;
+    Array<CharCallback> char_down_cbs;
+    Array<MouseCallback> mouse_down_cbs;
+    Array<MouseCallback> mouse_up_cbs;
+    Array<MouseMoveCallback> mouse_move_cbs;
+    Array<ScrollCallback> scroll_cbs;
+
+public:
+    void init() override;
+    void fini() override;
+    void update() override;
+};
 
 typedef enum {
     INPUT_WRAP_NONE = 0,

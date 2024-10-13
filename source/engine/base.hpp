@@ -924,6 +924,7 @@ typedef struct engine_cfg_t {
     String title;
     String game_proxy;
     String default_font;
+    String lite_init_path;
 
     bool hot_reload;
     bool startup_load_scripts;

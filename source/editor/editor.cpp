@@ -11,8 +11,10 @@
 #include <typeindex>
 #include <vector>
 
+#include "editor/lite.h"
 #include "engine/asset.h"
 #include "engine/base/base.hpp"
+#include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 
@@ -30,6 +32,12 @@ static int __luainspector_gc(lua_State* L) {
         m->variable_pool_free();
         m->setL(0x0);
     }
+
+    if (g_app->cfg.lite_init_path.len) {
+        lt_fini();
+        lua_close(g_app->LiteLua);
+    }
+
     console_log("luainspector __gc %p", m);
     return 0;
 }
@@ -821,6 +829,26 @@ int neko::luainspector::luainspector_init(lua_State* L) {
 
     inspector->property_register<CCharacter>("John", &cJohn, "John");
 
+    if (g_app->cfg.lite_init_path.len) {
+        PROFILE_BLOCK("lite init");
+        g_app->LiteLua = luaL_newstate();
+
+        luaL_openlibs(g_app->LiteLua);
+
+        lua_atpanic(
+                g_app->LiteLua, +[](lua_State* L) {
+                    auto msg = lua_tostring(L, -1);
+                    printf("LUA: neko_panic error: %s", msg);
+                    return 0;
+                });
+
+        // lua_register(g_app->lite_L, "__neko_loader", neko::vfs_lua_loader);
+        // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
+        // luaL_dostring(g_app->lite_L, str);
+
+        lt_init(g_app->LiteLua, g_app->game_window, g_app->cfg.lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
+    }
+
     return 1;
 }
 
@@ -837,6 +865,38 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
 
     if (!visible) {
         return 0;
+    }
+
+    {
+
+        if (g_app->cfg.lite_init_path.len && g_app->LiteLua) {
+            if (ImGui::Begin("Lite")) {
+                ImGuiWindow* window = ImGui::GetCurrentWindow();
+                ImVec2 bounds = ImGui::GetContentRegionAvail();
+                vec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
+                neko_assert(window);
+                ImVec2 pos = window->Pos;
+                ImVec2 size = window->Size;
+                lt_mx = mouse_pos.x - pos.x;
+                lt_my = mouse_pos.y - pos.y;
+                lt_wx = pos.x;
+                lt_wy = pos.y;
+                lt_ww = size.x;
+                lt_wh = size.y;
+                if (lt_resizesurface(lt_getsurface(), lt_ww, lt_wh)) {
+                    // glfw_wrap__window_refresh_callback(g_app->game_window);
+                }
+                // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
+                // ui_texture_fit(lt_getsurface(0)->t, bounds);
+                ImGui::Image((ImTextureID)lt_getsurface()->t.id, bounds);
+                // if (!!nk_input_is_mouse_hovering_rect(&g_app->ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
+                //     lt_events &= ~(1 << 31);
+                // }
+            }
+            ImGui::End();
+        }
+
+        if (g_app->cfg.lite_init_path.len && g_app->LiteLua) lt_tick(g_app->LiteLua);
     }
 
     if (ImGui::Begin("Inspector")) {

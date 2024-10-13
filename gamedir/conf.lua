@@ -6,6 +6,7 @@ function neko.conf(t)
         height = 720.0,
         game_proxy = "default",
         default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
         dump_allocs_detailed = true,
         swap_interval = 1,
         target_fps = 120,

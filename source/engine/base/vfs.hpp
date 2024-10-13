@@ -5,6 +5,14 @@
 #include "engine/base/os.hpp"
 #include "engine/base/string.hpp"
 
+#ifndef S_ISDIR
+#define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
+#endif
+
+#ifndef S_ISREG
+#define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
+#endif
+
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";
     static constexpr const_str LUACODE = "luacode";

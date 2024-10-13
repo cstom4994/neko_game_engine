@@ -13,7 +13,7 @@ typedef struct CGameObjectTest {
     bool selected;
 } CGameObjectTest;
 
-enum ComponentType {
+enum ComponentTypeE {
     COMPONENT_GAMEOBJECT,
     COMPONENT_TRANSFORM,
     COMPONENT_VELOCITY,

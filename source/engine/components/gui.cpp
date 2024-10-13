@@ -941,7 +941,7 @@ static void _text_draw_all() {
     vec2 pos;
     unsigned int nchars;
 
-    hwin = vec2_scalar_mul(game_get_window_size(), 0.5);
+    hwin = vec2_scalar_mul(neko::the<Game>().get_window_size(), 0.5);
 
     GLuint sid = text_shader.shader.id;
 
@@ -1208,7 +1208,7 @@ void gui_fini() {
 static void _update_root() {
     vec2 win_size;
 
-    win_size = game_get_window_size();
+    win_size = neko::the<Game>().get_window_size();
 
     edit_set_editable(gui_root, false);
 

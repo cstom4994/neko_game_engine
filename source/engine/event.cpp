@@ -14,7 +14,7 @@ void EventHandler::fini() {
     queue.trash();
 
     for (int i = 0; i < NUM_EVENTS; i++) {
-        delegate_list_t* list = event_getdelegates(this, i);
+        DelegateArray* list = event_getdelegates(this, i);
         if (list == nullptr) continue;
         list->trash();
     }
@@ -23,21 +23,21 @@ void EventHandler::fini() {
 
 void EventHandler::update() {}
 
-void EventHandler::event_register(void* receiver, int evt, evt_callback_t cb, lua_State* L) {
+void EventHandler::event_register(void* receiver, int evt, EventCallback cb, lua_State* L) {
     for (int i = 0; i < NUM_EVENTS; i++) {
         if ((1 << i) & evt) {
 
-            delegate_t l = {};
+            EventDelegate l = {};
 
             l.callback = cb;
             l.receiver = receiver;
             l.L = L;
 
-            delegate_list_t* list = event_getdelegates(this, i);
+            DelegateArray* list = event_getdelegates(this, i);
             if (list != nullptr) {
                 list->push(l);
             } else {
-                delegate_list_t new_list = {};
+                DelegateArray new_list = {};
                 new_list.push(l);
                 delegate_map[i] = new_list;
             }
@@ -47,7 +47,7 @@ void EventHandler::event_register(void* receiver, int evt, evt_callback_t cb, lu
 
 // 立即调用事件监听器
 void EventHandler::event_dispatch(event_t evt) {
-    delegate_list_t* list = event_getdelegates(this, evt.type);
+    DelegateArray* list = event_getdelegates(this, evt.type);
     if (list == nullptr) {
         console_log("event_dispatch: no event cb called %s", event_string(evt.type));
         return;
@@ -94,7 +94,7 @@ static int w_event_listen(lua_State* L) {
         cb = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     auto& eh = neko::the<EventHandler>();
-    eh.event_register(reinterpret_cast<void*>(ref), evt, reinterpret_cast<evt_callback_t>(cb), L);
+    eh.event_register(reinterpret_cast<void*>(ref), evt, reinterpret_cast<EventCallback>(cb), L);
     return 0;
 }
 

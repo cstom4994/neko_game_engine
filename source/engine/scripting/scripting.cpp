@@ -255,8 +255,8 @@ static void _forward_args() {
     int i, argc;
     char **argv;
 
-    argc = game_get_argc();
-    argv = game_get_argv();
+    argc = neko::the<Game>().game_get_argc();
+    argv = neko::the<Game>().game_get_argv();
 
     lua_createtable(L, argc, 0);
     for (i = 0; i < argc; ++i) {
@@ -351,7 +351,7 @@ void script_init() {
     lua_channels_setup();
 
     auto &eh = neko::the<EventHandler>();
-    eh.event_register(g_app, quit, (evt_callback_t)app_stop, NULL);
+    eh.event_register(g_app, quit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
 

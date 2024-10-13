@@ -146,7 +146,7 @@ function haha()
 
         print("haha __define_default_callbacks")
 
-        luainspector = neko.core.inspector_init()
+        -- luainspector = neko.core.inspector_init()
 
         local test_ase
 

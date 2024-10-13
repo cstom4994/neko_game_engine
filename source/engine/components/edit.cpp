@@ -147,7 +147,7 @@ static void _bboxes_draw_all() {
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
-    win = game_get_window_size();
+    win = neko::the<Game>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 0);
 
@@ -227,7 +227,7 @@ static void _grid_draw() {
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
-    win = game_get_window_size();
+    win = neko::the<Game>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 1);
 

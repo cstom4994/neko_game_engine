@@ -68,24 +68,24 @@ enum event_mask {
 
 struct lua_State;
 
-using event_variant_t = struct {
+using EventVariant = struct {
     int t;
     std::variant<std::monostate, u64, f64, void*> v;
 };
 
 typedef struct {
     event_enum type;
-    event_variant_t p0;
-    event_variant_t p1;
+    EventVariant p0;
+    EventVariant p1;
 } event_t;
 
-typedef int (*evt_callback_t)(void*, event_t);
+typedef int (*EventCallback)(void*, event_t);
 
-typedef struct delegate_t {
+typedef struct EventDelegate {
     union {
         struct {
             void* receiver;
-            evt_callback_t callback;
+            EventCallback callback;
         };
         struct {
             int lua_ref;
@@ -93,14 +93,14 @@ typedef struct delegate_t {
         };
     };
     lua_State* L;
-} delegate_t;
+} EventDelegate;
 
 class EventHandler : public neko::SingletonClass<EventHandler> {
-    using delegate_list_t = Array<delegate_t>;
+    using DelegateArray = Array<EventDelegate>;
 
 private:
     Queue<event_t> queue;
-    HashMap<delegate_list_t> delegate_map;
+    HashMap<DelegateArray> delegate_map;
     u64 prev_len;
 
 public:
@@ -108,7 +108,7 @@ public:
     void fini() override;
     void update() override;
 
-    void event_register(void* receiver, int evt, evt_callback_t cb, lua_State* L);
+    void event_register(void* receiver, int evt, EventCallback cb, lua_State* L);
     int event_post(event_t evt);
     void event_dispatch(event_t evt);
     void event_pump();

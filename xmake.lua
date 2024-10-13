@@ -18,13 +18,13 @@ set_languages("c17", "c++20")
 add_rules("mode.debug", "mode.release")
 
 add_includedirs("source")
+add_includedirs("source/vendor")
 
 local NEKO_AUDIO = "fmod" -- "none" / "miniaudio" or "fmod"
 local lib_fmod_dir = "C:/Program Files (x86)/FMOD SoundSystem/FMOD Studio API Windows"
 
 local NEKO_CFFI = true
 
-add_requires("glew")
 add_requires("glfw")
 add_requires("box2d v2.4.2")
 
@@ -113,6 +113,7 @@ do
     add_files("source/vendor/http.c")
     add_files("source/vendor/miniz.c")
     add_files("source/vendor/ui.cpp")
+    add_files("source/vendor/glad/glad.c")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/editor/**.hpp", "source/engine2/**.h",
         "source/vendor/**.h")
@@ -128,7 +129,7 @@ do
         add_packages("openrestry-luajit")
     end
 
-    add_packages("glfw", "glew", "imgui", "box2d")
+    add_packages("glfw", "imgui", "box2d")
 
     add_defines("NEKO_BOX2D=1")
 

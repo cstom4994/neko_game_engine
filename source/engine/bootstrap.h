@@ -5,6 +5,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
+#include "engine/base/singleton.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -72,6 +73,7 @@ struct App {
 
     lua_State *L;
     EcsWorld *ECS;
+    lua_State *LiteLua;
 
     batch_renderer *batch;
 
@@ -117,9 +119,6 @@ struct App {
     Array<Sound *> garbage_sounds;
 #endif
 
-    int argc;
-    char **argv;
-
     GLFWwindow *game_window;
 };
 
@@ -142,30 +141,45 @@ int scratch_update(App *app, event_t evt);
 // 入口点
 void game_run(int argc, char **argv);
 
-// 获取 argc argv 传递给 game_run(...)
-int game_get_argc();
-char **game_get_argv();
+class Game : public neko::SingletonClass<Game> {
+    int argc;
+    char **argv;
+
+public:
+    Game(int argc, char **argv);
+
+public:
+    void init() override;
+    void fini() override;
+    void update() override;
+
+    // 获取 argc argv 传递给 game_run(...)
+    int game_get_argc() const;
+    char **game_get_argv() const;
+
+    void game_set_bg_color(Color c);
+
+    // 屏幕空间坐标系:
+    // unit: (0, 0) 中间, (1, 1) 右上
+    // pixels: (0, 0) 左上方, game_get_window_size() 右下角
+    void set_window_size(vec2 s);  // width, height in pixels
+
+    vec2 get_window_size();
+
+    int set_window_title(const char *title);
+
+    vec2 unit_to_pixels(vec2 p);
+
+    vec2 pixels_to_unit(vec2 p);
+
+    void quit();
+};
 
 NEKO_SCRIPT(game,
 
-            NEKO_EXPORT void game_set_bg_color(Color c);
-
-            // 屏幕空间坐标系:
-            // unit: (0, 0) 中间, (1, 1) 右上
-            // pixels: (0, 0) 左上方, game_get_window_size() 右下角
-            NEKO_EXPORT void game_set_window_size(vec2 s);  // width, height in pixels
-
-            NEKO_EXPORT vec2 game_get_window_size();
-
-            NEKO_EXPORT int game_set_window_title(const char *title);
-
-            NEKO_EXPORT vec2 game_unit_to_pixels(vec2 p);
-
-            NEKO_EXPORT vec2 game_pixels_to_unit(vec2 p);
-
-            NEKO_EXPORT void game_quit();
-
             NEKO_EXPORT const char *window_clipboard();
+
+            NEKO_EXPORT int window_prompt(const char *msg, const char *title);
 
             NEKO_EXPORT void window_setclipboard(const char *text);
 
