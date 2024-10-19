@@ -4,20 +4,18 @@
 
 static bool enabled;
 
-// editability data
-static NativeEntityPool *pool_uneditable; /* Entites are in this pool
-                                       iff. not editable */
+DECL_ENT(uneditable, int what;);
 
 void edit_set_enabled(bool e) { enabled = e; }
 bool edit_get_enabled() { return enabled; }
 
 void edit_set_editable(NativeEntity ent, bool editable) {
     if (editable)
-        entitypool_remove(pool_uneditable, ent);
+        uneditable::pool->Remove(ent);
     else
-        entitypool_add(pool_uneditable, ent);
+        uneditable::pool->Remove(ent);
 }
-bool edit_get_editable(NativeEntity ent) { return !entitypool_get(pool_uneditable, ent); }
+bool edit_get_editable(NativeEntity ent) { return !uneditable::pool->Get(ent); }
 
 // --- bboxes --------------------------------------------------------------
 
@@ -25,40 +23,38 @@ bool edit_get_editable(NativeEntity ent) { return !entitypool_get(pool_uneditabl
 DECL_ENT(BBoxPoolElem, mat3 wmat; BBox bbox; Scalar selected;  // > 0.5 if and only if selected
 );
 
-static NativeEntityPool *pool_bbox;
-
 void edit_bboxes_update(NativeEntity ent, BBox bbox) {
     BBoxPoolElem *elem;
 
     // editable?
     if (!edit_get_editable(ent)) return;
 
-    elem = (BBoxPoolElem *)entitypool_get(pool_bbox, ent);
+    elem = BBoxPoolElem::pool->Get(ent);
 
     // merge if already exists, else set
     if (elem)
         elem->bbox = bbox_merge(elem->bbox, bbox);
     else {
-        elem = (BBoxPoolElem *)entitypool_add(pool_bbox, ent);
+        elem = (BBoxPoolElem *)BBoxPoolElem::pool->Add(ent);
         elem->bbox = bbox;
     }
 }
 
-bool edit_bboxes_has(NativeEntity ent) { return entitypool_get(pool_bbox, ent) != NULL; }
+bool edit_bboxes_has(NativeEntity ent) { return BBoxPoolElem::pool->Get(ent) != NULL; }
 BBox edit_bboxes_get(NativeEntity ent) {
-    BBoxPoolElem *elem = (BBoxPoolElem *)entitypool_get(pool_bbox, ent);
+    BBoxPoolElem *elem = (BBoxPoolElem *)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     return elem->bbox;
 }
 
-unsigned int edit_bboxes_get_num() { return entitypool_size(pool_bbox); }
+unsigned int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
 
 NativeEntity edit_bboxes_get_nth_ent(unsigned int n) {
     BBoxPoolElem *elem;
     // struct EntityBBoxPair bbpair {};
 
-    error_assert(n < entitypool_size(pool_bbox));
-    elem = (BBoxPoolElem *)entitypool_nth(pool_bbox, n);
+    error_assert(n < entitypool_size(BBoxPoolElem::pool));
+    elem = (BBoxPoolElem *)entitypool_nth(BBoxPoolElem::pool, n);
 
     // bbpair.ent = elem->pool_elem.ent;
     // bbpair.bbox = elem->bbox;
@@ -69,8 +65,8 @@ BBox edit_bboxes_get_nth_bbox(unsigned int n) {
     BBoxPoolElem *elem;
     // struct EntityBBoxPair bbpair {};
 
-    error_assert(n < entitypool_size(pool_bbox));
-    elem = (BBoxPoolElem *)entitypool_nth(pool_bbox, n);
+    error_assert(n < entitypool_size(BBoxPoolElem::pool));
+    elem = (BBoxPoolElem *)entitypool_nth(BBoxPoolElem::pool, n);
 
     // bbpair.ent = elem->pool_elem.ent;
     // bbpair.bbox = elem->bbox;
@@ -78,7 +74,7 @@ BBox edit_bboxes_get_nth_bbox(unsigned int n) {
 }
 
 void edit_bboxes_set_selected(NativeEntity ent, bool selected) {
-    BBoxPoolElem *elem = (BBoxPoolElem *)entitypool_get(pool_bbox, ent);
+    BBoxPoolElem *elem = (BBoxPoolElem *)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     elem->selected = selected;
 }
@@ -88,7 +84,7 @@ static GLuint bboxes_vao;
 static GLuint bboxes_vbo;
 
 static void _bboxes_init() {
-    pool_bbox = entitypool_new(BBoxPoolElem);
+    BBoxPoolElem::pool = entitypool_new<BBoxPoolElem>();
 
     // 创建着色器程序 加载图集 绑定参数
     bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
@@ -116,7 +112,7 @@ static void _bboxes_fini() {
     glDeleteBuffers(1, &bboxes_vbo);
     glDeleteVertexArrays(1, &bboxes_vao);
 
-    entitypool_free(pool_bbox);
+    entitypool_free(BBoxPoolElem::pool);
 }
 
 static void _bboxes_update_all() {
@@ -126,7 +122,7 @@ static void _bboxes_update_all() {
 
     if (!enabled) return;
 
-    entitypool_foreach(elem, pool_bbox) {
+    entitypool_foreach(elem, BBoxPoolElem::pool) {
         ent = elem->pool_elem.ent;
         if (!transform_has(ent)) continue;
 
@@ -153,8 +149,8 @@ static void _bboxes_draw_all() {
 
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    nbboxes = entitypool_size(pool_bbox);
-    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(BBoxPoolElem), entitypool_begin(pool_bbox), GL_STREAM_DRAW);
+    nbboxes = entitypool_size(BBoxPoolElem::pool);
+    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(BBoxPoolElem), entitypool_begin(BBoxPoolElem::pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nbboxes);
 }
 
@@ -312,7 +308,7 @@ static void _line_draw_all() {
 // -------------------------------------------------------------------------
 
 int edit_clear(App *app, event_t evt) {
-    entitypool_clear(pool_bbox);
+    entitypool_clear(BBoxPoolElem::pool);
     line_points.resize(0);
     return 0;
 }
@@ -320,7 +316,7 @@ int edit_clear(App *app, event_t evt) {
 void edit_init() {
     PROFILE_FUNC();
 
-    pool_uneditable = entitypool_new(EntityPoolElem);
+    uneditable::pool = entitypool_new<uneditable>();
 
     _bboxes_init();
     _grid_init();
@@ -332,13 +328,13 @@ void edit_fini() {
     _grid_fini();
     _bboxes_fini();
 
-    entitypool_free(pool_uneditable);
+    entitypool_free(uneditable::pool);
 }
 
-static void _uneditable_remove(NativeEntity ent) { entitypool_remove(pool_uneditable, ent); }
+static void _uneditable_remove(NativeEntity ent) { uneditable::pool->Remove(ent); }
 
 int edit_update_all(App *app, event_t evt) {
-    entitypool_remove_destroyed(pool_uneditable, _uneditable_remove);
+    entitypool_remove_destroyed(uneditable::pool, _uneditable_remove);
 
     _bboxes_update_all();
 
@@ -354,20 +350,20 @@ void edit_draw_all() {
 }
 
 void edit_save_all(Store *s) {
-    Store *t, *elem_s;
-    EntityPoolElem *elem;
+    // Store *t, *elem_s;
+    // EntityPoolElem *elem;
 
-    if (store_child_save(&t, "edit", s)) {
-        vec2_save(&grid_size, "grid_size", t);
-        entitypool_save_foreach(elem, elem_s, pool_uneditable, "uneditable_pool", t);
-    }
+    // if (store_child_save(&t, "edit", s)) {
+    //     vec2_save(&grid_size, "grid_size", t);
+    //     entitypool_save_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
+    // }
 }
 void edit_load_all(Store *s) {
-    Store *t, *elem_s;
-    EntityPoolElem *elem;
+    // Store *t, *elem_s;
+    // EntityPoolElem *elem;
 
-    if (store_child_load(&t, "edit", s)) {
-        vec2_load(&grid_size, "grid_size", grid_size, t);
-        entitypool_load_foreach(elem, elem_s, pool_uneditable, "uneditable_pool", t);
-    }
+    // if (store_child_load(&t, "edit", s)) {
+    //     vec2_load(&grid_size, "grid_size", grid_size, t);
+    //     entitypool_load_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
+    // }
 }

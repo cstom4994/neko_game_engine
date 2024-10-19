@@ -11,8 +11,6 @@ DECL_ENT(Sprite, mat3 wmat;  // 要发送到着色器的世界变换矩阵
 
          int depth;);
 
-static NativeEntityPool *pool_sprite;
-
 static char *atlas = NULL;
 
 static Asset sprite_shader = {};
@@ -47,58 +45,58 @@ const char *sprite_get_atlas() { return atlas; }
 void sprite_add(NativeEntity ent) {
     Sprite *sprite;
 
-    if (entitypool_get(pool_sprite, ent)) return;
+    if (Sprite::pool->Get(ent)) return;
 
     transform_add(ent);
 
-    sprite = (Sprite *)entitypool_add(pool_sprite, ent);
+    sprite = Sprite::pool->Add(ent);
     sprite->size = luavec2(1.0f, 1.0f);
     sprite->texcell = luavec2(32.0f, 32.0f);
     sprite->texsize = luavec2(32.0f, 32.0f);
     sprite->depth = 0;
 }
-void sprite_remove(NativeEntity ent) { entitypool_remove(pool_sprite, ent); }
-bool sprite_has(NativeEntity ent) { return entitypool_get(pool_sprite, ent) != NULL; }
+void sprite_remove(NativeEntity ent) { Sprite::pool->Remove(ent); }
+bool sprite_has(NativeEntity ent) { return Sprite::pool->Get(ent) != NULL; }
 
 void sprite_set_size(NativeEntity ent, vec2 size) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->size = size;
 }
 vec2 sprite_get_size(NativeEntity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->size;
 }
 
 void sprite_set_texcell(NativeEntity ent, vec2 texcell) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
 vec2 sprite_get_texcell(NativeEntity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->texcell;
 }
 void sprite_set_texsize(NativeEntity ent, vec2 texsize) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
 vec2 sprite_get_texsize(NativeEntity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->texsize;
 }
 
 void sprite_set_depth(NativeEntity ent, int depth) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->depth = depth;
 }
 int sprite_get_depth(NativeEntity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
+    Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->depth;
 }
@@ -106,7 +104,7 @@ int sprite_get_depth(NativeEntity ent) {
 void sprite_init() {
     PROFILE_FUNC();
 
-    pool_sprite = entitypool_new(Sprite);
+    Sprite::pool = entitypool_new<Sprite>();
 
     bool ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &sprite_shader);
     error_assert(ok);
@@ -134,21 +132,21 @@ void sprite_fini() {
     glDeleteBuffers(1, &sprite_vbo);
     glDeleteVertexArrays(1, &sprite_vao);
 
-    entitypool_free(pool_sprite);
+    entitypool_free(Sprite::pool);
 
     mem_free(atlas);
 }
 
 int sprite_update_all(App *app, event_t evt) {
-    Sprite *sprite;
+
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
-    entitypool_remove_destroyed(pool_sprite, sprite_remove);
+    entitypool_remove_destroyed(Sprite::pool, sprite_remove);
 
-    entitypool_foreach(sprite, pool_sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); }
+    entitypool_ForEach(Sprite::pool, [](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
 
     if (edit_get_enabled()) {
-        entitypool_foreach(sprite, pool_sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); }
+        entitypool_ForEach(Sprite::pool, [](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
     }
 
     return 0;
@@ -164,7 +162,7 @@ static int _depth_compare(const void *a, const void *b) {
 void sprite_draw_all() {
     unsigned int nsprites;
 
-    entitypool_sort(pool_sprite, _depth_compare);
+    entitypool_sort(Sprite::pool, _depth_compare);
 
     GLuint sid = sprite_shader.shader.id;
 
@@ -176,43 +174,43 @@ void sprite_draw_all() {
 
     glBindVertexArray(sprite_vao);
     glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
-    nsprites = entitypool_size(pool_sprite);
-    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(Sprite), entitypool_begin(pool_sprite), GL_STREAM_DRAW);
+    nsprites = entitypool_size(Sprite::pool);
+    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(Sprite), entitypool_begin(Sprite::pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nsprites);
 }
 
 void sprite_save_all(Store *s) {
-    Store *t, *sprite_s;
-    Sprite *sprite;
+    // Store *t, *sprite_s;
+    // Sprite *sprite;
 
-    if (store_child_save(&t, "sprite", s)) {
-        string_save((const char **)&atlas, "atlas", t);
+    // if (store_child_save(&t, "sprite", s)) {
+    //     string_save((const char **)&atlas, "atlas", t);
 
-        entitypool_save_foreach(sprite, sprite_s, pool_sprite, "pool", t) {
-            vec2_save(&sprite->size, "size", sprite_s);
-            vec2_save(&sprite->texcell, "texcell", sprite_s);
-            vec2_save(&sprite->texsize, "texsize", sprite_s);
-            int_save(&sprite->depth, "depth", sprite_s);
-        }
-    }
+    //     entitypool_save_foreach(sprite, sprite_s, Sprite::pool, "pool", t) {
+    //         vec2_save(&sprite->size, "size", sprite_s);
+    //         vec2_save(&sprite->texcell, "texcell", sprite_s);
+    //         vec2_save(&sprite->texsize, "texsize", sprite_s);
+    //         int_save(&sprite->depth, "depth", sprite_s);
+    //     }
+    // }
 }
 void sprite_load_all(Store *s) {
-    Store *t, *sprite_s;
-    Sprite *sprite;
-    char *tatlas;
+    // Store *t, *sprite_s;
+    // Sprite *sprite;
+    // char *tatlas;
 
-    if (store_child_load(&t, "sprite", s)) {
+    // if (store_child_load(&t, "sprite", s)) {
 
-        if (string_load(&tatlas, "atlas", NULL, t)) {
-            _set_atlas(tatlas, false);
-            mem_free(tatlas);
-        }
+    //     if (string_load(&tatlas, "atlas", NULL, t)) {
+    //         _set_atlas(tatlas, false);
+    //         mem_free(tatlas);
+    //     }
 
-        entitypool_load_foreach(sprite, sprite_s, pool_sprite, "pool", t) {
-            vec2_load(&sprite->size, "size", luavec2(1, 1), sprite_s);
-            vec2_load(&sprite->texcell, "texcell", luavec2(32, 32), sprite_s);
-            vec2_load(&sprite->texsize, "texsize", luavec2(32, 32), sprite_s);
-            int_load(&sprite->depth, "depth", 0, sprite_s);
-        }
-    }
+    //     entitypool_load_foreach(sprite, sprite_s, Sprite::pool, "pool", t) {
+    //         vec2_load(&sprite->size, "size", luavec2(1, 1), sprite_s);
+    //         vec2_load(&sprite->texcell, "texcell", luavec2(32, 32), sprite_s);
+    //         vec2_load(&sprite->texsize, "texsize", luavec2(32, 32), sprite_s);
+    //         int_load(&sprite->depth, "depth", 0, sprite_s);
+    //     }
+    // }
 }

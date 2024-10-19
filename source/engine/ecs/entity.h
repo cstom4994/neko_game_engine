@@ -89,8 +89,49 @@ NEKO_API() void entitymap_free(NativeEntityMap* emap);
 NEKO_API() void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val);
 NEKO_API() int entitymap_get(NativeEntityMap* emap, NativeEntity ent);
 
+template <typename T>
+struct EntityBase;
+
 // 在内存中连续 可能会被重新定位/打乱 所以要小心
-typedef struct NativeEntityPool NativeEntityPool;
+template <typename T>
+struct NativeEntityPool {
+    NativeEntityMap* emap;  // 只是数组索引的映射 如果不存在则为 -1
+    Array<T> array;
+
+    T* Add(NativeEntity ent) {
+        T* elem = nullptr;
+
+        if ((elem = this->Get(ent)) != nullptr) return elem;
+
+        // 将元素添加到pool->array并在pool->emap中设置id
+        u64 i = this->array.push(T{});
+        elem = dynamic_cast<T*>(&this->array[i]);
+        elem->pool_elem.ent = ent;
+        entitymap_set(this->emap, ent, this->array.len - 1);
+        return elem;
+    }
+
+    void Remove(NativeEntity ent) {
+        int i = entitymap_get(this->emap, ent);
+        if (i >= 0) {
+            // 删除可能会与最后一个元素交换 在这里修复映射
+            this->array.quick_remove(i);
+            {
+                EntityBase<T>* elem = dynamic_cast<EntityBase<T>*>(&this->array[i]);
+                entitymap_set(this->emap, elem->pool_elem.ent, i);
+            }
+            // 删除映射
+            entitymap_set(this->emap, ent, -1);
+        }
+    }
+
+    // 如果未映射则为 NULL
+    T* Get(NativeEntity ent) {
+        int i = entitymap_get(this->emap, ent);
+        if (i >= 0) return &this->array[i];
+        return NULL;
+    }
+};
 
 // 该结构必须位于池元素的顶部
 // struct Data
@@ -99,101 +140,150 @@ typedef struct NativeEntityPool NativeEntityPool;
 //  ...
 // }
 // 其中的值是EntityPool管理的元数据
-typedef struct EntityPoolElem {
-    NativeEntity ent;  // 该元素的键
-} EntityPoolElem;
 
-#define DECL_ENT(T, ...)          \
-    typedef struct T {            \
-        EntityPoolElem pool_elem; \
-        __VA_ARGS__               \
-    } T
+template <typename T>
+struct EntityBase {
+    struct EntityPoolElem {
+        NativeEntity ent;
+    } pool_elem;
+    static NativeEntityPool<T>* pool;
+};
+
+#define DECL_ENT(T, ...)                      \
+    struct T;                                 \
+    template <>                               \
+    NativeEntityPool<T>* EntityBase<T>::pool; \
+    struct T : EntityBase<T> {                \
+        __VA_ARGS__                           \
+    };
 
 // object_size 是每个元素的大小
-NEKO_API() NativeEntityPool* entitypool_new_(size_t object_size);
-#define entitypool_new(type) entitypool_new_(sizeof(type))
-NEKO_API() void entitypool_free(NativeEntityPool* pool);
+template <typename T>
+NativeEntityPool<T>* entitypool_new_(size_t object_size) {
+    NativeEntityPool<T>* pool = (NativeEntityPool<T>*)mem_alloc(sizeof(NativeEntityPool<T>));
+    memset(&pool->array, 0, sizeof(Array<T>));
 
-NEKO_API() void* entitypool_add(NativeEntityPool* pool, NativeEntity ent);
-NEKO_API() void entitypool_remove(NativeEntityPool* pool, NativeEntity ent);
-NEKO_API() void* entitypool_get(NativeEntityPool* pool, NativeEntity ent);  // 如果未映射则为 NULL
+    pool->emap = entitymap_new(-1);
+    pool->array.reserve(2);
+
+    return pool;
+}
+
+template <typename T>
+auto entitypool_new() -> NativeEntityPool<T>* {
+    return entitypool_new_<T>(sizeof(T));
+}
+
+template <typename T>
+void entitypool_free(NativeEntityPool<T>* pool) {
+    pool->array.trash();
+    entitymap_free(pool->emap);
+    mem_free(pool);
+}
 
 // 由于元素是连续的 因此可以使用指针进行迭代:
 //     for (ptr = entitypool_begin(pool), end = entitypool_end(pool);
 //             ptr != end; ++ptr)
 //         ... use ptr ...
 // 如果在迭代期间添加/删除指针将无效
-NEKO_API() void* entitypool_begin(NativeEntityPool* pool);
-NEKO_API() void* entitypool_end(NativeEntityPool* pool);              // one-past-end
-NEKO_API() void* entitypool_nth(NativeEntityPool* pool, ecs_id_t n);  // 0-indexed
+template <typename T>
+T* entitypool_begin(NativeEntityPool<T>* pool) {
+    return pool->array.begin();
+}
+template <typename T>
+T* entitypool_end(NativeEntityPool<T>* pool) {
+    return pool->array.end();
+}  // one-past-end
 
-NEKO_API() ecs_id_t entitypool_size(NativeEntityPool* pool);
+// 0 索引
+template <typename T>
+T* entitypool_nth(NativeEntityPool<T>* pool, ecs_id_t n) {
+    return &pool->array[n];
+}
 
-NEKO_API() void entitypool_clear(NativeEntityPool* pool);
+template <typename T>
+ecs_id_t entitypool_size(NativeEntityPool<T>* pool) {
+    return pool->array.len;
+}
 
-NEKO_API() void entitypool_sort(NativeEntityPool* pool, int (*compar)(const void*, const void*));
+template <typename T>
+void entitypool_clear(NativeEntityPool<T>* pool) {
+    entitymap_clear(pool->emap);
+    // array_clear(pool->array);
+    pool->array.len = 0;
+}
+
+template <typename T>
+void entitypool_sort(NativeEntityPool<T>* pool, int (*compar)(const void*, const void*)) {
+    ecs_id_t i, n;
+    EntityBase<T>* elem;
+
+    pool->array.sort(compar);  // 对内部数组排序
+
+    // 重新映射 NativeEntity -> index
+    n = pool->array.len;
+    for (i = 0; i < n; ++i) {
+        elem = dynamic_cast<EntityBase<T>*>(&pool->array.data[i]);
+        entitymap_set(pool->emap, elem->pool_elem.ent, i);
+    }
+}
 
 // elem must be /pointer to/ pointer to element
-NEKO_API() void entitypool_elem_save(NativeEntityPool* pool, void* elem, Store* s);
-NEKO_API() void entitypool_elem_load(NativeEntityPool* pool, void* elem, Store* s);
+template <typename T>
+void entitypool_elem_save(NativeEntityPool<T>* pool, void* elem, Store* s) {
+    // EntityPoolElem** p;
 
-/*
- * call 'func' on each destroyed NativeEntity, generally done in
- * *_update_all() -- check transform.c, sprite.c, etc. for examples
- */
-#define entitypool_remove_destroyed(pool, func)               \
-    do {                                                      \
-        ecs_id_t __i;                                         \
-        EntityPoolElem* __e;                                  \
-        for (__i = 0; __i < entitypool_size(pool);) {         \
-            __e = (EntityPoolElem*)entitypool_nth(pool, __i); \
-            if (entity_destroyed(__e->ent))                   \
-                func(__e->ent);                               \
-            else                                              \
-                ++__i;                                        \
-        }                                                     \
-    } while (0)
+    // // save NativeEntity id
+    // p = (EntityPoolElem**)elem;
+    // entity_save(&(*p)->ent, "pool_elem", s);
+}
+template <typename T>
+void entitypool_elem_load(NativeEntityPool<T>* pool, void* elem, Store* s) {
+    // NativeEntity ent;
+    // EntityPoolElem** p;
 
-/*
- * can be used as:
- *
- *     entitypool_foreach(var, pool)
- *         ... use var ...
- *
- * here var must name a variable of type 'pointer to element' declared
- * before -- do not use this if adding/removing from pool while
- * iterating
- *
- * elements are visited in order of increasing index
- */
+    // // load NativeEntity id, add element with that key
+    // error_assert(entity_load(&ent, "pool_elem", entity_nil, s), "saved EntityPoolElem entry must exist");
+    // p = (EntityPoolElem**)elem;
+    // *p = (EntityPoolElem*)entitypool_add(pool, ent);
+    // (*p)->ent = ent;
+}
+
+template <typename T, class F>
+auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
+    do {
+        ecs_id_t i;
+        EntityBase<T>* e;
+        for (i = 0; i < entitypool_size(pool);) {
+            e = dynamic_cast<EntityBase<T>*>(entitypool_nth(pool, i));
+            if (entity_destroyed(e->pool_elem.ent))
+                func(e->pool_elem.ent);
+            else
+                ++i;
+        }
+    } while (0);
+}
+
 #define entitypool_foreach(var, pool) for (void* __end = (var = (decltype(var))entitypool_begin(pool), entitypool_end(pool)); var != __end; ++var)
 
-/*
- * save/load each element of an NativeEntityPool -- var is the variable used
- * to iterate over the pool, var_s is the Store pointer to use for the
- * Stores created/loaded per element, pool is the NativeEntityPool, n is the
- * name to save/load the entire pool under, and finally s is the
- * parent pool to save under
- *
- * respects entity save filtering
- *
- * see transform, sprite etc. for example usage
- */
-#define entitypool_save_foreach(var, var_s, pool, n, s)                                 \
-    for (Store* pool##_s__ = NULL; !pool##_s__ && store_child_save(&pool##_s__, n, s);) \
-    entitypool_foreach(var, pool) if (entity_get_save_filter(((EntityPoolElem*)var)->ent)) if (store_child_save(&var_s, NULL, pool##_s__)) if ((entitypool_elem_save(pool, &var, var_s)), 1)
-#define entitypool_load_foreach(var, var_s, pool, n, s)                                 \
-    for (Store* pool##_s__ = NULL; !pool##_s__ && store_child_load(&pool##_s__, n, s);) \
-        while (store_child_load(&var_s, NULL, pool##_s__))                              \
-            if ((entitypool_elem_load(pool, &var, var_s)), 1)
+template <typename T, class F>
+auto entitypool_ForEach(NativeEntityPool<T>* pool, F func) {
+    T* var;
+    for (T* __end = (var = entitypool_begin(pool), entitypool_end(pool)); var != __end; ++var) {
+        func(var);
+    }
+}
 
-#endif
+// #define entitypool_save_foreach(var, var_s, pool, n, s)                                 \
+//     for (Store* pool##_s__ = NULL; !pool##_s__ && store_child_save(&pool##_s__, n, s);) \
+//     entitypool_foreach(var, pool) if (entity_get_save_filter(((EntityPoolElem*)var)->ent)) if (store_child_save(&var_s, NULL, pool##_s__)) if ((entitypool_elem_save(pool, &var, var_s)), 1)
+// #define entitypool_load_foreach(var, var_s, pool, n, s)                                 \
+//     for (Store* pool##_s__ = NULL; !pool##_s__ && store_child_load(&pool##_s__, n, s);) \
+//         while (store_child_load(&var_s, NULL, pool##_s__))                              \
+//             if ((entitypool_elem_load(pool, &var, var_s)), 1)
 
-#ifndef SYSTEM_H
-#define SYSTEM_H
-
-#include "engine/base.hpp"
-#include "engine/ecs/entity.h"
+#define entitypool_save_foreach(var, var_s, pool, n, s) if (0)
+#define entitypool_load_foreach(var, var_s, pool, n, s) if (0)
 
 NEKO_SCRIPT(system,
 

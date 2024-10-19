@@ -13,28 +13,26 @@ static NativeEntity edit_camera;
 
 static mat3 inverse_view_matrix;  // 缓存逆视图矩阵
 
-static NativeEntityPool *pool_camera;
-
 // -------------------------------------------------------------------------
 
 void camera_add(NativeEntity ent) {
     Camera *camera;
 
-    if (entitypool_get(pool_camera, ent)) return;
+    if (Camera::pool->Get(ent)) return;
 
     transform_add(ent);
 
-    camera = (Camera *)entitypool_add(pool_camera, ent);
+    camera = Camera::pool->Add(ent);
     camera->viewport_height = 1.0;
 
     if (native_entity_eq(curr_camera, entity_nil)) curr_camera = ent;
 }
 void camera_remove(NativeEntity ent) {
-    entitypool_remove(pool_camera, ent);
+    Camera::pool->Remove(ent);
 
     if (native_entity_eq(curr_camera, ent)) curr_camera = entity_nil;
 }
-bool camera_has(NativeEntity ent) { return entitypool_get(pool_camera, ent) != NULL; }
+bool camera_has(NativeEntity ent) { return Camera::pool->Get(ent) != NULL; }
 
 void camera_set_edit_camera(NativeEntity ent) { edit_camera = ent; }
 
@@ -52,12 +50,12 @@ NativeEntity camera_get_current_camera() {
 }
 
 void camera_set_viewport_height(NativeEntity ent, Scalar height) {
-    Camera *camera = (Camera *)entitypool_get(pool_camera, ent);
+    Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
 Scalar camera_get_viewport_height(NativeEntity ent) {
-    Camera *camera = (Camera *)entitypool_get(pool_camera, ent);
+    Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     return camera->viewport_height;
 }
@@ -83,13 +81,13 @@ vec2 camera_unit_to_world(vec2 p) {
 void camera_init() {
     PROFILE_FUNC();
 
-    pool_camera = entitypool_new(Camera);
+    Camera::pool = entitypool_new<Camera>();
     curr_camera = entity_nil;
     edit_camera = entity_nil;
     inverse_view_matrix = mat3_identity();
 }
 
-void camera_fini() { entitypool_free(pool_camera); }
+void camera_fini() { entitypool_free(Camera::pool); }
 
 int camera_update_all(App *app, event_t evt) {
     vec2 win_size;
@@ -99,12 +97,12 @@ int camera_update_all(App *app, event_t evt) {
     vec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 
-    entitypool_remove_destroyed(pool_camera, camera_remove);
+    entitypool_remove_destroyed(Camera::pool, camera_remove);
 
     win_size = neko::the<Game>().get_window_size();
     aspect = win_size.x / win_size.y;
 
-    entitypool_foreach(camera, pool_camera) {
+    entitypool_foreach(camera, Camera::pool) {
         scale = luavec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
         transform_set_scale(camera->pool_elem.ent, scale);
 
@@ -121,26 +119,26 @@ int camera_update_all(App *app, event_t evt) {
 }
 
 void camera_save_all(Store *s) {
-    Store *t, *camera_s;
-    Camera *camera;
+    // Store *t, *camera_s;
+    // Camera *camera;
 
-    if (store_child_save(&t, "camera", s)) {
-        if (entity_get_save_filter(curr_camera)) entity_save(&curr_camera, "curr_camera", t);
+    // if (store_child_save(&t, "camera", s)) {
+    //     if (entity_get_save_filter(curr_camera)) entity_save(&curr_camera, "curr_camera", t);
 
-        mat3_save(&inverse_view_matrix, "inverse_view_matrix", t);
+    //     mat3_save(&inverse_view_matrix, "inverse_view_matrix", t);
 
-        entitypool_save_foreach(camera, camera_s, pool_camera, "pool", t) scalar_save(&camera->viewport_height, "viewport_height", camera_s);
-    }
+    //     entitypool_save_foreach(camera, camera_s, Camera::pool, "pool", t) scalar_save(&camera->viewport_height, "viewport_height", camera_s);
+    // }
 }
 void camera_load_all(Store *s) {
-    Store *t, *camera_s;
-    Camera *camera;
+    // Store *t, *camera_s;
+    // Camera *camera;
 
-    if (store_child_load(&t, "camera", s)) {
-        entity_load(&curr_camera, "curr_camera", curr_camera, t);
+    // if (store_child_load(&t, "camera", s)) {
+    //     entity_load(&curr_camera, "curr_camera", curr_camera, t);
 
-        mat3_load(&inverse_view_matrix, "inverse_view_matrix", mat3_identity(), t);
+    //     mat3_load(&inverse_view_matrix, "inverse_view_matrix", mat3_identity(), t);
 
-        entitypool_load_foreach(camera, camera_s, pool_camera, "pool", t) scalar_load(&camera->viewport_height, "viewport_height", 1, camera_s);
-    }
+    //     entitypool_load_foreach(camera, camera_s, Camera::pool, "pool", t) scalar_load(&camera->viewport_height, "viewport_height", 1, camera_s);
+    // }
 }

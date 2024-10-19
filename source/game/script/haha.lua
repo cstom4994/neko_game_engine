@@ -44,6 +44,8 @@ function haha()
         }
     }
 
+    LocalGame.level_1 = level_1
+
     local game_tick = 0
 
     draw_fixtures = true
@@ -201,9 +203,15 @@ function haha()
             game_tick = game_tick + 1
 
             if game_tick % 400 == 1 then
-                random_spawn_npc()
+                -- random_spawn_npc()
                 print("生成怪物")
             end
+
+            if game_tick % 40 == 1 then
+                ns["tiled"].map_fix(LocalGame.level_1, 0, 10, 10, choose({134, 135}))
+
+            end
+
         end
         neko.game_loop = function(dt)
             LocalGame.b2:step(dt)

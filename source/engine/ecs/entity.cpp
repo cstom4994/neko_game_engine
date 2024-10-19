@@ -34,9 +34,9 @@ typedef enum SaveFilter {
 NativeEntity entity_nil = {0};
 static ecs_id_t counter = 1;
 
-typedef struct ExistsPoolElem {
-    EntityPoolElem pool_elem;
-} ExistsPoolElem;
+// typedef struct ExistsPoolElem {
+//     EntityPoolElem pool_elem;
+// } ExistsPoolElem;
 
 NativeEntity entity_create() {
     NativeEntity ent;
@@ -199,104 +199,6 @@ void entity_load_all(Store* s) {
     //             uint_load(&entry->pass, "pass", 0, entry_s);
     //         }
     // }
-}
-
-struct NativeEntityPool {
-    // just a map of indices into an array, -1 if doesn't exist
-    NativeEntityMap* emap;
-    CArray* array;
-};
-
-NativeEntityPool* entitypool_new_(size_t object_size) {
-    NativeEntityPool* pool = (NativeEntityPool*)mem_alloc(sizeof(NativeEntityPool));
-
-    pool->emap = entitymap_new(-1);
-    pool->array = array_new_(object_size);
-
-    return pool;
-}
-void entitypool_free(NativeEntityPool* pool) {
-    array_free(pool->array);
-    entitymap_free(pool->emap);
-    mem_free(pool);
-}
-
-void* entitypool_add(NativeEntityPool* pool, NativeEntity ent) {
-    EntityPoolElem* elem;
-
-    if ((elem = (EntityPoolElem*)entitypool_get(pool, ent))) return elem;
-
-    // 将元素添加到pool->array并在pool->emap中设置id
-    elem = (EntityPoolElem*)array_add(pool->array);
-    elem->ent = ent;
-    entitymap_set(pool->emap, ent, array_length(pool->array) - 1);
-    return elem;
-}
-void entitypool_remove(NativeEntityPool* pool, NativeEntity ent) {
-    int i;
-    EntityPoolElem* elem;
-
-    i = entitymap_get(pool->emap, ent);
-    if (i >= 0) {
-        // remove may swap with last element, so fix that mapping
-        if (array_quick_remove(pool->array, i)) {
-            elem = (EntityPoolElem*)array_get(pool->array, i);
-            entitymap_set(pool->emap, elem->ent, i);
-        }
-
-        // remove mapping
-        entitymap_set(pool->emap, ent, -1);
-    }
-}
-void* entitypool_get(NativeEntityPool* pool, NativeEntity ent) {
-    int i;
-
-    i = entitymap_get(pool->emap, ent);
-    if (i >= 0) return array_get(pool->array, i);
-    return NULL;
-}
-
-void* entitypool_begin(NativeEntityPool* pool) { return array_begin(pool->array); }
-void* entitypool_end(NativeEntityPool* pool) { return array_end(pool->array); }
-void* entitypool_nth(NativeEntityPool* pool, ecs_id_t n) { return array_get(pool->array, n); }
-
-ecs_id_t entitypool_size(NativeEntityPool* pool) { return array_length(pool->array); }
-
-void entitypool_clear(NativeEntityPool* pool) {
-    entitymap_clear(pool->emap);
-    array_clear(pool->array);
-}
-
-void entitypool_sort(NativeEntityPool* pool, int (*compar)(const void*, const void*)) {
-    ecs_id_t i, n;
-    EntityPoolElem* elem;
-
-    array_sort(pool->array, compar);
-
-    // remap NativeEntity -> index
-    n = array_length(pool->array);
-    for (i = 0; i < n; ++i) {
-        elem = (EntityPoolElem*)array_get(pool->array, i);
-        entitymap_set(pool->emap, elem->ent, i);
-    }
-}
-
-void entitypool_elem_save(NativeEntityPool* pool, void* elem, Store* s) {
-    EntityPoolElem** p;
-
-    // save NativeEntity id
-    p = (EntityPoolElem**)elem;
-    entity_save(&(*p)->ent, "pool_elem", s);
-}
-void entitypool_elem_load(NativeEntityPool* pool, void* elem, Store* s) {
-    NativeEntity ent;
-    EntityPoolElem** p;
-
-    // load NativeEntity id, add element with that key
-    error_assert(entity_load(&ent, "pool_elem", entity_nil, s), "saved EntityPoolElem entry must exist");
-    p = (EntityPoolElem**)elem;
-    *p = (EntityPoolElem*)entitypool_add(pool, ent);
-    (*p)->ent = ent;
 }
 
 #define MIN_CAPACITY 2

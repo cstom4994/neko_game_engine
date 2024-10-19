@@ -955,12 +955,12 @@ int timing_update(App *app, event_t evt) {
 }
 
 void timing_save_all(Store *s) {
-    Store *t;
+    // Store *t;
 
-    if (store_child_save(&t, "timing", s)) scalar_save(&g_app->scale, "scale", t);
+    // if (store_child_save(&t, "timing", s)) scalar_save(&g_app->scale, "scale", t);
 }
 void timing_load_all(Store *s) {
-    Store *t;
+    // Store *t;
 
-    if (store_child_load(&t, "timing", s)) scalar_load(&g_app->scale, "scale", 1, t);
+    // if (store_child_load(&t, "timing", s)) scalar_load(&g_app->scale, "scale", 1, t);
 }

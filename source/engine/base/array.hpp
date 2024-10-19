@@ -14,7 +14,11 @@ struct Array {
         return data[i];
     }
 
-    void trash() { mem_free(data); }
+    void trash() {
+        mem_free(data);
+        len = 0;
+        capacity = 0;
+    }
 
     void reserve(u64 cap) {
         if (cap > capacity) {
@@ -39,6 +43,23 @@ struct Array {
         }
         data[len] = item;
         return len++;
+    }
+
+    T *get_ptr(u64 i) { return &data[i]; }
+
+    // 快速删除函数
+    void quick_remove(u64 i) {
+        assert(valid(i));             // 保证索引合法
+        if (i < len - 1) {            // 如果不是最后一个元素
+            data[i] = data[len - 1];  // 用最后一个元素覆盖要删除的元素
+        }
+        len--;  // 减少长度
+    }
+
+    void sort(int (*compar)(const void *, const void *)) {
+        if (len > 1) {
+            qsort(data, len, sizeof(T), compar);
+        }
     }
 
     T *begin() { return data; }

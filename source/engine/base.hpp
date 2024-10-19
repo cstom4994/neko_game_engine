@@ -393,37 +393,6 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-#if 1
-
-// 在内存中存储连续的对象
-// 对象可能会在内存中移动 因此不要依赖指向 CArray 中对象的指针
-typedef struct CArray CArray;
-
-CArray *array_new_(size_t object_size);  // object_size 是每个元素的大小
-void array_free(CArray *arr);
-void *array_get(CArray *arr, unsigned int i);
-void *array_top(CArray *arr);
-unsigned int array_length(CArray *arr);  // 数组中的对象数
-
-// 添加/删除可能会更改开始/结束 因此在迭代时要小心
-void *array_begin(CArray *arr);                                           // 指向第一个元素的指针
-void *array_end(CArray *arr);                                             // 指向one past last元素的指针
-void *array_add(CArray *arr);                                             // 添加新对象, index is length - 1
-void array_reset(CArray *arr, unsigned int num);                          // 将数据未定义的对象调整为 num 对象
-void array_pop(CArray *arr);                                              // 删除具有最高索引的对象
-bool array_quick_remove(CArray *arr, unsigned int i);                     // 快速删除, 可以将其他一些元素交换成 arr[i] 如果是这样 则返回 true
-void array_sort(CArray *arr, int (*compar)(const void *, const void *));  // compare 是一个比较器函数
-
-#define array_clear(arr) array_reset(arr, 0)  //
-#define array_add_val(type, arr) (*((type *)array_add(arr)))
-#define array_top_val(type, arr) (*((type *)array_top(arr)))
-#define array_get_val(type, arr, i) (*((type *)array_get(arr, i)))
-#define array_new(type) array_new_(sizeof(type))
-
-#define array_foreach(var, arr) for (void *__end = (var = (decltype(var))array_begin(arr), array_end(arr)); var != __end; ++var)
-
-#endif
-
 #include "engine/base/math.hpp"
 
 NEKO_SCRIPT(saveload,

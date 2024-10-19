@@ -24,8 +24,6 @@ DECL_ENT(Gui, bool setvisible;  // 外部设置可见性
          BBox bbox;  // 在实体空间中
          GuiAlign halign; GuiAlign valign; vec2 padding;);
 
-static NativeEntityPool *pool_gui;
-
 static NativeEntityMap *focus_enter_map;
 static NativeEntityMap *focus_exit_map;
 static NativeEntityMap *changed_map;
@@ -39,11 +37,11 @@ NativeEntity gui_get_root() { return gui_root; }
 void gui_add(NativeEntity ent) {
     Gui *gui;
 
-    if (entitypool_get(pool_gui, ent)) return;  // 已经有gui
+    if (Gui::pool->Get(ent)) return;  // 已经有gui
 
     transform_add(ent);
 
-    gui = (Gui *)entitypool_add(pool_gui, ent);
+    gui = Gui::pool->Add(ent);
     gui->visible = true;
     gui->setvisible = true;
     gui->focusable = false;
@@ -55,81 +53,81 @@ void gui_add(NativeEntity ent) {
     gui->padding = luavec2(5, 5);
 }
 
-void gui_remove(NativeEntity ent) { entitypool_remove(pool_gui, ent); }
+void gui_remove(NativeEntity ent) { Gui::pool->Remove(ent); }
 
-bool gui_has(NativeEntity ent) { return entitypool_get(pool_gui, ent) != NULL; }
+bool gui_has(NativeEntity ent) { return Gui::pool->Get(ent) != NULL; }
 
 void gui_set_color(NativeEntity ent, Color color) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->color = color;
 }
 Color gui_get_color(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->color;
 }
 
 void gui_set_visible(NativeEntity ent, bool visible) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->setvisible = visible;
 }
 bool gui_get_visible(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->visible;
 }
 
 void gui_set_focusable(NativeEntity ent, bool focusable) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->focusable = focusable;
 }
 bool gui_get_focusable(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->focusable;
 }
 
 void gui_set_captures_events(NativeEntity ent, bool captures_events) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->captures_events = captures_events;
 }
 bool gui_get_captures_events(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->captures_events;
 }
 
 void gui_set_halign(NativeEntity ent, GuiAlign align) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->halign = align;
 }
 GuiAlign gui_get_halign(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->halign;
 }
 void gui_set_valign(NativeEntity ent, GuiAlign align) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->valign = align;
 }
 GuiAlign gui_get_valign(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->valign;
 }
 void gui_set_padding(NativeEntity ent, vec2 padding) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     gui->padding = padding;
 }
 vec2 gui_get_padding(NativeEntity ent) {
-    Gui *gui = (Gui *)entitypool_get(pool_gui, ent);
+    Gui *gui = (Gui *)Gui::pool->Get(ent);
     error_assert(gui);
     return gui->padding;
 }
@@ -164,7 +162,7 @@ KeyCode gui_event_key_up(NativeEntity ent) { return (KeyCode)entitymap_get(key_u
 bool gui_captured_event() { return captured_event; }
 
 static void _common_init() {
-    pool_gui = entitypool_new(Gui);
+    Gui::pool = entitypool_new<Gui>();
     focus_enter_map = entitymap_new(false);
     focus_exit_map = entitymap_new(false);
     changed_map = entitymap_new(false);
@@ -181,12 +179,12 @@ static void _common_fini() {
     entitymap_free(changed_map);
     entitymap_free(focus_enter_map);
     entitymap_free(focus_exit_map);
-    entitypool_free(pool_gui);
+    entitypool_free(Gui::pool);
 }
 
 static void _common_update_destroyed() {
     if (entity_destroyed(focused)) focused = entity_nil;
-    entitypool_remove_destroyed(pool_gui, gui_remove);
+    entitypool_remove_destroyed(Gui::pool, gui_remove);
 }
 
 static void _common_update_visible_rec(Gui *gui) {
@@ -202,7 +200,7 @@ static void _common_update_visible_rec(Gui *gui) {
     }
 
     // if has parent, inherit
-    pgui = (Gui *)entitypool_get(pool_gui, transform_get_parent(gui->pool_elem.ent));
+    pgui = (Gui *)Gui::pool->Get(transform_get_parent(gui->pool_elem.ent));
     if (pgui) {
         _common_update_visible_rec(pgui);
         gui->visible = pgui->visible;
@@ -217,8 +215,8 @@ static void _common_update_visible_rec(Gui *gui) {
 static void _common_update_visible() {
     Gui *gui;
 
-    entitypool_foreach(gui, pool_gui) gui->updated_visible = false;
-    entitypool_foreach(gui, pool_gui) _common_update_visible_rec(gui);
+    entitypool_foreach(gui, Gui::pool) gui->updated_visible = false;
+    entitypool_foreach(gui, Gui::pool) _common_update_visible_rec(gui);
 }
 
 static void _common_align(Gui *gui, GuiAlign halign, GuiAlign valign) {
@@ -237,7 +235,7 @@ static void _common_align(Gui *gui, GuiAlign halign, GuiAlign valign) {
     pos = transform_get_position(ent);
 
     // get parent gui and its bounding box
-    pgui = (Gui *)entitypool_get(pool_gui, transform_get_parent(ent));
+    pgui = (Gui *)Gui::pool->Get(transform_get_parent(ent));
     if (!pgui) return;
     pb = pgui->bbox;
 
@@ -267,12 +265,12 @@ static void _common_align(Gui *gui, GuiAlign halign, GuiAlign valign) {
 // move everything to top-left -- for fit calculations
 static void _common_reset_align() {
     Gui *gui;
-    entitypool_foreach(gui, pool_gui) _common_align(gui, gui->halign == GA_NONE ? GA_NONE : GA_MIN, gui->valign == GA_NONE ? GA_NONE : GA_MAX);
+    entitypool_foreach(gui, Gui::pool) _common_align(gui, gui->halign == GA_NONE ? GA_NONE : GA_MIN, gui->valign == GA_NONE ? GA_NONE : GA_MAX);
 }
 
 static void _common_update_align() {
     Gui *gui;
-    entitypool_foreach(gui, pool_gui) _common_align(gui, gui->halign, gui->valign);
+    entitypool_foreach(gui, Gui::pool) _common_align(gui, gui->halign, gui->valign);
 }
 
 // attach root GUI entities to gui_root
@@ -280,7 +278,7 @@ static void _common_attach_root() {
     Gui *gui;
     NativeEntity ent;
 
-    entitypool_foreach(gui, pool_gui) {
+    entitypool_foreach(gui, Gui::pool) {
         ent = gui->pool_elem.ent;
         if (!native_entity_eq(ent, gui_root) && native_entity_eq(transform_get_parent(ent), entity_nil)) transform_set_parent(ent, gui_root);
     }
@@ -292,7 +290,7 @@ static void _common_update_all() {
     _common_attach_root();
 
     // update edit bboxes
-    if (edit_get_enabled()) entitypool_foreach(gui, pool_gui) edit_bboxes_update(gui->pool_elem.ent, gui->bbox);
+    if (edit_get_enabled()) entitypool_foreach(gui, Gui::pool) edit_bboxes_update(gui->pool_elem.ent, gui->bbox);
 }
 
 // 'focus_clear' is whether to clear focus if click outside
@@ -304,7 +302,7 @@ static void _common_mouse_event(NativeEntityMap *emap, MouseCode mouse, bool foc
     bool some_focused = false;
 
     m = camera_unit_to_world(input_get_mouse_pos_unit());
-    entitypool_foreach(gui, pool_gui) if (gui->visible && !(edit_get_enabled() && edit_get_editable(gui->pool_elem.ent))) {
+    entitypool_foreach(gui, Gui::pool) if (gui->visible && !(edit_get_enabled() && edit_get_editable(gui->pool_elem.ent))) {
         ent = gui->pool_elem.ent;
 
         t = mat3_inverse(transform_get_world_matrix(ent));
@@ -355,127 +353,116 @@ static void _common_event_clear() {
 }
 
 static void _common_save_all(Store *s) {
-    Store *t, *gui_s;
-    Gui *gui;
+    // Store *t, *gui_s;
+    // Gui *gui;
 
-    if (store_child_save(&t, "gui", s)) entitypool_save_foreach(gui, gui_s, pool_gui, "pool", t) {
-            color_save(&gui->color, "color", gui_s);
-            bool_save(&gui->visible, "visible", gui_s);
-            bool_save(&gui->setvisible, "setvisible", gui_s);
-            bool_save(&gui->focusable, "focusable", gui_s);
-            bool_save(&gui->captures_events, "captures_events", gui_s);
-            enum_save(&gui->halign, "halign", gui_s);
-            enum_save(&gui->valign, "valign", gui_s);
-            vec2_save(&gui->padding, "padding", gui_s);
-        }
+    // if (store_child_save(&t, "gui", s)) entitypool_save_foreach(gui, gui_s, Gui::pool, "pool", t) {
+    //         color_save(&gui->color, "color", gui_s);
+    //         bool_save(&gui->visible, "visible", gui_s);
+    //         bool_save(&gui->setvisible, "setvisible", gui_s);
+    //         bool_save(&gui->focusable, "focusable", gui_s);
+    //         bool_save(&gui->captures_events, "captures_events", gui_s);
+    //         enum_save(&gui->halign, "halign", gui_s);
+    //         enum_save(&gui->valign, "valign", gui_s);
+    //         vec2_save(&gui->padding, "padding", gui_s);
+    //     }
 }
 static void _common_load_all(Store *s) {
-    Store *t, *gui_s;
-    Gui *gui;
+    // Store *t, *gui_s;
+    // Gui *gui;
 
-    if (store_child_load(&t, "gui", s)) entitypool_load_foreach(gui, gui_s, pool_gui, "pool", t) {
-            color_load(&gui->color, "color", color_gray, gui_s);
-            bool_load(&gui->visible, "visible", true, gui_s);
-            bool_load(&gui->setvisible, "setvisible", true, gui_s);
-            bool_load(&gui->focusable, "focusable", false, gui_s);
-            bool_load(&gui->captures_events, "captures_events", true, gui_s);
-            enum_load(&gui->halign, "halign", GA_NONE, gui_s);
-            enum_load(&gui->valign, "valign", GA_NONE, gui_s);
-            vec2_load(&gui->padding, "padding", luavec2(5, 5), gui_s);
-        }
+    // if (store_child_load(&t, "gui", s)) entitypool_load_foreach(gui, gui_s, Gui::pool, "pool", t) {
+    //         color_load(&gui->color, "color", color_gray, gui_s);
+    //         bool_load(&gui->visible, "visible", true, gui_s);
+    //         bool_load(&gui->setvisible, "setvisible", true, gui_s);
+    //         bool_load(&gui->focusable, "focusable", false, gui_s);
+    //         bool_load(&gui->captures_events, "captures_events", true, gui_s);
+    //         enum_load(&gui->halign, "halign", GA_NONE, gui_s);
+    //         enum_load(&gui->valign, "valign", GA_NONE, gui_s);
+    //         vec2_load(&gui->padding, "padding", luavec2(5, 5), gui_s);
+    //     }
 
-    _common_attach_root();
+    // _common_attach_root();
 }
 
 // --- rect ----------------------------------------------------------------
 
-typedef struct GuiRect GuiRect;
-struct GuiRect {
-    EntityPoolElem pool_elem;
+DECL_ENT(GuiRect,
+         mat3 wmat;
 
-    mat3 wmat;
+         vec2 size; bool visible; Color color;
 
-    vec2 size;
-    bool visible;
-    Color color;
+         bool hfit; bool vfit; bool hfill; bool vfill;
 
-    bool hfit;
-    bool vfit;
-    bool hfill;
-    bool vfill;
-
-    bool updated;
-    int depth;  // for draw order -- child depth > parent depth
-};
-
-static NativeEntityPool *rect_pool;
+         bool updated; int depth;  // for draw order -- child depth > parent depth
+);
 
 void gui_rect_add(NativeEntity ent) {
     GuiRect *rect;
 
-    if (entitypool_get(rect_pool, ent)) return;
+    if (GuiRect::pool->Get(ent)) return;
 
     gui_add(ent);
 
-    rect = (GuiRect *)entitypool_add(rect_pool, ent);
+    rect = GuiRect::pool->Add(ent);
     rect->size = luavec2(64, 64);
     rect->hfit = true;
     rect->vfit = true;
     rect->hfill = false;
     rect->vfill = false;
 }
-void gui_rect_remove(NativeEntity ent) { entitypool_remove(rect_pool, ent); }
-bool gui_rect_has(NativeEntity ent) { return entitypool_get(rect_pool, ent) != NULL; }
+void gui_rect_remove(NativeEntity ent) { GuiRect::pool->Remove(ent); }
+bool gui_rect_has(NativeEntity ent) { return GuiRect::pool->Get(ent) != NULL; }
 
 void gui_rect_set_size(NativeEntity ent, vec2 size) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     rect->size = size;
 }
 vec2 gui_rect_get_size(NativeEntity ent) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     return rect->size;
 }
 
 void gui_rect_set_hfit(NativeEntity ent, bool fit) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     rect->hfit = fit;
 }
 bool gui_rect_get_hfit(NativeEntity ent) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     return rect->hfit;
 }
 void gui_rect_set_vfit(NativeEntity ent, bool fit) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     rect->vfit = fit;
 }
 bool gui_rect_get_vfit(NativeEntity ent) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     return rect->vfit;
 }
 
 void gui_rect_set_hfill(NativeEntity ent, bool fill) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     rect->hfill = fill;
 }
 bool gui_rect_get_hfill(NativeEntity ent) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     return rect->hfill;
 }
 void gui_rect_set_vfill(NativeEntity ent, bool fill) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     rect->vfill = fill;
 }
 bool gui_rect_get_vfill(NativeEntity ent) {
-    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)GuiRect::pool->Get(ent);
     error_assert(rect);
     return rect->vfill;
 }
@@ -486,7 +473,7 @@ static GLuint rect_vbo;
 
 static void _rect_init() {
     // init pool
-    rect_pool = entitypool_new(GuiRect);
+    GuiRect::pool = entitypool_new<GuiRect>();
 
     // create shader program, load texture, bind parameters
     bool ok = asset_load_kind(AssetKind_Shader, "shader/rect.glsl", &rect_shader);
@@ -514,7 +501,7 @@ static void _rect_fini() {
     glDeleteVertexArrays(1, &rect_vao);
 
     // fini pool
-    entitypool_free(rect_pool);
+    entitypool_free(GuiRect::pool);
 }
 
 static void _rect_update_child_first(NativeEntity ent);
@@ -533,7 +520,7 @@ static void _rect_update_table_align(GuiRect *rect) {
     children = transform_get_children(rect_ent);
     nchildren = transform_get_num_children(rect_ent);
     for (i = 0; i < nchildren; ++i) {
-        child = (Gui *)entitypool_get(pool_gui, children[i]);
+        child = (Gui *)Gui::pool->Get(children[i]);
         if (!(child && child->visible && (child->halign == GA_TABLE || child->valign == GA_TABLE))) continue;
         _rect_update_child_first(children[i]);
 
@@ -570,7 +557,7 @@ static void _rect_update_fit(GuiRect *rect) {
     children = transform_get_children(rect_ent);
     nchildren = transform_get_num_children(rect_ent);
     for (i = 0; i < nchildren; ++i) {
-        child = (Gui *)entitypool_get(pool_gui, children[i]);
+        child = (Gui *)Gui::pool->Get(children[i]);
         if (!child || !child->visible) continue;
         _rect_update_child_first(children[i]);
 
@@ -587,10 +574,10 @@ static void _rect_update_child_first(NativeEntity ent) {
     GuiRect *rect;
     Gui *gui;
 
-    gui = (Gui *)entitypool_get(pool_gui, ent);
+    gui = (Gui *)Gui::pool->Get(ent);
     if (!gui) return;
 
-    rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    rect = (GuiRect *)GuiRect::pool->Get(ent);
     if (!rect || rect->updated) return;
     _rect_update_table_align(rect);
     _rect_update_fit(rect);
@@ -607,13 +594,13 @@ static void _rect_update_fill(GuiRect *rect) {
     NativeEntity parent;
 
     ent = rect->pool_elem.ent;
-    gui = (Gui *)entitypool_get(pool_gui, ent);
+    gui = (Gui *)Gui::pool->Get(ent);
     if (!gui) return;
 
     if (!rect || !rect->visible || rect->updated || !(rect->hfill || rect->vfill)) return;
 
     parent = transform_get_parent(ent);
-    pgui = (Gui *)entitypool_get(pool_gui, parent);
+    pgui = (Gui *)Gui::pool->Get(parent);
     if (!pgui) return;  // no parent to fill to
 
     _rect_update_parent_first(parent);
@@ -626,7 +613,7 @@ static void _rect_update_fill(GuiRect *rect) {
 static void _rect_update_depth(GuiRect *rect) {
     GuiRect *prect;
 
-    prect = (GuiRect *)entitypool_get(rect_pool, transform_get_parent(rect->pool_elem.ent));
+    prect = (GuiRect *)GuiRect::pool->Get(transform_get_parent(rect->pool_elem.ent));
     if (prect) {
         _rect_update_parent_first(prect->pool_elem.ent);
         rect->depth = prect->depth + 1;
@@ -638,10 +625,10 @@ static void _rect_update_parent_first(NativeEntity ent) {
     GuiRect *rect;
     Gui *gui;
 
-    gui = (Gui *)entitypool_get(pool_gui, ent);
+    gui = (Gui *)Gui::pool->Get(ent);
     if (!gui) return;
 
-    rect = (GuiRect *)entitypool_get(rect_pool, ent);
+    rect = (GuiRect *)GuiRect::pool->Get(ent);
     if (!rect || rect->updated) return;
     _rect_update_fill(rect);
     _rect_update_depth(rect);
@@ -653,16 +640,16 @@ static void _rect_update_all() {
     GuiRect *rect;
     Gui *gui;
 
-    entitypool_remove_destroyed(rect_pool, gui_rect_remove);
+    entitypool_remove_destroyed(GuiRect::pool, gui_rect_remove);
 
-    entitypool_foreach(rect, rect_pool) rect->updated = false;
-    entitypool_foreach(rect, rect_pool) _rect_update_child_first(rect->pool_elem.ent);
+    entitypool_foreach(rect, GuiRect::pool) rect->updated = false;
+    entitypool_foreach(rect, GuiRect::pool) _rect_update_child_first(rect->pool_elem.ent);
 
-    entitypool_foreach(rect, rect_pool) rect->updated = false;
-    entitypool_foreach(rect, rect_pool) _rect_update_parent_first(rect->pool_elem.ent);
+    entitypool_foreach(rect, GuiRect::pool) rect->updated = false;
+    entitypool_foreach(rect, GuiRect::pool) _rect_update_parent_first(rect->pool_elem.ent);
 
-    entitypool_foreach(rect, rect_pool) {
-        gui = (Gui *)entitypool_get(pool_gui, rect->pool_elem.ent);
+    entitypool_foreach(rect, GuiRect::pool) {
+        gui = (Gui *)Gui::pool->Get(rect->pool_elem.ent);
         error_assert(gui);
 
         // write gui bbox
@@ -676,7 +663,7 @@ static void _rect_update_all() {
 
 static void _rect_update_wmat() {
     GuiRect *rect;
-    entitypool_foreach(rect, rect_pool) rect->wmat = transform_get_world_matrix(rect->pool_elem.ent);
+    entitypool_foreach(rect, GuiRect::pool) rect->wmat = transform_get_world_matrix(rect->pool_elem.ent);
 }
 
 static int _rect_depth_compare(const void *a, const void *b) {
@@ -689,7 +676,7 @@ static void _rect_draw_all() {
     unsigned int nrects;
 
     // depth sort
-    entitypool_sort(rect_pool, _rect_depth_compare);
+    entitypool_sort(GuiRect::pool, _rect_depth_compare);
 
     GLuint sid = rect_shader.shader.id;
 
@@ -700,36 +687,36 @@ static void _rect_draw_all() {
     // draw!
     glBindVertexArray(rect_vao);
     glBindBuffer(GL_ARRAY_BUFFER, rect_vbo);
-    nrects = entitypool_size(rect_pool);
-    glBufferData(GL_ARRAY_BUFFER, nrects * sizeof(GuiRect), entitypool_begin(rect_pool), GL_STREAM_DRAW);
+    nrects = entitypool_size(GuiRect::pool);
+    glBufferData(GL_ARRAY_BUFFER, nrects * sizeof(GuiRect), entitypool_begin(GuiRect::pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nrects);
 }
 
 static void _rect_save_all(Store *s) {
-    Store *t, *rect_s;
-    GuiRect *rect;
+    // Store *t, *rect_s;
+    // GuiRect *rect;
 
-    if (store_child_save(&t, "gui_rect", s)) entitypool_save_foreach(rect, rect_s, rect_pool, "pool", t) {
-            vec2_save(&rect->size, "size", rect_s);
-            color_save(&rect->color, "color", rect_s);
-            bool_save(&rect->hfit, "hfit", rect_s);
-            bool_save(&rect->vfit, "vfit", rect_s);
-            bool_save(&rect->hfill, "hfill", rect_s);
-            bool_save(&rect->vfill, "vfill", rect_s);
-        }
+    // if (store_child_save(&t, "gui_rect", s)) entitypool_save_foreach(rect, rect_s, GuiRect::pool, "pool", t) {
+    //         vec2_save(&rect->size, "size", rect_s);
+    //         color_save(&rect->color, "color", rect_s);
+    //         bool_save(&rect->hfit, "hfit", rect_s);
+    //         bool_save(&rect->vfit, "vfit", rect_s);
+    //         bool_save(&rect->hfill, "hfill", rect_s);
+    //         bool_save(&rect->vfill, "vfill", rect_s);
+    //     }
 }
 static void _rect_load_all(Store *s) {
-    Store *t, *rect_s;
-    GuiRect *rect;
+    // Store *t, *rect_s;
+    // GuiRect *rect;
 
-    if (store_child_load(&t, "gui_rect", s)) entitypool_load_foreach(rect, rect_s, rect_pool, "pool", t) {
-            vec2_load(&rect->size, "size", luavec2(64, 64), rect_s);
-            color_load(&rect->color, "color", color_gray, rect_s);
-            bool_load(&rect->hfit, "hfit", true, rect_s);
-            bool_load(&rect->vfit, "vfit", true, rect_s);
-            bool_load(&rect->hfill, "hfill", false, rect_s);
-            bool_load(&rect->vfill, "vfill", false, rect_s);
-        }
+    // if (store_child_load(&t, "gui_rect", s)) entitypool_load_foreach(rect, rect_s, GuiRect::pool, "pool", t) {
+    //         vec2_load(&rect->size, "size", luavec2(64, 64), rect_s);
+    //         color_load(&rect->color, "color", color_gray, rect_s);
+    //         bool_load(&rect->hfit, "hfit", true, rect_s);
+    //         bool_load(&rect->vfit, "vfit", true, rect_s);
+    //         bool_load(&rect->hfill, "hfill", false, rect_s);
+    //         bool_load(&rect->vfill, "vfill", false, rect_s);
+    //     }
 }
 
 // --- text ----------------------------------------------------------------
@@ -749,26 +736,20 @@ struct TextChar {
 };
 
 // info per text entity
-typedef struct Text Text;
-struct Text {
-    EntityPoolElem pool_elem;
+DECL_ENT(Text,
 
-    char *str;
-    CArray *chars;  // per-character info buffered to shader
-    vec2 bounds;    // max x, min y in size-less units
+         char *str;
+         Array<TextChar> chars;  // per-character info buffered to shader
+         vec2 bounds;            // max x, min y in size-less units
 
-    int cursor;
-};
-
-static NativeEntityPool *text_pool;
+         int cursor;);
 
 static Scalar cursor_blink_time = 0;
 
 static void _text_add_cursor(Text *text, vec2 pos) {
-    TextChar *tc;
-
-    // compute position in font grid
-    tc = (TextChar *)array_add(text->chars);
+    // 计算字体网格中的位置
+    u64 i = text->chars.push({});
+    TextChar *tc = &text->chars[i];
     tc->pos = pos;
     tc->cell = luavec2(' ' % TEXT_GRID_W, TEXT_GRID_H - 1 - (' ' / TEXT_GRID_W));
     tc->is_cursor = 1;
@@ -776,8 +757,10 @@ static void _text_add_cursor(Text *text, vec2 pos) {
 
 // just update with existing string if str is NULL
 static void _text_set_str(Text *text, const char *str) {
+
+    // if (NULL == text->chars) text->chars = array_new(TextChar);
+
     char c;
-    TextChar *tc;
     vec2 pos;
     int i = 0;
 
@@ -792,7 +775,7 @@ static void _text_set_str(Text *text, const char *str) {
     // create TextChar array and update bounds
     pos = luavec2(0, -1);
     text->bounds = luavec2(1, -1);
-    array_clear(text->chars);
+    text->chars.len = 0;
     while (*str) {
         if (i++ == text->cursor) _text_add_cursor(text, pos);
 
@@ -806,7 +789,8 @@ static void _text_set_str(Text *text, const char *str) {
         }
 
         // compute position in font grid
-        tc = (TextChar *)array_add(text->chars);
+        u64 n = text->chars.push({});
+        TextChar *tc = &text->chars[n];
         tc->pos = pos;
         tc->cell = luavec2(c % TEXT_GRID_W, TEXT_GRID_H - 1 - (c / TEXT_GRID_W));
         tc->is_cursor = -1;
@@ -829,39 +813,39 @@ static void _text_set_str(Text *text, const char *str) {
 void gui_text_add(NativeEntity ent) {
     Text *text;
 
-    if (entitypool_get(text_pool, ent)) return;  // already has text
+    if (Text::pool->Get(ent)) return;  // already has text
 
     gui_add(ent);
 
-    text = (Text *)entitypool_add(text_pool, ent);
-    text->chars = array_new(TextChar);
+    text = Text::pool->Add(ent);
+    text->chars = {};
     text->str = NULL;  // _text_set_str(...) calls mem_free(text->str)
     text->cursor = -1;
     _text_set_str(text, "");
 }
 void gui_text_remove(NativeEntity ent) {
-    Text *text = (Text *)entitypool_get(text_pool, ent);
+    Text *text = (Text *)Text::pool->Get(ent);
     if (text) {
         mem_free(text->str);
-        array_free(text->chars);
+        text->chars.trash();
     }
-    entitypool_remove(text_pool, ent);
+    Text::pool->Remove(ent);
 }
-bool gui_text_has(NativeEntity ent) { return entitypool_get(text_pool, ent) != NULL; }
+bool gui_text_has(NativeEntity ent) { return Text::pool->Get(ent) != NULL; }
 
 void gui_text_set_str(NativeEntity ent, const char *str) {
-    Text *text = (Text *)entitypool_get(text_pool, ent);
+    Text *text = (Text *)Text::pool->Get(ent);
     error_assert(text);
     _text_set_str(text, str);
 }
 const char *gui_text_get_str(NativeEntity ent) {
-    Text *text = (Text *)entitypool_get(text_pool, ent);
+    Text *text = (Text *)Text::pool->Get(ent);
     error_assert(text);
     return text->str;
 }
 
 static void _text_set_cursor(NativeEntity ent, int cursor) {
-    Text *text = (Text *)entitypool_get(text_pool, ent);
+    Text *text = (Text *)Text::pool->Get(ent);
     error_assert(text);
     text->cursor = cursor;
     _text_set_str(text, NULL);
@@ -873,7 +857,7 @@ static GLuint text_vbo;
 
 static void _text_init() {
     // init pool
-    text_pool = entitypool_new(Text);
+    Text::pool = entitypool_new<Text>();
 
     // create shader program, load texture, bind parameters
     bool ok = asset_load_kind(AssetKind_Shader, "shader/text.glsl", &text_shader);
@@ -906,11 +890,11 @@ static void _text_fini() {
     glDeleteVertexArrays(1, &text_vao);
 
     // fini pool
-    entitypool_foreach(text, text_pool) {
+    entitypool_foreach(text, Text::pool) {
         mem_free(text->str);
-        array_free(text->chars);
+        text->chars.trash();
     }
-    entitypool_free(text_pool);
+    entitypool_free(Text::pool);
 }
 
 static void _text_update_all() {
@@ -920,14 +904,14 @@ static void _text_update_all() {
 
     cursor_blink_time += 2 * get_timing_instance()->true_dt;
 
-    entitypool_remove_destroyed(text_pool, gui_text_remove);
+    entitypool_remove_destroyed(Text::pool, gui_text_remove);
 
-    entitypool_foreach(text, text_pool) {
+    entitypool_foreach(text, Text::pool) {
         // blink on when focus entered
         if (gui_event_focus_enter(text->pool_elem.ent)) cursor_blink_time = 1;
 
         // gui bbox
-        gui = (Gui *)entitypool_get(pool_gui, text->pool_elem.ent);
+        gui = (Gui *)Gui::pool->Get(text->pool_elem.ent);
         error_assert(gui);
         gui->bbox = bbox_bound(vec2_zero, vec2_mul(size, text->bounds));
     }
@@ -964,8 +948,8 @@ static void _text_draw_all() {
     texture_bind("assets/data/font1.png");
 
     // draw!
-    entitypool_foreach(text, text_pool) {
-        gui = (Gui *)entitypool_get(pool_gui, text->pool_elem.ent);
+    entitypool_foreach(text, Text::pool) {
+        gui = (Gui *)Gui::pool->Get(text->pool_elem.ent);
         error_assert(gui);
         if (!gui->visible) continue;
         glUniform4fv(glGetUniformLocation(sid, "base_color"), 1, (const GLfloat *)&gui->color);
@@ -973,13 +957,13 @@ static void _text_draw_all() {
         wmat = transform_get_world_matrix(text->pool_elem.ent);
         glUniformMatrix3fv(glGetUniformLocation(sid, "wmat"), 1, GL_FALSE, (const GLfloat *)&wmat);
 
-        nchars = array_length(text->chars);
-        glBufferData(GL_ARRAY_BUFFER, nchars * sizeof(TextChar), array_begin(text->chars), GL_STREAM_DRAW);
+        nchars = text->chars.len;
+        glBufferData(GL_ARRAY_BUFFER, nchars * sizeof(TextChar), text->chars.begin(), GL_STREAM_DRAW);
 
         glDrawArrays(GL_POINTS, 0, nchars);
     }
 
-    // entitypool_foreach(text, text_pool) {
+    // entitypool_foreach(text, Text::pool) {
     //     gui = (Gui*)entitypool_get(gui_pool, text->pool_elem.ent);
     //     error_assert(gui);
     //     if (!gui->visible) continue;
@@ -990,60 +974,53 @@ static void _text_draw_all() {
 }
 
 static void _text_save_all(Store *s) {
-    Store *t, *text_s;
-    Text *text;
+    // Store *t, *text_s;
+    // Text *text;
 
-    if (store_child_save(&t, "gui_text", s)) entitypool_save_foreach(text, text_s, text_pool, "pool", t) {
-            string_save((const char **)&text->str, "str", text_s);
-            int_save(&text->cursor, "cursor", text_s);
-        }
+    // if (store_child_save(&t, "gui_text", s)) entitypool_save_foreach(text, text_s, Text::pool, "pool", t) {
+    //         string_save((const char **)&text->str, "str", text_s);
+    //         int_save(&text->cursor, "cursor", text_s);
+    //     }
 }
 static void _text_load_all(Store *s) {
-    Store *t, *text_s;
-    Text *text;
+    // Store *t, *text_s;
+    // Text *text;
 
-    if (store_child_load(&t, "gui_text", s)) entitypool_load_foreach(text, text_s, text_pool, "pool", t) {
-            text->chars = array_new(TextChar);
-            string_load(&text->str, "str", "", text_s);
-            int_load(&text->cursor, "cursor", -1, text_s);
-            _text_set_str(text, NULL);
-        }
+    // if (store_child_load(&t, "gui_text", s)) entitypool_load_foreach(text, text_s, Text::pool, "pool", t) {
+    //         text->chars = array_new(TextChar);
+    //         string_load(&text->str, "str", "", text_s);
+    //         int_load(&text->cursor, "cursor", -1, text_s);
+    //         _text_set_str(text, NULL);
+    //     }
 }
 
 // --- textedit ------------------------------------------------------------
 
-typedef struct TextEdit TextEdit;
-struct TextEdit {
-    EntityPoolElem pool_elem;
-
-    unsigned int cursor;  // 0 at beginning of string
-    bool numerical;
-};
-
-NativeEntityPool *textedit_pool;
+DECL_ENT(TextEdit, unsigned int cursor;  // 0 at beginning of string
+         bool numerical;);
 
 void gui_textedit_add(NativeEntity ent) {
     TextEdit *textedit;
 
-    if (entitypool_get(textedit_pool, ent)) return;
+    if (TextEdit::pool->Get(ent)) return;
 
     gui_text_add(ent);
     gui_set_focusable(ent, true);
 
-    textedit = (TextEdit *)entitypool_add(textedit_pool, ent);
+    textedit = TextEdit::pool->Add(ent);
     textedit->cursor = 0;
     textedit->numerical = false;
 }
-void gui_textedit_remove(NativeEntity ent) { entitypool_remove(textedit_pool, ent); }
-bool gui_textedit_has(NativeEntity ent) { return entitypool_get(textedit_pool, ent) != NULL; }
+void gui_textedit_remove(NativeEntity ent) { TextEdit::pool->Remove(ent); }
+bool gui_textedit_has(NativeEntity ent) { return TextEdit::pool->Get(ent) != NULL; }
 
 void gui_textedit_set_numerical(NativeEntity ent, bool numerical) {
-    TextEdit *textedit = (TextEdit *)entitypool_get(textedit_pool, ent);
+    TextEdit *textedit = (TextEdit *)TextEdit::pool->Get(ent);
     error_assert(textedit);
     textedit->numerical = numerical;
 }
 bool gui_textedit_get_numerical(NativeEntity ent) {
-    TextEdit *textedit = (TextEdit *)entitypool_get(textedit_pool, ent);
+    TextEdit *textedit = (TextEdit *)TextEdit::pool->Get(ent);
     error_assert(textedit);
     return textedit->numerical;
 }
@@ -1055,20 +1032,20 @@ static void _textedit_fix_cursor(TextEdit *textedit) {
 }
 
 void gui_textedit_set_cursor(NativeEntity ent, unsigned int cursor) {
-    TextEdit *textedit = (TextEdit *)entitypool_get(textedit_pool, ent);
-    textedit = (TextEdit *)entitypool_get(textedit_pool, ent);
+    TextEdit *textedit = (TextEdit *)TextEdit::pool->Get(ent);
+    textedit = (TextEdit *)TextEdit::pool->Get(ent);
     error_assert(textedit);
     textedit->cursor = cursor;
     _textedit_fix_cursor(textedit);
 }
 unsigned int gui_textedit_get_cursor(NativeEntity ent) {
-    TextEdit *textedit = (TextEdit *)entitypool_get(textedit_pool, ent);
+    TextEdit *textedit = (TextEdit *)TextEdit::pool->Get(ent);
     error_assert(textedit);
     return textedit->cursor;
 }
 
-static void _textedit_init() { textedit_pool = entitypool_new(TextEdit); }
-static void _textedit_fini() { entitypool_free(textedit_pool); }
+static void _textedit_init() { TextEdit::pool = entitypool_new<TextEdit>(); }
+static void _textedit_fini() { entitypool_free(TextEdit::pool); }
 
 static bool _textedit_set_str(TextEdit *textedit, const char *str) {
     gui_text_set_str(textedit->pool_elem.ent, str);
@@ -1083,7 +1060,7 @@ static void _textedit_key_event(KeyCode key, unsigned int c) {
     const char *old;
     char *new_ptr = NULL;
 
-    textedit = (TextEdit *)entitypool_get(textedit_pool, focused);
+    textedit = (TextEdit *)TextEdit::pool->Get(focused);
     if (!textedit) return;
     ent = textedit->pool_elem.ent;
     _textedit_fix_cursor(textedit);
@@ -1136,9 +1113,9 @@ static void _textedit_update_all() {
     NativeEntity ent;
     TextEdit *textedit;
 
-    entitypool_remove_destroyed(textedit_pool, gui_textedit_remove);
+    entitypool_remove_destroyed(TextEdit::pool, gui_textedit_remove);
 
-    entitypool_foreach(textedit, textedit_pool) {
+    entitypool_foreach(textedit, TextEdit::pool) {
         ent = textedit->pool_elem.ent;
         _textedit_fix_cursor(textedit);
 
@@ -1151,22 +1128,22 @@ static void _textedit_update_all() {
 }
 
 static void _textedit_save_all(Store *s) {
-    Store *t, *textedit_s;
-    TextEdit *textedit;
+    // Store *t, *textedit_s;
+    // TextEdit *textedit;
 
-    if (store_child_save(&t, "gui_textedit", s)) entitypool_save_foreach(textedit, textedit_s, textedit_pool, "pool", t) {
-            uint_save(&textedit->cursor, "cursor", textedit_s);
-            bool_save(&textedit->numerical, "numerical", textedit_s);
-        }
+    // if (store_child_save(&t, "gui_textedit", s)) entitypool_save_foreach(textedit, textedit_s, TextEdit::pool, "pool", t) {
+    //         uint_save(&textedit->cursor, "cursor", textedit_s);
+    //         bool_save(&textedit->numerical, "numerical", textedit_s);
+    // }
 }
 static void _textedit_load_all(Store *s) {
-    Store *t, *textedit_s;
-    TextEdit *textedit;
+    // Store *t, *textedit_s;
+    // TextEdit *textedit;
 
-    if (store_child_load(&t, "gui_textedit", s)) entitypool_load_foreach(textedit, textedit_s, textedit_pool, "pool", t) {
-            uint_load(&textedit->cursor, "cursor", 0, textedit_s);
-            bool_load(&textedit->numerical, "numerical", false, textedit_s);
-        }
+    // if (store_child_load(&t, "gui_textedit", s)) entitypool_load_foreach(textedit, textedit_s, TextEdit::pool, "pool", t) {
+    //         uint_load(&textedit->cursor, "cursor", 0, textedit_s);
+    //         bool_load(&textedit->numerical, "numerical", false, textedit_s);
+    //     }
 }
 
 // -------------------------------------------------------------------------
@@ -1253,14 +1230,14 @@ void gui_mouse_down(MouseCode mouse) { _common_mouse_down(mouse); }
 void gui_mouse_up(MouseCode mouse) { _common_mouse_up(mouse); }
 
 void gui_save_all(Store *s) {
-    _common_save_all(s);
-    _rect_save_all(s);
-    _text_save_all(s);
-    _textedit_save_all(s);
+    // _common_save_all(s);
+    // _rect_save_all(s);
+    // _text_save_all(s);
+    // _textedit_save_all(s);
 }
 void gui_load_all(Store *s) {
-    _common_load_all(s);
-    _rect_load_all(s);
-    _text_load_all(s);
-    _textedit_load_all(s);
+    // _common_load_all(s);
+    // _rect_load_all(s);
+    // _text_load_all(s);
+    // _textedit_load_all(s);
 }

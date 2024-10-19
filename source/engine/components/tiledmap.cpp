@@ -1,17 +1,13 @@
 
 
+#include "tiledmap.hpp"
+
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 
 // deps
 #include <box2d/box2d.h>
-
-DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
-
-static Asset tiled_shader = {};
-
-static NativeEntityPool *pool_tiled;
 
 static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<AssetTexture> *images) {
     PROFILE_FUNC();
@@ -553,6 +549,13 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
+// DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
+
+template <>
+NativeEntityPool<Tiled> *EntityBase<Tiled>::pool;
+
+Asset Tiled::tiled_shader = {};
+
 bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
@@ -608,8 +611,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         u32 cc;
         load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
 
-        gfx_texture_desc_t tileset_tex_decl = {
-                .width = (u32)w, .height = (u32)h, .format = GL_RGBA, .min_filter = GL_NEAREST, .mag_filter = GL_NEAREST, .num_mips = 0};
+        gfx_texture_desc_t tileset_tex_decl = {.width = (u32)w, .height = (u32)h, .format = GL_RGBA, .min_filter = GL_NEAREST, .mag_filter = GL_NEAREST, .num_mips = 0};
 
         tileset_tex_decl.data = tex_data;
 
@@ -789,7 +791,7 @@ void tiled_render_init(tiled_renderer *renderer) {
 
     // hashmap_init(&renderer->quad_table);
 
-    GLuint sid = tiled_shader.shader.id;
+    GLuint sid = Tiled::tiled_shader.shader.id;
 
     PROFILE_FUNC();
 
@@ -843,7 +845,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    GLuint sid = tiled_shader.shader.id;
+    GLuint sid = Tiled::tiled_shader.shader.id;
 
     glUseProgram(sid);
 
@@ -983,6 +985,34 @@ void tiled_render_draw(tiled_renderer *renderer) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+static void tiled_map_fix_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
+
+    Asset asset = {};
+    bool ok = asset_read(tiled->render->map_asset, &asset);
+    error_assert(ok);
+
+    TiledMap map = asset.tiledmap;
+
+    error_assert(layer_idx < map.layers.len);
+    layer_t *layer = &map.layers[layer_idx];
+    error_assert(x < layer->width && y < layer->height);
+
+    tile_t *tile = layer->tiles + (x + y * layer->width);
+
+    tileset_t *tileset = &map.tilesets[tile->tileset_id];
+
+    tile->id = id + tileset->first_gid;
+
+    asset_write(asset);
+}
+
+void tiled_map_fix(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
+    Tiled *tiled = Tiled::pool->Get(ent);
+    error_assert(tiled);
+
+    tiled_map_fix_w(tiled, layer_idx, x, y, id);
+}
+
 int tiled_render(Tiled *tiled) {
 
     PROFILE_FUNC();
@@ -1066,11 +1096,11 @@ int tiled_render(Tiled *tiled) {
 void tiled_add(NativeEntity ent) {
     Tiled *tiled;
 
-    if (entitypool_get(pool_tiled, ent)) return;
+    if (Tiled::pool->Get(ent)) return;
 
     transform_add(ent);
 
-    tiled = (Tiled *)entitypool_add(pool_tiled, ent);
+    tiled = Tiled::pool->Add(ent);
 
     tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
     memset(tiled->render, 0, sizeof(tiled_renderer));
@@ -1078,49 +1108,47 @@ void tiled_add(NativeEntity ent) {
     tiled_render_init(tiled->render);
 }
 
-void tiled_remove(NativeEntity ent) { entitypool_remove(pool_tiled, ent); }
+void tiled_remove(NativeEntity ent) { Tiled::pool->Remove(ent); }
 
-bool tiled_has(NativeEntity ent) { return entitypool_get(pool_tiled, ent) != NULL; }
+bool tiled_has(NativeEntity ent) { return Tiled::pool->Get(ent) != NULL; }
 
 void tiled_init() {
     PROFILE_FUNC();
 
-    pool_tiled = entitypool_new(Tiled);
+    Tiled::pool = entitypool_new<Tiled>();
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &tiled_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &Tiled::tiled_shader);
     error_assert(ok);
 }
 
 void tiled_fini() {
-    Tiled *tiled;
-    entitypool_foreach(tiled, pool_tiled) {
+
+    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) {
         // tiled_unload(&tiled->render->map);
         tiled_render_deinit(tiled->render);
         mem_free(tiled->map_name.data);
         mem_free(tiled->render);
-    }
+    });
 
-    entitypool_free(pool_tiled);
+    entitypool_free(Tiled::pool);
 }
 
 int tiled_update_all(App *app, event_t evt) {
-    Tiled *tiled;
 
-    entitypool_remove_destroyed(pool_tiled, tiled_remove);
+    entitypool_remove_destroyed(Tiled::pool, tiled_remove);
 
-    entitypool_foreach(tiled, pool_tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); }
+    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); });
 
     return 0;
 }
 
 void tiled_draw_all() {
 
-    Tiled *tiled;
-    entitypool_foreach(tiled, pool_tiled) { tiled_render(tiled); }
+    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) { tiled_render(tiled); });
 }
 
 void tiled_set_map(NativeEntity ent, const char *str) {
-    Tiled *tiled = (Tiled *)entitypool_get(pool_tiled, ent);
+    Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
     tiled->map_name = to_cstr(str);
 
@@ -1132,7 +1160,7 @@ void tiled_set_map(NativeEntity ent, const char *str) {
 }
 
 const char *tiled_get_map(NativeEntity ent) {
-    Tiled *tiled = (Tiled *)entitypool_get(pool_tiled, ent);
+    Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
 }
