@@ -447,9 +447,10 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
         b->outline = spr->effects[0];
         b->glow = spr->effects[1];
         b->bloom = spr->effects[2];
+        b->trans = spr->effects[3];
         batch_flush(b);
     } else {
-        b->outline = b->glow = b->bloom = false;
+        b->outline = b->glow = b->bloom = b->trans = false;
     }
 }
 
@@ -537,9 +538,9 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
 
         gfx_texture_desc_t t_desc = {};
 
-        t_desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-        t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+        t_desc.format = GL_RGBA;
+        t_desc.mag_filter = GL_NEAREST;
+        t_desc.min_filter = GL_NEAREST;
         t_desc.num_mips = 0;
         t_desc.width = width;
         t_desc.height = height;
@@ -876,10 +877,10 @@ static int mt_sprite_effect(lua_State *L) {
     int te = lua_type(L, 2);
     if (te == LUA_TSTRING) {
         const char *bits = lua_tostring(L, 2);
-        spr->effects = neko::util::BitSet<3>(bits);
+        spr->effects = neko::util::BitSet<SPRITE_EFFECT_COUNTS>(bits);
     } else if (te == LUA_TNUMBER) {
         int bits = lua_tointeger(L, 2);
-        spr->effects = std::bitset<3>(bits);
+        spr->effects = std::bitset<SPRITE_EFFECT_COUNTS>(bits);
     }
     return 0;
 }
@@ -1053,6 +1054,7 @@ void batch_flush(batch_renderer *renderer) {
     glUniform1i(glGetUniformLocation(sid, "outline_enable"), renderer->outline);
     glUniform1i(glGetUniformLocation(sid, "glow_enable"), renderer->glow);
     glUniform1i(glGetUniformLocation(sid, "bloom_enable"), renderer->bloom);
+    glUniform1i(glGetUniformLocation(sid, "trans_enable"), renderer->trans);
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
     // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);

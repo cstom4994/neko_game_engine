@@ -43,6 +43,8 @@ uniform float bloom_intensity = 0.2;
 
 uniform int bitrate = 8;
 
+uniform int trans_enable = 0;
+
 vec4 channelBitrate(vec4 incol, int bit)
 {
 	float bitdepth = pow(2.0, abs(float(bit)));
@@ -128,6 +130,11 @@ void main() {
         }
 
         f_color = texture(u_texture, v_texindex) - ((sum / 9.0) * bloom_intensity);
+    }
+
+    if(trans_enable == 1)
+    {
+        f_color = vec4(f_color.rgb, f_color.a / 2);
     }
 }
 

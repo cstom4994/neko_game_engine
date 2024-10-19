@@ -244,12 +244,12 @@ function nn:backpropagate_hidden_layers(L, ln_rate)
     for i = 1, #self.nodes[L + 1] do
         self.gamma[L + 1][i] = 0
 
-        -- self.gamma forward 
+        -- self.gamma forward
         for j = 1, #self.gamma[L + 2] do
             self.gamma[L + 1][i] = self.gamma[L + 1][i] + (self.gamma[L + 2][j] * self.synapses[L + 1][j][i])
         end
 
-        -- As nodes contain their values post-sigmoid, we have to 
+        -- As nodes contain their values post-sigmoid, we have to
         -- invert the sigmoid function before deriving it
         self.gamma[L + 1][i] = self.gamma[L + 1][i] * self:derivative_sigmoid(self:inverse_sig(self.nodes[L + 1][i]))
     end

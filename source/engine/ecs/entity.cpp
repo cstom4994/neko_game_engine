@@ -436,8 +436,6 @@ static void _mouse_up(MouseCode mouse) {
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
 static void _scroll(vec2 scroll) { script_scroll(scroll); }
 
-void bootstrap_splash();
-
 void system_init() {
     PROFILE_FUNC();
 
@@ -478,9 +476,11 @@ void system_init() {
 
     lua_pop(L, 1);  // conf table
 
+    auto& game = neko::the<Game>();
+
     // 刷新状态
-    neko::the<Game>().set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
-    neko::the<Game>().set_window_title(g_app->cfg.title.cstr());
+    game.set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
+    game.set_window_title(g_app->cfg.title.cstr());
 
     if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
         // neko::neko_lua_run_string(L, R"lua(
@@ -491,7 +491,7 @@ void system_init() {
     g_render = gfx_create();
     gfx_init(g_render);
 
-    bootstrap_splash();
+    game.SplashScreen();
 
     neko_default_font();
 

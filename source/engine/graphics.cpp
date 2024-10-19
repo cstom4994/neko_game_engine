@@ -235,157 +235,6 @@ void neko_gl_pipeline_state() {
     });
 }
 
-// Utilities
-
-u32 neko_texture_format(gfx_texture_format_type type) {
-    u32 format = GL_UNSIGNED_BYTE;
-    switch (type) {
-        default:
-        case R_TEXTURE_FORMAT_A8:
-            format = GL_UNSIGNED_BYTE;
-            break;
-        case R_TEXTURE_FORMAT_R8:
-            format = GL_UNSIGNED_BYTE;
-            break;
-        case R_TEXTURE_FORMAT_R32:
-            format = GL_UNSIGNED_INT;
-            break;
-        case R_TEXTURE_FORMAT_RGB8:
-            format = GL_UNSIGNED_BYTE;
-            break;
-        case R_TEXTURE_FORMAT_RGBA8:
-            format = GL_UNSIGNED_BYTE;
-            break;
-        case R_TEXTURE_FORMAT_RGBA16F:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_RGBA32F:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_R32F:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH8:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH16:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F:
-            format = GL_FLOAT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
-            format = GL_UNSIGNED_INT_24_8;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
-            format = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
-            break;
-    }
-    return format;
-}
-
-u32 neko_gl_texture_format_to_gl_texture_format(gfx_texture_format_type type) {
-    u32 dt = GL_RGBA;
-    switch (type) {
-        default:
-        case R_TEXTURE_FORMAT_RGBA8:
-            dt = GL_RGBA;
-            break;
-        case R_TEXTURE_FORMAT_A8:
-            dt = GL_ALPHA;
-            break;
-        case R_TEXTURE_FORMAT_R8:
-            dt = GL_RED;
-            break;
-        case R_TEXTURE_FORMAT_R32:
-            dt = GL_RED_INTEGER;
-            break;
-        case R_TEXTURE_FORMAT_R32F:
-            dt = GL_RED;
-            break;
-        case R_TEXTURE_FORMAT_RGB8:
-            dt = GL_RGB;
-            break;
-        case R_TEXTURE_FORMAT_RGBA16F:
-            dt = GL_RGBA;
-            break;
-        case R_TEXTURE_FORMAT_RGBA32F:
-            dt = GL_RGBA;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH8:
-            dt = GL_DEPTH_COMPONENT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH16:
-            dt = GL_DEPTH_COMPONENT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24:
-            dt = GL_DEPTH_COMPONENT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F:
-            dt = GL_DEPTH_COMPONENT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
-            dt = GL_DEPTH_STENCIL;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
-            dt = GL_DEPTH_STENCIL;
-            break;
-    }
-    return dt;
-}
-
-u32 neko_gl_texture_format_to_gl_texture_internal_format(gfx_texture_format_type type) {
-    u32 format = GL_UNSIGNED_BYTE;
-    switch (type) {
-        case R_TEXTURE_FORMAT_A8:
-            format = GL_ALPHA;
-            break;
-        case R_TEXTURE_FORMAT_R8:
-            format = GL_RED;
-            break;
-        case R_TEXTURE_FORMAT_R32:
-            format = GL_R32UI;
-            break;
-        case R_TEXTURE_FORMAT_R32F:
-            format = GL_R32F;
-            break;
-        case R_TEXTURE_FORMAT_RGB8:
-            format = GL_RGB8;
-            break;
-        case R_TEXTURE_FORMAT_RGBA8:
-            format = GL_RGBA8;
-            break;
-        case R_TEXTURE_FORMAT_RGBA16F:
-            format = GL_RGBA16F;
-            break;
-        case R_TEXTURE_FORMAT_RGBA32F:
-            format = GL_RGBA32F;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH8:
-            format = GL_DEPTH_COMPONENT;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH16:
-            format = GL_DEPTH_COMPONENT16;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24:
-            format = GL_DEPTH_COMPONENT24;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F:
-            format = GL_DEPTH_COMPONENT32F;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
-            format = GL_DEPTH24_STENCIL8;
-            break;
-        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
-            format = GL_DEPTH32F_STENCIL8;
-            break;
-    }
-    return format;
-}
-
 gfx_t* gfx_create() {
     // 构建新的图形界面
     gfx_t* gfx = (gfx_t*)mem_alloc(sizeof(gfx_t));
@@ -433,7 +282,7 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
     if (!hndl) {
         glGenTextures(1, &tex.id);
     }
-
+    
     GLenum target = GL_TEXTURE_2D;
 
     // glActiveTexture(GL_TEXTURE0);
@@ -441,123 +290,22 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
 
     if (tex.desc.width * tex.desc.height < width * height) {
         // Construct texture based on appropriate format
-        switch (desc->format) {
-            case R_TEXTURE_FORMAT_A8:
-                glTexImage2D(target, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R8:
-                glTexImage2D(target, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R32:
-                glTexImage2D(target, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
-                break;
-            case R_TEXTURE_FORMAT_RG8:
-                glTexImage2D(target, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_RGB8:
-                glTexImage2D(target, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA8:
-                glTexImage2D(target, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R32F:
-                glTexImage2D(target, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA16F:
-                glTexImage2D(target, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA32F:
-                glTexImage2D(target, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH8:
-                glTexImage2D(target, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH16:
-                glTexImage2D(target, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH24:
-                glTexImage2D(target, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH32F:
-                glTexImage2D(target, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
-                glTexImage2D(target, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
-                glTexImage2D(target, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data);
-                break;
+        glTexImage2D(target, 0, desc->format, width, height, 0, desc->format, GL_UNSIGNED_BYTE, data);
 
-            // NOTE: 因为 Apple 是一家垃圾公司 所以必须将其分开并仅提供对 4.1 功能的支持。
-            // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            default:
-                break;
-        }
     } else {
         // Subimage
-        switch (desc->format) {
-            case R_TEXTURE_FORMAT_A8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R32:
-                glTexImage2D(target, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
-                break;
-            case R_TEXTURE_FORMAT_RG8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RG, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_RGB8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
-                break;
-            case R_TEXTURE_FORMAT_R32F:
-                glTexImage2D(target, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA16F:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_RGBA32F:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH16:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH24:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH32F:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
-                break;
-            case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
-                glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data);
-                break;
-
-            // NOTE: Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
-            // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            default:
-                break;
-        }
+        glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, desc->format, GL_UNSIGNED_BYTE, data);
     }
 
-    i32 mag_filter = desc->mag_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
-    i32 min_filter = desc->min_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
+    i32 mag_filter = desc->mag_filter;
+    i32 min_filter = desc->min_filter;
 
     if (desc->num_mips) {
-        if (desc->min_filter == R_TEXTURE_FILTER_NEAREST) {
-            min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
-        } else {
-            min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
-        }
+        // if (desc->min_filter == R_TEXTURE_FILTER_NEAREST) {
+        //     min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
+        // } else {
+        //     min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
+        // }
     }
 
     const u32 texture_wrap_s = desc->wrap_s == 0 ? GL_REPEAT : desc->wrap_s;
@@ -613,8 +361,8 @@ void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t*
 
     // Read back pixels
     if (out->data && out->read.width && out->read.height) {
-        u32 type = neko_texture_format(tex->desc.format);
-        u32 format = neko_gl_texture_format_to_gl_texture_format(tex->desc.format);
+        u32 type = (tex->desc.format);
+        u32 format = (tex->desc.format);
         CHECK_GL_CORE(glActiveTexture(GL_TEXTURE0); glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data););
     }
 
@@ -643,8 +391,8 @@ void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* 
     neko_gl_texture_t* tex = &ogl->textures[hndl.id];
     // Bind texture
     GLenum target = GL_TEXTURE_2D;
-    u32 gl_format = neko_gl_texture_format_to_gl_texture_format(tex->desc.format);
-    u32 gl_type = neko_texture_format(tex->desc.format);
+    u32 gl_format = (tex->desc.format);
+    u32 gl_type = (tex->desc.format);
     glBindTexture(target, tex->id);
     glReadPixels(desc->read.x, desc->read.y, desc->read.width, desc->read.height, gl_format, gl_type, desc->data);
     glBindTexture(target, 0x00);

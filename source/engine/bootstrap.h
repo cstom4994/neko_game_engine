@@ -135,11 +135,8 @@ i32 neko_buildnum(void);
 // ECS_COMPONENT_EXTERN(vel_t);
 // ECS_COMPONENT_EXTERN(rect_t);
 
-void scratch_run();
-int scratch_update(App *app, event_t evt);
-
 // 入口点
-void game_run(int argc, char **argv);
+void GameMain(int argc, char **argv);
 
 class Game : public neko::SingletonClass<Game> {
     int argc;
@@ -173,6 +170,9 @@ public:
     vec2 pixels_to_unit(vec2 p);
 
     void quit();
+
+    void WindowSwapBuffer();
+    void SplashScreen();
 };
 
 NEKO_SCRIPT(game,

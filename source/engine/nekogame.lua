@@ -102,7 +102,7 @@ function ffi_reflect()
       uint16_t next;
       uint32_t name;
     } CType;
-    
+
     typedef struct CTState {
       CType *tab;
       uint32_t top;
@@ -185,29 +185,29 @@ function ffi_reflect()
     -- * Whether the sib field is meaningful.
     -- * Zero or more applicable boolean flags.
     local CTs = {
-        [0] = {"int", "", "size", false, {0x08000000, "bool"}, {0x04000000, "float", "subwhat"}, {0x02000000, "const"},
-               {0x01000000, "volatile"}, {0x00800000, "unsigned"}, {0x00400000, "long"}},
-        {"struct", "", "size", true, {0x02000000, "const"}, {0x01000000, "volatile"}, {0x00800000, "union", "subwhat"},
-         {0x00100000, "vla"}},
-        {"ptr", "element_type", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"},
-         {0x00800000, "ref", "subwhat"}},
-        {"array", "element_type", "size", false, {0x08000000, "vector"}, {0x04000000, "complex"}, {0x02000000, "const"},
-         {0x01000000, "volatile"}, {0x00100000, "vla"}},
-        {"void", "", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"}},
-        {"enum", "type", "size", true},
-        {"func", "return_type", "nargs", true, {0x00800000, "vararg"}, {0x00400000, "sse_reg_params"}},
-        {"typedef", -- Not seen
-        "element_type", "", false},
-        {"attrib", -- Only seen internally
-        "type", "value", true},
-        {"field", "type", "offset", true},
-        {"bitfield", "", "offset", true, {0x08000000, "bool"}, {0x02000000, "const"}, {0x01000000, "volatile"},
-         {0x00800000, "unsigned"}},
-        {"constant", "type", "value", true, {0x02000000, "const"}},
-        {"extern", -- Not seen
-        "CID", "", true},
-        {"kw", -- Not seen
-        "TOK", "size"}
+        [0] = { "int", "", "size", false, { 0x08000000, "bool" }, { 0x04000000, "float", "subwhat" }, { 0x02000000, "const" },
+            { 0x01000000, "volatile" }, { 0x00800000, "unsigned" }, { 0x00400000, "long" } },
+        { "struct", "", "size", true, { 0x02000000, "const" }, { 0x01000000, "volatile" }, { 0x00800000, "union", "subwhat" },
+            { 0x00100000, "vla" } },
+        { "ptr", "element_type", "size", false, { 0x02000000, "const" }, { 0x01000000, "volatile" },
+            { 0x00800000, "ref",  "subwhat" } },
+        { "array", "element_type", "size", false, { 0x08000000, "vector" }, { 0x04000000, "complex" }, { 0x02000000, "const" },
+            { 0x01000000, "volatile" }, { 0x00100000, "vla" } },
+        { "void", "",            "size",  false, { 0x02000000, "const" },  { 0x01000000, "volatile" } },
+        { "enum", "type",        "size",  true },
+        { "func", "return_type", "nargs", true,  { 0x00800000, "vararg" }, { 0x00400000, "sse_reg_params" } },
+        { "typedef", -- Not seen
+            "element_type", "", false },
+        { "attrib",  -- Only seen internally
+            "type", "value", true },
+        { "field",    "type", "offset", true },
+        { "bitfield", "", "offset", true, { 0x08000000, "bool" }, { 0x02000000, "const" }, { 0x01000000, "volatile" },
+            { 0x00800000, "unsigned" } },
+        { "constant", "type", "value",  true, { 0x02000000, "const" } },
+        { "extern", -- Not seen
+            "CID", "", true },
+        { "kw",     -- Not seen
+            "TOK", "size" }
     }
 
     -- Set of CType::cid roles which are a CTypeID.
@@ -405,8 +405,8 @@ function ffi_reflect()
         return (miscmap or init_miscmap())[-tonumber(ffi.typeof(x))]
     end
 
-    local t_concat = default_require"table".concat
-    local new = default_require"ffi".new
+    local t_concat = default_require "table".concat
+    local new = default_require "ffi".new
     local cache = setmetatable({}, {
         __mode = "v"
     })
@@ -521,7 +521,6 @@ function ffi_reflect()
     reflect.enum_define = enum_define
 
     return reflect
-
 end
 
 -- hot_require 'nekogame.struct'
@@ -547,6 +546,7 @@ function ng.enum_values(typename)
     end
     return enum_values_map[typename]
 end
+
 function ng.enum_tostring(typename, val)
     -- no nice inverse mapping exists...
     for name in pairs(ng.enum_values(typename)) do
@@ -596,7 +596,7 @@ end
 ng.NativeEntity = ffi.metatype('NativeEntity', {
     __eq = function(a, b)
         return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
-                   ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
+            ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
     end,
     __index = {
         __serialize = function(e)
@@ -801,7 +801,7 @@ function ng.entity_table_remove_destroyed(t, f)
     end
 end
 
--- use to easily define properties with default values stored per-entity in a 
+-- use to easily define properties with default values stored per-entity in a
 -- ng.entity_table
 -- sys is the system, tbl is the table properties are stored in, name is the
 -- name of the property and default is the default value if unset
@@ -971,23 +971,29 @@ unpack = table.unpack
 function ng.getter(sys, prop)
     return ns[sys]['get_' .. prop] -- 这里转发到 ffi.C
 end
+
 function ng.setter(sys, prop)
     return ns[sys]['set_' .. prop] -- 这里转发到 ffi.C
 end
+
 function ng.get(sys, prop, ...)
-    return ng.getter(sys, prop)(unpack({...}))
+    return ng.getter(sys, prop)(unpack({ ... }))
 end
+
 function ng.set(sys, prop, ...)
-    ng.setter(sys, prop)(unpack({...}))
+    ng.setter(sys, prop)(unpack({ ... }))
 end
+
 function ng.adder(sys)
     return ns[sys]['add'] -- 这里转发到 ffi.C
 end
+
 function ng.remover(sys)
     return ns[sys]['remove'] -- 这里转发到 ffi.C
 end
+
 function ng.remove(sys, ...)
-    ng.remover(sys)(unpack({...}))
+    ng.remover(sys)(unpack({ ... }))
 end
 
 -- multi-purpose system adder/setter, used as follows:
@@ -1062,6 +1068,7 @@ function ng.simple_sys()
             end
         end
     end
+
     sys.add = sys.simple_add
     function sys.simple_remove(ent)
         local entry = sys.tbl[ent]
@@ -1072,10 +1079,12 @@ function ng.simple_sys()
             sys.tbl[ent] = nil
         end
     end
+
     sys.remove = sys.simple_remove
     function sys.simple_has(ent)
         return sys.tbl[ent] ~= nil
     end
+
     sys.has = sys.simple_has
 
     -- update
@@ -1096,6 +1105,7 @@ function ng.simple_sys()
             end
         end
     end
+
     sys.update_all = sys.simple_update_all
 
     return sys
@@ -1122,13 +1132,15 @@ end
 ns.name = {}
 
 local entity_name = ng.entity_table() -- entity -> name map
-local name_entity = {} -- name -> entity map
+local name_entity = {}                -- name -> entity map
 
 function ns.name.add(ent)
 end
+
 function ns.name.has(ent)
     return true
 end
+
 function ns.name.remove(ent)
     name = entity_name[ent]
     if name then
@@ -1155,6 +1167,7 @@ function ns.name.set_name(ent, name)
     name_entity[name] = ent
     entity_name[ent] = name
 end
+
 function ns.name.get_name(ent, name)
     return entity_name[ent] or ''
 end
@@ -1193,7 +1206,7 @@ end
 -- hot_require 'nekogame.group'
 ns.group = {}
 
-local group_entities = {} -- group name --> entity_table
+local group_entities = {}               -- group name --> entity_table
 local entity_groups = ng.entity_table() -- entity --> set of group names
 
 -- iterate over a group collection, which can be a string of
@@ -1620,12 +1633,14 @@ function ns.gui_window.set_title(ent, str)
         ns.gui_text.set_str(window.title_text, str)
     end
 end
+
 function ns.gui_window.get_title(ent)
     local window = ns.gui_window.tbl[ent]
     if window then
         return ns.gui_text.get_str(window.title_text)
     end
 end
+
 function ns.gui_window.get_title_buttons_area(ent)
     local window = ns.gui_window.tbl[ent]
     if window then
@@ -1829,6 +1844,7 @@ function ns.gui_checkbox.toggle(ent)
         checkbox_toggle(checkbox)
     end
 end
+
 function ns.gui_checkbox.set_checked(ent, checked)
     local checkbox = ns.gui_checkbox.tbl[ent]
     -- do it this way to fire 'changed' event correctly
@@ -1836,6 +1852,7 @@ function ns.gui_checkbox.set_checked(ent, checked)
         checkbox_toggle(checkbox)
     end
 end
+
 function ns.gui_checkbox.get_checked(ent, checked)
     local checkbox = ns.gui_checkbox.tbl[ent]
     if checkbox then

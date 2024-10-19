@@ -609,7 +609,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
 
         gfx_texture_desc_t tileset_tex_decl = {
-                .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
+                .width = (u32)w, .height = (u32)h, .format = GL_RGBA, .min_filter = GL_NEAREST, .mag_filter = GL_NEAREST, .num_mips = 0};
 
         tileset_tex_decl.data = tex_data;
 

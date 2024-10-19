@@ -132,6 +132,7 @@ typedef struct batch_renderer {
     bool outline;
     bool glow;
     bool bloom;
+    bool trans;
 } batch_renderer;
 
 struct App;

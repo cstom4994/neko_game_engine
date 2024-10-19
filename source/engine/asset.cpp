@@ -91,9 +91,9 @@ gfx_texture_t neko_aseprite_simple(String filename) {
 
     gfx_texture_desc_t t_desc = {};
 
-    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.format = GL_RGBA;
+    t_desc.mag_filter = GL_NEAREST;
+    t_desc.min_filter = GL_NEAREST;
     t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h;
@@ -366,9 +366,9 @@ bool neko_asset_texture_load_from_file(const_str path, void *out, gfx_texture_de
     if (desc) {
         t->desc = *desc;
     } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.format = GL_RGBA;
+        t->desc.min_filter = GL_LINEAR;
+        t->desc.mag_filter = GL_LINEAR;
         t->desc.wrap_s = GL_REPEAT;
         t->desc.wrap_t = GL_REPEAT;
     }
@@ -407,9 +407,9 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
     if (desc) {
         t->desc = *desc;
     } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.format = GL_RGBA;
+        t->desc.min_filter = GL_LINEAR;
+        t->desc.mag_filter = GL_LINEAR;
         t->desc.wrap_s = GL_REPEAT;
         t->desc.wrap_t = GL_REPEAT;
     }
@@ -1662,9 +1662,9 @@ bool AseSpriteData::load(String filepath) {
 
         gfx_texture_desc_t t_desc = {};
 
-        t_desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-        t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+        t_desc.format = GL_RGBA;
+        t_desc.mag_filter = GL_NEAREST;
+        t_desc.min_filter = GL_NEAREST;
         // t_desc.num_mips = 0;
         t_desc.width = ase_width;
         t_desc.height = ase_height;

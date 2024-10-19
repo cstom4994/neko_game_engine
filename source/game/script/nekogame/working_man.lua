@@ -62,7 +62,6 @@ function WorkingMan:hit(other, damage)
         self.body:set_velocity(heading(other.angle, 200))
         self.spring:pull(0.3)
     end
-
 end
 
 function WorkingMan:co_update(dt)
@@ -152,7 +151,6 @@ function WorkingMan.begin_contact(a, b)
     if mt == Player then
         LocalGame.world:kill(self)
         -- hit_player(20)
-
     elseif mt == Arrow then
         -- self:hit(other, 50)
     end

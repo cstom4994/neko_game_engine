@@ -108,45 +108,11 @@ unsigned int quadVAO, quadVBO;
 Asset posteffect_shader = {};
 
 int main(int argc, char **argv) {
-    game_run(argc, argv);
+    GameMain(argc, argv);
     return 0;
 }
 
 extern void draw_gui();
-
-// -------------------------------------------------------------------------
-
-static const char *scratch_filename = usr_path("scratch.lua");
-
-bool _exists() {
-    struct stat st;
-    return stat(scratch_filename, &st) == 0;
-}
-
-// 自上次调用 _modified() 后是否已修改 一开始为 false
-bool _modified() {
-    struct stat st;
-    static time_t prev_time = 0;
-    bool modified;
-    static bool first = true;
-
-    if (stat(scratch_filename, &st) != 0) {
-        first = false;
-        return false;  // 不存在或错误
-    }
-
-    modified = !first && st.st_mtime != prev_time;
-    prev_time = st.st_mtime;
-    first = false;
-    return modified;
-}
-
-void scratch_run() { script_run_file(scratch_filename); }
-
-int scratch_update(App *app, event_t evt) {
-    if (_modified()) scratch_run();
-    return 0;
-}
 
 // -------------------------------------------------------------------------
 
@@ -252,6 +218,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 float posteffect_intensity = 2.0f;
 
 int _game_draw(App *app, event_t evt) {
+
+    auto &game = neko::the<Game>();
+
     static bool first = true;
 
     lua_State *L = ENGINE_LUA();
@@ -398,12 +367,12 @@ int _game_draw(App *app, event_t evt) {
 
     neko_check_gl_error();
 
-    glfwSwapBuffers(g_app->game_window);
+    game.WindowSwapBuffer();
 
     return 0;
 }
 
-void bootstrap_splash() {
+void Game::SplashScreen() {
 
     if (1) {
 
@@ -453,8 +422,7 @@ void bootstrap_splash() {
         neko_bind_vertex_buffer_for_draw(quad);
         neko_draw_vertex_buffer(quad);
 
-        // neko_update_application();
-        glfwSwapBuffers(g_app->game_window);
+        WindowSwapBuffer();
 
         neko_free_vertex_buffer(quad);
 
@@ -464,7 +432,121 @@ void bootstrap_splash() {
     }
 }
 
-static void _game_init(int argc, char **argv) {
+static void _game_fini() {
+    PROFILE_FUNC();
+
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &fbo_tex);
+    glDeleteRenderbuffers(1, &rbo);
+
+    bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
+
+    {  // just for test
+
+        mem_free(g_app->ui);
+        neko_deinit_ui_renderer();
+    }
+
+    native_free_scripts(sc);
+
+    // fini systems
+    system_fini();
+
+    // fini glfw
+    glfwDestroyWindow(g_app->game_window);
+    glfwTerminate();
+
+#ifdef USE_PROFILER
+    profile_shutdown();
+#endif
+
+    vfs_fini();
+
+    mem_free(g_app->fatal_error.data);
+    mem_free(g_app->traceback.data);
+
+    for (String arg : g_app->args) {
+        mem_free(arg.data);
+    }
+    mem_free(g_app->args.data);
+
+    auto &eh = neko::the<EventHandler>();
+    eh.fini();
+
+    neko::modules::shutdown<EventHandler>();
+
+    g_app->~App();
+    mem_free(g_app);
+
+#ifndef NDEBUG
+    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
+    if (allocator != nullptr) {
+        allocator->dump_allocs(dump_allocs_detailed);
+    }
+#endif
+
+    g_allocator->trash();
+    operator delete(g_allocator);
+
+    neko_println("see ya");
+}
+
+// -------------------------------------------------------------------------
+
+void GameMain(int argc, char **argv) {
+    neko::modules::initialize<Game>(argc, argv);
+    auto &game = neko::the<Game>();
+    game.init();
+    while (!g_app->g_quit) {
+        App *app = g_app;
+        auto &eh = neko::the<EventHandler>();
+        glfwPollEvents();
+        if (glfwWindowShouldClose(g_app->game_window)) game.quit();
+        eh.event_pump();
+
+        eh.event_dispatch(event_t{.type = on_preupdate});
+        if (!g_app->error_mode.load()) {
+            eh.event_dispatch(event_t{.type = on_update});
+        }
+        eh.event_dispatch(event_t{.type = on_postupdate});
+
+        eh.event_dispatch(event_t{.type = on_draw});
+    }
+    _game_fini();
+}
+
+void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
+
+void Game::set_window_size(vec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
+
+vec2 Game::get_window_size() {
+    int w, h;
+    glfwGetWindowSize(g_app->game_window, &w, &h);
+    return luavec2(w, h);
+}
+vec2 Game::unit_to_pixels(vec2 p) {
+    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
+    p = vec2_mul(p, hw);
+    p = luavec2(p.x + hw.x, p.y - hw.y);
+    return p;
+}
+vec2 Game::pixels_to_unit(vec2 p) {
+    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
+    p = luavec2(p.x - hw.x, p.y + hw.y);
+    p = vec2_div(p, hw);
+    return p;
+}
+
+void Game::quit() { g_app->g_quit = true; }
+
+void Game::WindowSwapBuffer() { glfwSwapBuffers(g_app->game_window); }
+
+Game::Game(int argc, char **argv) {
+    this->argc = argc;
+    this->argv = argv;
+}
+
+void Game::init() {
 
 #ifndef NDEBUG
     g_allocator = new DebugAllocator();
@@ -473,6 +555,9 @@ static void _game_init(int argc, char **argv) {
 #endif
 
     g_allocator->make();
+
+    neko::modules::initialize<EventHandler>();
+    neko::modules::initialize<Input>();
 
     g_app = new (mem_alloc(sizeof(App))) App();
 
@@ -538,9 +623,6 @@ static void _game_init(int argc, char **argv) {
     get_timing_instance()->startup = stm_now();
     get_timing_instance()->last = stm_now();
 
-    neko::modules::initialize<EventHandler>();
-    neko::modules::initialize<Input>();
-
     // init systems
     console_puts("welcome to neko!");
     system_init();
@@ -564,33 +646,32 @@ static void _game_init(int argc, char **argv) {
     auto &eh = neko::the<EventHandler>();
 
     struct {
-        int evt;
+        event_mask evt;
         EventCallback cb;
     } evt_list[] = {
-            {preupdate, (EventCallback)assets_perform_hot_reload_changes},  //
-            {preupdate, (EventCallback)edit_clear},                         //
-            {preupdate, (EventCallback)timing_update},                      //
+            {event_mask::preupdate, (EventCallback)assets_perform_hot_reload_changes},  //
+            {event_mask::preupdate, (EventCallback)edit_clear},                         //
+            {event_mask::preupdate, (EventCallback)timing_update},                      //
 
-            {update, (EventCallback)scratch_update},
-            {update, (EventCallback)script_update_all},
-            {update, (EventCallback)physics_update_all},
-            {update, (EventCallback)transform_update_all},
+            {event_mask::update, (EventCallback)script_update_all},
+            {event_mask::update, (EventCallback)physics_update_all},
+            {event_mask::update, (EventCallback)transform_update_all},
 
-            {update, (EventCallback)camera_update_all},
-            {update, (EventCallback)gui_update_all},
-            {update, (EventCallback)sprite_update_all},
-            {update, (EventCallback)batch_update_all},
-            {update, (EventCallback)sound_update_all},
-            {update, (EventCallback)tiled_update_all},
-            {update, (EventCallback)edit_update_all},
+            {event_mask::update, (EventCallback)camera_update_all},
+            {event_mask::update, (EventCallback)gui_update_all},
+            {event_mask::update, (EventCallback)sprite_update_all},
+            {event_mask::update, (EventCallback)batch_update_all},
+            {event_mask::update, (EventCallback)sound_update_all},
+            {event_mask::update, (EventCallback)tiled_update_all},
+            {event_mask::update, (EventCallback)edit_update_all},
 
-            {postupdate, (EventCallback)script_post_update_all},
-            {postupdate, (EventCallback)physics_post_update_all},
-            {postupdate, (EventCallback)sound_postupdate},
-            {postupdate, (EventCallback)entity_update_all},
-            {postupdate, (EventCallback)gui_event_clear},
+            {event_mask::postupdate, (EventCallback)script_post_update_all},
+            {event_mask::postupdate, (EventCallback)physics_post_update_all},
+            {event_mask::postupdate, (EventCallback)sound_postupdate},
+            {event_mask::postupdate, (EventCallback)entity_update_all},
+            {event_mask::postupdate, (EventCallback)gui_event_clear},
 
-            {draw, (EventCallback)_game_draw},
+            {event_mask::draw, (EventCallback)_game_draw},
     };
 
     for (auto evt : evt_list) {
@@ -655,119 +736,6 @@ static void _game_init(int argc, char **argv) {
     neko_check_gl_error();
 }
 
-static void _game_fini() {
-    PROFILE_FUNC();
-
-    glDeleteFramebuffers(1, &fbo);
-    glDeleteTextures(1, &fbo_tex);
-    glDeleteRenderbuffers(1, &rbo);
-
-    bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
-
-    {  // just for test
-
-        mem_free(g_app->ui);
-        neko_deinit_ui_renderer();
-    }
-
-    native_free_scripts(sc);
-
-    // fini systems
-    system_fini();
-
-    // fini glfw
-    glfwDestroyWindow(g_app->game_window);
-    glfwTerminate();
-
-#ifdef USE_PROFILER
-    profile_shutdown();
-#endif
-
-    vfs_fini();
-
-    mem_free(g_app->fatal_error.data);
-    mem_free(g_app->traceback.data);
-
-    for (String arg : g_app->args) {
-        mem_free(arg.data);
-    }
-    mem_free(g_app->args.data);
-
-    auto &eh = neko::the<EventHandler>();
-    eh.fini();
-
-    neko::modules::shutdown<EventHandler>();
-
-    g_app->~App();
-    mem_free(g_app);
-
-#ifndef NDEBUG
-    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
-    if (allocator != nullptr) {
-        allocator->dump_allocs(dump_allocs_detailed);
-    }
-#endif
-
-    g_allocator->trash();
-    operator delete(g_allocator);
-
-    neko_println("see ya");
-}
-
-// -------------------------------------------------------------------------
-
-void game_run(int argc, char **argv) {
-    neko::modules::initialize<Game>(argc, argv);
-    auto &game = neko::the<Game>();
-    game.init();
-    while (!g_app->g_quit) {
-        App *app = g_app;
-        auto &eh = neko::the<EventHandler>();
-        glfwPollEvents();
-        if (glfwWindowShouldClose(g_app->game_window)) game.quit();
-        eh.event_pump();
-
-        eh.event_dispatch(event_t{.type = on_preupdate});
-        if (!g_app->error_mode.load()) {
-            eh.event_dispatch(event_t{.type = on_update});
-        }
-        eh.event_dispatch(event_t{.type = on_postupdate});
-
-        eh.event_dispatch(event_t{.type = on_draw});
-    }
-    _game_fini();
-}
-
-void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
-
-void Game::set_window_size(vec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
-
-vec2 Game::get_window_size() {
-    int w, h;
-    glfwGetWindowSize(g_app->game_window, &w, &h);
-    return luavec2(w, h);
-}
-vec2 Game::unit_to_pixels(vec2 p) {
-    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
-    p = vec2_mul(p, hw);
-    p = luavec2(p.x + hw.x, p.y - hw.y);
-    return p;
-}
-vec2 Game::pixels_to_unit(vec2 p) {
-    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
-    p = luavec2(p.x - hw.x, p.y + hw.y);
-    p = vec2_div(p, hw);
-    return p;
-}
-
-void Game::quit() { g_app->g_quit = true; }
-
-Game::Game(int argc, char **argv) {
-    this->argc = argc;
-    this->argv = argv;
-}
-
-void Game::init() { _game_init(argc, argv); }
 void Game::fini() {}
 void Game::update() {}
 

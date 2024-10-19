@@ -1,10 +1,12 @@
 #include "engine/physics.h"
 
+#include "engine/base/color.hpp"
+#include "engine/base/math.hpp"
+#include "engine/component.h"
+
 #ifdef NEKO_BOX2D
 
 #include <box2d/box2d.h>
-// #include <sokol_gfx.h>
-// #include <util/sokol_gl.h>
 
 static void contact_run_cb(lua_State *L, i32 ref, i32 a, i32 b, i32 msgh) {
     if (ref != LUA_REFNIL) {
@@ -232,22 +234,23 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
             case b2Shape::e_polygon: {
                 b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
 
-                // if (poly->m_count > 0) {
-                //     sgl_disable_texture();
-                //     sgl_begin_line_strip();
+                if (poly->m_count > 0) {
+                    // sgl_disable_texture();
+                    // sgl_begin_line_strip();
+                    // renderer_apply_color();
 
-                //     renderer_apply_color();
+                    for (i32 i = 0; i < poly->m_count; i++) {
+                        b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
+                        // renderer_push_xy(pos.x * meter, pos.y * meter);
 
-                //     for (i32 i = 0; i < poly->m_count; i++) {
-                //         b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
-                //         renderer_push_xy(pos.x * meter, pos.y * meter);
-                //     }
+                        edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
+                    }
 
-                //     b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
-                //     renderer_push_xy(pos.x * meter, pos.y * meter);
+                    b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
+                    edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
 
-                //     sgl_end();
-                // }
+                    // sgl_end();
+                }
                 break;
             }
             default:

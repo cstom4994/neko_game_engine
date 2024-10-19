@@ -1,5 +1,4 @@
 function haha()
-
     LocalGame = {}
 
     hot_require 'oscillator'
@@ -46,6 +45,8 @@ function haha()
     }
 
     local game_tick = 0
+
+    draw_fixtures = true
 
     local ttttttttt = ng.add {
         -- gui_test = {}
@@ -143,7 +144,6 @@ function haha()
     end
 
     function neko.__define_default_callbacks()
-
         print("haha __define_default_callbacks")
 
         -- luainspector = neko.core.inspector_init()
@@ -192,12 +192,10 @@ function haha()
 
             bow_img = neko.sprite_load "assets/bow.ase"
             arrow_img = neko.sprite_load "assets/arrow.ase"
-
         end
         neko.game_fini = function()
         end
         neko.game_pre_update = function()
-
             LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
 
             game_tick = game_tick + 1
@@ -208,16 +206,13 @@ function haha()
             end
         end
         neko.game_loop = function(dt)
-
             LocalGame.b2:step(dt)
             LocalGame.world:update(dt)
 
             cursor:update(dt)
-
         end
 
         neko.game_render = function()
-
             local dt = ng.get_timing_instance().dt
 
             -- test_ase:update(dt)
@@ -230,38 +225,35 @@ function haha()
             cursor:draw()
 
             -- neko.default_font():draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
-
         end
 
         neko.game_ui = function()
-
             neko.core.inspector_draw(neko.core.inspector_get())
         end
 
         neko.before_quit = function()
             print("before_quit")
         end
-
     end
 
     --[[
     function neko.__define_default_callbacks()
-    
-    
+
+
         local TEX_WIDTH = 128
         local TEX_HEIGHT = 128
-    
+
         local gd = {}
-    
-    
-    
+
+
+
         neko.game_init = function()
             print("neko.game_init")
-    
-    
+
+
             local win = ng.game_get_window_size()
             local win_w, win_h = win.x, win.y
-    
+
             gd.main_fbo = ng.api.core.render_framebuffer_create()
             gd.main_rt = ng.api.core.render_texture_create(win_w, win_h, {
                 type = "R_TEXTURE_2D",
@@ -272,25 +264,25 @@ function haha()
                 mag_filter = "R_TEXTURE_FILTER_NEAREST"
             })
             gd.main_rp = ng.api.core.render_renderpass_create(gd.main_fbo, gd.main_rt)
-    
+
             gd.fbo = ng.api.core.render_framebuffer_create()
             gd.rt = ng.api.core.render_texture_create(win_w, win_h)
             gd.rp = ng.api.core.render_renderpass_create(gd.fbo, gd.rt)
-            
+
             gd.rp_default = ng.api.core.render_renderpass_default()
-    
+
             -- gd.fontbatch = ng.api.core.fontbatch_create(font_vs, font_ps)
-    
+
             -- test_shader = ng.api.core.render_shader_create("compute", {
             --     -- VERTEX = sprite_vs,
             --     -- FRAGMENT = sprite_fs
             --     COMPUTE = comp_src
             -- })
-    
+
             test_uniform = ng.api.core.render_uniform_create("u_roll", {{
                 type = "R_UNIFORM_FLOAT"
             }})
-    
+
             test_tex = ng.api.core.render_texture_create(TEX_WIDTH, TEX_HEIGHT, {
                 type = "R_TEXTURE_2D",
                 format = "R_TEXTURE_FORMAT_RGBA32F",
@@ -299,23 +291,23 @@ function haha()
                 min_filter = "R_TEXTURE_FILTER_NEAREST",
                 mag_filter = "R_TEXTURE_FILTER_NEAREST"
             })
-    
+
             -- test_pipeline = ng.api.core.render_pipeline_create("test_pipeline", {
             --     compute = {
             --         shader = test_shader
             --     }
             -- })
-    
+
             local test_vec4_data = ffi.new("neko_vec4_t")
-    
+
             test_vec4_data.x = 0.0
             test_vec4_data.y = 1.0
             test_vec4_data.z = 1.0
             test_vec4_data.w = 1.0
-    
+
             -- test_storage_buffer = ng.api.core.render_storage_buffer_create("u_voxels", test_vec4_data,
             --     ffi.sizeof("neko_vec4_t"))
-    
+
             -- test_custom_sprite = {}
             -- test_custom_sprite.tex = ng.api.core.render_texture_create(10, 10, {
             --     type = "R_TEXTURE_2D",
@@ -326,37 +318,37 @@ function haha()
             --     min_filter = "R_TEXTURE_FILTER_NEAREST",
             --     mag_filter = "R_TEXTURE_FILTER_NEAREST"
             -- })
-    
+
             -- test_custom_sprite.tex_userdata = ffi.new("__lua_tex_t")
             -- test_custom_sprite.tex_userdata.id = test_custom_sprite.tex.id
-    
+
             -- local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
             -- test_custom_sprite.vdata = ffi.new("__lua_quad_vdata_t")
-    
+
             -- for i, v in ipairs(v) do
             --     test_custom_sprite.vdata.v[i] = v
             -- end
-    
+
             -- v = {0, 3, 2, 0, 1, 3}
             -- test_custom_sprite.idata = ffi.new("__lua_quad_idata_t")
             -- for i, v in ipairs(v) do
             --     test_custom_sprite.idata.v[i] = v
             -- end
-    
+
             -- test_custom_sprite.vbo = ng.api.core.render_vertex_buffer_create("vbo", test_custom_sprite.vdata,
             --     ffi.sizeof("__lua_quad_vdata_t"))
             -- test_custom_sprite.ibo = ng.api.core.render_index_buffer_create("ibo", test_custom_sprite.idata,
             --     ffi.sizeof("__lua_quad_idata_t"))
-    
+
             -- test_custom_sprite.uniform = ng.api.core.render_uniform_create("u_tex", {{
             --     type = "R_UNIFORM_SAMPLER2D"
             -- }}, "R_SHADER_STAGE_FRAGMENT")
-    
+
             -- test_custom_sprite.shader = ng.api.core.render_shader_create("quad", {
             --     VERTEX = custom_sprite_vs,
             --     FRAGMENT = custom_sprite_fs
             -- })
-    
+
             -- test_custom_sprite.v_attr, test_custom_sprite.v_attr_size =
             --     ng.api.core.render_vertex_attribute_create("vertex_attribute_name", {{
             --         name = "a_pos",
@@ -365,7 +357,7 @@ function haha()
             --         name = "a_uv",
             --         format = "R_VERTEX_ATTRIBUTE_FLOAT2"
             --     }})
-    
+
             -- test_custom_sprite.pipeline = ng.api.core.render_pipeline_create("test_pipeline", {
             --     raster = {
             --         shader = test_custom_sprite.shader,
@@ -377,45 +369,45 @@ function haha()
             --     }
             -- })
         end
-    
+
         neko.game_fini = function()
             print("neko.game_fini")
-    
+
             ng.api.core.render_renderpass_fini(gd.rp)
             ng.api.core.render_texture_fini(gd.rt)
             ng.api.core.render_framebuffer_fini(gd.fbo)
-    
+
             ng.api.core.render_renderpass_fini(gd.main_rp)
             ng.api.core.render_texture_fini(gd.main_rt)
             ng.api.core.render_framebuffer_fini(gd.main_fbo)
         end
-    
+
         neko.game_pre_update = function()
             -- print("neko.game_pre_update")
         end
-    
+
         neko.game_loop = function(dt)
             -- print("neko.game_loop")
         end
-    
+
         neko.game_render = function()
             -- print("neko.game_render")
-    
-    
-    
+
+
+
             local t = ns.timing.get_elapsed()
-    
+
             local fbs_x = 640
             local fbs_y = 360
-    
+
             -- local win_w, win_h = neko_window_size(neko_main_window())
-    
+
             local win_w, win_h = ng.api.core.render_display_size()
-    
+
             -- mm({win_w, win_h})
-    
+
             local roll = ns.timing.get_elapsed() * 0.001
-    
+
             -- ng.api.core.render_pipeline_bind(test_pipeline)
             -- ng.api.core.render_apply_bindings({
             --     uniforms = {{
@@ -432,23 +424,23 @@ function haha()
             --     }}
             -- })
             -- ng.api.core.render_dispatch_compute(TEX_WIDTH / 16, TEX_HEIGHT / 16, 1)
-    
+
             -- local v1 = to_vec2(0.0, 0.0)
             -- local v2 = to_vec2(TEX_WIDTH, TEX_HEIGHT)
-    
+
             -- ng.api.core.idraw_defaults()
             -- ng.api.core.idraw_camera2d(fbs_x, fbs_y)
-    
+
             -- ng.api.core.idraw_texture(test_tex)
             -- ng.api.core.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "R_PRIMITIVE_TRIANGLES",
             --     to_color(255, 255, 255, 255))
-    
+
             -- ng.api.core.render_renderpass_begin(gd.main_rp)
             -- ng.api.core.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
             -- ng.api.core.render_clear(0.0, 0.0, 0.0, 0.0)
             -- ng.api.core.idraw_draw()
             -- ng.api.core.render_renderpass_end()
-    
+
             -- ng.api.core.render_renderpass_begin(gd.main_rp)
             -- ng.api.core.render_pipeline_bind(test_custom_sprite.pipeline)
             -- ng.api.core.render_apply_bindings({
@@ -469,7 +461,7 @@ function haha()
             --     count = 6
             -- })
             -- ng.api.core.render_renderpass_end()
-    
+
             ng.api.core.idraw_defaults()
             ng.api.core.idraw_camera3d(fbs_x, fbs_y)
             ng.api.core.idraw_translatef(0.0, 0.0, -2.0)
@@ -477,13 +469,13 @@ function haha()
             ng.api.core.idraw_rotatev(ns.timing.get_elapsed() * 0.0001, 0.0, 1.0, 0.0)
             ng.api.core.idraw_rotatev(ns.timing.get_elapsed() * 0.0001, 0.0, 0.0, 1.0)
             ng.api.core.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "R_PRIMITIVE_LINES")
-    
+
             ng.api.core.render_renderpass_begin(gd.rp)
             ng.api.core.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
             ng.api.core.render_clear(0.0, 0.0, 0.0, 1.0)
             ng.api.core.idraw_draw()
             ng.api.core.render_renderpass_end()
-    
+
             ng.api.core.idraw_camera3d(fbs_x, fbs_y)
             ng.api.core.idraw_depth_enabled(true)
             ng.api.core.idraw_face_cull_enabled(true)
@@ -493,37 +485,35 @@ function haha()
             ng.api.core.idraw_rotatev(ns.timing.get_elapsed() * 0.0002, 0.0, 1.0, 0.0)
             ng.api.core.idraw_rotatev(ns.timing.get_elapsed() * 0.0003, 0.0, 0.0, 1.0)
             ng.api.core.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "R_PRIMITIVE_TRIANGLES")
-    
+
             ng.api.core.render_renderpass_begin(gd.rp_default)
             ng.api.core.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
             ng.api.core.idraw_draw()
             ng.api.core.render_renderpass_end()
-    
+
             ng.api.core.idraw_defaults()
             ng.api.core.idraw_camera2d(fbs_x, fbs_y)
             ng.api.core.idraw_texture(gd.main_rt)
             ng.api.core.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(win_w, win_h), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
                 "R_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
-    
+
             ng.api.core.render_renderpass_begin(gd.rp_default)
             ng.api.core.render_set_viewport(0.0, 0.0, win_w, win_h)
             -- ng.api.core.idraw_draw()
             -- ng.api.core.render_clear(0.0, 0.0, 0.0, 1.0)
             -- ng.api.core.fontbatch_draw(gd.fontbatch)
             ng.api.core.render_renderpass_end()
-    
+
         end
-    
+
     end
-    
+
     ]]
 
     print("haha.lua loaded")
-
 end
 
 function haha_test_gui()
-
     win = ng.add {
         gui_window = {
             title = 'parent window!'
@@ -708,11 +698,9 @@ function haha_test_gui()
         },
         gui_textedit = {}
     }
-
 end
 
 function haha_huge()
-
     hot_require 'oscillator'
     hot_require 'rotator'
 
@@ -775,11 +763,9 @@ function haha_huge()
     ns.sprite.set_texsize(player, ng.vec2(32.0, 32.0))
 
     ns.transform.set_scale(player, ng.vec2(2, 2))
-
 end
 
 function haha_basic()
-
     hot_require 'oscillator'
     hot_require 'rotator'
 
@@ -882,11 +868,9 @@ function haha_basic()
     -- entity destruction
 
     print("basic.lua loaded")
-
 end
 
 function test_ecs(dt)
-
     ecs:update()
 
     for id, e in ecs:select{"pos", "vel"} do
@@ -932,7 +916,6 @@ function test_ecs(dt)
             e.vel = vec2(4, 1)
         end
     end
-
 end
 
 local function load_world()

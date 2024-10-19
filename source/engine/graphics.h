@@ -296,11 +296,11 @@ NEKO_API() void gfx_print_error(const char* file, u32 line);
 
 #define neko_enum_decl(NAME, ...) typedef enum NAME { _neko_##NAME##_default = 0x0, __VA_ARGS__, _neko_##NAME##_count, _neko_##NAME##_force_u32 = 0x7fffffff } NAME;
 
-neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
-               R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
-               R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
+// neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
+//                R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
+//                R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
 
-neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
+// neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
 
 typedef struct gfx_shader_source_desc_t {
     u32 type;            // Shader stage type (vertex, fragment, tesselation, geometry, compute)
@@ -315,19 +315,19 @@ typedef struct gfx_shader_desc_t {
 
 // Graphics AssetTexture Desc
 typedef struct gfx_texture_desc_t {
-    u32 width;                              // Width of texture in texels
-    u32 height;                             // Height of texture in texels
-    u32 depth;                              // Depth of texture
-    void* data;                             // AssetTexture data to upload (can be null)
-    gfx_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-    u32 wrap_s;                             // Wrapping type for s axis of texture
-    u32 wrap_t;                             // Wrapping type for t axis of texture
-    u32 wrap_r;                             // Wrapping type for r axis of texture
-    gfx_texture_filtering_type min_filter;  // Minification filter for texture
-    gfx_texture_filtering_type mag_filter;  // Magnification filter for texture
-    gfx_texture_filtering_type mip_filter;  // Mip filter for texture
-    vec2 offset;                            // Offset for updates
-    u32 num_mips;                           // Number of mips to generate (default 0 is disable mip generation)
+    u32 width;          // Width of texture in texels
+    u32 height;         // Height of texture in texels
+    u32 depth;          // Depth of texture
+    void* data;         // AssetTexture data to upload (can be null)
+    GLuint format;      // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
+    u32 wrap_s;         // Wrapping type for s axis of texture
+    u32 wrap_t;         // Wrapping type for t axis of texture
+    u32 wrap_r;         // Wrapping type for r axis of texture
+    GLuint min_filter;  // Minification filter for texture
+    GLuint mag_filter;  // Magnification filter for texture
+    GLuint mip_filter;  // Mip filter for texture
+    vec2 offset;        // Offset for updates
+    u32 num_mips;       // Number of mips to generate (default 0 is disable mip generation)
     struct {
         u32 x;        // X offset in texels to start read
         u32 y;        // Y offset in texels to start read

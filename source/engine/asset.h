@@ -78,13 +78,15 @@ struct AseSpriteData {
     void trash();
 };
 
+#define SPRITE_EFFECT_COUNTS 4
+
 struct AseSprite {
     u64 sprite;  // index into assets
     u64 loop;    // index into AseSpriteData::by_tag
     float elapsed;
     i32 current_frame;
 
-    std::bitset<3> effects;
+    std::bitset<SPRITE_EFFECT_COUNTS> effects;
 
     void make();
     bool play(String tag);

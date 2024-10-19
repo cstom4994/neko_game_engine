@@ -360,6 +360,8 @@ NEKO_SCRIPT(
 
 )
 
+void edit_line_add_xy(vec2 p, Scalar point_size, Color color);
+
 struct App;
 
 int edit_clear(App* app, event_t evt);

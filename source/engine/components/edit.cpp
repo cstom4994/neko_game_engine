@@ -255,9 +255,11 @@ struct LinePoint {
 
 static Array<LinePoint> line_points;  // 每个连续的对都是一条线
 
+void edit_line_add_xy(vec2 p, Scalar point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
+
 void edit_line_add(vec2 a, vec2 b, Scalar point_size, Color color) {
-    line_points.push(LinePoint{.position = a, .point_size = point_size, .color = color});
-    line_points.push(LinePoint{.position = b, .point_size = point_size, .color = color});
+    edit_line_add_xy(a, point_size, color);
+    edit_line_add_xy(b, point_size, color);
 }
 
 static void _line_init() {

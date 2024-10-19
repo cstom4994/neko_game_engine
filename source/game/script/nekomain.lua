@@ -47,12 +47,10 @@ function ns.app.key_down(key)
             ns.group.destroy('default')
         end
     end
-
 end
 
 local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua') or haha
 if run then
-
     local function errorHandler(err)
         __print("Error: ", err)
     end

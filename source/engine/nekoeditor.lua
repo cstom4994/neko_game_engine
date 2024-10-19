@@ -89,18 +89,21 @@ function ns.edit.mode_key_down(key)
     end
     ns.edit._mode_exec_bind(false, ns.input.keycode_to_string(key))
 end
+
 function ns.edit.mode_key_up(key)
     if ns.gui.captured_event() then
         return
     end
     ns.edit._mode_exec_bind(true, ns.input.keycode_to_string(key))
 end
+
 function ns.edit.mode_mouse_down(mouse)
     if ns.gui.captured_event() then
         return
     end
     ns.edit._mode_exec_bind(false, ns.input.mousecode_to_string(mouse))
 end
+
 function ns.edit.mode_mouse_up(mouse)
     if ns.gui.captured_event() then
         return
@@ -249,6 +252,7 @@ function ns.edit.camera_drag_start()
     camera_drag_mouse_prev = ns.input.get_mouse_pos_unit()
     ns.edit_camera_drag.enabled = true
 end
+
 function ns.edit.camera_drag_end()
     ns.edit_camera_drag.enabled = false
 end
@@ -279,9 +283,11 @@ function ns.edit.camera_zoom(f)
     local h = math.pow(0.8, camera_zoom_factor) * camera_default_height
     ns.camera.set_viewport_height(ns.edit.camera, h)
 end
+
 function ns.edit.camera_zoom_in()
     ns.edit.camera_zoom(1)
 end
+
 function ns.edit.camera_zoom_out()
     ns.edit.camera_zoom(-1)
 end
@@ -398,14 +404,17 @@ end
 function ns.edit.boxsel_start()
     ns.edit.set_mode('boxsel')
 end
+
 function ns.edit.boxsel_begin()
     boxsel_has_begun = true
     boxsel_init_mouse_pos = ns.input.get_mouse_pos_pixels()
 end
+
 function ns.edit.boxsel_end()
     ns.edit.select = ng.entity_table()
     ns.edit.boxsel_end_add()
 end
+
 function ns.edit.boxsel_end_add()
     if boxsel_has_begun then
         b = ns.camera.pixels_to_world(boxsel_init_mouse_pos)
@@ -569,6 +578,7 @@ function ns.edit.command_start(prompt, callback, completion_func, always_complet
     ns.gui_text.set_str(ns.edit.command_text_colon, prompt)
     command_update_completions()
 end
+
 function ns.edit.command_end()
     if command_always_complete then
         if #command_completions == 0 then
@@ -586,6 +596,7 @@ function ns.edit.command_end()
         print('no command callback for \'' .. s .. '\'')
     end
 end
+
 function ns.edit.command_cancel()
     ns.edit.set_mode('normal')
 end
@@ -607,6 +618,7 @@ function ns.edit.modes.command.enter()
 
     ns.gui_text.set_str(ns.edit.command_completions_text, '')
 end
+
 function ns.edit.modes.command.exit()
     ns.gui.set_visible(ns.edit.command_bar, false)
 
@@ -936,9 +948,11 @@ function ns.edit.set_mode_text(s)
     ns.gui.set_visible(ns.edit.mode_textbox, true)
     ns.gui_text.set_str(ns.edit.mode_text, s)
 end
+
 function ns.edit.hide_mode_text()
     ns.gui.set_visible(ns.edit.mode_textbox, false)
 end
+
 ns.edit.hide_mode_text()
 
 --- command text ---------------------------------------------------------------
@@ -1062,7 +1076,7 @@ end
 function ng.edit_field_post_update(field, ...)
     local f = field_types[field.type].post_update
     if f then
-        f(field, unpack({...}))
+        f(field, unpack({ ... }))
     end
 end
 
@@ -1389,7 +1403,7 @@ ns.edit_inspector = {
     inspect = false
 }
 
-ns.edit_inspector.custom = {} -- custom inspectors -- eg. for physics
+ns.edit_inspector.custom = {}        -- custom inspectors -- eg. for physics
 
 local inspectors = ng.entity_table() -- NativeEntity (sys --> inspector) map
 
@@ -1715,7 +1729,6 @@ local function post_update_inspector(inspector)
 end
 
 function ns.edit_inspector.post_update_all()
-
     -- print("ns.edit_inspector.post_update_all")
 
     remove_destroyed()
@@ -1748,6 +1761,7 @@ function ns.edit_inspector.save_all()
 
     return data
 end
+
 function ns.edit_inspector.load_all(data)
     if data.gui_root then
         ns.edit_inspector.gui_root = data.gui_root
@@ -1763,7 +1777,7 @@ end
 
 --- C system properties --------------------------------------------------------
 
-ns.meta.props['transform'] = {{
+ns.meta.props['transform'] = { {
     name = 'parent'
 }, {
     name = 'position'
@@ -1771,15 +1785,15 @@ ns.meta.props['transform'] = {{
     name = 'rotation'
 }, {
     name = 'scale'
-}}
+} }
 
-ns.meta.props['camera'] = {{
+ns.meta.props['camera'] = { {
     name = 'current'
 }, {
     name = 'viewport_height'
-}}
+} }
 
-ns.meta.props['sprite'] = {{
+ns.meta.props['sprite'] = { {
     name = 'size'
 }, {
     name = 'texcell'
@@ -1787,9 +1801,9 @@ ns.meta.props['sprite'] = {{
     name = 'texsize'
 }, {
     name = 'depth'
-}}
+} }
 
-ns.meta.props['physics'] = {{
+ns.meta.props['physics'] = { {
     name = 'type'
 }, {
     name = 'mass'
@@ -1807,9 +1821,9 @@ ns.meta.props['physics'] = {{
     name = 'velocity_limit'
 }, {
     name = 'angular_velocity_limit'
-}}
+} }
 
-ns.meta.props['gui'] = {{
+ns.meta.props['gui'] = { {
     name = 'color'
 }, {
     name = 'visible'
@@ -1823,8 +1837,8 @@ ns.meta.props['gui'] = {{
     name = 'valign'
 }, {
     name = 'padding'
-}}
-ns.meta.props['gui_rect'] = {{
+} }
+ns.meta.props['gui_rect'] = { {
     name = 'size'
 }, {
     name = 'hfit'
@@ -1834,17 +1848,17 @@ ns.meta.props['gui_rect'] = {{
     name = 'hfill'
 }, {
     name = 'vfill'
-}}
-ns.meta.props['gui_text'] = {{
+} }
+ns.meta.props['gui_text'] = { {
     name = 'str'
-}}
-ns.meta.props['gui_textedit'] = {{
+} }
+ns.meta.props['gui_textedit'] = { {
     name = 'cursor'
 }, {
     name = 'numerical'
-}}
+} }
 
-ns.meta.props['sound'] = {{
+ns.meta.props['sound'] = { {
     name = 'path'
 }, {
     name = 'playing'
@@ -1856,7 +1870,7 @@ ns.meta.props['sound'] = {{
     name = 'loop'
 }, {
     name = 'gain'
-}}
+} }
 
 -- system-specific
 -- hot_require 'nekogame.edit_entity'
@@ -1913,10 +1927,12 @@ local grab_snap -- whether snapping to grid
 function ns.edit.grab_start()
     ns.edit.set_mode('grab')
 end
+
 function ns.edit.grab_end()
     ns.edit.set_mode('normal')
     ns.edit.undo_save()
 end
+
 function ns.edit.grab_cancel()
     for ent in pairs(ns.edit.select) do
         ns.transform.set_position(ent, grab_old_pos[ent])
@@ -1927,6 +1943,7 @@ end
 function ns.edit.grab_snap_on()
     grab_snap = true
 end
+
 function ns.edit.grab_snap_off()
     grab_snap = false
 end
@@ -1936,14 +1953,17 @@ function ns.edit.grab_move_left(mult)
     local g = ns.edit.get_grid_size()
     grab_disp.x = grab_disp.x - (mult or 1) * (g.x > 0 and g.x or 1)
 end
+
 function ns.edit.grab_move_right(mult)
     local g = ns.edit.get_grid_size()
     grab_disp.x = grab_disp.x + (mult or 1) * (g.x > 0 and g.x or 1)
 end
+
 function ns.edit.grab_move_up(mult)
     local g = ns.edit.get_grid_size()
     grab_disp.y = grab_disp.y + (mult or 1) * (g.y > 0 and g.y or 1)
 end
+
 function ns.edit.grab_move_down(mult)
     local g = ns.edit.get_grid_size()
     grab_disp.y = grab_disp.y - (mult or 1) * (g.y > 0 and g.y or 1)
@@ -2009,10 +2029,12 @@ local rotate_old_posrot, rotate_mouse_start, rotate_pivot
 function ns.edit.rotate_start()
     ns.edit.set_mode('rotate')
 end
+
 function ns.edit.rotate_end()
     ns.edit.set_mode('normal')
     ns.edit.undo_save()
 end
+
 function ns.edit.rotate_cancel()
     for ent in pairs(ns.edit.select) do
         ns.transform.set_position(ent, rotate_old_posrot[ent].pos)
@@ -2289,6 +2311,7 @@ function ns.edit.phypoly_start(ent, radius)
     phypoly_verts = {}
     phypoly_radius = radius or 0
 end
+
 function ns.edit.phypoly_end()
     if #phypoly_verts < 3 then
         return
@@ -2300,6 +2323,7 @@ function ns.edit.phypoly_end()
     phypoly_verts = nil
     ns.edit.undo_save()
 end
+
 function ns.edit.phypoly_cancel()
     ns.edit.set_mode('normal')
     phypoly_ent = nil
@@ -2417,24 +2441,28 @@ function ns.edit.key_up(key)
     end
     ns.edit.mode_key_up(key)
 end
+
 function ns.edit.key_down(key)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_key_down(key)
 end
+
 function ns.edit.mouse_down(mouse)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_mouse_down(mouse)
 end
+
 function ns.edit.mouse_up(mouse)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_mouse_up(mouse)
 end
+
 function ns.edit.scroll(scroll)
     ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
 end
@@ -2504,7 +2532,6 @@ function ns.edit.update_all()
 end
 
 function ns.edit.post_update_all()
-
     -- print("ns.edit.post_update_all")
 
     ns.edit.mode_event('post_update_all')
@@ -2528,6 +2555,7 @@ function ns.edit.save_all()
         sel = ns.edit.select
     }
 end
+
 function ns.edit.load_all(d)
     ng.entity_table_merge(ns.edit.select, d.sel)
 end
@@ -2548,10 +2576,11 @@ function ns.animation.add(ent)
         ent = ent,
         anims = {},
         curr_anim = nil, -- name of animation
-        frame = 1, -- index of frame
-        t = 1 -- time left in this frame
+        frame = 1,       -- index of frame
+        t = 1            -- time left in this frame
     }
 end
+
 function ns.animation.remove(ent, anim)
     local entry = ns.animation.tbl[ent]
     if entry then
@@ -2565,6 +2594,7 @@ function ns.animation.remove(ent, anim)
         end
     end
 end
+
 function ns.animation.has(ent)
     return ns.animation.tbl[ent] ~= nil
 end
@@ -2875,6 +2905,7 @@ function ns.bump.create(obj)
     ns.transform.add(obj.ent)
     _update_rect(obj, true)
 end
+
 function ns.bump.destroy(obj)
     if world:hasItem(obj.ent.id) then
         world:remove(obj.ent.id)

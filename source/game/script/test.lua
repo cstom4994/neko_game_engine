@@ -4,7 +4,6 @@ local lust = hot_require("libs/lust")
 local describe, it, expect = lust.describe, lust.it, lust.expect
 
 local function UnitTest()
-
     local Test = require("__neko.unittest")
 
     print("===============================UnitTest========================================")
@@ -14,7 +13,6 @@ local function UnitTest()
         end)
 
         describe('module_nbt', function()
-
             local nbt = hot_require("libs/nbt")
             local result
 
@@ -36,11 +34,9 @@ local function UnitTest()
                 expect(value.name).to.be.truthy()
                 expect(value.name:getString()).to.equal("Bananrama")
             end)
-
         end)
 
         describe('module1', function()
-
             it('feature_ffi_reflect_enum', function()
                 local reflect = ffi_reflect()
                 e = reflect.enum [[
@@ -52,7 +48,7 @@ local function UnitTest()
                 assert(e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E == 12)
 
                 d = reflect.enum_define [[
-                    #define foo 0 
+                    #define foo 0
                     #define bar 1
                     #define baz 5
                     #define qux 6
@@ -83,7 +79,6 @@ local function UnitTest()
             end)
 
             it('nn', function()
-
                 local nn = hot_require("nn"):new_network({2, 3, 1})
                 for _ = 1, 1000 do
                     nn:learn({0, 0}, {0})
@@ -121,18 +116,15 @@ local function UnitTest()
                 -- -- 加载网络确保结构相同
                 -- local my_network = hot_require("nn"):new_network({2, 3, 1})
                 -- my_network.synapses = table.load("network.txt")
-
             end)
 
             it('feature_xml_parser', function()
                 Test.test_xml()
             end)
-
         end)
 
         describe('module2', function() -- Can be nested
             it('feature_common_va', function()
-
                 local va = common.va()
 
                 local function f(...)
@@ -375,13 +367,10 @@ local function UnitTest()
 
             --     print(os.clock() - st)
             -- end)
-
         end)
-
     end)
 
     print("===============================UnitTest========================================")
-
 end
 
 M.UnitTest = UnitTest

@@ -19,19 +19,19 @@ function CPlayer:new(x, y)
 end
 
 function CPlayer:on_create()
-    self.body = LocalGame.b2:make_dynamic_body{
+    self.body = LocalGame.b2:make_dynamic_body {
         x = self.x,
         y = self.y,
         linear_damping = 25,
         fixed_rotation = true
     }
 
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -14,
         radius = 8,
         udata = self.id
     }
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -10,
         radius = 8,
         udata = self.id
@@ -141,7 +141,7 @@ function CPlayer:update(dt)
         -- 播放弓箭音效
         -- choose({sound_bow_1, sound_bow_2, sound_bow_3}):start()
 
-        audio_play_event(choose({"event:/Player/Bow/Bow1", "event:/Player/Bow/Bow2"}))
+        audio_play_event(choose({ "event:/Player/Bow/Bow1", "event:/Player/Bow/Bow2" }))
 
         local ox = self.x
         local oy = self.y
@@ -177,7 +177,7 @@ function CPlayer:draw()
             -- pass
         elseif cos < 0 then
             sx = -1
-            self.sprite:effect("110")
+            self.sprite:effect("1100")
         elseif cos > 0 then
             sx = 1
             self.sprite:effect(0)
@@ -220,20 +220,20 @@ function CEnemy:new(x, y, name)
 end
 
 function CEnemy:on_create()
-    self.body = LocalGame.b2:make_dynamic_body{
+    self.body = LocalGame.b2:make_dynamic_body {
         x = self.x,
         y = self.y,
         linear_damping = 10,
         fixed_rotation = true
     }
 
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -9,
         radius = 6,
         udata = self.id,
         begin_contact = CEnemy.begin_contact
     }
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -6,
         radius = 6,
         udata = self.id,
@@ -268,7 +268,6 @@ function CEnemy:hit(other, damage)
         self.body:set_velocity(heading(other.angle, 200))
         self.spring:pull(0.3)
     end
-
 end
 
 function CEnemy:co_update(dt)
@@ -350,7 +349,6 @@ function CEnemy.begin_contact(a, b)
     if mt == Player then
         LocalGame.world:kill(self)
         -- hit_player(20)
-
     elseif mt == Arrow then
         self:hit(other, 50)
     end
@@ -460,7 +458,7 @@ end
 function Arrow:on_create()
     local vx, vy = heading(self.angle, 500)
 
-    self.body = LocalGame.b2:make_dynamic_body{
+    self.body = LocalGame.b2:make_dynamic_body {
         x = self.x,
         y = self.y,
         vx = vx,
@@ -469,7 +467,7 @@ function Arrow:on_create()
         fixed_rotation = true
     }
 
-    self.body:make_box_fixture{
+    self.body:make_box_fixture {
         w = 8,
         h = 2,
         udata = self.id,
@@ -555,20 +553,20 @@ function Target:new(x, y, name, sprite)
 end
 
 function Target:on_create()
-    self.body = LocalGame.b2:make_dynamic_body{
+    self.body = LocalGame.b2:make_dynamic_body {
         x = self.x,
         y = self.y,
         linear_damping = 30,
         fixed_rotation = true
     }
 
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -10,
         radius = 7,
         udata = self.id,
         begin_contact = Target.begin_contact
     }
-    self.body:make_circle_fixture{
+    self.body:make_circle_fixture {
         y = -16,
         radius = 7,
         udata = self.id,
@@ -591,7 +589,6 @@ end
 
 function Target:on_death()
     self.body:destroy()
-
 end
 
 function Target:update(dt)
@@ -640,7 +637,6 @@ function Target:draw()
             end
         end
     end
-
 end
 
 function Target.begin_contact(a, b)
@@ -656,7 +652,6 @@ function Target.begin_contact(a, b)
     if mt == Player then
         -- world:kill(self)
         -- hit_player(20)
-
     elseif mt == Arrow then
         self:hit(other)
     end
