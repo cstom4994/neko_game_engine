@@ -3,13 +3,8 @@
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
+#include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
-
-DECL_ENT(Transform, vec2 position; Scalar rotation; vec2 scale; NativeEntity parent;  // 如果entity_nil 则为 root
-         Array<NativeEntity> children;                                                // 如果为 NULL 则为空
-         mat3 mat_cache;                                                              // 更新此内容
-         mat3 worldmat_cache;                                                         // 在父子更新时缓存
-         ecs_id_t dirty_count;);
 
 // -------------------------------------------------------------------------
 

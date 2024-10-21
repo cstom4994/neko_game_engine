@@ -3,10 +3,8 @@
 #include "engine/base/profiler.hpp"
 #include "engine/base/singleton.hpp"
 #include "engine/bootstrap.h"
-#include "engine/ecs/entity.h"
+#include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
-
-DECL_ENT(Camera, Scalar viewport_height;);
 
 static NativeEntity curr_camera;
 static NativeEntity edit_camera;

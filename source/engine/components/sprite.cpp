@@ -2,14 +2,8 @@
 
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
-#include "engine/ecs/entity.h"
+#include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
-
-DECL_ENT(Sprite, mat3 wmat;  // 要发送到着色器的世界变换矩阵
-
-         vec2 size; vec2 texcell; vec2 texsize;
-
-         int depth;);
 
 static char *atlas = NULL;
 
@@ -143,10 +137,10 @@ int sprite_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Sprite::pool, sprite_remove);
 
-    entitypool_ForEach(Sprite::pool, [](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
+    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
 
     if (edit_get_enabled()) {
-        entitypool_ForEach(Sprite::pool, [](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
+        Sprite::pool->ForEach([](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
     }
 
     return 0;

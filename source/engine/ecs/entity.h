@@ -131,6 +131,14 @@ struct NativeEntityPool {
         if (i >= 0) return &this->array[i];
         return NULL;
     }
+
+    template <class F>
+    auto ForEach(F func) {
+        T* var;
+        for (T* __end = (var = entitypool_begin(this), entitypool_end(this)); var != __end; ++var) {
+            func(var);
+        }
+    }
 };
 
 // 该结构必须位于池元素的顶部
@@ -149,12 +157,10 @@ struct EntityBase {
     static NativeEntityPool<T>* pool;
 };
 
-#define DECL_ENT(T, ...)                      \
-    struct T;                                 \
-    template <>                               \
-    NativeEntityPool<T>* EntityBase<T>::pool; \
-    struct T : EntityBase<T> {                \
-        __VA_ARGS__                           \
+#define DECL_ENT(T, ...)       \
+    struct T;                  \
+    struct T : EntityBase<T> { \
+        __VA_ARGS__            \
     };
 
 // object_size 是每个元素的大小
@@ -265,14 +271,6 @@ auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
 }
 
 #define entitypool_foreach(var, pool) for (void* __end = (var = (decltype(var))entitypool_begin(pool), entitypool_end(pool)); var != __end; ++var)
-
-template <typename T, class F>
-auto entitypool_ForEach(NativeEntityPool<T>* pool, F func) {
-    T* var;
-    for (T* __end = (var = entitypool_begin(pool), entitypool_end(pool)); var != __end; ++var) {
-        func(var);
-    }
-}
 
 // #define entitypool_save_foreach(var, var_s, pool, n, s)                                 \
 //     for (Store* pool##_s__ = NULL; !pool##_s__ && store_child_save(&pool##_s__, n, s);) \

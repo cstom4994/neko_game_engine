@@ -360,6 +360,59 @@ struct StringScanner {
     }
 };
 
+inline u32 neko_string_length(const char *txt) {
+    u32 sz = 0;
+    while (txt != NULL && txt[sz] != '\0') sz++;
+    return sz;
+}
+
+#define neko_strlen(str) neko_string_length((const char *)str)
+
+inline bool neko_string_compare_equal(const String &txt, const String &cmp) { return txt == cmp; }
+
+inline bool neko_string_compare_equal(const char *txt, const char *cmp) {
+    u32 a_sz = neko_strlen(txt);
+    u32 b_sz = neko_strlen(cmp);
+    if (a_sz != b_sz) return false;
+    for (u32 i = 0; i < a_sz; ++i)
+        if (*txt++ != *cmp++) {
+            return false;
+        }
+    return true;
+}
+
+inline String StringCopy(const_str str, u32 len) {
+    StringBuilder sb = {};
+    sb << String(str, len);
+    return String(sb);
+}
+
+inline bool neko_string_is_decimal(const_str str, u32 len) {
+    u32 i = 0;
+    if (str[0] == '-') i++;
+    bool used_dot = false;
+    for (; i < len; i++) {
+        char c = str[i];
+        if (c < '0' || c > '9') {
+            if (c == '.' && !used_dot) {
+                used_dot = true;
+                continue;
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool StringEqualN(const_str str_a, u32 len, const_str str_b) {
+    for (u32 i = 0; i < len; i++) {
+        if (str_a[i] != str_b[i]) return false;
+    }
+    return true;
+}
+
+inline bool neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+
 inline bool is_whitespace(char c) {
     switch (c) {
         case '\n':

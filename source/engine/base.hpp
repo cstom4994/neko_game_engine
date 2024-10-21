@@ -3,6 +3,7 @@
 #define NEKO_BASE_H
 
 #include "engine/base/base.hpp"
+#include "engine/base/string.hpp"
 
 FORMAT_ARGS(1)
 inline void neko_panic(const char *fmt, ...) {
@@ -49,56 +50,6 @@ inline void neko_panic(const char *fmt, ...) {
 neko_handle_decl(gfx_texture_t);
 typedef neko_handle(gfx_texture_t) gfx_texture_t;
 
-/*===================================
-// String Utils
-===================================*/
-
-NEKO_FORCE_INLINE u32 neko_string_length(const char *txt) {
-    u32 sz = 0;
-    while (txt != NULL && txt[sz] != '\0') sz++;
-    return sz;
-}
-
-#define neko_strlen(str) neko_string_length((const char *)str)
-
-// Expects null terminated strings
-NEKO_FORCE_INLINE bool neko_string_compare_equal(const char *txt, const char *cmp) {
-    // Grab sizes of both strings
-    u32 a_sz = neko_string_length(txt);
-    u32 b_sz = neko_string_length(cmp);
-
-    // Return false if sizes do not match
-    if (a_sz != b_sz) {
-        return false;
-    }
-
-    for (u32 i = 0; i < a_sz; ++i) {
-        if (*txt++ != *cmp++) {
-            return false;
-        }
-    };
-
-    return true;
-}
-
-NEKO_FORCE_INLINE bool neko_string_compare_equal_n(const char *txt, const char *cmp, u32 n) {
-    u32 a_sz = neko_string_length(txt);
-    u32 b_sz = neko_string_length(cmp);
-
-    // Not enough characters to do operation
-    if (a_sz < n || b_sz < n) {
-        return false;
-    }
-
-    for (u32 i = 0; i < n; ++i) {
-        if (*txt++ != *cmp++) {
-            return false;
-        }
-    };
-
-    return true;
-}
-
 // NEKO_FORCE_INLINE char* neko_util_string_concat(char* s1, const char* s2) {
 //     const size_t a = strlen(s1);
 //     const size_t b = strlen(s2);
@@ -109,7 +60,7 @@ NEKO_FORCE_INLINE bool neko_string_compare_equal_n(const char *txt, const char *
 // }
 
 NEKO_FORCE_INLINE void neko_util_str_to_lower(const char *src, char *buffer, size_t buffer_sz) {
-    size_t src_sz = neko_string_length(src);
+    size_t src_sz = neko_strlen(src);
     size_t len = NEKO_MIN(src_sz, buffer_sz - 1);
 
     for (u32 i = 0; i < len; ++i) {
@@ -133,7 +84,7 @@ NEKO_FORCE_INLINE bool neko_util_str_is_numeric(const char *str) {
 }
 
 NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char *buffer, u32 buffer_size, const char *file_path) {
-    u32 str_len = neko_string_length(file_path);
+    u32 str_len = neko_strlen(file_path);
     const char *end = (file_path + str_len);
     for (u32 i = 0; i < str_len; ++i) {
         if (file_path[i] == '/' || file_path[i] == '\\') {
@@ -160,7 +111,7 @@ NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
 }
 
 NEKO_FORCE_INLINE void neko_util_string_substring(const char *src, char *dst, size_t sz, u32 start, u32 end) {
-    u32 str_len = neko_string_length(src);
+    u32 str_len = neko_strlen(src);
     if (end > str_len) {
         end = str_len;
     }
@@ -180,7 +131,7 @@ NEKO_FORCE_INLINE void neko_util_string_substring(const char *src, char *dst, si
 
 NEKO_FORCE_INLINE void neko_util_string_remove_character(const char *src, char *buffer, u32 buffer_size, char delimiter) {
     u32 ct = 0;
-    u32 str_len = neko_string_length(src);
+    u32 str_len = neko_strlen(src);
     const char *at = src;
     while (at && *at != '\0' && ct < buffer_size) {
         char c = *at;
@@ -194,7 +145,7 @@ NEKO_FORCE_INLINE void neko_util_string_remove_character(const char *src, char *
 
 NEKO_FORCE_INLINE void neko_util_string_replace(char *buffer, size_t buffer_sz, const char *replace, char fallback) {
     // Replace all characters with characters of keyword, then the rest replace with spaces
-    size_t len = neko_string_length(replace);
+    size_t len = neko_strlen(replace);
     for (u32 c = 0; c < buffer_sz; ++c) {
         if (c < len) {
             buffer[c] = replace[c];
@@ -205,7 +156,7 @@ NEKO_FORCE_INLINE void neko_util_string_replace(char *buffer, size_t buffer_sz, 
 }
 
 NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char *source_str, char *buffer, u32 buffer_size, char delimiter, char replace) {
-    u32 str_len = neko_string_length(source_str);
+    u32 str_len = neko_strlen(source_str);
     const char *at = source_str;
     while (at && *at != '\0') {
         char c = *at;
@@ -252,7 +203,7 @@ NEKO_FORCE_INLINE u32 neko_hash_str(const char *str) {
 NEKO_FORCE_INLINE u64 neko_hash_str64(const char *str) {
     u32 hash1 = 5381;
     u32 hash2 = 52711;
-    u32 i = neko_string_length(str);
+    u32 i = neko_strlen(str);
     while (i--) {
         char c = str[i];
         hash1 = (hash1 * 33) ^ c;

@@ -1,10 +1,9 @@
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
+#include "engine/ecs/entitybase.hpp"
 
 static bool enabled;
-
-DECL_ENT(uneditable, int what;);
 
 void edit_set_enabled(bool e) { enabled = e; }
 bool edit_get_enabled() { return enabled; }
@@ -18,10 +17,6 @@ void edit_set_editable(NativeEntity ent, bool editable) {
 bool edit_get_editable(NativeEntity ent) { return !uneditable::pool->Get(ent); }
 
 // --- bboxes --------------------------------------------------------------
-
-// bbox pool
-DECL_ENT(BBoxPoolElem, mat3 wmat; BBox bbox; Scalar selected;  // > 0.5 if and only if selected
-);
 
 void edit_bboxes_update(NativeEntity ent, BBox bbox) {
     BBoxPoolElem *elem;

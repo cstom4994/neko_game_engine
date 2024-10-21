@@ -2,6 +2,7 @@
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
+#include "engine/ecs/entitybase.hpp"
 
 static NativeEntity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
 
@@ -10,19 +11,6 @@ static NativeEntity focused;  // 当前聚焦的实体 如果没有则为entity_
 static bool captured_event = false;
 
 // --- common --------------------------------------------------------------
-
-// 所有 GUI 系统共有的一般功能/数据
-
-DECL_ENT(Gui, bool setvisible;  // 外部设置可见性
-         bool visible;          // 内部递归计算可见性
-         bool updated_visible;  // 用于递归可见性计算
-         bool focusable;        // can be focused
-         bool captures_events;
-
-         Color color;
-
-         BBox bbox;  // 在实体空间中
-         GuiAlign halign; GuiAlign valign; vec2 padding;);
 
 static NativeEntityMap *focus_enter_map;
 static NativeEntityMap *focus_exit_map;
@@ -387,16 +375,6 @@ static void _common_load_all(Store *s) {
 
 // --- rect ----------------------------------------------------------------
 
-DECL_ENT(GuiRect,
-         mat3 wmat;
-
-         vec2 size; bool visible; Color color;
-
-         bool hfit; bool vfit; bool hfill; bool vfill;
-
-         bool updated; int depth;  // for draw order -- child depth > parent depth
-);
-
 void gui_rect_add(NativeEntity ent) {
     GuiRect *rect;
 
@@ -727,23 +705,6 @@ static void _rect_load_all(Store *s) {
 #define TEXT_FONT_W 10
 #define TEXT_FONT_H 12
 
-// info to send to shader program for each character
-typedef struct TextChar TextChar;
-struct TextChar {
-    vec2 pos;         // position in space of text entity in size-less units
-    vec2 cell;        // cell in font image
-    float is_cursor;  // > 0 iff. this char is cursor
-};
-
-// info per text entity
-DECL_ENT(Text,
-
-         char *str;
-         Array<TextChar> chars;  // per-character info buffered to shader
-         vec2 bounds;            // max x, min y in size-less units
-
-         int cursor;);
-
 static Scalar cursor_blink_time = 0;
 
 static void _text_add_cursor(Text *text, vec2 pos) {
@@ -995,9 +956,6 @@ static void _text_load_all(Store *s) {
 }
 
 // --- textedit ------------------------------------------------------------
-
-DECL_ENT(TextEdit, unsigned int cursor;  // 0 at beginning of string
-         bool numerical;);
 
 void gui_textedit_add(NativeEntity ent) {
     TextEdit *textedit;

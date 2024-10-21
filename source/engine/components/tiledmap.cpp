@@ -5,6 +5,7 @@
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
+#include "engine/ecs/entitybase.hpp"
 
 // deps
 #include <box2d/box2d.h>
@@ -551,20 +552,17 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
 
 // DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
 
-template <>
-NativeEntityPool<Tiled> *EntityBase<Tiled>::pool;
-
 Asset Tiled::tiled_shader = {};
 
 bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
 
-    map->doc = xml_parse_vfs(tmx_path);
-    if (!map->doc) {
-        neko_panic("Failed to parse XML: %s", xml_get_error());
-        return false;
-    }
+    map->doc.ParseVFS(tmx_path);
+    // if (!map->doc) {
+    //     neko_panic("Failed to parse XML");
+    //     return false;
+    // }
 
     char tmx_root_path[256];
     if (NULL == res_path) {
@@ -573,32 +571,33 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         strcpy(tmx_root_path, res_path);
     }
 
-    xml_node_t *map_node = xml_find_node(map->doc, "map");
+    XMLNode *map_node = map->doc.FindNode("map");
     neko_assert(map_node);  // Must have a map node!
 
-    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "tileset"); xml_node_iter_next(&it);) {
+    for (auto it = map_node->MakeChildIter("tileset"); it.Next();) {
         tileset_t tileset = {0};
 
-        tileset.first_gid = (u32)xml_find_attribute(it.current, "firstgid")->value.number;
+        tileset.first_gid = it.current->Attribute<double>("firstgid");
 
         char tileset_path[256];
-        neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, xml_find_attribute(it.current, "source")->value.string);
-        xml_document_t *tileset_doc = xml_parse_vfs(tileset_path);
-        if (!tileset_doc) {
-            neko_panic("Failed to parse XML from %s: %s", tileset_path, xml_get_error());
-            return false;
-        }
+        neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, it.current->Attribute<String>("source").data);
+        XMLDoc tileset_doc;
+        tileset_doc.ParseVFS(tileset_path);
+        // if (!tileset_doc) {
+        //     neko_panic("Failed to parse XML from %s", tileset_path);
+        //     return false;
+        // }
 
-        xml_node_t *tileset_node = xml_find_node(tileset_doc, "tileset");
-        tileset.tile_width = (u32)xml_find_attribute(tileset_node, "tilewidth")->value.number;
-        tileset.tile_height = (u32)xml_find_attribute(tileset_node, "tileheight")->value.number;
-        tileset.tile_count = (u32)xml_find_attribute(tileset_node, "tilecount")->value.number;
+        XMLNode *tileset_node = tileset_doc.FindNode("tileset");
+        tileset.tile_width = tileset_node->Attribute<double>("tilewidth");
+        tileset.tile_height = tileset_node->Attribute<double>("tileheight");
+        tileset.tile_count = tileset_node->Attribute<double>("tilecount");
 
-        xml_node_t *image_node = xml_find_node_child(tileset_node, "image");
-        const char *image_path = xml_find_attribute(image_node, "source")->value.string;
+        XMLNode *image_node = tileset_node->FindChild("image");
+        String image_path = image_node->Attribute<String>("source");
 
         char full_image_path[256];
-        neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path);
+        neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path.data);
 
         bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
         if (!ok) {
@@ -624,38 +623,38 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
         map->tilesets.push(tileset);
 
-        xml_free(tileset_doc);
+        tileset_doc.Trash();
     }
 
-    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "layer"); xml_node_iter_next(&it);) {
-        xml_node_t *layer_node = it.current;
+    for (auto it = map_node->MakeChildIter("layer"); it.Next();) {
+        XMLNode *layer_node = it.current;
 
         layer_t layer = {0};
         layer.tint = color256(255, 255, 255, 255);
 
-        layer.width = (u32)xml_find_attribute(layer_node, "width")->value.number;
-        layer.height = (u32)xml_find_attribute(layer_node, "height")->value.number;
+        layer.width = layer_node->Attribute<double>("width");
+        layer.height = layer_node->Attribute<double>("height");
 
-        xml_attribute_t *tint_attrib = xml_find_attribute(layer_node, "tintcolor");
+        XMLAttribute *tint_attrib = layer_node->FindAttribute("tintcolor");
         if (tint_attrib) {
-            const char *hexstring = tint_attrib->value.string;
+            String hexstring = std::get<String>(tint_attrib->value);
             u32 *cols = (u32 *)layer.tint.rgba;
-            *cols = (u32)strtol(hexstring + 1, NULL, 16);
+            *cols = (u32)strtol(hexstring.data + 1, NULL, 16);
             layer.tint.a = 255;
         }
 
-        xml_node_t *data_node = xml_find_node_child(layer_node, "data");
+        XMLNode *data_node = layer_node->FindChild("data");
 
-        const char *encoding = xml_find_attribute(data_node, "encoding")->value.string;
+        String encoding = data_node->Attribute<String>("encoding");
 
-        if (strcmp(encoding, "csv") != 0) {
+        if (strcmp(encoding.data, "csv") != 0) {
             neko_panic("%s", "Only CSV data encoding is supported.");
             return false;
         }
 
-        const char *data_text = data_node->text;
+        String data_text = data_node->text;
 
-        const char *cd_ptr = data_text;
+        const char *cd_ptr = data_text.data;
 
         layer.tiles = (tile_t *)mem_alloc(layer.width * layer.height * sizeof(tile_t));
 
@@ -688,18 +687,18 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         map->layers.push(layer);
     }
 
-    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "objectgroup"); xml_node_iter_next(&it);) {
-        xml_node_t *object_group_node = it.current;
+    for (auto it = map_node->MakeChildIter("objectgroup"); it.Next();) {
+        XMLNode *object_group_node = it.current;
 
-        object_group_t object_group = {0};
+        object_group_t object_group = {};
         object_group.color = color256(255, 255, 255, 255);
 
         // 对象组名字
-        xml_attribute_t *name_attrib = xml_find_attribute(object_group_node, "name");
+        XMLAttribute *name_attrib = object_group_node->FindAttribute("name");
         if (name_attrib) {
-            const char *namestring = name_attrib->value.string;
+            String namestring = std::get<String>(name_attrib->value);
 
-            object_group.name = name_attrib->value.string;
+            object_group.name = std::get<String>(name_attrib->value);
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
@@ -708,31 +707,31 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         }
 
         // 对象组默认颜色
-        xml_attribute_t *color_attrib = xml_find_attribute(object_group_node, "color");
+        XMLAttribute *color_attrib = object_group_node->FindAttribute("color");
         if (color_attrib) {
-            const char *hexstring = color_attrib->value.string;
+            String hexstring = std::get<String>(color_attrib->value);
             u32 *cols = (u32 *)object_group.color.rgba;
-            *cols = (u32)strtol(hexstring + 1, NULL, 16);
+            *cols = (u32)strtol(hexstring.data + 1, NULL, 16);
             object_group.color.a = 128;
         }
 
-        for (xml_node_iter_t iit = xml_new_node_child_iter(object_group_node, "object"); xml_node_iter_next(&iit);) {
-            xml_node_t *object_node = iit.current;
+        for (auto iit = object_group_node->MakeChildIter("object"); iit.Next();) {
+            XMLNode *object_node = iit.current;
 
             object_t object = {0};
-            object.id = (i32)xml_find_attribute(object_node, "id")->value.number;
-            object.x = (i32)xml_find_attribute(object_node, "x")->value.number;
-            object.y = (i32)xml_find_attribute(object_node, "y")->value.number;
+            object.id = object_node->Attribute<double>("id");
+            object.x = object_node->Attribute<double>("x");
+            object.y = object_node->Attribute<double>("y");
 
-            xml_attribute_t *attrib;
-            if ((attrib = xml_find_attribute(object_node, "width"))) {
-                object.width = attrib->value.number;
+            XMLAttribute *attrib;
+            if ((attrib = object_node->FindAttribute("width"))) {
+                object.width = std::get<double>(attrib->value);
             } else {
                 object.width = 1;
             }
 
-            if ((attrib = xml_find_attribute(object_node, "height"))) {
-                object.height = attrib->value.number;
+            if ((attrib = object_node->FindAttribute("height"))) {
+                object.height = std::get<double>(attrib->value);
             } else {
                 object.height = 1;
             }
@@ -782,8 +781,8 @@ void tiled_unload(TiledMap *map) {
 
     map->object_groups.trash();
 
-    if (map->doc) {
-        xml_free(map->doc);
+    if (map->doc.nodes.len) {
+        map->doc.Trash();
     }
 }
 
@@ -1094,13 +1093,12 @@ int tiled_render(Tiled *tiled) {
 }
 
 void tiled_add(NativeEntity ent) {
-    Tiled *tiled;
 
     if (Tiled::pool->Get(ent)) return;
 
     transform_add(ent);
 
-    tiled = Tiled::pool->Add(ent);
+    Tiled *tiled = Tiled::pool->Add(ent);
 
     tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
     memset(tiled->render, 0, sizeof(tiled_renderer));
@@ -1123,7 +1121,7 @@ void tiled_init() {
 
 void tiled_fini() {
 
-    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) {
+    Tiled::pool->ForEach([](Tiled *tiled) {
         // tiled_unload(&tiled->render->map);
         tiled_render_deinit(tiled->render);
         mem_free(tiled->map_name.data);
@@ -1137,14 +1135,14 @@ int tiled_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Tiled::pool, tiled_remove);
 
-    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); });
+    Tiled::pool->ForEach([](Tiled *tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); });
 
     return 0;
 }
 
 void tiled_draw_all() {
 
-    entitypool_ForEach(Tiled::pool, [](Tiled *tiled) { tiled_render(tiled); });
+    Tiled::pool->ForEach([](Tiled *tiled) { tiled_render(tiled); });
 }
 
 void tiled_set_map(NativeEntity ent, const char *str) {

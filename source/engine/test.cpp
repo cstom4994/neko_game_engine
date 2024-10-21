@@ -242,27 +242,27 @@ void print_indent(int indent) {
     }
 }
 
-void print_xml_node(xml_node_t *node, int indent) {
+void print_xml_node(XMLNode *node, int indent) {
     print_indent(indent);
-    printf("XML Node: %s\n", node->name);
+    printf("XML Node: %s\n", node->name.data);
     print_indent(indent);
-    printf("\tText: %s\n", node->text);
+    printf("\tText: %s\n", node->text.data);
     print_indent(indent);
     puts("\tAttributes:");
     for (auto kv : node->attributes) {
-        xml_attribute_t *attrib = kv.value;
+        XMLAttribute *attrib = kv.value;
 
         print_indent(indent);
-        printf("\t\t%s: ", attrib->name);
+        printf("\t\t%s: ", attrib->name.data);
         switch (attrib->type) {
-            case NEKO_XML_ATTRIBUTE_NUMBER:
-                printf("(number) %g\n", attrib->value.number);
+            case XMLAttribute::NEKO_XML_ATTRIBUTE_NUMBER:
+                printf("(number) %g\n", std::get<double>(attrib->value));
                 break;
-            case NEKO_XML_ATTRIBUTE_BOOLEAN:
-                printf("(boolean) %s\n", attrib->value.boolean ? "true" : "false");
+            case XMLAttribute::NEKO_XML_ATTRIBUTE_BOOLEAN:
+                printf("(boolean) %s\n", std::get<bool>(attrib->value) ? "true" : "false");
                 break;
-            case NEKO_XML_ATTRIBUTE_STRING:
-                printf("(string) %s\n", attrib->value.string);
+            case XMLAttribute::NEKO_XML_ATTRIBUTE_STRING:
+                printf("(string) %s\n", std::get<String>(attrib->value).data);
                 break;
             default:
                 break;  // Unreachable
@@ -279,15 +279,16 @@ void print_xml_node(xml_node_t *node, int indent) {
 }
 
 int test_xml(lua_State *L) {
-    xml_document_t *doc = xml_parse_vfs("assets/maps/tileset.tsx");
-    if (!doc) {
-        printf("XML Parse Error: %s\n", xml_get_error());
+    XMLDoc doc;
+    doc.ParseVFS("assets/maps/tileset.tsx");
+    if (!doc.nodes.len) {
+        printf("XML Parse Error\n");
     } else {
-        for (uint32_t i = 0; i < doc->nodes.len; i++) {
-            xml_node_t *node = &doc->nodes[i];
+        for (uint32_t i = 0; i < doc.nodes.len; i++) {
+            XMLNode *node = &doc.nodes[i];
             print_xml_node(node, 0);
         }
-        xml_free(doc);
+        doc.Trash();
     }
     return 0;
 }
