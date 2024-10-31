@@ -7,7 +7,7 @@
 
 #define Event_mt "event"
 
-#define event_getdelegates(_handler, _evt) ((_handler)->delegate_map.get(_evt))
+#define event_getdelegates(_handler, _evt) ((_handler)->m_delegate_map.get(_evt))
 
 #define EVENT_TYPES   \
     X(none)           \
@@ -95,13 +95,13 @@ typedef struct EventDelegate {
     lua_State* L;
 } EventDelegate;
 
-class EventHandler : public neko::SingletonClass<EventHandler> {
+class EventHandler : public Neko::SingletonClass<EventHandler> {
     using DelegateArray = Array<EventDelegate>;
 
 private:
-    Queue<event_t> queue;
-    HashMap<DelegateArray> delegate_map;
-    u64 prev_len;
+    Queue<event_t> m_evqueue;
+    HashMap<DelegateArray> m_delegate_map;
+    u64 m_prev_len;
 
 public:
     void init() override;

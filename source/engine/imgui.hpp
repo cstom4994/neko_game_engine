@@ -9,7 +9,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-namespace neko {
+namespace Neko {
 
 namespace imgui {
 
@@ -89,7 +89,7 @@ static inline void perf() {
 
 }  // namespace imgui
 
-}  // namespace neko
+}  // namespace Neko
 
 void imgui_draw_post();
 void imgui_draw_pre();

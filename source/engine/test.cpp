@@ -29,7 +29,7 @@
 
 int test_xml(lua_State *L);
 
-namespace neko::luabind::__unittest {
+namespace Neko::luabind::__unittest {
 
 #if 0
 
@@ -163,7 +163,7 @@ int luaopen(lua_State *L) {
     // luaL_setfuncs(L, lib, 0);
     return 0;
 }
-}  // namespace neko::luabind::__unittest
+}  // namespace Neko::luabind::__unittest
 
 struct PointInner {
     int xx, yy;
@@ -196,7 +196,7 @@ void dumpObj(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields
     if constexpr (std::is_class_v<std::decay_t<T>>) {
         indent();
         std::cout << fieldName << (*fieldName ? ": {" : "{") << std::endl;
-        neko::reflection::struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { dumpObj(value, depth + 1, fieldName, info); });
+        Neko::reflection::struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { dumpObj(value, depth + 1, fieldName, info); });
         indent();
         std::cout << "}" << (depth == 0 ? "" : ",") << std::endl;
     } else {
@@ -218,7 +218,7 @@ void As(T arg) {
 static void test_struct() {
 
     MyStruct myStruct{1001, 2.f};
-    neko::reflection::struct_apply(myStruct, [](auto &...args) { (..., As(args)); });
+    Neko::reflection::struct_apply(myStruct, [](auto &...args) { (..., As(args)); });
 
     MyRect rect{
             {0, 0},
@@ -229,7 +229,7 @@ static void test_struct() {
     dumpObj(rect);
 
     std::tuple<int, double, std::string> myTuple;
-    constexpr std::size_t size = neko::tuple_size_v<decltype(myTuple)>;
+    constexpr std::size_t size = Neko::tuple_size_v<decltype(myTuple)>;
 
     std::cout << "Size of tuple: " << size << std::endl;
 }
@@ -525,7 +525,7 @@ void draw_gui() {
         g_console.autoscroll = !g_console.autoscroll;
     }
 
-    vec2 fb = neko::the<Game>().get_window_size();
+    vec2 fb = Neko::the<Game>().get_window_size();
     rect_t screen = neko_rect(0, 0, fb.x, fb.y);
     // ui_Layout l;
     //            if (embeded)
@@ -630,7 +630,7 @@ void draw_gui_auto_test() {
             static std::pair<int, std::string> pair2 = {-3, "simple types appear next to each other in a pair"};
             ui::Auto(pair2, "pair2");
 
-            //         ui::Auto(neko::cpp::as_const(pair), "as_const(pair)");  // easy way to view as const
+            //         ui::Auto(Neko::cpp::as_const(pair), "as_const(pair)");  // easy way to view as const
 
             //         std::tuple<const int, std::string, ImVec2> tuple = {42, "string in tuple", {3.1f, 3.2f}};
             //         ui::Auto(tuple, "tuple");
@@ -647,7 +647,7 @@ void draw_gui_auto_test() {
             static A a;
             ui::Auto(a, "a");
 
-            ui::Auto(neko::cpp::as_const(a), "as_const(a)");
+            ui::Auto(Neko::cpp::as_const(a), "as_const(a)");
 
             struct B {
                 std::string str = "Unfortunatelly, cannot deduce const-ness from within a struct";

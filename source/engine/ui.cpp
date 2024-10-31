@@ -22,7 +22,7 @@
 // deps
 #include "vendor/stb_truetype.h"
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 const u32 ui_renderer_max_quads = 1024;
 

@@ -12,7 +12,7 @@ auto println(const std::string& fmt, Args&&... args) {
     std::cout << str << std::endl;
 }
 
-namespace neko {
+namespace Neko {
 
 namespace util {
 
@@ -126,6 +126,6 @@ struct TupleArrayRef<0> {
 
 }  // namespace util
 
-}  // namespace neko
+}  // namespace Neko
 
-#define neko_defer(code) auto JOIN_2(_defer_, __COUNTER__) = neko::util::defer_func([&]() { code; })
+#define neko_defer(code) auto JOIN_2(_defer_, __COUNTER__) = Neko::util::defer_func([&]() { code; })

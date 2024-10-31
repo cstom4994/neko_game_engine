@@ -5,20 +5,20 @@
 void EventHandler::init() {
 
     assert(NUM_EVENTS < 32);
-    queue.make();
-    delegate_map.reserve(NUM_EVENTS);
+    m_evqueue.make();
+    m_delegate_map.reserve(NUM_EVENTS);
 }
 
 void EventHandler::fini() {
 
-    queue.trash();
+    m_evqueue.trash();
 
     for (int i = 0; i < NUM_EVENTS; i++) {
         DelegateArray* list = event_getdelegates(this, i);
         if (list == nullptr) continue;
         list->trash();
     }
-    delegate_map.trash();
+    m_delegate_map.trash();
 }
 
 void EventHandler::update() {}
@@ -39,7 +39,7 @@ void EventHandler::event_register(void* receiver, int evt, EventCallback cb, lua
             } else {
                 DelegateArray new_list = {};
                 new_list.push(l);
-                delegate_map[i] = new_list;
+                m_delegate_map[i] = new_list;
             }
         }
     }
@@ -70,15 +70,15 @@ void EventHandler::event_dispatch(event_t evt) {
 
 // 将事件放入队列
 int EventHandler::event_post(event_t evt) {
-    queue.enqueue(evt);
+    m_evqueue.enqueue(evt);
     return 1;
 }
 
 // 清空事件队列并将事件分派给所有监听器
 void EventHandler::event_pump() {
-    prev_len = queue.len;
-    while (queue.len > 0) {
-        event_t evt = queue.demand();
+    m_prev_len = m_evqueue.len;
+    while (m_evqueue.len > 0) {
+        event_t evt = m_evqueue.demand();
         event_dispatch(evt);
     }
 }
@@ -93,7 +93,7 @@ static int w_event_listen(lua_State* L) {
         lua_pushvalue(L, 3);
         cb = luaL_ref(L, LUA_REGISTRYINDEX);
     }
-    auto& eh = neko::the<EventHandler>();
+    auto& eh = Neko::the<EventHandler>();
     eh.event_register(reinterpret_cast<void*>(ref), evt, reinterpret_cast<EventCallback>(cb), L);
     return 0;
 }
@@ -127,7 +127,7 @@ static int w_event_new(lua_State* L) {
 // event_t.dispatch(evt, [, data])
 static int w_event_postnow(lua_State* L) {
     event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
-    auto& eh = neko::the<EventHandler>();
+    auto& eh = Neko::the<EventHandler>();
     eh.event_dispatch(*evt);
     return 0;
 }
@@ -135,7 +135,7 @@ static int w_event_postnow(lua_State* L) {
 // event_t.post(evt [, data])
 static int w_event_postlater(lua_State* L) {
     event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
-    auto& eh = neko::the<EventHandler>();
+    auto& eh = Neko::the<EventHandler>();
     eh.event_post(*evt);
     return 0;
 }

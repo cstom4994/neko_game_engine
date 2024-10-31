@@ -92,7 +92,7 @@ void imgui_draw_post() {
 #if 0
 
 
-namespace neko::imgui::util {
+namespace Neko::imgui::util {
 
 struct TableInteger {
     const char* name;
@@ -129,10 +129,10 @@ void struct_gen(lua_State* L, const char* name, std::span<luaL_Reg> funcs, std::
 void flags_gen(lua_State* L, const char* name);
 void init(lua_State* L);
 
-}  // namespace neko::imgui::util
+}  // namespace Neko::imgui::util
 
 
-namespace neko::imgui::util {
+namespace Neko::imgui::util {
 
 static lua_CFunction str_format = NULL;
 
@@ -384,6 +384,6 @@ void init(lua_State* L) {
     lua_pop(L, 2);
 }
 
-}  // namespace neko::imgui::util
+}  // namespace Neko::imgui::util
 
 #endif

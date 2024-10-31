@@ -194,7 +194,7 @@ void input_add_mouse_move_callback(MouseMoveCallback f);
 typedef void (*ScrollCallback)(vec2 scroll);
 void input_add_scroll_callback(ScrollCallback f);
 
-class Input : public neko::SingletonClass<Input> {
+class Input : public Neko::SingletonClass<Input> {
 public:
     Array<KeyCallback> key_down_cbs;
     Array<KeyCallback> key_up_cbs;

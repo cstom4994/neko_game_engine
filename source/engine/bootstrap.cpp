@@ -219,7 +219,7 @@ float posteffect_intensity = 2.0f;
 
 int _game_draw(App *app, event_t evt) {
 
-    auto &game = neko::the<Game>();
+    auto &game = Neko::the<Game>();
 
     static bool first = true;
 
@@ -261,7 +261,7 @@ int _game_draw(App *app, event_t evt) {
             ImGui::EndMainMenuBar();
         }
 
-        neko::imgui::perf();
+        Neko::imgui::perf();
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -470,10 +470,10 @@ static void _game_fini() {
     }
     mem_free(g_app->args.data);
 
-    auto &eh = neko::the<EventHandler>();
+    auto &eh = Neko::the<EventHandler>();
     eh.fini();
 
-    neko::modules::shutdown<EventHandler>();
+    Neko::modules::shutdown<EventHandler>();
 
     g_app->~App();
     mem_free(g_app);
@@ -494,12 +494,12 @@ static void _game_fini() {
 // -------------------------------------------------------------------------
 
 void GameMain(int argc, char **argv) {
-    neko::modules::initialize<Game>(argc, argv);
-    auto &game = neko::the<Game>();
+    Neko::modules::initialize<Game>(argc, argv);
+    auto &game = Neko::the<Game>();
     game.init();
     while (!g_app->g_quit) {
         App *app = g_app;
-        auto &eh = neko::the<EventHandler>();
+        auto &eh = Neko::the<EventHandler>();
         glfwPollEvents();
         if (glfwWindowShouldClose(g_app->game_window)) game.quit();
         eh.event_pump();
@@ -556,8 +556,8 @@ void Game::init() {
 
     g_allocator->make();
 
-    neko::modules::initialize<EventHandler>();
-    neko::modules::initialize<Input>();
+    Neko::modules::initialize<EventHandler>();
+    Neko::modules::initialize<Input>();
 
     g_app = new (mem_alloc(sizeof(App))) App();
 
@@ -643,7 +643,7 @@ void Game::init() {
         neko_init_ui_renderer();
     }
 
-    auto &eh = neko::the<EventHandler>();
+    auto &eh = Neko::the<EventHandler>();
 
     struct {
         event_mask evt;

@@ -2,7 +2,7 @@
 
 #include "engine/base/base.hpp"
 
-namespace neko {
+namespace Neko {
 
 class NonCopyable {
 public:
@@ -59,9 +59,9 @@ private:
 
 template <typename BaseT>
 std::unique_ptr<BaseT> SingletonClass<BaseT>::instance_;
-}  // namespace neko
+}  // namespace Neko
 
-namespace neko::modules {
+namespace Neko::modules {
 template <typename T, typename... Args>
 T& initialize(Args&&... args) {
     using BaseT = typename T::base_type;
@@ -84,11 +84,11 @@ T& instance() {
     return static_cast<T&>(SingletonClass<BaseT>::instance());
 }
 
-}  // namespace neko::modules
+}  // namespace Neko::modules
 
-namespace neko {
+namespace Neko {
 template <typename T>
 T& the() {
     return modules::instance<T>();
 }
-}  // namespace neko
+}  // namespace Neko

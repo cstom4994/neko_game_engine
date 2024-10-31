@@ -18,7 +18,7 @@
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 int load_embed_lua(lua_State *L, const u8 B[], const_str name) {
     if (luaL_loadbuffer(L, (const_str)B, neko_strlen((const_str)B), name) != LUA_OK) {
@@ -255,8 +255,8 @@ static void _forward_args() {
     int i, argc;
     char **argv;
 
-    argc = neko::the<Game>().game_get_argc();
-    argv = neko::the<Game>().game_get_argv();
+    argc = Neko::the<Game>().game_get_argc();
+    argv = Neko::the<Game>().game_get_argv();
 
     lua_createtable(L, argc, 0);
     for (i = 0; i < argc; ++i) {
@@ -322,7 +322,7 @@ int app_stop(App *app, event_t evt) {
 void script_init() {
     PROFILE_FUNC();
 
-    neko::timer timer;
+    Neko::timer timer;
     timer.start();
 
     LuaVM vm;
@@ -350,7 +350,7 @@ void script_init() {
 
     lua_channels_setup();
 
-    auto &eh = neko::the<EventHandler>();
+    auto &eh = Neko::the<EventHandler>();
     eh.event_register(g_app, quit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
@@ -392,7 +392,7 @@ void script_fini() {
             neko_panic("%s", err.data);
         }
 
-        auto &eh = neko::the<EventHandler>();
+        auto &eh = Neko::the<EventHandler>();
         eh.event_dispatch(event_t{.type = on_quit, .p0 = {.v = 199.14f}});
     }
 

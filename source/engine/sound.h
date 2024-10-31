@@ -14,7 +14,7 @@
 
 #include <miniaudio.h>
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 struct Sound {
     ma_sound ma;

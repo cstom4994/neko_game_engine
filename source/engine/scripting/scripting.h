@@ -55,7 +55,7 @@ NEKO_API() void createStructTables(lua_State *L);
 
 NEKO_API() void open_neko_api(lua_State *L);
 
-namespace neko::luabind {
+namespace Neko::luabind {
 
 template <typename T>
 void checktable_refl(lua_State *L, const_str tname, T &&v) {
@@ -66,11 +66,11 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
         console_log("[exception] no %s table", tname);
     }
     if (lua_istable(L, -1)) {
-        auto f = [&L](std::string_view name, neko::reflection::Any &value) {
+        auto f = [&L](std::string_view name, Neko::reflection::Any &value) {
             static_assert(std::is_lvalue_reference_v<decltype(value)>);
             if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
-                auto ff = [&]<typename S>(const_str name, neko::reflection::Any &var, S &t) {
-                    if (value.GetType() == neko::reflection::type_of<S>()) {
+                auto ff = [&]<typename S>(const_str name, Neko::reflection::Any &var, S &t) {
+                    if (value.GetType() == Neko::reflection::type_of<S>()) {
                         S s = detail::LuaStack<std::remove_reference_t<S>>::Get(L, -1);
                         value.cast<S>() = s;
                     }
@@ -86,6 +86,6 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
     lua_pop(L, 1);
 }
 
-}  // namespace neko::luabind
+}  // namespace Neko::luabind
 
 #endif

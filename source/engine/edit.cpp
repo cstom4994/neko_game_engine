@@ -322,7 +322,7 @@ static void _write(const char *s) {
     bool wrap;
 
     // wrap at window width, but max out at alloc'd size
-    width = neko::the<Game>().get_window_size().x / 10;
+    width = Neko::the<Game>().get_window_size().x / 10;
     if (width > LINE_LEN - 2) width = LINE_LEN - 2;
 
     while (*s) {

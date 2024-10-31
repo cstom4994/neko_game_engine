@@ -3,7 +3,7 @@
 
 #include "engine/scripting/lua_wrapper.hpp"
 
-namespace neko::reflection {
+namespace Neko::reflection {
 
 #define STRUCT_APPLYER_DEF(N)                                                              \
     template <class T, class F>                                                            \
@@ -38,7 +38,7 @@ inline constexpr auto __gen_struct_meta() {
 
 #define NEKO_STRUCT(__struct, ...)                                          \
     template <>                                                             \
-    inline constexpr auto neko::reflection::__gen_struct_meta<__struct>() { \
+    inline constexpr auto Neko::reflection::__gen_struct_meta<__struct>() { \
         using T = __struct;                                                 \
         return std::make_tuple(__VA_ARGS__);                                \
     };
@@ -72,4 +72,4 @@ inline constexpr void struct_foreach(T &&obj, F &&f) {
     struct_foreach_impl(std::forward<T>(obj), fields, std::forward<F>(f), std::make_index_sequence<std::tuple_size_v<decltype(fields)>>{});
 }
 
-}  // namespace neko::reflection
+}  // namespace Neko::reflection

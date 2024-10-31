@@ -28,7 +28,7 @@
 
 #define default_font_size 22.f
 
-using namespace neko::ecs;
+using namespace Neko::ecs;
 
 typedef struct Store Store;
 
@@ -138,7 +138,7 @@ i32 neko_buildnum(void);
 // 入口点
 void GameMain(int argc, char **argv);
 
-class Game : public neko::SingletonClass<Game> {
+class Game : public Neko::SingletonClass<Game> {
     int argc;
     char **argv;
 

@@ -150,13 +150,13 @@ MUIRef* lua_ui_check_ref(lua_State* L, i32 arg, MUIRefKind kind);
 
 ui_context_t* ui_global_ctx();
 
-namespace neko::cpp {
+namespace Neko::cpp {
 // same as std::as_const in c++17
 template <class T>
 constexpr std::add_const_t<T>& as_const(T& t) noexcept {
     return t;
 }
-}  // namespace neko::cpp
+}  // namespace Neko::cpp
 
 namespace ui {
 
@@ -208,7 +208,7 @@ using c_array_t = T[N];  // so arrays are regular types and can be used in macro
 template <typename T>
 struct Auto_t {
     static void Auto(T& anything, const std::string& name) {
-        // auto tuple = neko::cpp::pfr::structure_tie(anything);
+        // auto tuple = Neko::cpp::pfr::structure_tie(anything);
         // ui::detail::AutoTuple("Struct " + name, tuple);
         static_assert("Auto not support struct!");
     }
@@ -331,7 +331,7 @@ void ui::detail::AutoTupleRecurse(const std::tuple<Args...>& tpl, std::enable_if
     ui::detail::AutoTupleRecurse<I - 1, const Args...>(tpl);  // first draw smaller indeces
     using type = decltype(std::get<I - 1>(tpl));
     std::string str = '<' + std::to_string(I) + ">: " + "const " + typeid(type).name();
-    ui::detail::AutoExpand(str, neko::cpp::as_const(std::get<I - 1>(tpl)));
+    ui::detail::AutoExpand(str, Neko::cpp::as_const(std::get<I - 1>(tpl)));
 }
 template <typename... Args>
 void ui::detail::AutoTuple(const std::string& name, std::tuple<Args...>& tpl) {
@@ -539,7 +539,7 @@ DEFINE_UI_INSPECT((template <>), (std::add_pointer_t<void()>), ui_context_t* ui 
 DEFINE_UI_INSPECT((template <>), (const std::add_pointer_t<void()>), ui_context_t* ui = ui_global_ctx(); if (ui_button(ui, name.c_str())) var(););
 
 // DEFINE_UI_INSPECT(template <>, vec2_t) {
-//     //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { ui::Auto(value, std::string(field.name)); });
+//     //    Neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { ui::Auto(value, std::string(field.name)); });
 //     ui_labelf("%f %f", var.x, var.y);
 // }
 // );

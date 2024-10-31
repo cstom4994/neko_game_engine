@@ -2,6 +2,7 @@
 
 #include "tiledmap.hpp"
 
+#include "engine/base/json.hpp"
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"

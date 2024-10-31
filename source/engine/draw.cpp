@@ -14,7 +14,7 @@
 #include "vendor/stb_rect_pack.h"
 #include "vendor/stb_truetype.h"
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 #if 0
 
@@ -877,7 +877,7 @@ static int mt_sprite_effect(lua_State *L) {
     int te = lua_type(L, 2);
     if (te == LUA_TSTRING) {
         const char *bits = lua_tostring(L, 2);
-        spr->effects = neko::util::BitSet<SPRITE_EFFECT_COUNTS>(bits);
+        spr->effects = Neko::util::BitSet<SPRITE_EFFECT_COUNTS>(bits);
     } else if (te == LUA_TNUMBER) {
         int bits = lua_tointeger(L, 2);
         spr->effects = std::bitset<SPRITE_EFFECT_COUNTS>(bits);

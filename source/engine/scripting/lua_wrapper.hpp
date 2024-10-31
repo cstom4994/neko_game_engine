@@ -18,7 +18,7 @@
 #include "engine/base/reflection.hpp"
 #include "luax.h"
 
-namespace neko {
+namespace Neko {
 
 namespace luabind {
 
@@ -2175,14 +2175,14 @@ inline int preload_module(lua_State *L) {
 
 };  // namespace luabind
 
-}  // namespace neko
+}  // namespace Neko
 
 #define DEFINE_LUAOPEN(name)                                                               \
-    int luaopen_neko_##name(lua_State *L) { return neko::luabind::__##name ::luaopen(L); } \
-    static ::neko::luabind::callfunc __init_##name(::neko::luabind::register_module, "__neko." #name, luaopen_neko_##name);
+    int luaopen_neko_##name(lua_State *L) { return Neko::luabind::__##name ::luaopen(L); } \
+    static ::Neko::luabind::callfunc __init_##name(::Neko::luabind::register_module, "__neko." #name, luaopen_neko_##name);
 
 #define DEFINE_LUAOPEN_EXTERN(name)     \
-    namespace neko::luabind::__##name { \
+    namespace Neko::luabind::__##name { \
         int luaopen(lua_State *L);      \
     }                                   \
     DEFINE_LUAOPEN(name)

@@ -195,7 +195,7 @@ bool neko_os_write_file_contents(const char *file_path, const char *mode, void *
 
 bool neko_os_dir_exists(const char *dir_path) {
 #if defined(NEKO_IS_WIN32)
-    DWORD attrib = GetFileAttributes((LPCWSTR)dir_path);  // TODO: unicode 路径修复
+    DWORD attrib = GetFileAttributes(dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #elif defined(NEKO_IS_LINUX) || defined(NEKO_IS_APPLE)
     struct stat st;
@@ -465,7 +465,7 @@ static std::string get_error_description() noexcept {
 
 #if defined(NEKO_IS_WIN32)
 
-namespace neko::win {
+namespace Neko::win {
 std::wstring u2w(std::string_view str) noexcept {
     if (str.empty()) {
         return L"";
@@ -521,6 +521,6 @@ std::string w2a(std::wstring_view wstr) noexcept {
 std::string a2u(std::string_view str) noexcept { return w2u(a2w(str)); }
 
 std::string u2a(std::string_view str) noexcept { return w2a(u2w(str)); }
-}  // namespace neko::win
+}  // namespace Neko::win
 
 #endif

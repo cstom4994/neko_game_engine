@@ -1,6 +1,6 @@
 #include "lua_ecs.hpp"
 
-namespace neko {
+namespace Neko {
 namespace ecs {
 
 using namespace luabind;
@@ -914,4 +914,4 @@ int l_ecs_create_world(lua_State* L) {
 }
 
 }  // namespace ecs
-}  // namespace neko
+}  // namespace Neko

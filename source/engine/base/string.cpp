@@ -142,7 +142,7 @@ double string_to_double(String str) {
     return n * sign;
 }
 
-namespace neko::wtf8 {
+namespace Neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept {
     if (str.empty()) {
         return L"";
@@ -165,4 +165,4 @@ std::string w2u(std::wstring_view wstr) noexcept {
     wtf8_from_utf16(wstr.data(), wstr.size(), result.data(), len);
     return result;
 }
-}  // namespace neko::wtf8
+}  // namespace Neko::wtf8

@@ -8,6 +8,7 @@ build/
 *.gen.*
 makefile
 cmake-*/
+vsbuild/
 
 gamedir/assets/
 gamedir/test/
@@ -23,6 +24,8 @@ source/api/gen
 source/game/*/libs
 source/tests
 source/vendor
+source/engine2
+deps/
 examples/
 
 build.bat

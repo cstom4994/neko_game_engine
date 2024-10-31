@@ -239,7 +239,7 @@ class Bank;
 }  // namespace Studio
 }  // namespace FMOD
 
-namespace neko {
+namespace Neko {
 
 class audio_event;
 
@@ -340,13 +340,13 @@ public:
     FMOD_VECTOR VectorToFmod(const vec3 &vPosition);
 };
 
-}  // namespace neko
+}  // namespace Neko
 
 #endif
 
 #if NEKO_AUDIO == 2
 
-namespace neko {
+namespace Neko {
 
 void event_instance::start() { assert(false && "Unimpl"); }
 
@@ -671,9 +671,9 @@ float Audio::VolumeTodB(float volume) { return 20.0f * log10f(volume); }
 
 void Audio::Shutdown() { delete fmod_impl; }
 
-}  // namespace neko
+}  // namespace Neko
 
-static neko::Audio audio_fmod;
+static Neko::Audio audio_fmod;
 
 #endif
 

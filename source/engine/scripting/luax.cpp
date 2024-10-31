@@ -1,11 +1,12 @@
 #include "luax.h"
 
+#include "engine/base/json.hpp"
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/scripting/scripting.h"
 #include "lua_wrapper.hpp"
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 void luax_get(lua_State *L, const_str tb, const_str field) {
     lua_getglobal(L, tb);
@@ -545,4 +546,190 @@ void lua_channels_shutdown() {
         mem_free(chan);
     }
     g_channels.by_name.trash();
+}
+
+// lua json
+
+void json_to_lua(lua_State *L, JSON *json) {
+    switch (json->kind) {
+        case JSONKind_Object: {
+            lua_newtable(L);
+            for (JSONObject *o = json->object; o != nullptr; o = o->next) {
+                lua_pushlstring(L, o->key.data, o->key.len);
+                json_to_lua(L, &o->value);
+                lua_rawset(L, -3);
+            }
+            break;
+        }
+        case JSONKind_Array: {
+            lua_newtable(L);
+            for (JSONArray *a = json->array; a != nullptr; a = a->next) {
+                json_to_lua(L, &a->value);
+                lua_rawseti(L, -2, a->index + 1);
+            }
+            break;
+        }
+        case JSONKind_String: {
+            lua_pushlstring(L, json->string.data, json->string.len);
+            break;
+        }
+        case JSONKind_Number: {
+            lua_pushnumber(L, json->number);
+            break;
+        }
+        case JSONKind_Boolean: {
+            lua_pushboolean(L, json->boolean);
+            break;
+        }
+        case JSONKind_Null: {
+            lua_pushnil(L);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void lua_to_json_string(StringBuilder &sb, lua_State *L, HashMap<bool> *visited, String *err, i32 width, i32 level) {
+    auto indent = [&](i32 offset) {
+        if (width > 0) {
+            sb << "\n";
+            sb.concat(" ", width * (level + offset));
+        }
+    };
+
+    if (err->len != 0) {
+        return;
+    }
+
+    i32 top = lua_gettop(L);
+    switch (lua_type(L, top)) {
+        case LUA_TTABLE: {
+            uintptr_t ptr = (uintptr_t)lua_topointer(L, top);
+
+            bool *visit = nullptr;
+            bool exist = visited->find_or_insert(ptr, &visit);
+            if (exist && *visit) {
+                *err = "table has cycles";
+                return;
+            }
+
+            *visit = true;
+
+            lua_pushnil(L);
+            if (lua_next(L, -2) == 0) {
+                sb << "[]";
+                return;
+            }
+
+            i32 key_type = lua_type(L, -2);
+
+            if (key_type == LUA_TNUMBER) {
+                sb << "[";
+
+                indent(0);
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+
+                i32 len = luax_len(L, top);
+                assert(len > 0);
+                i32 i = 1;
+                for (lua_pop(L, 1); lua_next(L, -2); lua_pop(L, 1)) {
+                    if (lua_type(L, -2) != LUA_TNUMBER) {
+                        lua_pop(L, -2);
+                        *err = "expected all keys to be numbers";
+                        return;
+                    }
+
+                    sb << ",";
+                    indent(0);
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                    i++;
+                }
+                indent(-1);
+                sb << "]";
+
+                if (i != len) {
+                    *err = "array is not continuous";
+                    return;
+                }
+            } else if (key_type == LUA_TSTRING) {
+                sb << "{";
+                indent(0);
+
+                lua_pushvalue(L, -2);
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+                lua_pop(L, 1);
+                sb << ":";
+                if (width > 0) {
+                    sb << " ";
+                }
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+
+                for (lua_pop(L, 1); lua_next(L, -2); lua_pop(L, 1)) {
+                    if (lua_type(L, -2) != LUA_TSTRING) {
+                        lua_pop(L, -2);
+                        *err = "expected all keys to be strings";
+                        return;
+                    }
+
+                    sb << ",";
+                    indent(0);
+
+                    lua_pushvalue(L, -2);
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                    lua_pop(L, 1);
+                    sb << ":";
+                    if (width > 0) {
+                        sb << " ";
+                    }
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                }
+                indent(-1);
+                sb << "}";
+            } else {
+                lua_pop(L, 2);  // key, value
+                *err = "expected table keys to be strings or numbers";
+                return;
+            }
+
+            visited->unset(ptr);
+            break;
+        }
+        case LUA_TNIL:
+            sb << "null";
+            break;
+        case LUA_TNUMBER:
+            sb << tmp_fmt("%g", lua_tonumber(L, top));
+            break;
+        case LUA_TSTRING:
+            sb << "\"" << luax_check_string(L, top) << "\"";
+            break;
+        case LUA_TBOOLEAN:
+            sb << (lua_toboolean(L, top) ? "true" : "false");
+            break;
+        case LUA_TFUNCTION:
+            sb << tmp_fmt("\"func %p\"", lua_topointer(L, top));
+            break;
+        default:
+            *err = "type is not serializable";
+    }
+}
+
+String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width) {
+    StringBuilder sb = {};
+
+    HashMap<bool> visited = {};
+    neko_defer(visited.trash());
+
+    String err = {};
+    lua_pushvalue(L, arg);
+    lua_to_json_string(sb, L, &visited, &err, width, 1);
+    lua_pop(L, 1);
+
+    if (err.len != 0) {
+        sb.trash();
+    }
+
+    *contents = String(sb);
+    return err;
 }

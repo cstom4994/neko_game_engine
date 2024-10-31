@@ -18,16 +18,16 @@
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 
-using namespace neko::imgui;
+using namespace Neko::imgui;
 
 static int __luainspector_echo(lua_State* L) {
-    neko::luainspector* m = *static_cast<neko::luainspector**>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (m) m->print_line(luaL_checkstring(L, 1), neko::LUACON_LOG_TYPE_MESSAGE);
+    Neko::luainspector* m = *static_cast<Neko::luainspector**>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (m) m->print_line(luaL_checkstring(L, 1), Neko::LUACON_LOG_TYPE_MESSAGE);
     return 0;
 }
 
 static int __luainspector_gc(lua_State* L) {
-    neko::luainspector* m = *static_cast<neko::luainspector**>(lua_touserdata(L, 1));
+    Neko::luainspector* m = *static_cast<Neko::luainspector**>(lua_touserdata(L, 1));
     if (m) {
         m->variable_pool_free();
         m->setL(0x0);
@@ -42,7 +42,7 @@ static int __luainspector_gc(lua_State* L) {
     return 0;
 }
 
-namespace neko {
+namespace Neko {
 
 std::string luainspector_hints::clean_table_list(const std::string& str) {
     std::string ret;
@@ -164,7 +164,7 @@ std::string luainspector_hints::common_prefix(const std::vector<std::string>& po
     return ret;
 }
 
-}  // namespace neko
+}  // namespace Neko
 
 const char* const kMetaname = "__neko_lua_inspector_meta";
 
@@ -178,11 +178,11 @@ static void* __neko_lua_inspector_print_func_lightkey() {
     return &KEY;
 }
 
-neko::luainspector* neko::luainspector::get_from_registry(lua_State* L) {
+Neko::luainspector* Neko::luainspector::get_from_registry(lua_State* L) {
     lua_pushlightuserdata(L, __neko_lua_inspector_lightkey());  // # -1
     lua_gettable(L, LUA_REGISTRYINDEX);
 
-    neko::luainspector* ret = nullptr;
+    Neko::luainspector* ret = nullptr;
 
     if (lua_type(L, -1) == LUA_TUSERDATA && lua_getmetatable(L, -1)) {
         // # -1 = metatable
@@ -192,7 +192,7 @@ neko::luainspector* neko::luainspector::get_from_registry(lua_State* L) {
         // # -2 = metatable
         // # -3 = userdata
         if (neko_lua_equal(L, -1, -2)) {                                      // determine is two metatable equal
-            ret = *static_cast<neko::luainspector**>(lua_touserdata(L, -3));  // inspector userdata
+            ret = *static_cast<Neko::luainspector**>(lua_touserdata(L, -3));  // inspector userdata
         }
 
         lua_pop(L, 2);  // pop two
@@ -202,7 +202,7 @@ neko::luainspector* neko::luainspector::get_from_registry(lua_State* L) {
     return ret;
 }
 
-void neko::luainspector::print_luastack(int first, int last, luainspector_logtype logtype) {
+void Neko::luainspector::print_luastack(int first, int last, luainspector_logtype logtype) {
     std::stringstream ss;
     for (int i = first; i <= last; ++i) {
         switch (lua_type(L, i)) {
@@ -227,7 +227,7 @@ void neko::luainspector::print_luastack(int first, int last, luainspector_logtyp
     print_line(ss.str(), logtype);
 }
 
-bool neko::luainspector::try_eval(std::string m_buffcmd, bool addreturn) {
+bool Neko::luainspector::try_eval(std::string m_buffcmd, bool addreturn) {
     if (addreturn) {
         const std::string code = "return " + m_buffcmd;
         if (LUA_OK == luaL_loadstring(L, code.c_str())) {
@@ -248,12 +248,12 @@ static inline std::string adjust_error_msg(lua_State* L, int idx) {
     return std::string("(non string error value - ") + lua_typename(L, t) + ")";
 }
 
-void neko::luainspector::setL(lua_State* L) {
+void Neko::luainspector::setL(lua_State* L) {
     this->L = L;
 
     if (!L) return;
 
-    neko::luainspector** ptr = static_cast<neko::luainspector**>(lua_newuserdata(L, sizeof(neko::luainspector*)));
+    Neko::luainspector** ptr = static_cast<Neko::luainspector**>(lua_newuserdata(L, sizeof(Neko::luainspector*)));
     (*ptr) = this;
 
     luaL_newmetatable(L, kMetaname);  // table
@@ -270,7 +270,7 @@ void neko::luainspector::setL(lua_State* L) {
     lua_setglobal(L, "echo");
 }
 
-std::string neko::luainspector::read_history(int change) {
+std::string Neko::luainspector::read_history(int change) {
     const bool was_promp = static_cast<std::size_t>(m_hindex) == m_history.size();
 
     m_hindex += change;
@@ -284,7 +284,7 @@ std::string neko::luainspector::read_history(int change) {
     }
 }
 
-std::string neko::luainspector::try_complete(std::string inputbuffer) {
+std::string Neko::luainspector::try_complete(std::string inputbuffer) {
     if (!L) {
         print_line("Lua state pointer is NULL, no completion available", LUACON_LOG_TYPE_ERROR);
         return inputbuffer;
@@ -322,7 +322,7 @@ std::string neko::luainspector::try_complete(std::string inputbuffer) {
     return inputbuffer;
 }
 
-// void neko::luainspector::set_print_eval_prettifier(lua_State* L) {
+// void Neko::luainspector::set_print_eval_prettifier(lua_State* L) {
 //     if (lua_gettop(L) == 0) return;
 
 //     const int t = lua_type(L, -1);
@@ -333,12 +333,12 @@ std::string neko::luainspector::try_complete(std::string inputbuffer) {
 //     lua_settable(L, LUA_REGISTRYINDEX);
 // }
 
-// void neko::luainspector::get_print_eval_prettifier(lua_State* L) const {
+// void Neko::luainspector::get_print_eval_prettifier(lua_State* L) const {
 //     lua_pushlightuserdata(L, __neko_lua_inspector_print_func_lightkey());
 //     lua_gettable(L, LUA_REGISTRYINDEX);
 // }
 
-// bool neko::luainspector::apply_prettifier(int index) {
+// bool Neko::luainspector::apply_prettifier(int index) {
 //     get_print_eval_prettifier(L);
 //     if (lua_type(L, -1) == LUA_TNIL) {
 //         lua_pop(L, 1);
@@ -359,16 +359,16 @@ std::string neko::luainspector::try_complete(std::string inputbuffer) {
 //     return true;
 // }
 
-int neko::luainspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
+int Neko::luainspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
-    return reinterpret_cast<neko::luainspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
+    return reinterpret_cast<Neko::luainspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
 }
 
-int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
+int Neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
 
     auto paste_buffer = [data](auto begin, auto end, auto buffer_shift) {
-        neko::copy(begin, end, data->Buf + buffer_shift, data->Buf + data->BufSize - 1);
+        Neko::copy(begin, end, data->Buf + buffer_shift, data->Buf + data->BufSize - 1);
         data->BufTextLen = std::min(static_cast<int>(std::distance(begin, end) + buffer_shift), data->BufSize - 1);
         data->Buf[data->BufTextLen] = '\0';
         data->BufDirty = true;
@@ -377,7 +377,7 @@ int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* 
     };
 
     const char* command_beg = nullptr;
-    command_beg = neko::find_terminating_word(cmd.data(), cmd.data() + cmd.size(), [this](std::string_view sv) { return sv[0] == ' ' ? 1 : 0; });
+    command_beg = Neko::find_terminating_word(cmd.data(), cmd.data() + cmd.size(), [this](std::string_view sv) { return sv[0] == ' ' ? 1 : 0; });
 
     if (data->EventKey == ImGuiKey_Tab) {
         std::string complete = this->try_complete(cmd);
@@ -409,7 +409,7 @@ int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* 
     return 0;
 }
 
-bool neko::luainspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool Neko::luainspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -421,7 +421,7 @@ bool neko::luainspector::command_line_input(const char* label, std::string* str,
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, command_line_callback_st, &cb_user_data);
 }
 
-void neko::luainspector::show_autocomplete() noexcept {
+void Neko::luainspector::show_autocomplete() noexcept {
     constexpr ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
                                                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
 
@@ -528,7 +528,7 @@ void neko::luainspector::show_autocomplete() noexcept {
     }
 }
 
-void neko::luainspector::console_draw(bool& textbox_react) noexcept {
+void Neko::luainspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -602,7 +602,7 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
                 lua_settop(L, oldtop);
             } else {
                 const std::string err = adjust_error_msg(L, -1);
-                if (evalok || !neko::incomplete_chunk_error(err.c_str(), err.length())) {
+                if (evalok || !Neko::incomplete_chunk_error(err.c_str(), err.length())) {
                     print_line(err, LUACON_LOG_TYPE_ERROR);
                 }
                 lua_pop(L, 1);
@@ -628,9 +628,9 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
     show_autocomplete();
 }
 
-void neko::luainspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
+void Neko::luainspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
 
-void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
+void Neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
         while (*str != '\0') {
             if (*str == '\n') return true;
@@ -806,15 +806,15 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
-neko::CCharacter cJohn;
+Neko::CCharacter cJohn;
 
 extern Assets g_assets;
 
-int neko::luainspector::luainspector_init(lua_State* L) {
+int Neko::luainspector::luainspector_init(lua_State* L) {
 
-    void* model_mem = lua_newuserdata(L, sizeof(neko::luainspector));
+    void* model_mem = lua_newuserdata(L, sizeof(Neko::luainspector));
 
-    neko::luainspector* inspector = new (model_mem) neko::luainspector();
+    Neko::luainspector* inspector = new (model_mem) Neko::luainspector();
 
     inspector->setL(L);
     inspector->m_history.resize(8);
@@ -842,7 +842,7 @@ int neko::luainspector::luainspector_init(lua_State* L) {
                     return 0;
                 });
 
-        // lua_register(g_app->lite_L, "__neko_loader", neko::vfs_lua_loader);
+        // lua_register(g_app->lite_L, "__neko_loader", Neko::vfs_lua_loader);
         // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
         // luaL_dostring(g_app->lite_L, str);
 
@@ -852,16 +852,16 @@ int neko::luainspector::luainspector_init(lua_State* L) {
     return 1;
 }
 
-int neko::luainspector::luainspector_get(lua_State* L) {
-    neko::luainspector* inspector = neko::luainspector::get_from_registry(L);
+int Neko::luainspector::luainspector_get(lua_State* L) {
+    Neko::luainspector* inspector = Neko::luainspector::get_from_registry(L);
     lua_pushlightuserdata(L, inspector);
     return 1;
 }
 
-bool neko::luainspector::visible = false;
+bool Neko::luainspector::visible = false;
 
-int neko::luainspector::luainspector_draw(lua_State* L) {
-    neko::luainspector* model = (neko::luainspector*)lua_touserdata(L, 1);
+int Neko::luainspector::luainspector_draw(lua_State* L) {
+    Neko::luainspector* model = (Neko::luainspector*)lua_touserdata(L, 1);
 
     if (!visible) {
         return 0;
@@ -1409,5 +1409,5 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
 #endif
 
-void inspector_set_visible(bool visible) { neko::luainspector::visible = visible; }
-bool inspector_get_visible() { return neko::luainspector::visible; }
+void inspector_set_visible(bool visible) { Neko::luainspector::visible = visible; }
+bool inspector_get_visible() { return Neko::luainspector::visible; }

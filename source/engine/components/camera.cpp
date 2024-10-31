@@ -62,12 +62,12 @@ mat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
 
 const mat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
 
-vec2 camera_world_to_pixels(vec2 p) { return neko::the<Game>().unit_to_pixels(camera_world_to_unit(p)); }
+vec2 camera_world_to_pixels(vec2 p) { return Neko::the<Game>().unit_to_pixels(camera_world_to_unit(p)); }
 vec2 camera_world_to_unit(vec2 p) {
     // use cached inverse view matrix
     return mat3_transform(inverse_view_matrix, p);
 }
-vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(neko::the<Game>().pixels_to_unit(p)); }
+vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<Game>().pixels_to_unit(p)); }
 vec2 camera_unit_to_world(vec2 p) {
     NativeEntity cam = camera_get_current_camera();
     if (!native_entity_eq(cam, entity_nil)) return transform_local_to_world(cam, p);
@@ -97,7 +97,7 @@ int camera_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Camera::pool, camera_remove);
 
-    win_size = neko::the<Game>().get_window_size();
+    win_size = Neko::the<Game>().get_window_size();
     aspect = win_size.x / win_size.y;
 
     entitypool_foreach(camera, Camera::pool) {

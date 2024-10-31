@@ -5,6 +5,7 @@
 #include "editor/editor.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
+#include "engine/base/json.hpp"
 #include "engine/base/os.hpp"
 #include "engine/base/profiler.hpp"
 #include "engine/bootstrap.h"
@@ -21,13 +22,13 @@
 // deps
 #include "vendor/sokol_time.h"
 
-using namespace neko::luabind;
+using namespace Neko::luabind;
 
 void open_luasocket(lua_State *L);
 
-namespace neko::luabind {
+namespace Neko::luabind {
 void package_preload(lua_State *L);
-}  // namespace neko::luabind
+}  // namespace Neko::luabind
 
 void package_preload_embed(lua_State *L);
 
@@ -1249,8 +1250,8 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
 
     auto xform = LuaGet<vec2>(L, 2);
 
-    int direction = neko::neko_lua_to<int>(L, 3);
-    f32 scale = neko::neko_lua_to<f32>(L, 4);
+    int direction = Neko::neko_lua_to<int>(L, 3);
+    f32 scale = Neko::neko_lua_to<f32>(L, 4);
 
     neko_instance_t* engine = neko_instance();
 
@@ -1324,7 +1325,7 @@ static void fontbatch_metatable(lua_State* L) {
     // lua_setfield(L, -2, "__index");
     static luaL_Reg mt[] = {{"__gc",
                              +[](lua_State* L) {
-                                 neko_fontbatch_t* fontbatch = neko::luabind::toudata_ptr<neko_fontbatch_t>(L, 1);
+                                 neko_fontbatch_t* fontbatch = Neko::luabind::toudata_ptr<neko_fontbatch_t>(L, 1);
                                  neko_fontbatch_end(fontbatch);
                                  console_log("fontbatch __gc %p", fontbatch);
                                  return 0;
@@ -1333,13 +1334,13 @@ static void fontbatch_metatable(lua_State* L) {
     luaL_setfuncs(L, mt, 0);
 }
 
-namespace neko::luabind {
+namespace Neko::luabind {
 template <>
 struct udata<neko_fontbatch_t> {
     static inline int nupvalue = 1;
     static inline auto metatable = fontbatch_metatable;
 };
-}  // namespace neko::luabind
+}  // namespace Neko::luabind
 
     int count = luaL_len(L, 2);
     std::vector<const_str> texture_list;
@@ -1362,7 +1363,7 @@ struct CGameObject {
     bool selected;
 };
 
-namespace neko::reflection {
+namespace Neko::reflection {
 template <>
 Type *type_of<CGameObject>() {
     static Type type;
@@ -1377,20 +1378,20 @@ Type *type_of<CGameObject>() {
     // type.methods.insert({"say", type_ensure<&Person::say>()});
     return &type;
 };
-}  // namespace neko::reflection
+}  // namespace Neko::reflection
 
 #if 0
 
 DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
-    // neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
-    neko::reflection::Any v = var;
-    v.foreach ([](std::string_view name, neko::reflection::Any &value) {
-        // if (value.GetType() == neko::reflection::type_of<std::string_view>()) {
+    // Neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { Neko::imgui::Auto(value, std::string(field.name)); });
+    Neko::reflection::Any v = var;
+    v.foreach ([](std::string_view name, Neko::reflection::Any &value) {
+        // if (value.GetType() == Neko::reflection::type_of<std::string_view>()) {
         //     std::cout << name << " = " << value.cast<std::string_view>() << std::endl;
-        // } else if (value.GetType() == neko::reflection::type_of<std::size_t>()) {
+        // } else if (value.GetType() == Neko::reflection::type_of<std::size_t>()) {
         //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
         // }
-        neko::imgui::Auto(value, std::string(name));
+        Neko::imgui::Auto(value, std::string(name));
     });
 }
 DEFINE_IMGUI_END();
@@ -1407,7 +1408,7 @@ LUA_FUNCTION(__neko_bind_gameobject_inspect) {
 
     // ImGui::Text("GameObject_%d", user_handle->id);
 
-    // neko::imgui::Auto(user_handle, "CGameObject");
+    // Neko::imgui::Auto(user_handle, "CGameObject");
 
     return 0;
 }
@@ -1731,8 +1732,8 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
 
             int n = neko_lua_get_table_pairs_count(L, -1);  //
 
-            switch (neko::hash(pipeline_type[i])) {
-                case neko::hash("compute"): {
+            switch (Neko::hash(pipeline_type[i])) {
+                case Neko::hash("compute"): {
 
                     gfx_shader_t shader_handle = NEKO_DEFAULT_VAL();
 
@@ -1746,7 +1747,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
 
                     pipeline_desc.compute.shader = shader_handle;
                 } break;
-                case neko::hash("layout"): {
+                case Neko::hash("layout"): {
                     gfx_vertex_attribute_desc_t *vertex_attr = NEKO_DEFAULT_VAL();
 
                     lua_pushstring(L, "attrs");  // # -1
@@ -1766,7 +1767,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
                         neko_assert(false);
                     lua_pop(L, 1);  // # -1
                 } break;
-                case neko::hash("raster"): {
+                case Neko::hash("raster"): {
 
                     gfx_shader_t shader_handle = NEKO_DEFAULT_VAL();
 
@@ -1903,8 +1904,8 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
 
             int n = neko_lua_get_table_pairs_count(L, -1);  //
 
-            switch (neko::hash(pipeline_type[i])) {
-                case neko::hash("uniforms"): {
+            switch (Neko::hash(pipeline_type[i])) {
+                case Neko::hash("uniforms"): {
 
                     u_desc = (gfx_bind_uniform_desc_t *)mem_alloc(n * sizeof(gfx_bind_uniform_desc_t));
                     memset(u_desc, 0, n * sizeof(gfx_bind_uniform_desc_t));
@@ -1948,14 +1949,14 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            u_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
+                            u_desc[i - 1].binding = Neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
                         lua_pop(L, 1);  // # -1
                     }
                 } break;
-                case neko::hash("image_buffers"): {
+                case Neko::hash("image_buffers"): {
                     ib_desc = (gfx_bind_image_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_image_buffer_desc_t));
                     memset(ib_desc, 0, n * sizeof(gfx_bind_image_buffer_desc_t));
 
@@ -1980,7 +1981,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            ib_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
+                            ib_desc[i - 1].binding = Neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -1988,7 +1989,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
 #if 0
-                case neko::hash("storage_buffers"): {
+                case Neko::hash("storage_buffers"): {
                     sb_desc = (gfx_bind_storage_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_storage_buffer_desc_t));
                     memset(sb_desc, 0, n * sizeof(gfx_bind_storage_buffer_desc_t));
 
@@ -2011,7 +2012,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            sb_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
+                            sb_desc[i - 1].binding = Neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2019,7 +2020,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
 #endif
-                case neko::hash("vertex_buffers"): {
+                case Neko::hash("vertex_buffers"): {
                     vbo_desc = (gfx_bind_vertex_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_vertex_buffer_desc_t));
                     memset(vbo_desc, 0, n * sizeof(gfx_bind_vertex_buffer_desc_t));
 
@@ -2042,7 +2043,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pop(L, 1);  // # -1
                     }
                 } break;
-                case neko::hash("index_buffers"): {
+                case Neko::hash("index_buffers"): {
                     ibo_desc = (gfx_bind_index_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_index_buffer_desc_t));
                     memset(ibo_desc, 0, n * sizeof(gfx_bind_index_buffer_desc_t));
 
@@ -2397,7 +2398,7 @@ LUA_FUNCTION(__neko_bind_cvar) {
     neko_cvar_t* cv = __neko_config_get(name);
     if (NULL != cv) {
         if (args == 2) {
-            neko_cvar_set(cv, neko::neko_lua_to<const_str>(L, 2));
+            neko_cvar_set(cv, Neko::neko_lua_to<const_str>(L, 2));
             return 0;
         } else if (args == 1) {  // 读取
             switch (cv->type) {
@@ -2440,13 +2441,13 @@ LUA_FUNCTION(__neko_bind_cvar) {
 
             switch (cval) {
                 case __NEKO_CONFIG_TYPE_INT:
-                    neko_cvar_lnew(name, cval, neko::neko_lua_to<int>(L, 3));
+                    neko_cvar_lnew(name, cval, Neko::neko_lua_to<int>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko_cvar_lnew(name, cval, neko::neko_lua_to<float>(L, 3));
+                    neko_cvar_lnew(name, cval, Neko::neko_lua_to<float>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_STRING:
-                    neko_cvar_lnew_str(name, cval, neko::neko_lua_to<const_str>(L, 3));
+                    neko_cvar_lnew_str(name, cval, Neko::neko_lua_to<const_str>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_COUNT:
                 default:
@@ -2582,10 +2583,10 @@ int __neko_ls(lua_State *L) {
 
 inline void neko_register_common(lua_State *L) {
 
-    // neko::lua_bind::bind("neko_dolua", &__neko_dolua);
+    // Neko::lua_bind::bind("neko_dolua", &__neko_dolua);
 
-    // neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
-    // neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
+    // Neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
+    // Neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
 
     // neko_lua_enum(L, AssetKind);
     // neko_lua_enum_value(L, AssetKind, AssetKind_None);
@@ -2773,9 +2774,9 @@ static int open_embed_core(lua_State *L) {
             // reg
             {"from_registry", from_registry},
 
-            {"inspector_init", neko::luainspector::luainspector_init},
-            {"inspector_draw", neko::luainspector::luainspector_draw},
-            {"inspector_get", neko::luainspector::luainspector_get},
+            {"inspector_init", Neko::luainspector::luainspector_init},
+            {"inspector_draw", Neko::luainspector::luainspector_draw},
+            {"inspector_get", Neko::luainspector::luainspector_get},
 
             {NULL, NULL}};
 
@@ -2806,9 +2807,9 @@ static int open_embed_core(lua_State *L) {
     return 1;
 }
 
-// namespace neko::luabind::__core {
+// namespace Neko::luabind::__core {
 // int luaopen(lua_State *L) { return open_embed_core(L); }
-// }  // namespace neko::luabind::__core
+// }  // namespace Neko::luabind::__core
 // DEFINE_LUAOPEN(core)
 
 #endif
@@ -2818,7 +2819,7 @@ DEFINE_LUAOPEN_EXTERN(unittest)
 
 #if 0
 
-namespace neko::luabind::__filewatch {
+namespace Neko::luabind::__filewatch {
 static filewatch::watch &to(lua_State *L, int idx) { return lua::checkudata<filewatch::watch>(L, idx); }
 
 static lua_State *get_thread(lua_State *L) {
@@ -2940,17 +2941,17 @@ int luaopen(lua_State *L) {
     luaL_setfuncs(L, lib, 0);
     return 1;
 }
-}  // namespace neko::luabind::__filewatch
+}  // namespace Neko::luabind::__filewatch
 
 DEFINE_LUAOPEN(filewatch)
 
-namespace neko::luabind {
+namespace Neko::luabind {
 template <>
 struct udata<filewatch::watch> {
     static inline int nupvalue = 1;
-    static inline auto metatable = neko::luabind::__filewatch::metatable;
+    static inline auto metatable = Neko::luabind::__filewatch::metatable;
 };
-}  // namespace neko::luabind
+}  // namespace Neko::luabind
 
 #endif
 
@@ -3092,7 +3093,7 @@ void open_neko_api(lua_State *L) {
     // newusertype<Bytearray, Bytearray::createMetatable>(L, "bytearray");
 
     preload_module(L);
-    neko::luabind::package_preload(L);
+    Neko::luabind::package_preload(L);
     package_preload_embed(L);
 
     openlib_Event(L);
@@ -3101,7 +3102,7 @@ void open_neko_api(lua_State *L) {
     neko_w_init();
 }
 
-namespace neko::luabind {
+namespace Neko::luabind {
 void package_preload(lua_State *L) {
     luaL_Reg preloads[] = {
             {"__neko.spritepack", open_tools_spritepack},
@@ -3111,4 +3112,4 @@ void package_preload(lua_State *L) {
         luax_package_preload(L, m.name, m.func);
     }
 }
-}  // namespace neko::luabind
+}  // namespace Neko::luabind

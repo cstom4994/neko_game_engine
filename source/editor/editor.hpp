@@ -3,7 +3,7 @@
 #include "engine/imgui.hpp"
 #include "engine/scripting/scripting.h"
 
-namespace neko {
+namespace Neko {
 
 using namespace luabind;
 
@@ -76,7 +76,7 @@ struct command_line_input_callback_UserData {
     std::string* Str;
     ImGuiInputTextCallback ChainCallback;
     void* ChainCallbackUserData;
-    neko::luainspector* luainspector_ptr;
+    Neko::luainspector* luainspector_ptr;
 };
 
 struct inspect_table_config {
@@ -217,7 +217,7 @@ public:
         *param = T(value);
     }
 };
-}  // namespace neko
+}  // namespace Neko
 
 NEKO_SCRIPT(inspector,
 

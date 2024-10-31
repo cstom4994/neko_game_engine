@@ -22,8 +22,8 @@
 #include "engine/ui.h"
 #include "lua.h"
 
-using namespace neko::luabind;
-using namespace neko::ecs;
+using namespace Neko::luabind;
+using namespace Neko::ecs;
 
 typedef enum SaveFilter {
     SF_SAVE,     // 保存此实体
@@ -370,7 +370,7 @@ void system_init() {
 
     g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
 
-    neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
+    Neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
     checktable_refl(ENGINE_LUA(), "app", v);
     g_app->cfg = v.cast<engine_cfg_t>();
 
@@ -378,14 +378,14 @@ void system_init() {
 
     lua_pop(L, 1);  // conf table
 
-    auto& game = neko::the<Game>();
+    auto& game = Neko::the<Game>();
 
     // 刷新状态
     game.set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
     game.set_window_title(g_app->cfg.title.cstr());
 
     if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
-        // neko::neko_lua_run_string(L, R"lua(
+        // Neko::neko_lua_run_string(L, R"lua(
         // )lua");
         console_log("using default game proxy");
     }
@@ -397,7 +397,7 @@ void system_init() {
 
     neko_default_font();
 
-    auto& input = neko::the<Input>();
+    auto& input = Neko::the<Input>();
     input.init();
 
     entity_init();
@@ -419,7 +419,7 @@ void system_init() {
 
     luax_run_nekogame(L);
 
-    neko::luainspector::luainspector_init(ENGINE_LUA());
+    Neko::luainspector::luainspector_init(ENGINE_LUA());
     lua_setglobal(L, "__neko_inspector");
 
     if (!g_app->error_mode.load() && g_app->cfg.startup_load_scripts && mount.ok && mount_luacode.ok) {
@@ -493,7 +493,7 @@ void system_fini() {
     transform_fini();
     entity_fini();
     imgui_fini();
-    auto& input = neko::the<Input>();
+    auto& input = Neko::the<Input>();
     input.fini();
 
     if (g_app->default_font != nullptr) {

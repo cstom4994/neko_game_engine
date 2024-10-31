@@ -3,7 +3,7 @@
 
 #include "engine/scripting/lua_wrapper.hpp"
 
-namespace neko {
+namespace Neko {
 namespace ecs {
 
 using namespace luabind;
@@ -129,4 +129,4 @@ LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name);
 Entity* EcsGetEnt(lua_State* L, EcsWorld* w, int eid);
 
 }  // namespace ecs
-}  // namespace neko
+}  // namespace Neko

@@ -12,7 +12,7 @@ constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
 }
 }  // namespace std
 
-namespace neko {
+namespace Neko {
 
 namespace reflection {
 
@@ -492,5 +492,5 @@ constexpr Type getEnumValue(unsigned int index) {
 
 }  // namespace reflection
 
-}  // namespace neko
+}  // namespace Neko
 

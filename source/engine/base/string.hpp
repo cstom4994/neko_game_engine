@@ -574,7 +574,7 @@ inline void wtf8_from_utf16(const wchar_t *input, size_t length, char *output, s
     neko_assert(output_len == 0);
 }
 
-namespace neko::wtf8 {
+namespace Neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept;
 std::string w2u(std::wstring_view wstr) noexcept;
-}  // namespace neko::wtf8
+}  // namespace Neko::wtf8

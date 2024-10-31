@@ -104,11 +104,11 @@ void neko_dylib_close(neko_dynlib lib);
 void *neko_dylib_get_symbol(neko_dynlib lib, const_str symbol_name);
 bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);
 
-namespace neko::win {
+namespace Neko::win {
 std::wstring u2w(std::string_view str) noexcept;
 std::string w2u(std::wstring_view wstr) noexcept;
 std::wstring a2w(std::string_view str) noexcept;
 std::string w2a(std::wstring_view wstr) noexcept;
 std::string a2u(std::string_view str) noexcept;
 std::string u2a(std::string_view str) noexcept;
-}  // namespace neko::win
+}  // namespace Neko::win

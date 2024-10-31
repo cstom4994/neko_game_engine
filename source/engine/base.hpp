@@ -551,7 +551,7 @@ inline T *neko_addoffset_r(std::ptrdiff_t offset, T *ptr) {
 
 struct lua_State;
 
-namespace neko {
+namespace Neko {
 
 template <typename V, typename Alloc = std::allocator<V>>
 using vector = std::vector<V, Alloc>;
@@ -597,11 +597,11 @@ struct is_pair<std::pair<T1, T2>> : public std::true_type {};
 template <class>
 inline constexpr bool always_false = false;
 
-}  // namespace neko
+}  // namespace Neko
 
 #define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
 
-namespace neko {
+namespace Neko {
 
 #define neko_time_count(x) std::chrono::time_point_cast<std::chrono::microseconds>(x).time_since_epoch().count()
 
@@ -620,7 +620,7 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
 };
 
-}  // namespace neko
+}  // namespace Neko
 
 template <typename F>
 struct function_traits : public function_traits<decltype(&F::operator())> {};
@@ -637,7 +637,7 @@ typename function_traits<F>::std_function to_function(F &lambda) {
     return typename function_traits<F>::std_function(lambda);
 }
 
-namespace neko {
+namespace Neko {
 
 struct format_str {
     constexpr format_str(const char *str) noexcept : str(str) {}
@@ -731,7 +731,7 @@ struct is_vector : std::false_type {};
 template <typename T, typename Alloc>
 struct is_vector<std::vector<T, Alloc>> : std::true_type {};
 
-}  // namespace neko
+}  // namespace Neko
 
 namespace detail {
 // 某些旧版本的 GCC 需要
@@ -761,13 +761,13 @@ struct neko_overloaded : Ts... {
 template <class... Ts>
 neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
 
-namespace neko {
+namespace Neko {
 
 // hash 计算相关函数
 
-typedef unsigned long long hash_value;
+typedef uint64_t hash_value;
 
-static_assert(sizeof(hash_value) == 8 && sizeof(hash_value) == sizeof(size_t));
+static_assert(sizeof(hash_value) == 8);
 
 inline uint64_t hash_fnv(const void *data, int size) {
     const_str s = (const_str)data;
@@ -830,7 +830,7 @@ constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, Out
     }
 }
 
-}  // namespace neko
+}  // namespace Neko
 
 typedef struct engine_cfg_t {
     bool show_editor;
@@ -868,7 +868,7 @@ typedef struct engine_cfg_t {
 
 void neko_cvar_gui(neko_client_cvar_t &cvar);
 
-namespace neko {}  // namespace neko
+namespace Neko {}  // namespace Neko
 
 #endif
 
@@ -884,7 +884,7 @@ namespace neko {}  // namespace neko
 #include <type_traits>
 #include <utility>
 
-namespace neko::reflection {
+namespace Neko::reflection {
 
 struct Type;
 
@@ -1018,10 +1018,10 @@ inline Any Any::invoke(std::string_view name, std::span<Any> args) {
     return it->second(data, args);
 }
 
-}  // namespace neko::reflection
+}  // namespace Neko::reflection
 
 #define REGISTER_TYPE_DF(C, ...)                                                                   \
-    namespace neko::reflection {                                                                   \
+    namespace Neko::reflection {                                                                   \
     template <>                                                                                    \
     Type *type_of<C>() {                                                                           \
         static Type type;                                                                          \
