@@ -1,6 +1,8 @@
 #pragma once
 
-#include "engine/base/base.hpp"
+#include "base/common/base.hpp"
+
+namespace Neko {
 
 void profile_setup();
 void profile_shutdown();
@@ -40,3 +42,5 @@ struct Instrument {
 #define PROFILE_FUNC()
 #define PROFILE_BLOCK(name)
 #endif
+
+}  // namespace Neko

@@ -160,7 +160,10 @@ void tiled_fini();
 int tiled_update_all(App* app, event_t evt);
 void tiled_draw_all();
 
-class Tiled : public EntityBase<Tiled> {
+class Tiled : public GameEntityBase {
+public:
+    static NativeEntityPool<Tiled>* pool;
+
 public:
     tiled_renderer* render;
     vec2 pos;

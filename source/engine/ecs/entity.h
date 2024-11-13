@@ -76,21 +76,19 @@ NEKO_API() void entity_load_all_end();
 
 #define native_entity_eq(e, f) ((e).id == (f).id)
 
-typedef struct NativeEntityMap {
+class NativeEntityMap {
+public:
     int* arr;
     ecs_id_t bound;     // 数组中的第一个空闲位置的索引 = 1 + 最大键
     ecs_id_t capacity;  // 拥有堆空间的元素数量
     int def;            // 未设置键的值
-} NativeEntityMap;
+};
 
 NEKO_API() NativeEntityMap* entitymap_new(int def);  // def 为默认值
 NEKO_API() void entitymap_clear(NativeEntityMap* emap);
 NEKO_API() void entitymap_free(NativeEntityMap* emap);
 NEKO_API() void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val);
 NEKO_API() int entitymap_get(NativeEntityMap* emap, NativeEntity ent);
-
-template <typename T>
-struct EntityBase;
 
 // 在内存中连续 可能会被重新定位/打乱 所以要小心
 template <typename T>
@@ -117,7 +115,7 @@ struct NativeEntityPool {
             // 删除可能会与最后一个元素交换 在这里修复映射
             this->array.quick_remove(i);
             {
-                EntityBase<T>* elem = dynamic_cast<EntityBase<T>*>(&this->array[i]);
+                GameEntityBase* elem = dynamic_cast<GameEntityBase*>(&this->array[i]);
                 entitymap_set(this->emap, elem->pool_elem.ent, i);
             }
             // 删除映射
@@ -149,18 +147,19 @@ struct NativeEntityPool {
 // }
 // 其中的值是EntityPool管理的元数据
 
-template <typename T>
-struct EntityBase {
+class GameEntityBase {
+public:
     struct EntityPoolElem {
         NativeEntity ent;
     } pool_elem;
-    static NativeEntityPool<T>* pool;
 };
 
-#define DECL_ENT(T, ...)       \
-    struct T;                  \
-    struct T : EntityBase<T> { \
-        __VA_ARGS__            \
+#define DECL_ENT(T, ...)                  \
+    class T;                              \
+    class T : public GameEntityBase {     \
+    public:                               \
+        static NativeEntityPool<T>* pool; \
+        __VA_ARGS__                       \
     };
 
 // object_size 是每个元素的大小
@@ -222,14 +221,14 @@ void entitypool_clear(NativeEntityPool<T>* pool) {
 template <typename T>
 void entitypool_sort(NativeEntityPool<T>* pool, int (*compar)(const void*, const void*)) {
     ecs_id_t i, n;
-    EntityBase<T>* elem;
+    GameEntityBase* elem;
 
     pool->array.sort(compar);  // 对内部数组排序
 
     // 重新映射 NativeEntity -> index
     n = pool->array.len;
     for (i = 0; i < n; ++i) {
-        elem = dynamic_cast<EntityBase<T>*>(&pool->array.data[i]);
+        elem = dynamic_cast<GameEntityBase*>(&pool->array.data[i]);
         entitymap_set(pool->emap, elem->pool_elem.ent, i);
     }
 }
@@ -259,9 +258,9 @@ template <typename T, class F>
 auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
     do {
         ecs_id_t i;
-        EntityBase<T>* e;
+        GameEntityBase* e;
         for (i = 0; i < entitypool_size(pool);) {
-            e = dynamic_cast<EntityBase<T>*>(entitypool_nth(pool, i));
+            e = dynamic_cast<GameEntityBase*>(entitypool_nth(pool, i));
             if (entity_destroyed(e->pool_elem.ent))
                 func(e->pool_elem.ent);
             else

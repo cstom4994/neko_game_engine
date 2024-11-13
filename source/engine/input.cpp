@@ -4,13 +4,14 @@
 #include <stdbool.h>
 
 #include "engine/base.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
+#include "system.h"
 
 using namespace Neko::luabind;
 
@@ -86,30 +87,30 @@ KeyCode input_char_to_keycode(char c) { return (KeyCode)toupper(c); }
 
 bool input_key_down(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
+    return glfwGetKey(gApp->game_window, glfwkey) == GLFW_PRESS;
 }
 
 bool input_key_release(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(g_app->game_window, glfwkey) == GLFW_RELEASE;
+    return glfwGetKey(gApp->game_window, glfwkey) == GLFW_RELEASE;
 }
 
 vec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
-    glfwGetCursorPos(g_app->game_window, &x, &y);
+    glfwGetCursorPos(gApp->game_window, &x, &y);
     return luavec2(x, y);
 }
 
 vec2 input_get_mouse_pos_pixels() {
     double x, y;
-    glfwGetCursorPos(g_app->game_window, &x, &y);
+    glfwGetCursorPos(gApp->game_window, &x, &y);
     return luavec2(x, -y);
 }
 vec2 input_get_mouse_pos_unit() { return Neko::the<Game>().pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
-    return glfwGetMouseButton(g_app->game_window, glfwmouse) == GLFW_PRESS;
+    return glfwGetMouseButton(gApp->game_window, glfwmouse) == GLFW_PRESS;
 }
 
 void input_add_key_down_callback(KeyCallback f) { Neko::the<Input>().key_down_cbs.push(f); }
@@ -120,7 +121,7 @@ void input_add_mouse_up_callback(MouseCallback f) { Neko::the<Input>().mouse_up_
 void input_add_mouse_move_callback(MouseMoveCallback f) { Neko::the<Input>().mouse_move_cbs.push(f); }
 void input_add_scroll_callback(ScrollCallback f) { Neko::the<Input>().scroll_cbs.push(f); }
 
-static void _key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+static void _key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 
     switch (action) {
         case GLFW_PRESS: {
@@ -138,13 +139,13 @@ static void _key_callback(GLFWwindow *window, int key, int scancode, int action,
     }
 }
 
-static void _char_callback(GLFWwindow *window, unsigned int c) {
+static void _char_callback(GLFWwindow* window, unsigned int c) {
     for (auto f : Neko::the<Input>().char_down_cbs) {
         (*f)(c);
     }
 }
 
-static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods) {
+static void _mouse_callback(GLFWwindow* window, int mouse, int action, int mods) {
     switch (action) {
         case GLFW_PRESS: {
             for (auto f : Neko::the<Input>().mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
@@ -158,26 +159,22 @@ static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods)
     }
 }
 
-static void _cursor_pos_callback(GLFWwindow *window, double x, double y) {
-    MouseMoveCallback *f;
-
+static void _cursor_pos_callback(GLFWwindow* window, double x, double y) {
     for (auto f : Neko::the<Input>().mouse_move_cbs) (*f)(luavec2(x, -y));
 }
 
-static void _scroll_callback(GLFWwindow *window, double x, double y) {
-    ScrollCallback *f;
-
+static void _scroll_callback(GLFWwindow* window, double x, double y) {
     for (auto f : Neko::the<Input>().scroll_cbs) (*f)(luavec2(x, y));
 }
 
 void Input::init() {
     PROFILE_FUNC();
 
-    glfwSetKeyCallback(g_app->game_window, _key_callback);
-    glfwSetCharCallback(g_app->game_window, _char_callback);
-    glfwSetMouseButtonCallback(g_app->game_window, _mouse_callback);
-    glfwSetCursorPosCallback(g_app->game_window, _cursor_pos_callback);
-    glfwSetScrollCallback(g_app->game_window, _scroll_callback);
+    glfwSetKeyCallback(gApp->game_window, _key_callback);
+    glfwSetCharCallback(gApp->game_window, _char_callback);
+    glfwSetMouseButtonCallback(gApp->game_window, _mouse_callback);
+    glfwSetCursorPosCallback(gApp->game_window, _cursor_pos_callback);
+    glfwSetScrollCallback(gApp->game_window, _scroll_callback);
 }
 
 void Input::fini() {
@@ -196,15 +193,15 @@ void Input::fini() {
 
 void Input::update() {}
 
-INPUT_WRAP_event *input_wrap_new_event(event_queue *equeue) {
-    INPUT_WRAP_event *event = equeue->events + equeue->head;
+INPUT_WRAP_event* input_wrap_new_event(event_queue* equeue) {
+    INPUT_WRAP_event* event = equeue->events + equeue->head;
     equeue->head = (equeue->head + 1) % INPUT_WRAP_CAPACITY;
     assert(equeue->head != equeue->tail);
     memset(event, 0, sizeof(INPUT_WRAP_event));
     return event;
 }
 
-int input_wrap_next_e(event_queue *equeue, INPUT_WRAP_event *event) {
+int input_wrap_next_e(event_queue* equeue, INPUT_WRAP_event* event) {
     memset(event, 0, sizeof(INPUT_WRAP_event));
 
     if (equeue->head != equeue->tail) {
@@ -215,4 +212,4 @@ int input_wrap_next_e(event_queue *equeue, INPUT_WRAP_event *event) {
     return event->type != INPUT_WRAP_NONE;
 }
 
-void input_wrap_free_e(INPUT_WRAP_event *event) { memset(event, 0, sizeof(INPUT_WRAP_event)); }
+void input_wrap_free_e(INPUT_WRAP_event* event) { memset(event, 0, sizeof(INPUT_WRAP_event)); }

@@ -2,7 +2,7 @@
 
 #include <malloc.h>
 
-#include "engine/base/base.hpp"
+#include "base/common/base.hpp"
 
 // imgui
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -91,7 +91,9 @@ static inline void perf() {
 
 }  // namespace Neko
 
+struct GLFWwindow;
+
 void imgui_draw_post();
 void imgui_draw_pre();
-void imgui_init();
+void imgui_init(GLFWwindow *window);
 void imgui_fini();

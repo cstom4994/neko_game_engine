@@ -13,8 +13,8 @@
 
 #include "editor/lite.h"
 #include "engine/asset.h"
-#include "engine/base/base.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/base.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 
@@ -33,9 +33,9 @@ static int __luainspector_gc(lua_State* L) {
         m->setL(0x0);
     }
 
-    if (g_app->cfg.lite_init_path.len) {
+    if (gApp->cfg.lite_init_path.len) {
         lt_fini();
-        lua_close(g_app->LiteLua);
+        lua_close(gApp->LiteLua);
     }
 
     console_log("luainspector __gc %p", m);
@@ -829,14 +829,14 @@ int Neko::luainspector::luainspector_init(lua_State* L) {
 
     inspector->property_register<CCharacter>("John", &cJohn, "John");
 
-    if (g_app->cfg.lite_init_path.len) {
+    if (gApp->cfg.lite_init_path.len) {
         PROFILE_BLOCK("lite init");
-        g_app->LiteLua = luaL_newstate();
+        gApp->LiteLua = luaL_newstate();
 
-        luaL_openlibs(g_app->LiteLua);
+        luaL_openlibs(gApp->LiteLua);
 
         lua_atpanic(
-                g_app->LiteLua, +[](lua_State* L) {
+                gApp->LiteLua, +[](lua_State* L) {
                     auto msg = lua_tostring(L, -1);
                     printf("LUA: neko_panic error: %s", msg);
                     return 0;
@@ -846,7 +846,7 @@ int Neko::luainspector::luainspector_init(lua_State* L) {
         // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
         // luaL_dostring(g_app->lite_L, str);
 
-        lt_init(g_app->LiteLua, g_app->game_window, g_app->cfg.lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
+        lt_init(gApp->LiteLua, gApp->game_window, gApp->cfg.lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
     }
 
     return 1;
@@ -869,7 +869,7 @@ int Neko::luainspector::luainspector_draw(lua_State* L) {
 
     {
 
-        if (g_app->cfg.lite_init_path.len && g_app->LiteLua) {
+        if (gApp->cfg.lite_init_path.len && gApp->LiteLua) {
             if (ImGui::Begin("Lite")) {
                 ImGuiWindow* window = ImGui::GetCurrentWindow();
                 ImVec2 bounds = ImGui::GetContentRegionAvail();
@@ -896,7 +896,7 @@ int Neko::luainspector::luainspector_draw(lua_State* L) {
             ImGui::End();
         }
 
-        if (g_app->cfg.lite_init_path.len && g_app->LiteLua) lt_tick(g_app->LiteLua);
+        if (gApp->cfg.lite_init_path.len && gApp->LiteLua) lt_tick(gApp->LiteLua);
     }
 
     if (ImGui::Begin("Inspector")) {

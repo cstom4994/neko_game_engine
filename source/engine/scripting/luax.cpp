@@ -1,7 +1,7 @@
 #include "luax.h"
 
-#include "engine/base/json.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/json.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/scripting/scripting.h"
 #include "lua_wrapper.hpp"
@@ -114,7 +114,7 @@ int neko_lua_get_table_pairs_count(lua_State *L, int index) {
 i32 luax_require_script(lua_State *L, String filepath) {
     PROFILE_FUNC();
 
-    if (g_app->error_mode.load()) {
+    if (gApp->error_mode.load()) {
         return LUA_REFNIL;
     }
 
@@ -176,7 +176,7 @@ void luax_neko_get(lua_State *L, const char *field) {
 }
 
 int luax_msgh(lua_State *L) {
-    if (g_app->error_mode.load()) {
+    if (gApp->error_mode.load()) {
         return 0;
     }
 
@@ -192,19 +192,19 @@ int luax_msgh(lua_State *L) {
     // 打印堆栈跟踪
     String traceback = luax_check_string(L, -1);
 
-    if (LockGuard<Mutex> lock{g_app->error_mtx}) {
-        g_app->fatal_error = to_cstr(err);
-        g_app->traceback = to_cstr(traceback);
+    if (LockGuard<Mutex> lock{gApp->error_mtx}) {
+        gApp->fatal_error = to_cstr(err);
+        gApp->traceback = to_cstr(traceback);
 
-        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", g_app->fatal_error.data, g_app->traceback.data);
+        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", gApp->fatal_error.data, gApp->traceback.data);
 
-        for (u64 i = 0; i < g_app->traceback.len; i++) {
-            if (g_app->traceback.data[i] == '\t') {
-                g_app->traceback.data[i] = ' ';
+        for (u64 i = 0; i < gApp->traceback.len; i++) {
+            if (gApp->traceback.data[i] == '\t') {
+                gApp->traceback.data[i] = ' ';
             }
         }
 
-        g_app->error_mode.store(true);
+        gApp->error_mode.store(true);
     }
 
     // 返回带有堆栈跟踪的错误消息
@@ -550,6 +550,8 @@ void lua_channels_shutdown() {
 
 // lua json
 
+namespace Neko {
+
 void json_to_lua(lua_State *L, JSON *json) {
     switch (json->kind) {
         case JSONKind_Object: {
@@ -733,3 +735,5 @@ String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width) {
     *contents = String(sb);
     return err;
 }
+
+}  // namespace Neko

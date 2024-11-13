@@ -2,8 +2,8 @@
 
 #include "tiledmap.hpp"
 
-#include "engine/base/json.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/json.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
@@ -1149,7 +1149,7 @@ void tiled_draw_all() {
 void tiled_set_map(NativeEntity ent, const char *str) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
-    tiled->map_name = to_cstr(str);
+    tiled->map_name = to_cstr(String(str));
 
     Asset asset = {};
     bool ok = asset_load_kind(AssetKind_Tiledmap, tiled->map_name, &asset);

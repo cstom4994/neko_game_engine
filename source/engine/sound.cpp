@@ -1,8 +1,8 @@
 
 #include "engine/sound.h"
 
-#include "engine/base/profiler.hpp"
-#include "engine/base/vfs.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/vfs.hpp"
 #include "engine/bootstrap.h"
 
 #if NEKO_AUDIO == 1
@@ -24,7 +24,7 @@ Sound *sound_load(String filepath) {
     String cpath = to_cstr(filepath);
     neko_defer(mem_free(cpath.data));
 
-    res = ma_sound_init_from_file(&g_app->audio_engine, cpath.data, 0, nullptr, nullptr, &sound->ma);
+    res = ma_sound_init_from_file(&gApp->audio_engine, cpath.data, 0, nullptr, nullptr, &sound->ma);
     if (res != MA_SUCCESS) {
         mem_free(sound);
         return nullptr;
@@ -58,7 +58,7 @@ static int mt_sound_gc(lua_State *L) {
         mem_free(sound);
     } else {
         sound->zombie = true;
-        g_app->garbage_sounds.push(sound);
+        gApp->garbage_sounds.push(sound);
     }
 
     return 0;
@@ -289,7 +289,7 @@ inline void check_err(FMOD_RESULT res) {
     }
 }
 
-class Audio {
+class FMODAudio {
 
 public:
     struct Implementation {
@@ -431,11 +431,11 @@ FMOD::System *get_fmod_core_system() {
     return lowLevelSystem;
 }
 
-Audio::Implementation::Implementation() { init_fmod_system(); }
+FMODAudio::Implementation::Implementation() { init_fmod_system(); }
 
-Audio::Implementation::~Implementation() {
-    Audio::ErrorCheck(get_fmod_system()->unloadAll());
-    Audio::ErrorCheck(get_fmod_system()->release());
+FMODAudio::Implementation::~Implementation() {
+    FMODAudio::ErrorCheck(get_fmod_system()->unloadAll());
+    FMODAudio::ErrorCheck(get_fmod_system()->release());
 
     banks.trash();
     audio_events.trash();
@@ -443,7 +443,7 @@ Audio::Implementation::~Implementation() {
     audio_channels.trash();
 }
 
-void Audio::Implementation::Update() {
+void FMODAudio::Implementation::Update() {
     Array<u64> pStoppedChannels;
     for (auto c : audio_channels) {
         bool bIsPlaying = false;
@@ -455,16 +455,16 @@ void Audio::Implementation::Update() {
     for (auto &it : pStoppedChannels) {
         audio_channels.unset(it);
     }
-    Audio::ErrorCheck(get_fmod_system()->update());
+    FMODAudio::ErrorCheck(get_fmod_system()->update());
 }
 
-Audio::Implementation *Audio::fmod_impl;
+FMODAudio::Implementation *FMODAudio::fmod_impl;
 
-void Audio::Init() { fmod_impl = new Implementation; }
+void FMODAudio::Init() { fmod_impl = new Implementation; }
 
-void Audio::Update() { fmod_impl->Update(); }
+void FMODAudio::Update() { fmod_impl->Update(); }
 
-void Audio::LoadSound(const String &strSoundName, bool b3d, bool bLooping, bool bStream) {
+void FMODAudio::LoadSound(const String &strSoundName, bool b3d, bool bLooping, bool bStream) {
     u64 key = fnv1a(strSoundName);
     auto sound = fmod_impl->sounds.get(key);
     if (sound != nullptr) return;
@@ -474,21 +474,21 @@ void Audio::LoadSound(const String &strSoundName, bool b3d, bool bLooping, bool 
     eMode |= bLooping ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
     eMode |= bStream ? FMOD_CREATESTREAM : FMOD_CREATECOMPRESSEDSAMPLE;
     FMOD::Sound *pSound = nullptr;
-    Audio::ErrorCheck(get_fmod_core_system()->createSound(strSoundName.cstr(), eMode, nullptr, &pSound));
+    FMODAudio::ErrorCheck(get_fmod_core_system()->createSound(strSoundName.cstr(), eMode, nullptr, &pSound));
     if (pSound) {
         fmod_impl->sounds[key] = pSound;
     }
 }
 
-void Audio::UnLoadSound(const String &strSoundName) {
+void FMODAudio::UnLoadSound(const String &strSoundName) {
     u64 key = fnv1a(strSoundName);
     auto sound = fmod_impl->sounds.get(key);
     if (sound == nullptr) return;
-    Audio::ErrorCheck((*sound)->release());
+    FMODAudio::ErrorCheck((*sound)->release());
     fmod_impl->sounds.unset(key);
 }
 
-int Audio::PlaySounds(const String &strSoundName, const vec3 &vPosition, float fVolumedB) {
+int FMODAudio::PlaySounds(const String &strSoundName, const vec3 &vPosition, float fVolumedB) {
     int channel_id = fmod_impl->next_channel_id++;
     u64 key = fnv1a(strSoundName);
     auto sound = fmod_impl->sounds.get(key);
@@ -500,50 +500,50 @@ int Audio::PlaySounds(const String &strSoundName, const vec3 &vPosition, float f
         }
     }
     FMOD::Channel *pChannel = nullptr;
-    Audio::ErrorCheck(get_fmod_core_system()->playSound((*sound), nullptr, true, &pChannel));
+    FMODAudio::ErrorCheck(get_fmod_core_system()->playSound((*sound), nullptr, true, &pChannel));
     if (pChannel) {
         FMOD_MODE currMode;
         (*sound)->getMode(&currMode);
         if (currMode & FMOD_3D) {
             FMOD_VECTOR position = VectorToFmod(vPosition);
-            Audio::ErrorCheck(pChannel->set3DAttributes(&position, nullptr));
+            FMODAudio::ErrorCheck(pChannel->set3DAttributes(&position, nullptr));
         }
-        Audio::ErrorCheck(pChannel->setVolume(dbToVolume(fVolumedB)));
-        Audio::ErrorCheck(pChannel->setPaused(false));
+        FMODAudio::ErrorCheck(pChannel->setVolume(dbToVolume(fVolumedB)));
+        FMODAudio::ErrorCheck(pChannel->setPaused(false));
         fmod_impl->audio_channels[channel_id] = pChannel;
     }
     return channel_id;
 }
 
-void Audio::SetChannel3dPosition(int channel_id, const vec3 &vPosition) {
+void FMODAudio::SetChannel3dPosition(int channel_id, const vec3 &vPosition) {
     auto channel = fmod_impl->audio_channels.get(channel_id);
     if (channel == nullptr) return;
 
     FMOD_VECTOR position = VectorToFmod(vPosition);
-    Audio::ErrorCheck((*channel)->set3DAttributes(&position, NULL));
+    FMODAudio::ErrorCheck((*channel)->set3DAttributes(&position, NULL));
 }
 
-void Audio::SetChannelVolume(int channel_id, float fVolumedB) {
+void FMODAudio::SetChannelVolume(int channel_id, float fVolumedB) {
     auto channel = fmod_impl->audio_channels.get(channel_id);
     if (channel == nullptr) return;
 
-    Audio::ErrorCheck((*channel)->setVolume(dbToVolume(fVolumedB)));
+    FMODAudio::ErrorCheck((*channel)->setVolume(dbToVolume(fVolumedB)));
 }
 
-void Audio::LoadBank(const String &strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
+void FMODAudio::LoadBank(const String &strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
 
     u64 key = fnv1a(strBankName);
     auto bank = fmod_impl->banks.get(key);
     if (bank != nullptr) return;
 
     FMOD::Studio::Bank *pBank;
-    Audio::ErrorCheck(get_fmod_system()->loadBankFile(strBankName.cstr(), flags, &pBank));
+    FMODAudio::ErrorCheck(get_fmod_system()->loadBankFile(strBankName.cstr(), flags, &pBank));
     if (pBank) {
         fmod_impl->banks[key] = pBank;
     }
 }
 
-void Audio::LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
+void FMODAudio::LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
 
     u64 key = fnv1a(filepath);
     auto bank = fmod_impl->banks.get(key);
@@ -558,35 +558,35 @@ void Audio::LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS flag
     }
     neko_defer(mem_free(contents.data));
 
-    Audio::ErrorCheck(get_fmod_system()->loadBankMemory(contents.data, contents.len, FMOD_STUDIO_LOAD_MEMORY, flags, &pBank));
+    FMODAudio::ErrorCheck(get_fmod_system()->loadBankMemory(contents.data, contents.len, FMOD_STUDIO_LOAD_MEMORY, flags, &pBank));
 
     if (pBank) {
         fmod_impl->banks[key] = pBank;
     }
 }
 
-FMOD::Studio::Bank *Audio::GetBank(const String &strBankName) {
+FMOD::Studio::Bank *FMODAudio::GetBank(const String &strBankName) {
     u64 key = fnv1a(strBankName);
     return fmod_impl->banks[key];
 }
 
-void Audio::LoadEvent(const String &strEventName) {
+void FMODAudio::LoadEvent(const String &strEventName) {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event != nullptr) return;
 
     FMOD::Studio::EventDescription *pEventDescription = NULL;
-    Audio::ErrorCheck(get_fmod_system()->getEvent(strEventName.cstr(), &pEventDescription));
+    FMODAudio::ErrorCheck(get_fmod_system()->getEvent(strEventName.cstr(), &pEventDescription));
     if (pEventDescription) {
         FMOD::Studio::EventInstance *pEventInstance = NULL;
-        Audio::ErrorCheck(pEventDescription->createInstance(&pEventInstance));
+        FMODAudio::ErrorCheck(pEventDescription->createInstance(&pEventInstance));
         if (pEventInstance) {
             fmod_impl->audio_events[key] = pEventInstance;
         }
     }
 }
 
-void Audio::PlayEvent(const String &strEventName) {
+void FMODAudio::PlayEvent(const String &strEventName) {
 
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
@@ -598,7 +598,7 @@ void Audio::PlayEvent(const String &strEventName) {
     (*event)->start();
 }
 
-FMOD::Studio::EventInstance *Audio::GetEvent(const String &strEventName) {
+FMOD::Studio::EventInstance *FMODAudio::GetEvent(const String &strEventName) {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event == nullptr) {
@@ -609,16 +609,16 @@ FMOD::Studio::EventInstance *Audio::GetEvent(const String &strEventName) {
     return *event;
 }
 
-void Audio::StopEvent(const String &strEventName, bool bImmediate) {
+void FMODAudio::StopEvent(const String &strEventName, bool bImmediate) {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event == nullptr) return;
     FMOD_STUDIO_STOP_MODE eMode;
     eMode = bImmediate ? FMOD_STUDIO_STOP_IMMEDIATE : FMOD_STUDIO_STOP_ALLOWFADEOUT;
-    Audio::ErrorCheck((*event)->stop(eMode));
+    FMODAudio::ErrorCheck((*event)->stop(eMode));
 }
 
-bool Audio::IsEventPlaying(const String &strEventName) const {
+bool FMODAudio::IsEventPlaying(const String &strEventName) const {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event == nullptr) return false;
@@ -630,26 +630,26 @@ bool Audio::IsEventPlaying(const String &strEventName) const {
     return false;
 }
 
-void Audio::GetEventParameter(const String &strEventName, const String &strParameterName, float *parameter) {
+void FMODAudio::GetEventParameter(const String &strEventName, const String &strParameterName, float *parameter) {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event == nullptr) return;
-    Audio::ErrorCheck((*event)->getParameterByName(strParameterName.cstr(), parameter));
+    FMODAudio::ErrorCheck((*event)->getParameterByName(strParameterName.cstr(), parameter));
     // CAudioEngine::ErrorCheck(pParameter->getValue(parameter));
 }
 
-void Audio::SetEventParameter(const String &strEventName, const String &strParameterName, float fValue) {
+void FMODAudio::SetEventParameter(const String &strEventName, const String &strParameterName, float fValue) {
     u64 key = fnv1a(strEventName);
     auto event = fmod_impl->audio_events.get(key);
     if (event == nullptr) return;
-    Audio::ErrorCheck((*event)->setParameterByName(strParameterName.cstr(), fValue));
+    FMODAudio::ErrorCheck((*event)->setParameterByName(strParameterName.cstr(), fValue));
 }
 
-void Audio::SetGlobalParameter(const String &strParameterName, float fValue) { get_fmod_system()->setParameterByName(strParameterName.cstr(), fValue); }
+void FMODAudio::SetGlobalParameter(const String &strParameterName, float fValue) { get_fmod_system()->setParameterByName(strParameterName.cstr(), fValue); }
 
-void Audio::GetGlobalParameter(const String &strParameterName, float *parameter) { get_fmod_system()->getParameterByName(strParameterName.cstr(), parameter); }
+void FMODAudio::GetGlobalParameter(const String &strParameterName, float *parameter) { get_fmod_system()->getParameterByName(strParameterName.cstr(), parameter); }
 
-FMOD_VECTOR Audio::VectorToFmod(const vec3 &vPosition) {
+FMOD_VECTOR FMODAudio::VectorToFmod(const vec3 &vPosition) {
     FMOD_VECTOR fVec;
     fVec.x = vPosition.x;
     fVec.y = vPosition.y;
@@ -657,7 +657,7 @@ FMOD_VECTOR Audio::VectorToFmod(const vec3 &vPosition) {
     return fVec;
 }
 
-int Audio::ErrorCheck(FMOD_RESULT result) {
+int FMODAudio::ErrorCheck(FMOD_RESULT result) {
     if (result != FMOD_OK) {
         console_log("[Audio] FMOD Error: %d", result);
         return -1;
@@ -665,15 +665,15 @@ int Audio::ErrorCheck(FMOD_RESULT result) {
     return 0;
 }
 
-float Audio::dbToVolume(float dB) { return powf(10.0f, 0.05f * dB); }
+float FMODAudio::dbToVolume(float dB) { return powf(10.0f, 0.05f * dB); }
 
-float Audio::VolumeTodB(float volume) { return 20.0f * log10f(volume); }
+float FMODAudio::VolumeTodB(float volume) { return 20.0f * log10f(volume); }
 
-void Audio::Shutdown() { delete fmod_impl; }
+void FMODAudio::Shutdown() { delete fmod_impl; }
 
 }  // namespace Neko
 
-static Neko::Audio audio_fmod;
+static Neko::FMODAudio audio_fmod;
 
 #endif
 
@@ -698,13 +698,13 @@ void sound_init() {
 #if NEKO_AUDIO == 1
         PROFILE_BLOCK("miniaudio");
 
-        g_app->miniaudio_vfs = vfs_for_miniaudio();
+        gApp->miniaudio_vfs = vfs_for_miniaudio();
 
         ma_engine_config ma_config = ma_engine_config_init();
         ma_config.channels = 2;
         ma_config.sampleRate = 44100;
-        ma_config.pResourceManagerVFS = g_app->miniaudio_vfs;
-        ma_result res = ma_engine_init(&ma_config, &g_app->audio_engine);
+        ma_config.pResourceManagerVFS = gApp->miniaudio_vfs;
+        ma_result res = ma_engine_init(&ma_config, &gApp->audio_engine);
         if (res != MA_SUCCESS) {
             fatal_error("failed to initialize audio engine");
         }
@@ -758,13 +758,13 @@ void sound_init() {
 void sound_fini() {
 
 #if NEKO_AUDIO == 1
-    for (Sound *sound : g_app->garbage_sounds) {
+    for (Sound *sound : gApp->garbage_sounds) {
         sound->trash();
     }
-    g_app->garbage_sounds.trash();
+    gApp->garbage_sounds.trash();
 
-    ma_engine_uninit(&g_app->audio_engine);
-    mem_free(g_app->miniaudio_vfs);
+    ma_engine_uninit(&gApp->audio_engine);
+    mem_free(gApp->miniaudio_vfs);
 #elif NEKO_AUDIO == 2
     audio_fmod.Shutdown();
 #endif

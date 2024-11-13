@@ -1,6 +1,6 @@
 
 
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
@@ -308,28 +308,28 @@ int transform_update_all(App *app, event_t evt) {
 
 // save/load for just the children array
 static void _children_save(Transform *t, Store *s) {
-    Store *u;
+    //Store *u;
 
-    if (store_child_save(&u, "children", s))
-        if (t->children.len)
-            for (auto &child : t->children)
-                if (entity_get_save_filter(child)) entity_save(&child, NULL, u);
+    //if (store_child_save(&u, "children", s))
+    //    if (t->children.len)
+    //        for (auto &child : t->children)
+    //            if (entity_get_save_filter(child)) entity_save(&child, NULL, u);
 }
 static void _children_load(Transform *t, Store *s) {
-    Store *u;
-    NativeEntity child;
+    //Store *u;
+    //NativeEntity child;
 
-    t->children = {};
+    //t->children = {};
 
-    // this is a little weird because we want NULL array when no children
-    if (store_child_load(&u, "children", s))
-        if (entity_load(&child, NULL, entity_nil, u)) {
-            // t->children = (Array<NativeEntity> *)mem_alloc(sizeof(Array<NativeEntity>));
-            // *t->children = {};
-            do {
-                t->children.push(child);
-            } while (entity_load(&child, NULL, entity_nil, u));
-        }
+    //// this is a little weird because we want NULL array when no children
+    //if (store_child_load(&u, "children", s))
+    //    if (entity_load(&child, NULL, entity_nil, u)) {
+    //        // t->children = (Array<NativeEntity> *)mem_alloc(sizeof(Array<NativeEntity>));
+    //        // *t->children = {};
+    //        do {
+    //            t->children.push(child);
+    //        } while (entity_load(&child, NULL, entity_nil, u));
+    //    }
 }
 
 void transform_save_all(Store *s) {

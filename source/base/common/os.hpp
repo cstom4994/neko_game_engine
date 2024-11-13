@@ -1,8 +1,9 @@
 #pragma once
 
-#include "engine/base/base.hpp"
-#include "engine/base/mutex.hpp"
-#include "engine/base/string.hpp"
+#include "base/common/base.hpp"
+#include "base/common/mutex.hpp"
+#include "base/common/string.hpp"
+#include "base/common/array.hpp"
 
 #if __has_include(<version>)
 #include <version>
@@ -29,6 +30,10 @@
 #else
 #define NEKO_DEBUGBREAK()
 #endif
+
+namespace Neko {
+
+Array<String> BaseGetCommandLine(int argc);
 
 String os_program_dir();
 String os_program_path();
@@ -103,6 +108,8 @@ neko_dynlib neko_dylib_open(const_str name);
 void neko_dylib_close(neko_dynlib lib);
 void *neko_dylib_get_symbol(neko_dynlib lib, const_str symbol_name);
 bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);
+
+}  // namespace Neko
 
 namespace Neko::win {
 std::wstring u2w(std::string_view str) noexcept;

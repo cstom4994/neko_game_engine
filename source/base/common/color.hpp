@@ -1,14 +1,13 @@
 #pragma once
 
-#include "engine/base/base.hpp"
-
-struct Store;
+#include "base/common/base.hpp"
 
 NEKO_SCRIPT(
         color,
 
-        typedef struct Color Color;
-        struct Color { f32 r, g, b, a; };
+        struct Store;
+
+        typedef struct Color Color; struct Color { f32 r, g, b, a; };
 
         typedef struct Color256 Color256; struct Color256 {
             union {
@@ -43,6 +42,8 @@ NEKO_SCRIPT(
 
 )
 
+namespace Neko {
+
 #ifdef __cplusplus
 #define color(r, g, b, a) (Color{(r), (g), (b), (a)})
 #define color_opaque(r, g, b, a) color(r, g, b, 1)
@@ -65,3 +66,5 @@ NEKO_SCRIPT(
 #define NEKO_COLOR_BROWN color256(165, 42, 42, 255)
 
 inline Color256 color256_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }
+
+}  // namespace Neko

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/base/base.hpp"
+#include "base/common/base.hpp"
 #include "engine/ecs/entity.h"
 
 struct App;

@@ -5,9 +5,9 @@
 #include "editor/editor.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/json.hpp"
-#include "engine/base/os.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/json.hpp"
+#include "base/common/os.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -456,7 +456,7 @@ static int neko_version(lua_State *L) {
 }
 
 static int neko_set_console_window(lua_State *L) {
-    g_app->win_console = lua_toboolean(L, 1);
+    gApp->win_console = lua_toboolean(L, 1);
     return 0;
 }
 
@@ -568,253 +568,6 @@ static int neko_json_write(lua_State *L) {
     return 1;
 }
 
-static i32 keyboard_lookup(String str) {
-    switch (fnv1a(str)) {
-        case "space"_hash:
-            return 32;
-        case "'"_hash:
-            return 39;
-        case ","_hash:
-            return 44;
-        case "-"_hash:
-            return 45;
-        case "."_hash:
-            return 46;
-        case "/"_hash:
-            return 47;
-        case "0"_hash:
-            return 48;
-        case "1"_hash:
-            return 49;
-        case "2"_hash:
-            return 50;
-        case "3"_hash:
-            return 51;
-        case "4"_hash:
-            return 52;
-        case "5"_hash:
-            return 53;
-        case "6"_hash:
-            return 54;
-        case "7"_hash:
-            return 55;
-        case "8"_hash:
-            return 56;
-        case "9"_hash:
-            return 57;
-        case ";"_hash:
-            return 59;
-        case "="_hash:
-            return 61;
-        case "a"_hash:
-            return 65;
-        case "b"_hash:
-            return 66;
-        case "c"_hash:
-            return 67;
-        case "d"_hash:
-            return 68;
-        case "e"_hash:
-            return 69;
-        case "f"_hash:
-            return 70;
-        case "g"_hash:
-            return 71;
-        case "h"_hash:
-            return 72;
-        case "i"_hash:
-            return 73;
-        case "j"_hash:
-            return 74;
-        case "k"_hash:
-            return 75;
-        case "l"_hash:
-            return 76;
-        case "m"_hash:
-            return 77;
-        case "n"_hash:
-            return 78;
-        case "o"_hash:
-            return 79;
-        case "p"_hash:
-            return 80;
-        case "q"_hash:
-            return 81;
-        case "r"_hash:
-            return 82;
-        case "s"_hash:
-            return 83;
-        case "t"_hash:
-            return 84;
-        case "u"_hash:
-            return 85;
-        case "v"_hash:
-            return 86;
-        case "w"_hash:
-            return 87;
-        case "x"_hash:
-            return 88;
-        case "y"_hash:
-            return 89;
-        case "z"_hash:
-            return 90;
-        case "["_hash:
-            return 91;
-        case "\\"_hash:
-            return 92;
-        case "]"_hash:
-            return 93;
-        case "`"_hash:
-            return 96;
-        case "world_1"_hash:
-            return 161;
-        case "world_2"_hash:
-            return 162;
-        case "esc"_hash:
-            return 256;
-        case "enter"_hash:
-            return 257;
-        case "tab"_hash:
-            return 258;
-        case "backspace"_hash:
-            return 259;
-        case "insert"_hash:
-            return 260;
-        case "delete"_hash:
-            return 261;
-        case "right"_hash:
-            return 262;
-        case "left"_hash:
-            return 263;
-        case "down"_hash:
-            return 264;
-        case "up"_hash:
-            return 265;
-        case "pg_up"_hash:
-            return 266;
-        case "pg_down"_hash:
-            return 267;
-        case "home"_hash:
-            return 268;
-        case "end"_hash:
-            return 269;
-        case "caps_lock"_hash:
-            return 280;
-        case "scroll_lock"_hash:
-            return 281;
-        case "num_lock"_hash:
-            return 282;
-        case "print_screen"_hash:
-            return 283;
-        case "pause"_hash:
-            return 284;
-        case "f1"_hash:
-            return 290;
-        case "f2"_hash:
-            return 291;
-        case "f3"_hash:
-            return 292;
-        case "f4"_hash:
-            return 293;
-        case "f5"_hash:
-            return 294;
-        case "f6"_hash:
-            return 295;
-        case "f7"_hash:
-            return 296;
-        case "f8"_hash:
-            return 297;
-        case "f9"_hash:
-            return 298;
-        case "f10"_hash:
-            return 299;
-        case "f11"_hash:
-            return 300;
-        case "f12"_hash:
-            return 301;
-        case "f13"_hash:
-            return 302;
-        case "f14"_hash:
-            return 303;
-        case "f15"_hash:
-            return 304;
-        case "f16"_hash:
-            return 305;
-        case "f17"_hash:
-            return 306;
-        case "f18"_hash:
-            return 307;
-        case "f19"_hash:
-            return 308;
-        case "f20"_hash:
-            return 309;
-        case "f21"_hash:
-            return 310;
-        case "f22"_hash:
-            return 311;
-        case "f23"_hash:
-            return 312;
-        case "f24"_hash:
-            return 313;
-        case "f25"_hash:
-            return 314;
-        case "kp0"_hash:
-            return 320;
-        case "kp1"_hash:
-            return 321;
-        case "kp2"_hash:
-            return 322;
-        case "kp3"_hash:
-            return 323;
-        case "kp4"_hash:
-            return 324;
-        case "kp5"_hash:
-            return 325;
-        case "kp6"_hash:
-            return 326;
-        case "kp7"_hash:
-            return 327;
-        case "kp8"_hash:
-            return 328;
-        case "kp9"_hash:
-            return 329;
-        case "kp."_hash:
-            return 330;
-        case "kp/"_hash:
-            return 331;
-        case "kp*"_hash:
-            return 332;
-        case "kp-"_hash:
-            return 333;
-        case "kp+"_hash:
-            return 334;
-        case "kp_enter"_hash:
-            return 335;
-        case "kp="_hash:
-            return 336;
-        case "lshift"_hash:
-            return 340;
-        case "lctrl"_hash:
-            return 341;
-        case "lalt"_hash:
-            return 342;
-        case "lsuper"_hash:
-            return 343;
-        case "rshift"_hash:
-            return 344;
-        case "rctrl"_hash:
-            return 345;
-        case "ralt"_hash:
-            return 346;
-        case "rsuper"_hash:
-            return 347;
-        case "menu"_hash:
-            return 348;
-        default:
-            return 0;
-    }
-}
-
 static int neko_key_down(lua_State *L) {
     String str = luax_check_string(L, 1);
     i32 key = keyboard_lookup(str);
@@ -841,7 +594,7 @@ static int neko_key_press(lua_State *L) {
 
 static int neko_mouse_down(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(g_app->mouse_state)) {
+    if (n >= 0 && n < array_size(gApp->mouse_state)) {
         lua_pushboolean(L, input_mouse_down((MouseCode)n));
     } else {
         lua_pushboolean(L, false);
@@ -852,8 +605,8 @@ static int neko_mouse_down(lua_State *L) {
 
 static int neko_mouse_release(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(g_app->mouse_state)) {
-        bool is_release = !g_app->mouse_state[n] && g_app->prev_mouse_state[n];
+    if (n >= 0 && n < array_size(gApp->mouse_state)) {
+        bool is_release = !gApp->mouse_state[n] && gApp->prev_mouse_state[n];
         lua_pushboolean(L, is_release);
     } else {
         lua_pushboolean(L, false);
@@ -864,8 +617,8 @@ static int neko_mouse_release(lua_State *L) {
 
 static int neko_mouse_click(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(g_app->mouse_state)) {
-        bool is_click = g_app->mouse_state[n] && !g_app->prev_mouse_state[n];
+    if (n >= 0 && n < array_size(gApp->mouse_state)) {
+        bool is_click = gApp->mouse_state[n] && !gApp->prev_mouse_state[n];
         lua_pushboolean(L, is_click);
     } else {
         lua_pushboolean(L, false);
@@ -884,20 +637,20 @@ static int neko_mouse_pos(lua_State *L) {
 }
 
 static int neko_mouse_delta(lua_State *L) {
-    lua_pushnumber(L, g_app->mouse_x - g_app->prev_mouse_x);
-    lua_pushnumber(L, g_app->mouse_y - g_app->prev_mouse_y);
+    lua_pushnumber(L, gApp->mouse_x - gApp->prev_mouse_x);
+    lua_pushnumber(L, gApp->mouse_y - gApp->prev_mouse_y);
     return 2;
 }
 
 static int neko_show_mouse(lua_State *L) {
     bool show = lua_toboolean(L, 1);
-    glfwSetInputMode(g_app->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(gApp->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
     return 0;
 }
 
 static int neko_scroll_wheel(lua_State *L) {
-    lua_pushnumber(L, g_app->scroll_x);
-    lua_pushnumber(L, g_app->scroll_y);
+    lua_pushnumber(L, gApp->scroll_x);
+    lua_pushnumber(L, gApp->scroll_y);
     return 2;
 }
 
@@ -1028,7 +781,7 @@ static int neko_draw_default_font(lua_State *L) {
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
 #if NEKO_AUDIO == 1
-    ma_engine_set_volume(&g_app->audio_engine, (float)vol);
+    ma_engine_set_volume(&gApp->audio_engine, (float)vol);
 #endif
     return 0;
 }
@@ -1084,7 +837,7 @@ static int neko_program_dir(lua_State *L) {
 }
 
 static int neko_is_fused(lua_State *L) {
-    lua_pushboolean(L, g_app->is_fused.load());
+    lua_pushboolean(L, gApp->is_fused.load());
     return 1;
 }
 
@@ -1266,10 +1019,10 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
     neko_aseprite_frame f = spr->frames[index];
 
     if (direction)
-        idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
+        idraw_rect_textured_ext(&gApp->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
     else
-        idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
+        idraw_rect_textured_ext(&gApp->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
 
     return 0;
@@ -1416,33 +1169,33 @@ LUA_FUNCTION(__neko_bind_gameobject_inspect) {
 #if 0
 
 LUA_FUNCTION(__neko_bind_idraw_get) {
-    lua_pushlightuserdata(L, &g_app->idraw);
+    lua_pushlightuserdata(L, &gApp->idraw);
     return 1;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_draw) {
     PROFILE_FUNC();
-    idraw_draw(&g_app->idraw, &g_app->cb);
+    idraw_draw(&gApp->idraw, &gApp->cb);
     return 1;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_defaults) {
     PROFILE_FUNC();
-    idraw_defaults(&g_app->idraw);
+    idraw_defaults(&gApp->idraw);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera2d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    idraw_camera2d(&g_app->idraw, w, h);
+    idraw_camera2d(&gApp->idraw, w, h);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera3d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    idraw_camera3d(&g_app->idraw, w, h);
+    idraw_camera3d(&gApp->idraw, w, h);
     return 0;
 }
 
@@ -1451,7 +1204,7 @@ LUA_FUNCTION(__neko_bind_idraw_camera2d_ex) {
     f32 r = lua_tonumber(L, 2);
     f32 t = lua_tonumber(L, 3);
     f32 b = lua_tonumber(L, 4);
-    idraw_camera2d_ex(&g_app->idraw, l, r, t, b);
+    idraw_camera2d_ex(&gApp->idraw, l, r, t, b);
     return 0;
 }
 
@@ -1460,7 +1213,7 @@ LUA_FUNCTION(__neko_bind_idraw_rotatev) {
     f32 x = lua_tonumber(L, 2);
     f32 y = lua_tonumber(L, 3);
     f32 z = lua_tonumber(L, 4);
-    idraw_rotatev(&g_app->idraw, angle, neko_v3(x, y, z));
+    idraw_rotatev(&gApp->idraw, angle, neko_v3(x, y, z));
     return 0;
 }
 
@@ -1477,7 +1230,7 @@ LUA_FUNCTION(__neko_bind_idraw_box) {
     u8 a = lua_tointeger(L, 10);
     gfx_primitive_type type_val;
     neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 11);
-    idraw_box(&g_app->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
+    idraw_box(&gApp->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
 
@@ -1485,7 +1238,7 @@ LUA_FUNCTION(__neko_bind_idraw_translatef) {
     f32 x = lua_tonumber(L, 1);
     f32 y = lua_tonumber(L, 2);
     f32 z = lua_tonumber(L, 3);
-    idraw_translatef(&g_app->idraw, x, y, z);
+    idraw_translatef(&gApp->idraw, x, y, z);
     return 0;
 }
 
@@ -1505,7 +1258,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
         col = LuaGet<Color256>(L, 4);
     }
 
-    idraw_rectv(&g_app->idraw, v1, v2, col, type_val);
+    idraw_rectv(&gApp->idraw, v1, v2, col, type_val);
     return 0;
 }
 
@@ -1522,7 +1275,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectvd) {
 
     Color256 col = LuaGet<Color256>(L, 6);
 
-    idraw_rectvd(&g_app->idraw, v1, v2, uv0, uv1, col, type_val);
+    idraw_rectvd(&gApp->idraw, v1, v2, uv0, uv1, col, type_val);
     return 0;
 }
 
@@ -1538,7 +1291,7 @@ LUA_FUNCTION(__neko_bind_idraw_text) {
         col = LuaGet<Color256>(L, 4);
     }
 
-    idraw_text(&g_app->idraw, x, y, text, NULL, false, col);
+    idraw_text(&gApp->idraw, x, y, text, NULL, false, col);
     return 0;
 }
 
@@ -1554,13 +1307,13 @@ LUA_FUNCTION(__neko_bind_idraw_text) {
 
 LUA_FUNCTION(__neko_bind_idraw_depth_enabled) {
     bool enable = lua_toboolean(L, 1);
-    idraw_depth_enabled(&g_app->idraw, enable);
+    idraw_depth_enabled(&gApp->idraw, enable);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_face_cull_enabled) {
     bool enable = lua_toboolean(L, 1);
-    idraw_face_cull_enabled(&g_app->idraw, enable);
+    idraw_face_cull_enabled(&gApp->idraw, enable);
     return 0;
 }
 
@@ -1568,7 +1321,7 @@ LUA_FUNCTION(__neko_bind_idraw_texture) {
     gfx_texture_t rt = NEKO_DEFAULT_VAL();
     // neko_luabind_struct_to_member(ENGINE_LUA(), gfx_texture_t, id, &rt, 1);
     rt = *CHECK_STRUCT(L, 1, gfx_texture_t);
-    idraw_texture(&g_app->idraw, rt);
+    idraw_texture(&gApp->idraw, rt);
     return 0;
 }
 
@@ -1876,7 +1629,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_bind) {
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
     // neko_luabind_struct_to_member(L, neko_pipeline_t, id, &pipeline_handle, 1);
     pipeline_handle = *CHECK_STRUCT(L, 1, neko_pipeline_t);
-    gfx_pipeline_bind(&g_app->cb, pipeline_handle);
+    gfx_pipeline_bind(&gApp->cb, pipeline_handle);
     return 0;
 }
 
@@ -2073,7 +1826,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
         lua_pop(L, 1);  // # -1
     }
 
-    gfx_apply_bindings(&g_app->cb, &binds);
+    gfx_apply_bindings(&gApp->cb, &binds);
 
     if (u_desc) mem_free(u_desc);
     if (ib_desc) mem_free(ib_desc);
@@ -2109,7 +1862,7 @@ LUA_FUNCTION(__neko_bind_render_dispatch_compute) {
     f32 x_groups = lua_tonumber(L, 1);
     f32 y_groups = lua_tonumber(L, 2);
     f32 z_groups = lua_tonumber(L, 3);
-    gfx_dispatch_compute(&g_app->cb, x_groups, y_groups, z_groups);
+    gfx_dispatch_compute(&gApp->cb, x_groups, y_groups, z_groups);
     return 0;
 }
 
@@ -2236,12 +1989,12 @@ LUA_FUNCTION(__neko_bind_render_renderpass_begin) {
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 1);
     rp = *CHECK_STRUCT(L, 1, neko_renderpass_t);
-    gfx_renderpass_begin(&g_app->cb, rp);
+    gfx_renderpass_begin(&gApp->cb, rp);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_renderpass_end) {
-    gfx_renderpass_end(&g_app->cb);
+    gfx_renderpass_end(&gApp->cb);
     return 0;
 }
 
@@ -2278,7 +2031,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         lua_pop(L, 1);
     }
 
-    gfx_draw(&g_app->cb, draw_desc);
+    gfx_draw(&gApp->cb, draw_desc);
     return 0;
 }
 
@@ -2287,7 +2040,7 @@ LUA_FUNCTION(__neko_bind_render_set_viewport) {
     f32 y = lua_tonumber(L, 2);
     f32 w = lua_tonumber(L, 3);
     f32 h = lua_tonumber(L, 4);
-    gfx_set_viewport(&g_app->cb, x, y, w, h);
+    gfx_set_viewport(&gApp->cb, x, y, w, h);
     return 0;
 }
 
@@ -2297,15 +2050,15 @@ LUA_FUNCTION(__neko_bind_render_clear) {
     f32 b = lua_tonumber(L, 3);
     f32 a = lua_tonumber(L, 4);
     gfx_clear_action_t clear = {.color = {r, g, b, a}};
-    gfx_clear(&g_app->cb, clear);
+    gfx_clear(&gApp->cb, clear);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_display_size) {
     // vec2 v1 = neko_game()->DisplaySize;
     // lua2struct::pack_struct<vec2, 2>(L, v1);
-    lua_pushnumber(L, g_app->width);
-    lua_pushnumber(L, g_app->height);
+    lua_pushnumber(L, gApp->width);
+    lua_pushnumber(L, gApp->height);
     return 2;
 }
 

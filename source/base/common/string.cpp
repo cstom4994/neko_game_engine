@@ -1,4 +1,8 @@
-#include "engine/base/string.hpp"
+#include "base/common/string.hpp"
+
+#include "base/common/base.hpp"
+
+namespace Neko {
 
 static char s_empty[1] = {0};
 
@@ -142,6 +146,8 @@ double string_to_double(String str) {
     return n * sign;
 }
 
+}  // namespace Neko
+
 namespace Neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept {
     if (str.empty()) {
@@ -166,3 +172,49 @@ std::string w2u(std::wstring_view wstr) noexcept {
     return result;
 }
 }  // namespace Neko::wtf8
+
+Char CString::EMPTY_STRING[] = "\0";
+
+CString::CString() : m_pString(nullptr), m_stringLength(0) { m_pString = EMPTY_STRING; }
+
+CString::CString(const Char *pstr) : m_pString(nullptr), m_stringLength(0) {
+    if (pstr) {
+        const Uint32 strlength = qstrlen(pstr);
+        if (strlength) {
+            m_pString = new Char[strlength + 1];
+            neko_strcpy(m_pString, pstr);
+            m_stringLength = strlength;
+        }
+    }
+
+    if (!m_pString) m_pString = EMPTY_STRING;
+}
+
+CString::CString(const CString &str) : m_pString(nullptr), m_stringLength(0) {
+    const Char *psrc = str.c_str();
+    if (psrc) {
+        const Uint32 length = str.length();
+        if (length) {
+            m_pString = new Char[length + 1];
+            neko_strcpy(m_pString, psrc);
+            m_stringLength = length;
+        }
+    }
+
+    if (!m_pString) m_pString = EMPTY_STRING;
+}
+
+CString::CString(const Char *pstr, Uint32 length) : m_pString(nullptr), m_stringLength(length) {
+    if (pstr && length) {
+        m_pString = new Char[length + 1];
+        neko_strncpy(m_pString, pstr, length);
+        m_pString[length] = '\0';
+        m_stringLength = length;
+    } else {
+        m_pString = EMPTY_STRING;
+    }
+}
+
+CString::~CString() {
+    if (m_pString && m_pString != EMPTY_STRING) delete[] m_pString;
+}

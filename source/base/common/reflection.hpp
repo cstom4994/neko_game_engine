@@ -2,8 +2,8 @@
 
 #include <map>
 
-#include "engine/base/base.hpp"
-#include "engine/base/pp.hpp"
+#include "base/common/base.hpp"
+#include "base/common/pp.hpp"
 
 namespace std {
 template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>

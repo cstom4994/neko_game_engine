@@ -1,15 +1,17 @@
-#include "engine/base/vfs.hpp"
+#include "vfs.hpp"
 
 #include <filesystem>
 
-#include "engine/base/hashmap.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/util.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/util.hpp"
 
 // miniz
 #include "vendor/miniz.h"
 
-void fatal_error(String str);
+void fatal_error(Neko::String str);
+
+namespace Neko {
 
 static u32 read4(char *bytes) {
     u32 n;
@@ -677,3 +679,5 @@ const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *
     *size = out.len;
     return out.data;
 }
+
+}  // namespace Neko

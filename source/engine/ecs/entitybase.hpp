@@ -1,10 +1,18 @@
 #pragma once
 
-#include "engine/base/color.hpp"
+#include "base/common/color.hpp"
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
 
-DECL_ENT(Camera, Scalar viewport_height;);
+// DECL_ENT(Camera, Scalar viewport_height;);
+
+class Camera : public GameEntityBase {
+public:
+    static NativeEntityPool<Camera>* pool;
+
+public:
+    Scalar viewport_height;
+};
 
 DECL_ENT(uneditable, int what;);
 
@@ -58,7 +66,7 @@ struct TextChar {
 // info per text entity
 DECL_ENT(Text,
 
-         char *str;
+         char* str;
          Array<TextChar> chars;  // per-character info buffered to shader
          vec2 bounds;            // max x, min y in size-less units
 

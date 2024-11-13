@@ -1,7 +1,9 @@
 #include "xml.hpp"
 
-#include "engine/base/util.hpp"
-#include "engine/base/vfs.hpp"
+#include "base/common/util.hpp"
+#include "base/common/vfs.hpp"
+
+namespace Neko {
 
 static const struct {
     char character;
@@ -280,3 +282,5 @@ XMLNode *XMLNode::FindChild(String name) {
         if (neko_string_compare_equal(name, this->children[i].name)) return &this->children[i];
     return NULL;
 }
+
+}  // namespace Neko

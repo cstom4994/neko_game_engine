@@ -1,15 +1,17 @@
 #pragma once
 
-#include "engine/base/base.hpp"
-#include "engine/base/mem.hpp"
+#include "base/common/base.hpp"
+#include "base/common/mem.hpp"
+
+namespace Neko {
 
 template <typename T>
 struct Array {
-    T *data = nullptr;
+    T* data = nullptr;
     u64 len = 0;
     u64 capacity = 0;
 
-    T &operator[](size_t i) {
+    T& operator[](size_t i) {
         assert(i >= 0 && i < len);
         return data[i];
     }
@@ -22,7 +24,7 @@ struct Array {
 
     void reserve(u64 cap) {
         if (cap > capacity) {
-            T *buf = (T *)mem_alloc(sizeof(T) * cap);
+            T* buf = (T*)mem_alloc(sizeof(T) * cap);
             memcpy(buf, data, sizeof(T) * len);
             mem_free(data);
             data = buf;
@@ -45,7 +47,7 @@ struct Array {
         return len++;
     }
 
-    T *get_ptr(u64 i) { return &data[i]; }
+    T* get_ptr(u64 i) { return &data[i]; }
 
     // 快速删除函数
     void quick_remove(u64 i) {
@@ -56,12 +58,14 @@ struct Array {
         len--;  // 减少长度
     }
 
-    void sort(int (*compar)(const void *, const void *)) {
+    void sort(int (*compar)(const void*, const void*)) {
         if (len > 1) {
             qsort(data, len, sizeof(T), compar);
         }
     }
 
-    T *begin() { return data; }
-    T *end() { return &data[len]; }
+    T* begin() { return data; }
+    T* end() { return &data[len]; }
 };
+
+}  // namespace Neko

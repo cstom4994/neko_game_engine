@@ -2,10 +2,12 @@
 
 #include <variant>
 
-#include "engine/base/array.hpp"
-#include "engine/base/base.hpp"
-#include "engine/base/hashmap.hpp"
-#include "engine/base/string.hpp"
+#include "base/common/array.hpp"
+#include "base/common/base.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/string.hpp"
+
+namespace Neko {
 
 struct XMLAttribute {
     String name;
@@ -98,3 +100,5 @@ struct XMLNode {
 
     void Trash();
 };
+
+}  // namespace Neko

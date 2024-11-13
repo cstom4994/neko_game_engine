@@ -8,7 +8,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/draw.h"
@@ -21,6 +21,8 @@
 
 // deps
 #include "vendor/stb_truetype.h"
+
+using namespace Neko;
 
 using namespace Neko::luabind;
 
@@ -321,7 +323,7 @@ void neko_set_ui_renderer_clip(engine_ui_renderer_t *renderer, rect_t rect) {
 
 INPUT_WRAP_DEFINE(ui);
 
-ui_context_t *ui_global_ctx() { return g_app->ui; }
+ui_context_t *ui_global_ctx() { return gApp->ui; }
 
 void neko_init_ui_renderer() {
     ui_renderer = neko_new_ui_renderer();
@@ -804,7 +806,7 @@ MUIRef *lua_ui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
     return ref;
 }
 
-static ui_context_t *ui_ctx() { return g_app->ui; }
+static ui_context_t *ui_ctx() { return gApp->ui; }
 
 static int l_ui_set_focus(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);

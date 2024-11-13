@@ -1,7 +1,7 @@
 
 
-#include "engine/base/profiler.hpp"
-#include "engine/base/singleton.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/singleton.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"

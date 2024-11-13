@@ -42,9 +42,7 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
-typedef const char* const_str;
-
-typedef struct lua_State lua_State;
+typedef const char *const_str;
 
 #define u8_max UINT8_MAX
 #define u16_max UINT16_MAX
@@ -53,6 +51,69 @@ typedef struct lua_State lua_State;
 #define s32_max INT32_MAX
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
+
+typedef char Char;
+typedef unsigned char Uchar;
+typedef __int32 Int32;
+typedef unsigned __int32 Uint32;
+typedef __int16 Int16;
+typedef unsigned __int16 Uint16;
+typedef __int64 Int64;
+typedef unsigned __int64 Uint64;
+typedef float Float;
+typedef double Double;
+typedef Uint32 string_t;
+typedef Int32 entindex_t;
+
+struct color32_t {
+    color32_t() : r(0), g(0), b(0), a(255) {}
+    color32_t(u8 _r, u8 _g, u8 _b, u8 _a) {
+        r = _r;
+        g = _g;
+        b = _b;
+        a = _a;
+    }
+    u8 &operator[](Uint32 n) {
+        assert(n <= 3);
+
+        if (n == 0)
+            return r;
+        else if (n == 1)
+            return g;
+        else if (n == 2)
+            return b;
+        else
+            return a;
+    }
+
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+};
+
+struct color24_t {
+    color24_t() : r(0), g(0), b(0) {}
+    color24_t(u8 _r, u8 _g, u8 _b) {
+        r = _r;
+        g = _g;
+        b = _b;
+    }
+    u8 &operator[](Uint32 n) {
+        assert(n <= 2);
+
+        if (n == 0)
+            return r;
+        else if (n == 1)
+            return g;
+        else
+            return b;
+    }
+
+    u8 r;
+    u8 g;
+    u8 b;
+};
 
 #if (defined _WIN32 || defined _WIN64)
 #define NEKO_FORCE_INLINE inline
@@ -75,7 +136,7 @@ typedef struct lua_State lua_State;
 #if defined(__cplusplus)
 
 #define NEKO_SCRIPT(name, ...)                             \
-    static const char* nekogame_ffi_##name = #__VA_ARGS__; \
+    static const char *nekogame_ffi_##name = #__VA_ARGS__; \
     __VA_ARGS__
 
 #ifdef _MSC_VER
@@ -87,7 +148,7 @@ typedef struct lua_State lua_State;
 #else
 
 #define NEKO_SCRIPT(name, ...)                             \
-    static const char* nekogame_ffi_##name = #__VA_ARGS__; \
+    static const char *nekogame_ffi_##name = #__VA_ARGS__; \
     __VA_ARGS__
 
 #ifdef _MSC_VER
@@ -125,8 +186,8 @@ typedef struct lua_State lua_State;
 #define NEKO_CTOR(TYPE, ...) ((TYPE){__VA_ARGS__})
 #endif
 
-#define NEKO_OFFSET(TYPE, ELEMENT) ((size_t)(&(((TYPE*)(0))->ELEMENT)))
-#define NEKO_TO_STR(TYPE) ((const char*)#TYPE)
+#define NEKO_OFFSET(TYPE, ELEMENT) ((size_t)(&(((TYPE *)(0))->ELEMENT)))
+#define NEKO_TO_STR(TYPE) ((const char *)#TYPE)
 #define NEKO_TOKEN_PASTE(X, Y) X##Y
 #define NEKO_CONCAT(X, Y) NEKO_TOKEN_PASTE(X, Y)
 
@@ -161,7 +222,7 @@ typedef struct lua_State lua_State;
     } while (0)
 #endif
 
-#define NEKO_INT2VOIDP(I) (void*)(uintptr_t)(I)
+#define NEKO_INT2VOIDP(I) (void *)(uintptr_t)(I)
 
 #define NEKO_EXPECT(x)                                                \
     do {                                                              \
@@ -181,7 +242,7 @@ typedef struct lua_State lua_State;
 #include <android/log.h>
 #define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
 #else
-inline void neko_printf(const char* fmt, ...) {
+inline void neko_printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vprintf(fmt, args);
@@ -208,11 +269,11 @@ inline void neko_printf(const char* fmt, ...) {
 #define JOIN_1(x, y) x##y
 #define JOIN_2(x, y) JOIN_1(x, y)
 
-NEKO_API() void neko_log(const char* file, int line, const char* fmt, ...);
+NEKO_API() void neko_log(const char *file, int line, const char *fmt, ...);
 
 #define console_log(...) neko_log(__FILE__, __LINE__, __VA_ARGS__)
 
-NEKO_API() void errorf(const char* fmt, ...);
+NEKO_API() void errorf(const char *fmt, ...);
 
 #define line_str__(line) __FILE__ ":" #line ": "
 #define line_str_(line) line_str__(line)
@@ -229,7 +290,7 @@ NEKO_API() void errorf(const char* fmt, ...);
 #ifdef __MINGW32__
 #define neko_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__)
 #else
-inline void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
+inline void neko_snprintf(char *buffer, size_t buffer_size, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vsnprintf(buffer, buffer_size, fmt, args);
@@ -245,28 +306,6 @@ inline void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...
     char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
-#if defined(_MSC_VER)
-#define LOGURU_PREDICT_FALSE(x) (x)
-#define LOGURU_PREDICT_TRUE(x) (x)
-#else
-#define LOGURU_PREDICT_FALSE(x) (__builtin_expect(x, 0))
-#define LOGURU_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
-#endif
+namespace Neko {}  // namespace Neko
 
-#define CHECK_WITH_INFO_F(test, info, ...) LOGURU_PREDICT_TRUE((test) == true) ? (void)0 : console_log("CHECK FAILED:  " info "  ", ##__VA_ARGS__)
-
-/* Checked at runtime too. Will print error, then call fatal_handler (if any), then 'abort'.
-   Note that the test must be boolean.
-   CHECK_F(ptr); will not compile, but CHECK_F(ptr != nullptr); will. */
-#define CHECK_F(test, ...) CHECK_WITH_INFO_F(test, #test, ##__VA_ARGS__)
-
-#define CHECK_NOTNULL_F(x, ...) CHECK_WITH_INFO_F((x) != nullptr, #x " != nullptr", ##__VA_ARGS__)
-
-#define LOGURU_CONCATENATE_IMPL(s1, s2) s1##s2
-#define LOGURU_CONCATENATE(s1, s2) LOGURU_CONCATENATE_IMPL(s1, s2)
-
-#ifdef __COUNTER__
-#define LOGURU_ANONYMOUS_VARIABLE(str) LOGURU_CONCATENATE(str, __COUNTER__)
-#else
-#define LOGURU_ANONYMOUS_VARIABLE(str) LOGURU_CONCATENATE(str, __LINE__)
-#endif
+struct Store {};

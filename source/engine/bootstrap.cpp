@@ -11,11 +11,12 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include "base/cbase.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/os.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/singleton.hpp"
+#include "base/common/os.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/singleton.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -27,6 +28,7 @@
 #include "engine/scripting/nativescript.hpp"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
+#include "engine/renderer/renderer.h"
 
 // deps
 #include "vendor/sokol_time.h"
@@ -62,15 +64,25 @@ REFL_FIELDS(engine_cfg_t, batch_vertex_capacity);
 
 // clang-format on
 
-void fatal_error(String str) {
-    if (!g_app->error_mode.load()) {
-        LockGuard<Mutex> lock{g_app->error_mtx};
+App *gApp;
 
-        g_app->fatal_error = to_cstr(str);
-        fprintf(stderr, "%s\n", g_app->fatal_error.data);
-        g_app->error_mode.store(true);
+#if 1
+
+void fatal_error(String str) {
+    if (!gApp->error_mode.load()) {
+        LockGuard<Mutex> lock{gApp->error_mtx};
+
+        gApp->fatal_error = to_cstr(str);
+        fprintf(stderr, "%s\n", gApp->fatal_error.data);
+        gApp->error_mode.store(true);
     }
 }
+
+CBase gBase;
+
+#endif
+
+#if 1
 
 i32 neko_buildnum(void) {
     static const char *__build_date = __DATE__;
@@ -95,10 +107,6 @@ i32 neko_buildnum(void) {
 // ECS_COMPONENT_DECL(vel_t);
 // ECS_COMPONENT_DECL(rect_t);
 
-App *g_app;
-
-Allocator *g_allocator;
-
 native_script_context_t *sc;
 
 unsigned int fbo;
@@ -106,17 +114,13 @@ unsigned int rbo;
 unsigned int fbo_tex;
 unsigned int quadVAO, quadVBO;
 Asset posteffect_shader = {};
+Asset sprite_shader = {};
 
-int main(int argc, char **argv) {
-    GameMain(argc, argv);
-    return 0;
-}
+Renderer *renderer;
 
 extern void draw_gui();
 
 // -------------------------------------------------------------------------
-
-static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
 static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char *message, const void *up) {
 
@@ -206,8 +210,8 @@ void rescale_framebuffer(float width, float height) {
 
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-    g_app->cfg.width = width;
-    g_app->cfg.height = height;
+    gApp->cfg.width = width;
+    gApp->cfg.height = height;
 
     rescale_framebuffer(width, height);
 
@@ -235,7 +239,7 @@ int _game_draw(App *app, event_t evt) {
     lua_pushnumber(L, get_timing_instance()->delta);
     luax_pcall(L, 1, 0);
 
-    if (!g_app->error_mode.load()) {
+    if (!gApp->error_mode.load()) {
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -266,7 +270,7 @@ int _game_draw(App *app, event_t evt) {
         // 底层图片
         char background_text[64] = "Project: unknown";
 
-        f32 td = g_app->default_font->width(22.f, background_text);
+        f32 td = gApp->default_font->width(22.f, background_text);
         // vec2 td = {};
         vec2 ts = neko_v2(512 + 128, 512 + 128);
 
@@ -284,7 +288,7 @@ int _game_draw(App *app, event_t evt) {
             script_draw_all();
 
             sprite_draw_all();
-            batch_draw_all(g_app->batch);
+            batch_draw_all(gApp->batch);
             edit_draw_all();
             physics_draw_all();
             gui_draw_all();
@@ -304,12 +308,12 @@ int _game_draw(App *app, event_t evt) {
             glBindVertexArray(quadVAO);
             glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
             glDrawArrays(GL_TRIANGLES, 0, 6);
-            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy += draw_font(g_app->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
-            fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
+            f32 fy = draw_font(gApp->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy += draw_font(gApp->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
+            fy += draw_font(gApp->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
         }
 
-        auto ui = g_app->ui;
+        auto ui = gApp->ui;
 
         // ImGui::ShowDemoWindow();
 
@@ -327,7 +331,7 @@ int _game_draw(App *app, event_t evt) {
             draw_gui();
         }
 
-        neko_render_ui(ui, g_app->cfg.width, g_app->cfg.height);
+        neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
 
         imgui_draw_post();
 
@@ -345,25 +349,37 @@ int _game_draw(App *app, event_t evt) {
         float y = 25;
         u64 font_size = 28;
 
-        if (LockGuard<Mutex> lock{g_app->error_mtx}) {
+        if (LockGuard<Mutex> lock{gApp->error_mtx}) {
             y = draw_font(font, false, font_size, x, y, "-- ! Neko Error ! --", NEKO_COLOR_WHITE);
             y += font_size;
 
-            y = draw_font_wrapped(font, false, font_size, x, y, g_app->fatal_error, NEKO_COLOR_WHITE, g_app->cfg.width - x);
+            y = draw_font_wrapped(font, false, font_size, x, y, gApp->fatal_error, NEKO_COLOR_WHITE, gApp->cfg.width - x);
             y += font_size;
 
-            if (g_app->traceback.data) {
-                y = draw_font(font, false, font_size, x, y, g_app->traceback, NEKO_COLOR_WHITE);
+            if (gApp->traceback.data) {
+                y = draw_font(font, false, font_size, x, y, gApp->traceback, NEKO_COLOR_WHITE);
                 y += (font_size * 2);
 
                 draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
-                    window_setclipboard(g_app->traceback.cstr());
+                    window_setclipboard(gApp->traceback.cstr());
                 }
             }
         }
     }
+
+    TextruedQuad quad = {
+            .texture = NULL,
+            .position = {0, 0},
+            .dimentions = {40, 40},
+            .rect = {0},
+            .color = make_color(0x6cafb5, 100),
+    };
+
+    renderer_push(renderer, &quad);
+
+    renderer_flush(renderer);
 
     neko_check_gl_error();
 
@@ -406,7 +422,7 @@ void Game::SplashScreen() {
         neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
         neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
 
-        mat4 projection = mat4_ortho(-((float)g_app->cfg.width / 2.0f), (float)g_app->cfg.width / 2.0f, (float)g_app->cfg.height / 2.0f, -((float)g_app->cfg.height / 2.0f), -1.0f, 1.0f);
+        mat4 projection = mat4_ortho(-((float)gApp->cfg.width / 2.0f), (float)gApp->cfg.width / 2.0f, (float)gApp->cfg.height / 2.0f, -((float)gApp->cfg.height / 2.0f), -1.0f, 1.0f);
         mat4 model = mat4_scalev(vec3{splash_texture->width / 2.0f, splash_texture->height / 2.0f, 0.0f});
 
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -439,11 +455,11 @@ static void _game_fini() {
     glDeleteTextures(1, &fbo_tex);
     glDeleteRenderbuffers(1, &rbo);
 
-    bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
+    bool dump_allocs_detailed = gApp->cfg.dump_allocs_detailed;
 
     {  // just for test
 
-        mem_free(g_app->ui);
+        mem_free(gApp->ui);
         neko_deinit_ui_renderer();
     }
 
@@ -453,75 +469,70 @@ static void _game_fini() {
     system_fini();
 
     // fini glfw
-    glfwDestroyWindow(g_app->game_window);
+    glfwDestroyWindow(gApp->game_window);
     glfwTerminate();
 
 #ifdef USE_PROFILER
     profile_shutdown();
 #endif
 
-    vfs_fini();
-
-    mem_free(g_app->fatal_error.data);
-    mem_free(g_app->traceback.data);
-
-    for (String arg : g_app->args) {
-        mem_free(arg.data);
-    }
-    mem_free(g_app->args.data);
+    mem_free(gApp->fatal_error.data);
+    mem_free(gApp->traceback.data);
 
     auto &eh = Neko::the<EventHandler>();
     eh.fini();
 
     Neko::modules::shutdown<EventHandler>();
 
-    g_app->~App();
-    mem_free(g_app);
-
-#ifndef NDEBUG
-    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
-    if (allocator != nullptr) {
-        allocator->dump_allocs(dump_allocs_detailed);
-    }
-#endif
-
-    g_allocator->trash();
-    operator delete(g_allocator);
-
-    neko_println("see ya");
+    gApp->~App();
+    mem_free(gApp);
 }
+
+bool CL_IsHostClient(void) { return true; }
+
+void CL_Disconnect(void) {}
 
 // -------------------------------------------------------------------------
 
-void GameMain(int argc, char **argv) {
-    Neko::modules::initialize<Game>(argc, argv);
+bool CL_Init() {
+    Neko::modules::initialize<Game>();
     auto &game = Neko::the<Game>();
     game.init();
-    while (!g_app->g_quit) {
-        App *app = g_app;
-        auto &eh = Neko::the<EventHandler>();
-        glfwPollEvents();
-        if (glfwWindowShouldClose(g_app->game_window)) game.quit();
-        eh.event_pump();
 
-        eh.event_dispatch(event_t{.type = on_preupdate});
-        if (!g_app->error_mode.load()) {
-            eh.event_dispatch(event_t{.type = on_update});
-        }
-        eh.event_dispatch(event_t{.type = on_postupdate});
+    return true;
+}
 
-        eh.event_dispatch(event_t{.type = on_draw});
+bool CL_Think() {
+    App *app = gApp;
+    auto &eh = Neko::the<EventHandler>();
+    // if (glfwWindowShouldClose(gApp->game_window)) {
+    //     game.quit();
+    // }
+    eh.event_pump();
+
+    eh.event_dispatch(event_t{.type = on_preupdate});
+    if (!gApp->error_mode.load()) {
+        eh.event_dispatch(event_t{.type = on_update});
     }
+    eh.event_dispatch(event_t{.type = on_postupdate});
+
+    eh.event_dispatch(event_t{.type = on_draw});
+
+    return true;
+}
+
+bool CL_Shutdown() {
     _game_fini();
+    return true;
 }
 
 void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
-void Game::set_window_size(vec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
+void Game::set_window_size(vec2 s) { glfwSetWindowSize(gApp->game_window, s.x, s.y); }
 
 vec2 Game::get_window_size() {
     int w, h;
-    glfwGetWindowSize(g_app->game_window, &w, &h);
+    glfwGetWindowSize(gApp->game_window, &w, &h);
     return luavec2(w, h);
 }
 vec2 Game::unit_to_pixels(vec2 p) {
@@ -537,39 +548,20 @@ vec2 Game::pixels_to_unit(vec2 p) {
     return p;
 }
 
-void Game::quit() { g_app->g_quit = true; }
+void Game::quit() { gApp->g_quit = true; }
 
-void Game::WindowSwapBuffer() { glfwSwapBuffers(g_app->game_window); }
+void Game::WindowSwapBuffer() { glfwSwapBuffers(gApp->game_window); }
 
-Game::Game(int argc, char **argv) {
-    this->argc = argc;
-    this->argv = argv;
-}
+Game::Game() {}
 
 void Game::init() {
-
-#ifndef NDEBUG
-    g_allocator = new DebugAllocator();
-#else
-    g_allocator = new HeapAllocator();
-#endif
-
-    g_allocator->make();
 
     Neko::modules::initialize<EventHandler>();
     Neko::modules::initialize<Input>();
 
-    g_app = new (mem_alloc(sizeof(App))) App();
+    gApp = new (mem_alloc(sizeof(App))) App();
 
-    LockGuard<Mutex> lock(g_app->g_init_mtx);
-
-    os_high_timer_resolution();
-    stm_setup();
-
-    g_app->args.resize(argc);
-    for (i32 i = 0; i < argc; i++) {
-        g_app->args[i] = to_cstr(argv[i]);
-    }
+    LockGuard<Mutex> lock(gApp->g_init_mtx);
 
 #if defined(NDEBUG)
     console_log("neko %d", neko_buildnum());
@@ -577,25 +569,18 @@ void Game::init() {
     console_log("neko %d (debug build) (%s, %s)", neko_buildnum(), LUA_VERSION, LUAJIT_VERSION);
 #endif
 
-    profile_setup();
-    PROFILE_FUNC();
-
-    // initialize glfw
-    glfwSetErrorCallback(_glfw_error_callback);
-    glfwInit();
-
     // create glfw window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    g_app->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
+    gApp->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
 
     // activate OpenGL context
-    glfwMakeContextCurrent(g_app->game_window);
+    glfwMakeContextCurrent(gApp->game_window);
 
     // 注册窗口大小改变的回调函数
-    glfwSetFramebufferSizeCallback(g_app->game_window, framebuffer_size_callback);
+    glfwSetFramebufferSizeCallback(gApp->game_window, framebuffer_size_callback);
 
     // initialize GLEW
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -631,15 +616,15 @@ void Game::init() {
 
     {  // just for test
 
-        g_app->test_ase = neko_aseprite_simple("assets/cat.ase");
+        gApp->test_ase = neko_aseprite_simple("assets/cat.ase");
 
-        g_app->ui = (ui_context_t *)mem_alloc(sizeof(ui_context_t));
-        ui_init(g_app->ui);
+        gApp->ui = (ui_context_t *)mem_alloc(sizeof(ui_context_t));
+        ui_init(gApp->ui);
 
-        g_app->ui->style->colors[UI_COLOR_WINDOWBG] = color256(50, 50, 50, 200);
+        gApp->ui->style->colors[UI_COLOR_WINDOWBG] = color256(50, 50, 50, 200);
 
-        g_app->ui->text_width = neko_ui_text_width;
-        g_app->ui->text_height = neko_ui_text_height;
+        gApp->ui->text_width = neko_ui_text_width;
+        gApp->ui->text_height = neko_ui_text_height;
         neko_init_ui_renderer();
     }
 
@@ -675,10 +660,10 @@ void Game::init() {
     };
 
     for (auto evt : evt_list) {
-        eh.event_register(g_app, evt.evt, evt.cb, NULL);
+        eh.event_register(gApp, evt.evt, evt.cb, NULL);
     }
 
-    sc = native_new_script_context(g_app, "game_debug_x64.dll");
+    sc = native_new_script_context(gApp, "game_debug_x64.dll");
 
     native_new_script(sc, {1}, "get_test_script_instance_size", "on_test_script_init", "on_test_script_update", "on_physics_update_name", "on_test_script_free", false);
 
@@ -694,7 +679,7 @@ void Game::init() {
     glGenTextures(1, &fbo_tex);
     glBindTexture(GL_TEXTURE_2D, fbo_tex);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_app->cfg.width, g_app->cfg.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gApp->cfg.width, gApp->cfg.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -705,7 +690,7 @@ void Game::init() {
 
     glGenRenderbuffers(1, &rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, g_app->cfg.width, g_app->cfg.height);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, gApp->cfg.width, gApp->cfg.height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n";
@@ -733,17 +718,19 @@ void Game::init() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/posteffect.glsl", &posteffect_shader);
     error_assert(ok);
 
+    ok = asset_load_kind(AssetKind_Shader, "shader/sprite2.glsl", &sprite_shader);
+    error_assert(ok);
+
+    renderer = new_renderer(sprite_shader.shader, neko_v2(gApp->cfg.width, gApp->cfg.height));
+
     neko_check_gl_error();
 }
 
 void Game::fini() {}
 void Game::update() {}
 
-int Game::game_get_argc() const { return this->argc; }
-char **Game::game_get_argv() const { return this->argv; }
-
 int game_set_window_minsize(int width, int height) {
-    glfwSetWindowSizeLimits(g_app->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    glfwSetWindowSizeLimits(gApp->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     return 0;
 }
 
@@ -754,8 +741,8 @@ int game_get_window_width(int *val) {
     w = emsc_width();
     h = emsc_height();
 #else
-    if (g_app->game_window) {
-        glfwGetWindowSize(g_app->game_window, &w, &h);
+    if (gApp->game_window) {
+        glfwGetWindowSize(gApp->game_window, &w, &h);
     }
 #endif
     *val = w;
@@ -769,8 +756,8 @@ int game_get_window_height(int *val) {
     w = emsc_width();
     h = emsc_height();
 #else
-    if (g_app->game_window) {
-        glfwGetWindowSize(g_app->game_window, &w, &h);
+    if (gApp->game_window) {
+        glfwGetWindowSize(gApp->game_window, &w, &h);
     }
 #endif
     *val = h;
@@ -779,8 +766,8 @@ int game_get_window_height(int *val) {
 
 int game_set_window_position(int x, int y) {
 #if !defined(__EMSCRIPTEN__)
-    if (g_app->game_window) {
-        glfwSetWindowPos(g_app->game_window, x, y);
+    if (gApp->game_window) {
+        glfwSetWindowPos(gApp->game_window, x, y);
     }
 #endif
     return 0;
@@ -810,7 +797,7 @@ int Game::set_window_title(const char *title) {
 #if defined(__EMSCRIPTEN__)
     emscripten_set_window_title(title);
 #else
-    glfwSetWindowTitle(g_app->game_window, title);
+    glfwSetWindowTitle(gApp->game_window, title);
 #endif
     return 0;
 }
@@ -824,15 +811,15 @@ int game_set_window_vsync(bool vsync) {
     return 0;
 }
 
-const char *window_clipboard() { return glfwGetClipboardString(g_app->game_window); }
+const char *window_clipboard() { return glfwGetClipboardString(gApp->game_window); }
 
 int window_prompt(const char *msg, const char *title) { return (MessageBoxA(0, msg, title, MB_YESNO | MB_ICONWARNING) == IDYES); }
 
-void window_setclipboard(const char *text) { glfwSetClipboardString(g_app->game_window, text); }
+void window_setclipboard(const char *text) { glfwSetClipboardString(gApp->game_window, text); }
 
-void window_focus() { glfwFocusWindow(g_app->game_window); }
+void window_focus() { glfwFocusWindow(gApp->game_window); }
 
-int window_has_focus() { return !!glfwGetWindowAttrib(g_app->game_window, GLFW_FOCUSED); }
+int window_has_focus() { return !!glfwGetWindowAttrib(gApp->game_window, GLFW_FOCUSED); }
 
 double window_scale() {
     float xscale = 1, yscale = 1;
@@ -881,15 +868,15 @@ void test_native_script() {
     sprite_set_texsize(player, luavec2(32.0f, 32.0f));
 }
 
-AppTime *get_timing_instance() { return &g_app->timing_instance; }
+AppTime *get_timing_instance() { return &gApp->timing_instance; }
 
 f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 
-void timing_set_scale(f32 s) { g_app->scale = s; }
-f32 timing_get_scale() { return g_app->scale; }
+void timing_set_scale(f32 s) { gApp->scale = s; }
+f32 timing_get_scale() { return gApp->scale; }
 
-void timing_set_paused(bool p) { g_app->paused = p; }
-bool timing_get_paused() { return g_app->paused; }
+void timing_set_paused(bool p) { gApp->paused = p; }
+bool timing_get_paused() { return gApp->paused; }
 
 int timing_update(App *app, event_t evt) {
 
@@ -902,7 +889,7 @@ int timing_update(App *app, event_t evt) {
 
     curr_time = glfwGetTime();
     get_timing_instance()->true_dt = curr_time - last_time;
-    get_timing_instance()->dt = g_app->paused ? 0.0f : g_app->scale * get_timing_instance()->true_dt;
+    get_timing_instance()->dt = gApp->paused ? 0.0f : gApp->scale * get_timing_instance()->true_dt;
     last_time = curr_time;
 
     {
@@ -964,3 +951,5 @@ void timing_load_all(Store *s) {
 
     // if (store_child_load(&t, "timing", s)) scalar_load(&g_app->scale, "scale", 1, t);
 }
+
+#endif

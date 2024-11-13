@@ -1,7 +1,9 @@
 #pragma once
 
-#include "engine/base/base.hpp"
-#include "engine/base/mem.hpp"
+#include "base/common/base.hpp"
+#include "base/common/mem.hpp"
+
+namespace Neko {
 
 enum HashMapKind : u8 {
     HashMapKind_None,
@@ -215,4 +217,6 @@ HashMapIterator<T> end(HashMap<T> &map) {
     it.map = &map;
     it.cursor = map.capacity;
     return it;
+}
+
 }

@@ -19,7 +19,7 @@
 #include <chrono>
 #include <filesystem>
 
-#include "engine/base/vfs.hpp"
+#include "base/common/vfs.hpp"
 #include "engine/input.h"
 
 // deps
@@ -1271,7 +1271,7 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
     lua_pushstring(L, pathdata);
     lua_setglobal(L, "DATADIR");
 
-    lua_pushstring(L, g_app->cfg.lite_init_path.cstr());
+    lua_pushstring(L, gApp->cfg.lite_init_path.cstr());
     lua_setglobal(L, "NEKO_LITE_DIR");
 
     lua_pushstring(L, os_program_dir().cstr());

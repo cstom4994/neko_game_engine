@@ -20,7 +20,7 @@ docs/
 bin/
 
 neko_cache/
-source/api/gen
+source/gen
 source/game/*/libs
 source/tests
 source/vendor

@@ -4,9 +4,12 @@
 #include <stdbool.h>
 
 #include "engine/base.hpp"
-#include "engine/base/singleton.hpp"
+#include "base/common/singleton.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
+#include "base/common/array.hpp"
+
+#include <GLFW/glfw3.h>
 
 NEKO_SCRIPT(
         input,

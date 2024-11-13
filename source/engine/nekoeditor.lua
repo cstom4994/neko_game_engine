@@ -126,10 +126,10 @@ local stop_savepoint = nil
 local stop_save_next_frame = false -- whether to save a stop soon
 local function stop_save()
     ns.group.set_save_filter('default edit_inspector', true)
-    local s = ng.store_open()
-    ns.system.save_all(s)
-    stop_savepoint = ffi.string(ng.store_write_str(s))
-    ng.store_close(s)
+    --local s = ng.store_open()
+    --ns.system.save_all(s)
+    --stop_savepoint = ffi.string(ng.store_write_str(s))
+    --ng.store_close(s)
 
     if ns.timing.get_paused() then
         ns.edit.stopped = true
@@ -145,9 +145,9 @@ function ns.edit.stop()
     end
 
     ns.group.destroy('default edit_inspector')
-    local s = ng.store_open_str(stop_savepoint)
-    ns.system.load_all(s)
-    ng.store_close(s)
+    --local s = ng.store_open_str(stop_savepoint)
+    --ns.system.load_all(s)
+    --ng.store_close(s)
 
     ns.timing.set_paused(true)
     ns.edit.stopped = true
@@ -166,17 +166,17 @@ end
 ns.edit.history = {}
 
 function ns.edit.undo_save()
-    ns.group.set_save_filter('default edit_inspector', true)
-    local s = ng.store_open()
-    ns.system.save_all(s)
+    --ns.group.set_save_filter('default edit_inspector', true)
+    --local s = ng.store_open()
+    --ns.system.save_all(s)
 
-    local str = ffi.string(ng.store_write_str(s))
-    table.insert(ns.edit.history, str)
-    if ns.edit.stopped then
-        stop_savepoint = str
-    end -- update stop if stopped
+    --local str = ffi.string(ng.store_write_str(s))
+    --table.insert(ns.edit.history, str)
+   -- if ns.edit.stopped then
+   --     stop_savepoint = str
+    --end -- update stop if stopped
 
-    ng.store_close(s)
+    --ng.store_close(s)
 end
 
 function ns.edit.undo()
@@ -190,9 +190,9 @@ function ns.edit.undo()
 
     table.remove(ns.edit.history)
     local str = ns.edit.history[#ns.edit.history]
-    local s = ng.store_open_str(str)
-    ns.system.load_all(s)
-    ng.store_close(s)
+    --local s = ng.store_open_str(str)
+    --ns.system.load_all(s)
+    --ng.store_close(s)
 end
 
 --- normal mode ----------------------------------------------------------------
@@ -697,10 +697,10 @@ function ns.edit.command_save()
     local function save(f)
         ns.console.printf("edit: saving group 'default' to file '" .. f .. "' ... ")
         ns.group.set_save_filter('default', true)
-        local s = ng.store_open()
-        ns.system.save_all(s)
-        ng.store_write_file(s, f)
-        ng.store_close(s)
+        --local s = ng.store_open()
+        --ns.system.save_all(s)
+        --ng.store_write_file(s, f)
+        --ng.store_close(s)
         print("done")
 
         ns.edit.stop_save()
@@ -1901,19 +1901,19 @@ function ns.edit.duplicate()
             ns.entity.set_save_filter(ent, true)
         end
     end
-    local s = ng.store_open()
-    ns.system.save_all(s)
-    local str = ffi.string(ng.store_write_str(s))
-    ng.store_close(s)
+    --local s = ng.store_open()
+    --ns.system.save_all(s)
+    --local str = ffi.string(ng.store_write_str(s))
+    --ng.store_close(s)
 
     -- clear selection
     ns.edit.select_clear()
 
     -- load from the string -- they were selected on save and so will be
     -- selected when loaded
-    local d = ng.store_open_str(str)
-    ns.system.load_all(d)
-    ng.store_close(d)
+    --local d = ng.store_open_str(str)
+    --ns.system.load_all(d)
+    --ng.store_close(d)
 
     ns.edit.undo_save()
 end

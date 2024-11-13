@@ -1,6 +1,8 @@
 #pragma once
 
-#include "engine/base/base.hpp"
+#include "base/common/base.hpp"
+
+namespace Neko {
 
 using Mutex = std::mutex;
 using SharedMutex = std::shared_mutex;
@@ -37,3 +39,5 @@ private:
 };
 
 uint64_t this_thread_id();
+
+}  // namespace Neko

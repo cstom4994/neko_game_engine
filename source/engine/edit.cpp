@@ -25,7 +25,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
@@ -422,7 +422,7 @@ void neko_console(neko_console_t *console, ui_context_t *ctx, rect_t *r, const u
     else
         return;
 
-    if (ui_begin_window(ctx, "Console", neko_rect(g_app->cfg.width - 210, 80, 200, 200))) {
+    if (ui_begin_window(ctx, "Console", neko_rect(gApp->cfg.width - 210, 80, 200, 200))) {
         ui_layout_row(ctx, 1, ui_widths(-1), 0);
         ui_text(ctx, console->tb);
         ui_end_window(ctx);

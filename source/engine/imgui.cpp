@@ -1,8 +1,8 @@
 #include "engine/imgui.hpp"
 
-#include "engine/base/color.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/string.hpp"
+#include "base/common/color.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/string.hpp"
 #include "engine/bootstrap.h"
 
 // imgui
@@ -33,10 +33,11 @@ void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color25
     draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
 }
 
-void imgui_init() {
+void imgui_init(GLFWwindow *window) {
     PROFILE_FUNC();
 
-    ImGui::SetAllocatorFunctions(+[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
+    ImGui::SetAllocatorFunctions(
+            +[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -44,7 +45,7 @@ void imgui_init() {
 
     ImGui::StyleColorsDark();
 
-    ImGui_ImplGlfw_InitForOpenGL(g_app->game_window, true);
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
 #if 0

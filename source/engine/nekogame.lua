@@ -560,20 +560,20 @@ end
 -- return serialized string for cdata, func must be of form
 -- void (typeof(cdata) *, Serializer *)
 function ng.c_serialize(func, cdata)
-    local s = ng.store_open()
-    func(cdata, nil, s)
-    local dump = ffi.string(ng.store_write_str(s))
-    ng.store_close(s)
+    --local s = ng.store_open()
+    --func(cdata, nil, s)
+    --local dump = ffi.string(ng.store_write_str(s))
+    --ng.store_close(s)
     return dump
 end
 
 -- return struct deserialized from string 'str', func must be of form
 -- void (ctype *, Deserializer *)
 function ng.c_deserialize(ctype, func, str)
-    local cdata = ctype {}
-    local s = ng.store_open_str(str)
-    func(cdata, nil, cdata, s)
-    ng.store_close(s)
+    --local cdata = ctype {}
+    --local s = ng.store_open_str(str)
+    --func(cdata, nil, cdata, s)
+    --ng.store_close(s)
     return cdata
 end
 

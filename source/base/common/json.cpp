@@ -1,8 +1,10 @@
 #include "json.hpp"
 
-#include "engine/base/hashmap.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/util.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/util.hpp"
+
+namespace Neko {
 
 enum JSONTok : i32 {
     JSONTok_Invalid,
@@ -543,3 +545,5 @@ void json_print(JSON *json) {
     json_write_string(&sb, json);
     neko_println("%s", sb.data);
 }
+
+}  // namespace Neko

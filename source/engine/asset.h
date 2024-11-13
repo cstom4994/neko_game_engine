@@ -4,12 +4,14 @@
 #include <bitset>
 
 #include "engine/base.hpp"
-#include "engine/base/color.hpp"
-#include "engine/base/vfs.hpp"
-#include "engine/base/xml.hpp"
+#include "base/common/color.hpp"
+#include "base/common/vfs.hpp"
+#include "base/common/xml.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
+
+using namespace Neko;
 
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
 void texture_bind(const char* filename);

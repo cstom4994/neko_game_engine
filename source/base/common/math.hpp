@@ -1,16 +1,21 @@
 #pragma once
 
-#include "engine/base/base.hpp"
+#include "base/common/base.hpp"
 
 /*========================
 // NEKO_MATH
 ========================*/
+
+using namespace Neko;
 
 // Defines
 #define neko_pi 3.14159265358979323846264f
 #define neko_tau 2.0 * neko_pi
 #define neko_e 2.71828182845904523536f  // e
 #define neko_epsilon (1e-6)
+
+#define DEG2RAD(a) (a * neko_pi) / 180.0F
+#define RAD2DEG(a) (a * 180.0F) / neko_pi
 
 // 实用
 #define neko_v2(...) vec2_ctor(__VA_ARGS__)
@@ -82,8 +87,6 @@ inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
 /*================================================================================
 // Vec2
 ================================================================================*/
-
-struct Store;
 
 NEKO_SCRIPT(scalar,
 
@@ -382,9 +385,9 @@ inline vec3 vec3_triple_cross_product(vec3 a, vec3 b, vec3 c) { return vec3_sub(
 // Vec4
 ================================================================================*/
 
-typedef struct {
+struct vec4_t {
     f32 x, y, z, w;
-} vec4_t;
+};
 
 typedef vec4_t vec4;
 
@@ -906,19 +909,62 @@ inline vec4 mat4_mul_vec4(mat4 m, vec4 v) {
 
 inline vec3 mat4_mul_vec3(mat4 m, vec3 v) { return neko_v4tov3(mat4_mul_vec4(m, neko_v4_xyz_s(v, 1.f))); }
 
-// AABBs
-/*
-    min is top left of rect,
-    max is bottom right
-*/
+inline mat4 mat4_translate(mat4 m, vec3 v) {
+    mat4 r = mat4_identity();
 
-typedef struct neko_aabb_t {
+    r.m[3][0] += v.x;
+    r.m[3][1] += v.y;
+    r.m[3][2] += v.z;
+
+    return mat4_mul(m, r);
+}
+
+inline mat4 mat4_rotate(mat4 m, f32 a, vec3 v) {
+    mat4 r = mat4_identity();
+
+    const f32 c = (f32)cos((f64)a);
+    const f32 s = (f32)sin((f64)a);
+
+    const f32 omc = (f32)1 - c;
+
+    const f32 x = v.x;
+    const f32 y = v.y;
+    const f32 z = v.z;
+
+    r.m[0][0] = x * x * omc + c;
+    r.m[0][1] = y * x * omc + z * s;
+    r.m[0][2] = x * z * omc - y * s;
+    r.m[1][0] = x * y * omc - z * s;
+    r.m[1][1] = y * y * omc + c;
+    r.m[1][2] = y * z * omc + x * s;
+    r.m[2][0] = x * z * omc + y * s;
+    r.m[2][1] = y * z * omc - x * s;
+    r.m[2][2] = z * z * omc + c;
+
+    return mat4_mul(m, r);
+}
+
+inline mat4 mat4_scale(mat4 m, vec3 v) {
+    mat4 r = mat4_identity();
+
+    r.m[0][0] = v.x;
+    r.m[1][1] = v.y;
+    r.m[2][2] = v.z;
+
+    return mat4_mul(m, r);
+}
+
+inline vec4 mat4_transform(mat4 m, vec4 v) {
+    return vec4_ctor(m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0] * v.z + m.m[3][0] + v.w, m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1] * v.z + m.m[3][1] + v.w,
+                     m.m[0][2] * v.x + m.m[1][2] * v.y + m.m[2][2] * v.z + m.m[3][2] + v.w, m.m[0][3] * v.x + m.m[1][3] * v.y + m.m[2][3] * v.z + m.m[3][3] + v.w);
+}
+
+typedef struct AABB {
     vec2 min;
     vec2 max;
 } neko_aabb_t;
 
-// Collision Resolution: Minimum Translation Vector
-inline vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1) {
+inline vec2 neko_aabb_aabb_mtv(AABB* a0, AABB* a1) {
     vec2 diff = neko_v2(a0->min.x - a1->min.x, a0->min.y - a1->min.y);
 
     f32 l, r, b, t;
@@ -941,8 +987,7 @@ inline vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1) {
     return mtv;
 }
 
-// 2D AABB collision detection (rect. vs. rect.)
-inline bool neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b) {
+inline bool neko_aabb_vs_aabb(AABB* a, AABB* b) {
     if (a->max.x > b->min.x && a->max.y > b->min.y && a->min.x < b->max.x && a->min.y < b->max.y) {
         return true;
     }

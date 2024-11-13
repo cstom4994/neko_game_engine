@@ -2,8 +2,8 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/vfs.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/vfs.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
@@ -380,7 +380,7 @@ RectDescription rect_description_args(lua_State *L, i32 arg_start) {
 void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    batch_renderer *b = g_app->batch;
+    batch_renderer *b = gApp->batch;
 
     neko_assert(b);
 
@@ -600,11 +600,11 @@ float FontFamily::width(float size, String text) {
 }
 
 FontFamily *neko_default_font() {
-    if (g_app->default_font == nullptr) {
-        g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-        g_app->default_font->load(g_app->cfg.default_font);
+    if (gApp->default_font == nullptr) {
+        gApp->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
+        gApp->default_font->load(gApp->cfg.default_font);
     }
-    return g_app->default_font;
+    return gApp->default_font;
 }
 
 static void draw_font_line(FontFamily *font, bool draw_in_world, float size, float *start_x, float *start_y, String line, Color256 col) {
@@ -622,7 +622,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
         glUniform1i(glGetUniformLocation(font_program, "mode"), 0);
     } else {
-        mat4 cam_mat = mat4_ortho(0.0f, (float)g_app->cfg.width, (float)g_app->cfg.height, 0.0f, -1.0f, 1.0f);
+        mat4 cam_mat = mat4_ortho(0.0f, (float)gApp->cfg.width, (float)gApp->cfg.height, 0.0f, -1.0f, 1.0f);
         glUniformMatrix4fv(glGetUniformLocation(font_program, "u_mvp"), 1, GL_FALSE, (const GLfloat *)cam_mat.elements);
         glUniform1i(glGetUniformLocation(font_program, "mode"), 1);
     }
@@ -754,7 +754,7 @@ static FontFamily *check_font_udata(lua_State *L, i32 arg) {
 static int mt_font_gc(lua_State *L) {
     FontFamily *font = check_font_udata(L, 1);
 
-    if (font != g_app->default_font) {
+    if (font != gApp->default_font) {
         font->trash();
         mem_free(font);
     }

@@ -1,4 +1,6 @@
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
+
+namespace Neko {
 
 #ifndef USE_PROFILER
 void profile_setup() {}
@@ -74,3 +76,5 @@ Instrument::~Instrument() {
 }
 
 #endif  // USE_PROFILER
+
+}  // namespace Neko

@@ -1,7 +1,7 @@
 #include "engine/physics.h"
 
-#include "engine/base/color.hpp"
-#include "engine/base/math.hpp"
+#include "base/common/color.hpp"
+#include "base/common/math.hpp"
 #include "engine/component.h"
 
 #ifdef NEKO_BOX2D
@@ -184,7 +184,7 @@ PhysicsUserData *physics_userdata(lua_State *L) {
             pud->num = luaL_checknumber(L, -1);
             break;
         case LUA_TSTRING:
-            pud->str = to_cstr(luaL_checkstring(L, -1)).data;
+            pud->str = to_cstr(String(luaL_checkstring(L, -1))).data;
             break;
         default:
             break;
@@ -240,14 +240,19 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
                     // renderer_apply_color();
 
                     for (i32 i = 0; i < poly->m_count; i++) {
-                        b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
-                        // renderer_push_xy(pos.x * meter, pos.y * meter);
-
-                        edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
+                        b2Vec2 pos1 = body->GetWorldPoint(poly->m_vertices[i]);
+                        edit_line_add_xy(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
+                        if (i + 1 < poly->m_count) {
+                            b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[i + 1]);
+                            edit_line_add_xy(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+                        } else {
+                            b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[0]);
+                            edit_line_add_xy(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+                        }
                     }
 
-                    b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
-                    edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
+                    // b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
+                    // edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
 
                     // sgl_end();
                 }

@@ -1,11 +1,15 @@
-#include "engine/base/os.hpp"
+#include "base/common/os.hpp"
 
-#include "engine/base/util.hpp"
+#include "base/common/util.hpp"
+#include "base/common/array.hpp"
 
 #if defined(NEKO_IS_WIN32)
 #include <direct.h>
 #include <timeapi.h>
 #pragma comment(lib, "winmm.lib")
+
+#include <Windows.h>
+#include <shellapi.h>
 
 #elif defined(NEKO_IS_WEB)
 #include <errno.h>
@@ -24,6 +28,23 @@
 /*========================
 // os
 ========================*/
+
+namespace Neko {
+
+Array<String> BaseGetCommandLine(int argc) {
+
+    // 转储CommandLine到argsArray
+    Array<String> argsArray{};
+    wchar_t **argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv_w == nullptr) {
+        console_log("Failed to parse command line arguments");
+        return {};
+    }
+    for (int i = 0; i < argc; i++) argsArray.push(to_cstr(win::w2u(argv_w[i])));
+    LocalFree(argv_w);  // 释放 CommandLineToArgvW 分配的内存
+
+    return argsArray;
+}
 
 #ifdef NEKO_IS_WIN32
 
@@ -195,7 +216,7 @@ bool neko_os_write_file_contents(const char *file_path, const char *mode, void *
 
 bool neko_os_dir_exists(const char *dir_path) {
 #if defined(NEKO_IS_WIN32)
-    DWORD attrib = GetFileAttributes(dir_path);  // TODO: unicode 路径修复
+    DWORD attrib = GetFileAttributesA(dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #elif defined(NEKO_IS_LINUX) || defined(NEKO_IS_APPLE)
     struct stat st;
@@ -271,12 +292,12 @@ i32 neko_os_file_size_in_bytes(const char *file_path) {
 #endif
 }
 
-static void util_get_file_extension(char *buffer, u32 buffer_size, const_str file_path) {
+static void util_get_file_extension(char *buffer, size_t buffer_size, const_str file_path) {
     neko_assert(buffer && buffer_size);
     const_str extension = strrchr(file_path, '.');
     if (extension) {
-        uint32_t extension_len = strlen(extension + 1);
-        uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
+        size_t extension_len = strlen(extension + 1);
+        size_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
         memcpy(buffer, extension + 1, len);
         buffer[len] = '\0';
     } else {
@@ -462,6 +483,8 @@ static std::string get_error_description() noexcept {
 #endif
 }
 #endif
+
+}  // namespace Neko
 
 #if defined(NEKO_IS_WIN32)
 

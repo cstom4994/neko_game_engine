@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "engine/base.hpp"
-#include "engine/base/reflection.hpp"
+#include "base/common/reflection.hpp"
 #include "luax.h"
 
 namespace Neko {

@@ -5,7 +5,8 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/singleton.hpp"
+#include "base/common/singleton.hpp"
+#include "base/cbase.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -28,9 +29,12 @@
 
 #define default_font_size 22.f
 
+struct Store;
+
+using namespace Neko;
 using namespace Neko::ecs;
 
-typedef struct Store Store;
+extern CBase gBase;
 
 NEKO_SCRIPT(
         timing,
@@ -80,13 +84,10 @@ struct App {
     ui_context_t *ui;
 
     bool win_console;
-    Slice<String> args;
 
     std::atomic<u64> main_thread_id;
     std::atomic<bool> error_mode;
     std::atomic<bool> is_fused;
-
-    Mutex log_mtx;
 
     Mutex error_mtx;
     String fatal_error;
@@ -122,12 +123,12 @@ struct App {
     GLFWwindow *game_window;
 };
 
-extern App *g_app;
+extern App *gApp;
 
 void fatal_error(String str);
 
-inline lua_State *&ENGINE_LUA() { return g_app->L; }
-inline EcsWorld *&ENGINE_ECS() { return g_app->ECS; }
+inline lua_State *&ENGINE_LUA() { return gApp->L; }
+inline EcsWorld *&ENGINE_ECS() { return gApp->ECS; }
 
 i32 neko_buildnum(void);
 
@@ -136,23 +137,16 @@ i32 neko_buildnum(void);
 // ECS_COMPONENT_EXTERN(rect_t);
 
 // 入口点
-void GameMain(int argc, char **argv);
+void GameMain(int argc, const char **argv);
 
 class Game : public Neko::SingletonClass<Game> {
-    int argc;
-    char **argv;
-
 public:
-    Game(int argc, char **argv);
+    Game();
 
 public:
     void init() override;
     void fini() override;
     void update() override;
-
-    // 获取 argc argv 传递给 game_run(...)
-    int game_get_argc() const;
-    char **game_get_argv() const;
 
     void game_set_bg_color(Color c);
 
@@ -194,5 +188,12 @@ NEKO_SCRIPT(game,
 int timing_update(App *app, event_t evt);
 void timing_save_all(Store *s);
 void timing_load_all(Store *s);
+
+inline void query_window(int idx, i32 *width, i32 *height) {
+    int w, h;
+    glfwGetWindowSize(gApp->game_window, &w, &h);
+    *width = w;
+    *height = h;
+}
 
 #endif

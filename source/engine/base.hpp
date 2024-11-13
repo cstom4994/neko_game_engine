@@ -2,8 +2,10 @@
 #ifndef NEKO_BASE_H
 #define NEKO_BASE_H
 
-#include "engine/base/base.hpp"
-#include "engine/base/string.hpp"
+#include "base/common/base.hpp"
+#include "base/common/string.hpp"
+
+using namespace Neko;
 
 FORMAT_ARGS(1)
 inline void neko_panic(const char *fmt, ...) {
@@ -97,17 +99,6 @@ NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char *buffer, u32 buffer_size
     if (dir_len + 1 <= buffer_size) {
         buffer[dir_len] = '\0';
     }
-}
-
-NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
-    neko_assert(path);
-    int len = strlen(path);
-    for (int i = len - 1; i >= 0; i--) {
-        if (path[i] == '\\' || path[i] == '/') {
-            return path + i + 1;
-        }
-    }
-    return path;
 }
 
 NEKO_FORCE_INLINE void neko_util_string_substring(const char *src, char *dst, size_t sz, u32 start, u32 end) {
@@ -344,38 +335,11 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-#include "engine/base/math.hpp"
+#include "base/common/math.hpp"
 
-NEKO_SCRIPT(saveload,
-
-            // 请记住 *_close(...) 当完成以释放资源时
-
-            typedef struct Store Store;
-
-            NEKO_EXPORT Store * store_open();
-
-            NEKO_EXPORT Store * store_open_str(const char *str);
-
-            NEKO_EXPORT const char *store_write_str(Store *s);
-
-            NEKO_EXPORT Store * store_open_file(const char *filename);
-
-            NEKO_EXPORT void store_write_file(Store *s, const char *filename);
-
-            NEKO_EXPORT void store_close(Store *s);
+NEKO_SCRIPT(saveload, typedef struct Store Store;
 
 )
-
-// 存储树有助于向后兼容 save/load
-bool store_child_save(Store **sp, const char *name, Store *parent);
-bool store_child_save_compressed(Store **sp, const char *name, Store *parent);
-bool store_child_load(Store **sp, const char *name, Store *parent);
-void scalar_save(const Scalar *f, const char *name, Store *s);
-bool scalar_load(Scalar *f, const char *name, Scalar d, Store *s);
-void uint_save(const unsigned int *u, const char *name, Store *s);
-bool uint_load(unsigned int *u, const char *name, unsigned int d, Store *s);
-void int_save(const int *i, const char *name, Store *s);
-bool int_load(int *i, const char *name, int d, Store *s);
 
 #define enum_save(val, n, s)    \
     do {                        \
@@ -389,12 +353,6 @@ bool int_load(int *i, const char *name, int d, Store *s);
         int_load(&e__, n, (int)d, (s)); \
         *((int *)val) = e__;            \
     } while (0)
-
-void bool_save(const bool *b, const char *name, Store *s);
-bool bool_load(bool *b, const char *name, bool d, Store *s);
-
-void string_save(const char **c, const char *name, Store *s);
-bool string_load(char **c, const char *name, const char *d, Store *s);
 
 typedef struct AssetTexture {
     u32 id;  // 如果未初始化或纹理错误 则为 0
@@ -456,14 +414,14 @@ NEKO_SCRIPT(
 #if !defined(NEKO_BASE_HPP)
 #define NEKO_BASE_HPP
 
-#include "engine/base/arena.hpp"
-#include "engine/base/array.hpp"
-#include "engine/base/hashmap.hpp"
-#include "engine/base/mem.hpp"
-#include "engine/base/mutex.hpp"
-#include "engine/base/queue.hpp"
-#include "engine/base/string.hpp"
-#include "engine/base/util.hpp"
+#include "base/common/arena.hpp"
+#include "base/common/array.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/mem.hpp"
+#include "base/common/mutex.hpp"
+#include "base/common/queue.hpp"
+#include "base/common/string.hpp"
+#include "base/common/util.hpp"
 
 /*=============================
 //

@@ -11,9 +11,9 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/os.hpp"
-#include "engine/base/profiler.hpp"
-#include "engine/base/vfs.hpp"
+#include "base/common/os.hpp"
+#include "base/common/profiler.hpp"
+#include "base/common/vfs.hpp"
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
@@ -187,7 +187,7 @@ void destroy_texture_handle(u64 texture_id, void *udata) {
 
 bool texture_update_data(AssetTexture *tex, u8 *data) {
 
-    LockGuard<Mutex> lock{g_app->gpu_mtx};
+    LockGuard<Mutex> lock{gApp->gpu_mtx};
 
     // 如果存在 则释放旧的 GL 纹理
     if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -262,7 +262,7 @@ static bool _texture_load_vfs(AssetTexture *tex, String filename) {
     }
 
     {
-        LockGuard<Mutex> lock(g_app->gpu_mtx);
+        LockGuard<Mutex> lock(gApp->gpu_mtx);
 
         // 如果存在 则释放旧的 GL 纹理
         if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -305,7 +305,7 @@ bool texture_load(AssetTexture *tex, String filename, bool flip_image_vertical) 
 }
 
 void texture_bind(const char *filename) {
-    LockGuard<Mutex> lock{g_app->gpu_mtx};
+    LockGuard<Mutex> lock{gApp->gpu_mtx};
 
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
@@ -688,7 +688,7 @@ bool pak_load(Pak *pak, const_str file_path, u32 data_buffer_capacity, bool is_r
     pak->data_buffer = _data_buffer;
     pak->data_size = data_buffer_capacity;
 
-    console_log("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
+    console_log("load pack %s buildnum: %d (engine %d)", UTIL_filename(file_path), buildnum, neko_buildnum());
 
     return true;
 }
@@ -1310,7 +1310,7 @@ int neko_pak_load(lua_State *L) {
 Assets g_assets = {};
 
 static void hot_reload_thread(void *) {
-    u32 reload_interval = g_app->reload_interval.load() * 1000;
+    u32 reload_interval = gApp->reload_interval.load() * 1000;
 
     while (true) {
         PROFILE_BLOCK("hot reload");
@@ -1425,7 +1425,7 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
 }
 
 void assets_shutdown() {
-    if (g_app->hot_reload_enabled.load()) {
+    if (gApp->hot_reload_enabled.load()) {
         {
             LockGuard<Mutex> lock{g_assets.shutdown_mtx};
             g_assets.shutdown = true;
@@ -1466,7 +1466,7 @@ void assets_start_hot_reload() {
 
     g_assets.rw_lock.make();
 
-    if (g_app->hot_reload_enabled.load()) {
+    if (gApp->hot_reload_enabled.load()) {
         g_assets.reload_thread.make(hot_reload_thread, nullptr);
     }
 }

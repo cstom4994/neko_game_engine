@@ -1,7 +1,9 @@
 #pragma once
 
-#include "engine/base/base.hpp"
-#include "engine/base/mutex.hpp"
+#include "base/common/base.hpp"
+#include "base/common/mutex.hpp"
+
+namespace Neko {
 
 template <typename T>
 struct Queue {
@@ -170,3 +172,5 @@ struct PriorityQueue {
         return true;
     }
 };
+
+}  // namespace Neko

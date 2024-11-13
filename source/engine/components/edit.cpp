@@ -1,4 +1,4 @@
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entitybase.hpp"
@@ -19,7 +19,7 @@ bool edit_get_editable(NativeEntity ent) { return !uneditable::pool->Get(ent); }
 // --- bboxes --------------------------------------------------------------
 
 void edit_bboxes_update(NativeEntity ent, BBox bbox) {
-    BBoxPoolElem *elem;
+    BBoxPoolElem* elem;
 
     // editable?
     if (!edit_get_editable(ent)) return;
@@ -30,14 +30,14 @@ void edit_bboxes_update(NativeEntity ent, BBox bbox) {
     if (elem)
         elem->bbox = bbox_merge(elem->bbox, bbox);
     else {
-        elem = (BBoxPoolElem *)BBoxPoolElem::pool->Add(ent);
+        elem = (BBoxPoolElem*)BBoxPoolElem::pool->Add(ent);
         elem->bbox = bbox;
     }
 }
 
 bool edit_bboxes_has(NativeEntity ent) { return BBoxPoolElem::pool->Get(ent) != NULL; }
 BBox edit_bboxes_get(NativeEntity ent) {
-    BBoxPoolElem *elem = (BBoxPoolElem *)BBoxPoolElem::pool->Get(ent);
+    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     return elem->bbox;
 }
@@ -45,11 +45,11 @@ BBox edit_bboxes_get(NativeEntity ent) {
 unsigned int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
 
 NativeEntity edit_bboxes_get_nth_ent(unsigned int n) {
-    BBoxPoolElem *elem;
+    BBoxPoolElem* elem;
     // struct EntityBBoxPair bbpair {};
 
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    elem = (BBoxPoolElem *)entitypool_nth(BBoxPoolElem::pool, n);
+    elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
 
     // bbpair.ent = elem->pool_elem.ent;
     // bbpair.bbox = elem->bbox;
@@ -57,11 +57,11 @@ NativeEntity edit_bboxes_get_nth_ent(unsigned int n) {
 }
 
 BBox edit_bboxes_get_nth_bbox(unsigned int n) {
-    BBoxPoolElem *elem;
+    BBoxPoolElem* elem;
     // struct EntityBBoxPair bbpair {};
 
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    elem = (BBoxPoolElem *)entitypool_nth(BBoxPoolElem::pool, n);
+    elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
 
     // bbpair.ent = elem->pool_elem.ent;
     // bbpair.bbox = elem->bbox;
@@ -69,7 +69,7 @@ BBox edit_bboxes_get_nth_bbox(unsigned int n) {
 }
 
 void edit_bboxes_set_selected(NativeEntity ent, bool selected) {
-    BBoxPoolElem *elem = (BBoxPoolElem *)BBoxPoolElem::pool->Get(ent);
+    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     elem->selected = selected;
 }
@@ -112,7 +112,7 @@ static void _bboxes_fini() {
 
 static void _bboxes_update_all() {
     NativeEntity ent;
-    BBoxPoolElem *elem;
+    BBoxPoolElem* elem;
     static BBox defaultbb = {{-0.25, -0.25}, {0.25, 0.25}};
 
     if (!enabled) return;
@@ -137,7 +137,7 @@ static void _bboxes_draw_all() {
     GLuint sid = bboxes_shader.shader.id;
 
     glUseProgram(sid);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
     win = Neko::the<Game>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 0);
@@ -217,7 +217,7 @@ static void _grid_draw() {
     GLuint sid = bboxes_shader.shader.id;
 
     glUseProgram(sid);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
     win = Neko::the<Game>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 1);
@@ -281,14 +281,14 @@ static void _line_fini() {
 static void _line_draw_all() {
     unsigned int npoints;
 
-    const mat3 *mat = camera_get_inverse_view_matrix_ptr();
+    const mat3* mat = camera_get_inverse_view_matrix_ptr();
 
     GLuint sid = line_shader.shader.id;
 
     // bind program, update uniforms
     glUseProgram(sid);
     GLuint inverse_view_matrix_id = glGetUniformLocation(sid, "inverse_view_matrix");
-    glUniformMatrix3fv(inverse_view_matrix_id, 1, GL_FALSE, (const GLfloat *)mat);
+    glUniformMatrix3fv(inverse_view_matrix_id, 1, GL_FALSE, (const GLfloat*)mat);
 
     // draw!
     glBindVertexArray(line_vao);
@@ -302,7 +302,7 @@ static void _line_draw_all() {
 
 // -------------------------------------------------------------------------
 
-int edit_clear(App *app, event_t evt) {
+int edit_clear(App* app, event_t evt) {
     entitypool_clear(BBoxPoolElem::pool);
     line_points.resize(0);
     return 0;
@@ -328,7 +328,7 @@ void edit_fini() {
 
 static void _uneditable_remove(NativeEntity ent) { uneditable::pool->Remove(ent); }
 
-int edit_update_all(App *app, event_t evt) {
+int edit_update_all(App* app, event_t evt) {
     entitypool_remove_destroyed(uneditable::pool, _uneditable_remove);
 
     _bboxes_update_all();
@@ -344,7 +344,7 @@ void edit_draw_all() {
     _line_draw_all();
 }
 
-void edit_save_all(Store *s) {
+void edit_save_all(Store* s) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 
@@ -353,7 +353,7 @@ void edit_save_all(Store *s) {
     //     entitypool_save_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
     // }
 }
-void edit_load_all(Store *s) {
+void edit_load_all(Store* s) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 

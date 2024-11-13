@@ -1,6 +1,8 @@
 #pragma once
 
-#include "engine/base/mutex.hpp"
+#include "base/common/mutex.hpp"
+
+namespace Neko {
 
 struct Allocator {
     size_t alloc_size;
@@ -49,10 +51,10 @@ inline void *__neko_mem_calloc(size_t count, size_t element_size, const char *fi
     return mem;
 }
 
-#define mem_alloc(bytes) g_allocator->alloc(bytes, __FILE__, __LINE__)
-#define mem_free(ptr) g_allocator->free((void *)ptr)
-#define mem_realloc(ptr, size) g_allocator->realloc(ptr, size, __FILE__, __LINE__)
-#define mem_calloc(count, element_size) __neko_mem_calloc(count, element_size, (char *)__FILE__, __LINE__)
+#define mem_alloc(bytes) ::Neko::g_allocator->alloc(bytes, __FILE__, __LINE__)
+#define mem_free(ptr) ::Neko::g_allocator->free((void *)ptr)
+#define mem_realloc(ptr, size) ::Neko::g_allocator->realloc(ptr, size, __FILE__, __LINE__)
+#define mem_calloc(count, element_size) ::Neko::__neko_mem_calloc(count, element_size, (char *)__FILE__, __LINE__)
 
 inline void *DebugAllocator::alloc(size_t bytes, const char *file, i32 line) {
     LockGuard<Mutex> lock{mtx};
@@ -158,3 +160,5 @@ inline void DebugAllocator::dump_allocs(bool detailed) {
     }
     neko_println("  --- leaks %d allocation(s) with %lld bytes ---", allocs, alloc_size);
 }
+
+}  // namespace Neko

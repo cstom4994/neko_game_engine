@@ -7,8 +7,8 @@
 #include "editor/editor.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/os.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/os.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/lua_ecs.hpp"
@@ -141,7 +141,7 @@ void entity_save(NativeEntity* ent, const char* n, Store* s) {
 
     if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
 
-    if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
+    //if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
 }
 
 bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, Store* s) {
@@ -237,7 +237,8 @@ static void _grow(NativeEntityMap* emap) {
 
     // find next power of 2 (TODO: use log?)
     bound = emap->bound;
-    for (new_capacity = emap->capacity; new_capacity < bound; new_capacity <<= 1);
+    for (new_capacity = emap->capacity; new_capacity < bound; new_capacity <<= 1)
+        ;
 
     // grow, clear new
     emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
@@ -252,7 +253,8 @@ static void _shrink(NativeEntityMap* emap) {
     // halve capacity while bound is less than a fourth
     bound_times_4 = emap->bound << 2;
     if (bound_times_4 >= emap->capacity) return;
-    for (new_capacity = emap->capacity; new_capacity > MIN_CAPACITY && bound_times_4 < new_capacity; new_capacity >>= 1);
+    for (new_capacity = emap->capacity; new_capacity > MIN_CAPACITY && bound_times_4 < new_capacity; new_capacity >>= 1)
+        ;
     if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 
     emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
@@ -341,50 +343,44 @@ static void _scroll(vec2 scroll) { script_scroll(scroll); }
 void system_init() {
     PROFILE_FUNC();
 
-#if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "../gamedir");
-    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "../source/game");
-#else
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
-    MountResult mount_luacode = {true};
-#endif
+    MountResult mount = {true, true, false};
 
     script_init();
 
     lua_State* L = ENGINE_LUA();
 
-    g_app->is_fused.store(mount.is_fused);
+    gApp->is_fused.store(mount.is_fused);
 
-    if (!g_app->error_mode.load() && mount.ok && mount_luacode.ok) {
+    if (!gApp->error_mode.load() && mount.ok) {
         asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
     }
 
     lua_newtable(L);
     i32 conf_table = lua_gettop(L);
 
-    if (!g_app->error_mode.load()) {
+    if (!gApp->error_mode.load()) {
         luax_neko_get(L, "conf");
         lua_pushvalue(L, conf_table);
         luax_pcall(L, 1, 0);
     }
 
-    g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
+    gApp->win_console = gApp->win_console || luax_boolean_field(L, -1, "win_console", true);
 
     Neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
     checktable_refl(ENGINE_LUA(), "app", v);
-    g_app->cfg = v.cast<engine_cfg_t>();
+    gApp->cfg = v.cast<engine_cfg_t>();
 
-    console_log("load game: %s %f %f", g_app->cfg.title.cstr(), g_app->cfg.width, g_app->cfg.height);
+    console_log("load game: %s %f %f", gApp->cfg.title.cstr(), gApp->cfg.width, gApp->cfg.height);
 
     lua_pop(L, 1);  // conf table
 
     auto& game = Neko::the<Game>();
 
     // 刷新状态
-    game.set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
-    game.set_window_title(g_app->cfg.title.cstr());
+    game.set_window_size(luavec2(gApp->cfg.width, gApp->cfg.height));
+    game.set_window_title(gApp->cfg.title.cstr());
 
-    if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
+    if (fnv1a(gApp->cfg.game_proxy) == "default"_hash) {
         // Neko::neko_lua_run_string(L, R"lua(
         // )lua");
         console_log("using default game proxy");
@@ -403,7 +399,7 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    g_app->batch = batch_init(g_app->cfg.batch_vertex_capacity);
+    gApp->batch = batch_init(gApp->cfg.batch_vertex_capacity);
     sprite_init();
     tiled_init();
     font_init();
@@ -412,17 +408,17 @@ void system_init() {
     sound_init();
     physics_init();
     edit_init();
-    imgui_init();
+    imgui_init(gApp->game_window);
 
-    g_app->hot_reload_enabled.store(mount.can_hot_reload && g_app->cfg.hot_reload);
-    g_app->reload_interval.store(g_app->cfg.reload_interval);
+    gApp->hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
+    gApp->reload_interval.store(gApp->cfg.reload_interval);
 
     luax_run_nekogame(L);
 
     Neko::luainspector::luainspector_init(ENGINE_LUA());
     lua_setglobal(L, "__neko_inspector");
 
-    if (!g_app->error_mode.load() && g_app->cfg.startup_load_scripts && mount.ok && mount_luacode.ok) {
+    if (!gApp->error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
         load_all_lua_scripts(L);
     }
 
@@ -437,10 +433,10 @@ void system_init() {
 
         lua_State* L = ENGINE_LUA();
 
-        if (!g_app->error_mode.load()) {
+        if (!gApp->error_mode.load()) {
             luax_neko_get(L, "args");
 
-            Slice<String> args = g_app->args;
+            Slice<String> args = gBase.GetArgs();
             lua_createtable(L, args.len - 1, 0);
             for (u64 i = 1; i < args.len; i++) {
                 lua_pushlstring(L, args[i].data, args[i].len);
@@ -466,12 +462,12 @@ void system_init() {
     input_add_mouse_move_callback(_mouse_move);
     input_add_scroll_callback(_scroll);
 
-    if (g_app->cfg.target_fps != 0) {
-        get_timing_instance()->target_ticks = 1000000000 / g_app->cfg.target_fps;
+    if (gApp->cfg.target_fps != 0) {
+        get_timing_instance()->target_ticks = 1000000000 / gApp->cfg.target_fps;
     }
 
 #ifdef NEKO_IS_WIN32
-    if (!g_app->win_console) {
+    if (!gApp->win_console) {
         FreeConsole();
     }
 #endif
@@ -487,7 +483,7 @@ void system_fini() {
     console_fini();
     tiled_fini();
     sprite_fini();
-    batch_fini(g_app->batch);
+    batch_fini(gApp->batch);
     gui_fini();
     camera_fini();
     transform_fini();
@@ -496,9 +492,9 @@ void system_fini() {
     auto& input = Neko::the<Input>();
     input.fini();
 
-    if (g_app->default_font != nullptr) {
-        g_app->default_font->trash();
-        mem_free(g_app->default_font);
+    if (gApp->default_font != nullptr) {
+        gApp->default_font->trash();
+        mem_free(gApp->default_font);
     }
 
     gfx_fini(g_render);
@@ -553,19 +549,19 @@ void prefab_save(const char* filename, NativeEntity root) {
     Store* s;
 
     saved_root = root;
-    s = store_open();
-    system_save_all(s);
-    store_write_file(s, filename);
-    store_close(s);
+    //s = store_open();
+    //system_save_all(s);
+    //store_write_file(s, filename);
+    //store_close(s);
     saved_root = entity_nil;
 }
 NativeEntity prefab_load(const char* filename) {
     Store* s;
     NativeEntity root;
 
-    s = store_open_file(filename);
-    system_load_all(s);
-    store_close(s);
+    //s = store_open_file(filename);
+    //system_load_all(s);
+    //store_close(s);
     root = saved_root;
     saved_root = entity_nil;
 
@@ -575,10 +571,10 @@ NativeEntity prefab_load(const char* filename) {
 void prefab_save_all(Store* s) {
     Store* t;
 
-    if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
+    //if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
 }
 void prefab_load_all(Store* s) {
     Store* t;
 
-    if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
+    //if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
 }

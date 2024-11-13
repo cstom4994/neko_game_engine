@@ -6,7 +6,7 @@
 #include "editor/editor.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/base/profiler.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
@@ -39,18 +39,12 @@ int load_embed_lua(lua_State *L, const u8 B[], const_str name) {
         return lua_gettop(L) - top;                     \
     }
 
-static const u8 g_lua_bootstrap_data[] = {
-#include "bootstrap.lua.h"
-};
-static const u8 g_lua_nekogame_data[] = {
-#include "nekogame.lua.h"
-};
-static const u8 g_lua_nekoeditor_data[] = {
-#include "nekoeditor.lua.h"
-};
+extern const uint8_t *get_bootstrap_lua();
+extern const uint8_t *get_nekogame_lua();
+extern const uint8_t *get_nekoeditor_lua();
 
 // LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
-LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
+// LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", bootstrap_lua);
 // LUAOPEN_EMBED_DATA(open_embed_nekogame, "nekogame.lua", g_lua_nekogame_data);
 
 extern "C" {
@@ -66,10 +60,10 @@ void package_preload_embed(lua_State *L) {
 
     luaL_Reg preloads[] = {
 #if defined(NEKO_CFFI)
-            {"ffi", luaopen_cffi},
-            {"bit", luaopen_bit},
+        {"ffi", luaopen_cffi},
+        {"bit", luaopen_bit},
 #endif
-            {"http", luaopen_http},
+        {"http", luaopen_http},
     };
 
     for (int i = 0; i < NEKO_ARR_SIZE(preloads); i++) {
@@ -77,7 +71,7 @@ void package_preload_embed(lua_State *L) {
     }
 }
 void luax_run_bootstrap(lua_State *L) {
-    if (luaL_loadbuffer(L, (const_str)g_lua_bootstrap_data, neko_strlen((const_str)g_lua_bootstrap_data), "<bootstrap>") != LUA_OK) {
+    if (luaL_loadbuffer(L, (const_str)get_bootstrap_lua(), neko_strlen((const_str)get_bootstrap_lua()), "<bootstrap>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load bootstrap");
     }
@@ -90,7 +84,7 @@ void luax_run_bootstrap(lua_State *L) {
     console_log("loaded bootstrap");
 }
 void luax_run_nekogame(lua_State *L) {
-    if (luaL_loadbuffer(L, (const_str)g_lua_nekogame_data, neko_strlen((const_str)g_lua_nekogame_data), "<nekogame>") != LUA_OK) {
+    if (luaL_loadbuffer(L, (const_str)get_nekogame_lua(), neko_strlen((const_str)get_nekogame_lua()), "<nekogame>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekogame");
     }
@@ -102,7 +96,7 @@ void luax_run_nekogame(lua_State *L) {
     }
     console_log("loaded nekogame");
 
-    if (luaL_loadbuffer(L, (const_str)g_lua_nekoeditor_data, neko_strlen((const_str)g_lua_nekoeditor_data), "<nekoeditor>") != LUA_OK) {
+    if (luaL_loadbuffer(L, (const_str)get_nekoeditor_lua(), neko_strlen((const_str)get_nekoeditor_lua()), "<nekoeditor>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekoeditor");
     }
@@ -176,12 +170,9 @@ void createStructTables(lua_State *L) {
     LuaStruct<NativeEntity>(L, "NativeEntity");
 }
 
-static const char **nekogame_ffi[] = {&nekogame_ffi_scalar, &nekogame_ffi_saveload, &nekogame_ffi_vec2, &nekogame_ffi_mat3, &nekogame_ffi_bbox, &nekogame_ffi_color, &nekogame_ffi_fs,
-                                      &nekogame_ffi_game, &nekogame_ffi_system, &nekogame_ffi_input, &nekogame_ffi_entity, &nekogame_ffi_prefab, &nekogame_ffi_timing, &nekogame_ffi_transform,
-                                      &nekogame_ffi_camera, &nekogame_ffi_sprite, &nekogame_ffi_tiled, &nekogame_ffi_gui, &nekogame_ffi_console,
-                                      // &nekogame_ffi_sound,
-                                      // &nekogame_ffi_physics,
-                                      &nekogame_ffi_edit, &nekogame_ffi_inspector};
+static const char **nekogame_ffi[] = {&nekogame_ffi_scalar, &nekogame_ffi_saveload, &nekogame_ffi_vec2,  &nekogame_ffi_mat3,   &nekogame_ffi_bbox,    &nekogame_ffi_color,  &nekogame_ffi_fs,
+                                      &nekogame_ffi_game,   &nekogame_ffi_system,   &nekogame_ffi_input, &nekogame_ffi_entity, &nekogame_ffi_prefab,  &nekogame_ffi_timing, &nekogame_ffi_transform,
+                                      &nekogame_ffi_camera, &nekogame_ffi_sprite,   &nekogame_ffi_tiled, &nekogame_ffi_gui,    &nekogame_ffi_console, &nekogame_ffi_edit,   &nekogame_ffi_inspector};
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
@@ -253,10 +244,10 @@ static void _forward_args() {
     lua_State *L = ENGINE_LUA();
 
     int i, argc;
-    char **argv;
+    const char **argv;
 
-    argc = Neko::the<Game>().game_get_argc();
-    argv = Neko::the<Game>().game_get_argv();
+    argc = gBase.GetArgc();
+    argv = gBase.GetArgv();
 
     lua_createtable(L, argc, 0);
     for (i = 0; i < argc; ++i) {
@@ -346,12 +337,12 @@ void script_init() {
     _forward_args();
     _set_paths();
 
-    g_app->g_lua_callbacks_table_ref = LUA_NOREF;
+    gApp->g_lua_callbacks_table_ref = LUA_NOREF;
 
     lua_channels_setup();
 
     auto &eh = Neko::the<EventHandler>();
-    eh.event_register(g_app, quit, (EventCallback)app_stop, NULL);
+    eh.event_register(gApp, quit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
 
@@ -502,43 +493,43 @@ void script_scroll(vec2 scroll) {
 }
 
 void script_save_all(Store *s) {
-    lua_State *L = ENGINE_LUA();
+    // lua_State *L = ENGINE_LUA();
 
-    Store *t;
-    const char *str;
+    // Store *t;
+    // const char *str;
 
-    if (store_child_save(&t, "script", s)) {
-        // get string from Lua
-        lua_getglobal(L, "ng");
-        lua_getfield(L, -1, "__save_all");
-        lua_remove(L, -2);
-        errcheck(luax_pcall_nothrow(L, 0, 1));
-        str = lua_tostring(L, -1);
+    // if (store_child_save(&t, "script", s)) {
+    //     // get string from Lua
+    //     lua_getglobal(L, "ng");
+    //     lua_getfield(L, -1, "__save_all");
+    //     lua_remove(L, -2);
+    //     errcheck(luax_pcall_nothrow(L, 0, 1));
+    //     str = lua_tostring(L, -1);
 
-        // save it
-        string_save(&str, "str", t);
+    //    // save it
+    //    string_save(&str, "str", t);
 
-        // release
-        lua_pop(L, 1);
-    }
+    //    // release
+    //    lua_pop(L, 1);
+    //}
 }
 
 void script_load_all(Store *s) {
-    lua_State *L = ENGINE_LUA();
+    // lua_State *L = ENGINE_LUA();
 
-    Store *t;
-    char *str;
+    // Store *t;
+    // char *str;
 
-    if (store_child_load(&t, "script", s))
-        if (string_load(&str, "str", NULL, t)) {
-            // send it to Lua
-            lua_getglobal(L, "ng");
-            lua_getfield(L, -1, "__load_all");
-            lua_remove(L, -2);
-            lua_pushstring(L, str);
-            errcheck(luax_pcall_nothrow(L, 1, 0));
+    // if (store_child_load(&t, "script", s))
+    //     if (string_load(&str, "str", NULL, t)) {
+    //         // send it to Lua
+    //         lua_getglobal(L, "ng");
+    //         lua_getfield(L, -1, "__load_all");
+    //         lua_remove(L, -2);
+    //         lua_pushstring(L, str);
+    //         errcheck(luax_pcall_nothrow(L, 1, 0));
 
-            // release
-            mem_free(str);
-        }
+    //        // release
+    //        mem_free(str);
+    //    }
 }
