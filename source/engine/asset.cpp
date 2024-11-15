@@ -17,7 +17,7 @@
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 #include "vendor/glad/glad.h"
 
 #ifdef __EMSCRIPTEN__
@@ -1310,7 +1310,7 @@ int neko_pak_load(lua_State *L) {
 Assets g_assets = {};
 
 static void hot_reload_thread(void *) {
-    u32 reload_interval = gApp->reload_interval.load() * 1000;
+    u32 reload_interval = gBase.reload_interval.load() * 1000;
 
     while (true) {
         PROFILE_BLOCK("hot reload");
@@ -1425,7 +1425,7 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
 }
 
 void assets_shutdown() {
-    if (gApp->hot_reload_enabled.load()) {
+    if (gBase.hot_reload_enabled.load()) {
         {
             LockGuard<Mutex> lock{g_assets.shutdown_mtx};
             g_assets.shutdown = true;
@@ -1466,7 +1466,7 @@ void assets_start_hot_reload() {
 
     g_assets.rw_lock.make();
 
-    if (gApp->hot_reload_enabled.load()) {
+    if (gBase.hot_reload_enabled.load()) {
         g_assets.reload_thread.make(hot_reload_thread, nullptr);
     }
 }

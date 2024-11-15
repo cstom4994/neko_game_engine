@@ -16,7 +16,7 @@
 #include "engine/edit.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 #include "vendor/atlas.h"
 
 // deps

@@ -14,8 +14,8 @@
 #include "engine/edit.h"
 #include "engine/event.h"
 #include "engine/physics.h"
-#include "engine/scripting/lua_wrapper.hpp"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
 
@@ -837,7 +837,7 @@ static int neko_program_dir(lua_State *L) {
 }
 
 static int neko_is_fused(lua_State *L) {
-    lua_pushboolean(L, gApp->is_fused.load());
+    lua_pushboolean(L, gBase.is_fused.load());
     return 1;
 }
 

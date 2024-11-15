@@ -4,7 +4,7 @@
 #include "engine/base.hpp"
 #include "engine/event.h"
 #include "engine/input.h"
-#include "engine/scripting/luax.h"
+#include "base/scripting/luax.h"
 
 struct App;
 
@@ -14,6 +14,7 @@ NEKO_API() void script_error(const char *s);
 
 NEKO_API() void script_init();
 NEKO_API() void script_fini();
+NEKO_API() int script_pre_update_all(App *app, event_t evt);
 NEKO_API() int script_update_all(App *app, event_t evt);
 NEKO_API() int script_post_update_all(App *app, event_t evt);
 NEKO_API() void script_draw_ui();
@@ -38,8 +39,8 @@ NEKO_API() void script_push_event(const char *event);
         if (__VA_ARGS__) {                                    \
             console_printf("lua: %s\n", lua_tostring(L, -1)); \
             lua_pop(L, 1);                                    \
-            if (LockGuard<Mutex> lock{gApp->error_mtx}) {     \
-                gApp->error_mode.store(true);                 \
+            if (LockGuard<Mutex> lock{gBase.error_mtx}) {     \
+                gBase.error_mode.store(true);                 \
             }                                                 \
         }                                                     \
     while (0)
@@ -49,7 +50,7 @@ NEKO_API() void script_push_event(const char *event);
 #ifndef NEKO_LUA_STRUCT_H
 #define NEKO_LUA_STRUCT_H
 
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 
 NEKO_API() void createStructTables(lua_State *L);
 

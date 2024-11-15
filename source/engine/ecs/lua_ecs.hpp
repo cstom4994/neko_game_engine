@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 
 namespace Neko {
 namespace ecs {

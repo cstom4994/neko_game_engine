@@ -9,7 +9,7 @@
 #include "engine/asset.h"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
-#include "engine/scripting/luax.h"
+#include "base/scripting/luax.h"
 
 // ----------------------------------------------------------------------------
 // lite editor, platform details

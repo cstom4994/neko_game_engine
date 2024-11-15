@@ -1,6 +1,6 @@
 #include "event.h"
 
-#include "engine/scripting/luax.h"
+#include "base/scripting/luax.h"
 
 void EventHandler::init() {
 

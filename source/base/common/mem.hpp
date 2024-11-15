@@ -14,6 +14,10 @@ struct Allocator {
 };
 
 struct HeapAllocator : Allocator {
+
+    HeapAllocator() { make(); }
+    ~HeapAllocator() { trash(); }
+
     void make() {}
     void trash() {}
     void *alloc(size_t bytes, const char *, i32) { return malloc(bytes); }
@@ -33,6 +37,9 @@ struct DebugAllocInfo {
 struct DebugAllocator : Allocator {
     DebugAllocInfo *head = nullptr;
     Mutex mtx;
+
+    DebugAllocator() { make(); }
+    ~DebugAllocator() { trash(); }
 
     void make() {}
     void trash() {}

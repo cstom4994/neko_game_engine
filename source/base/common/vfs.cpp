@@ -399,7 +399,7 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
 
 void vfs_fini() {
     for (auto vfs : g_vfs) {
-        console_log("vfs_fini(%p)", (*vfs.value));
+        console_log("vfs_fini(%llu)", vfs.key);
         (*vfs.value)->trash();
         mem_free((*vfs.value));
     }

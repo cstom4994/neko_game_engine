@@ -1,7 +1,10 @@
 #ifndef NEKO_LUAX_H
 #define NEKO_LUAX_H
 
-#include "engine/base.hpp"
+#include "base/common/base.hpp"
+#include "base/common/mutex.hpp"
+#include "base/common/string.hpp"
+#include "base/common/arena.hpp"
 
 // lua
 #include <atomic>
@@ -199,6 +202,8 @@ inline void luax_pushloadedtable(lua_State *L) {
     lua_gettable(L, LUA_REGISTRYINDEX);
 #endif
 }
+
+using namespace Neko;
 
 #define neko_lua_register(FUNCTIONS)                              \
     for (unsigned i = 0; i < NEKO_ARR_SIZE(FUNCTIONS) - 1; ++i) { \

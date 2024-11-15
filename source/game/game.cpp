@@ -1,5 +1,5 @@
 
-#include "engine/scripting/nativescript.hpp"
+#include "base/scripting/nativescript.hpp"
 
 typedef struct test_script_t {
     float thing;

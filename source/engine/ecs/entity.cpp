@@ -16,8 +16,8 @@
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
 #include "engine/input.h"
-#include "engine/scripting/lua_wrapper.hpp"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
 #include "lua.h"
@@ -141,7 +141,7 @@ void entity_save(NativeEntity* ent, const char* n, Store* s) {
 
     if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
 
-    //if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
+    // if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
 }
 
 bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, Store* s) {
@@ -349,16 +349,16 @@ void system_init() {
 
     lua_State* L = ENGINE_LUA();
 
-    gApp->is_fused.store(mount.is_fused);
+    gBase.is_fused.store(mount.is_fused);
 
-    if (!gApp->error_mode.load() && mount.ok) {
+    if (!gBase.error_mode.load() && mount.ok) {
         asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
     }
 
     lua_newtable(L);
     i32 conf_table = lua_gettop(L);
 
-    if (!gApp->error_mode.load()) {
+    if (!gBase.error_mode.load()) {
         luax_neko_get(L, "conf");
         lua_pushvalue(L, conf_table);
         luax_pcall(L, 1, 0);
@@ -403,22 +403,22 @@ void system_init() {
     sprite_init();
     tiled_init();
     font_init();
+    imgui_init(gApp->game_window);
     gui_init();
     console_init();
     sound_init();
     physics_init();
     edit_init();
-    imgui_init(gApp->game_window);
 
-    gApp->hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
-    gApp->reload_interval.store(gApp->cfg.reload_interval);
+    gBase.hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
+    gBase.reload_interval.store(gApp->cfg.reload_interval);
 
     luax_run_nekogame(L);
 
     Neko::luainspector::luainspector_init(ENGINE_LUA());
     lua_setglobal(L, "__neko_inspector");
 
-    if (!gApp->error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
+    if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
         load_all_lua_scripts(L);
     }
 
@@ -433,7 +433,7 @@ void system_init() {
 
         lua_State* L = ENGINE_LUA();
 
-        if (!gApp->error_mode.load()) {
+        if (!gBase.error_mode.load()) {
             luax_neko_get(L, "args");
 
             Slice<String> args = gBase.GetArgs();
@@ -446,9 +446,6 @@ void system_init() {
             luax_pcall(L, 1, 0);
         }
     }
-
-    luax_get(ENGINE_LUA(), "neko", "game_init");
-    luax_pcall(ENGINE_LUA(), 0, 0);
 
     // fire init event
     script_push_event("init");
@@ -549,19 +546,19 @@ void prefab_save(const char* filename, NativeEntity root) {
     Store* s;
 
     saved_root = root;
-    //s = store_open();
-    //system_save_all(s);
-    //store_write_file(s, filename);
-    //store_close(s);
+    // s = store_open();
+    // system_save_all(s);
+    // store_write_file(s, filename);
+    // store_close(s);
     saved_root = entity_nil;
 }
 NativeEntity prefab_load(const char* filename) {
     Store* s;
     NativeEntity root;
 
-    //s = store_open_file(filename);
-    //system_load_all(s);
-    //store_close(s);
+    // s = store_open_file(filename);
+    // system_load_all(s);
+    // store_close(s);
     root = saved_root;
     saved_root = entity_nil;
 
@@ -571,10 +568,10 @@ NativeEntity prefab_load(const char* filename) {
 void prefab_save_all(Store* s) {
     Store* t;
 
-    //if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
+    // if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
 }
 void prefab_load_all(Store* s) {
     Store* t;
 
-    //if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
+    // if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
 }

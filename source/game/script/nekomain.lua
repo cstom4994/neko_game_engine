@@ -4,20 +4,6 @@ mu = neko.ui
 db = neko.db
 
 function neko.__define_default_callbacks()
-    neko.game_init_thread = function()
-    end
-    neko.game_init = function()
-    end
-    neko.game_fini = function()
-    end
-    neko.game_pre_update = function()
-    end
-    neko.game_loop = function(dt)
-    end
-    neko.game_ui = function()
-    end
-    neko.game_render = function()
-    end
     neko.before_quit = function()
     end
     neko.args = function(args)

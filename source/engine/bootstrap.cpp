@@ -24,10 +24,11 @@
 #include "engine/event.h"
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
-#include "engine/scripting/lua_wrapper.hpp"
-#include "engine/scripting/nativescript.hpp"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/nativescript.hpp"
+#include "base/scripting/scripting.h"
 #include "engine/ui.h"
+#include "engine/console.hpp"
 #include "engine/renderer/renderer.h"
 
 // deps
@@ -67,16 +68,6 @@ REFL_FIELDS(engine_cfg_t, batch_vertex_capacity);
 App *gApp;
 
 #if 1
-
-void fatal_error(String str) {
-    if (!gApp->error_mode.load()) {
-        LockGuard<Mutex> lock{gApp->error_mtx};
-
-        gApp->fatal_error = to_cstr(str);
-        fprintf(stderr, "%s\n", gApp->fatal_error.data);
-        gApp->error_mode.store(true);
-    }
-}
 
 CBase gBase;
 
@@ -239,7 +230,7 @@ int _game_draw(App *app, event_t evt) {
     lua_pushnumber(L, get_timing_instance()->delta);
     luax_pcall(L, 1, 0);
 
-    if (!gApp->error_mode.load()) {
+    if (!gBase.error_mode.load()) {
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
@@ -324,6 +315,8 @@ int _game_draw(App *app, event_t evt) {
             ImGui::End();
         }
 
+        gameconsole_draw();
+
         neko_update_ui(ui);
 
         DeferLoop(ui_begin(ui), ui_end(ui)) {
@@ -349,21 +342,21 @@ int _game_draw(App *app, event_t evt) {
         float y = 25;
         u64 font_size = 28;
 
-        if (LockGuard<Mutex> lock{gApp->error_mtx}) {
+        if (LockGuard<Mutex> lock{gBase.error_mtx}) {
             y = draw_font(font, false, font_size, x, y, "-- ! Neko Error ! --", NEKO_COLOR_WHITE);
             y += font_size;
 
-            y = draw_font_wrapped(font, false, font_size, x, y, gApp->fatal_error, NEKO_COLOR_WHITE, gApp->cfg.width - x);
+            y = draw_font_wrapped(font, false, font_size, x, y, gBase.fatal_error, NEKO_COLOR_WHITE, gApp->cfg.width - x);
             y += font_size;
 
-            if (gApp->traceback.data) {
-                y = draw_font(font, false, font_size, x, y, gApp->traceback, NEKO_COLOR_WHITE);
+            if (gBase.traceback.data) {
+                y = draw_font(font, false, font_size, x, y, gBase.traceback, NEKO_COLOR_WHITE);
                 y += (font_size * 2);
 
                 draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
-                    window_setclipboard(gApp->traceback.cstr());
+                    window_setclipboard(gBase.traceback.cstr());
                 }
             }
         }
@@ -378,6 +371,8 @@ int _game_draw(App *app, event_t evt) {
     };
 
     renderer_push(renderer, &quad);
+
+    NEKO_INVOKE_ONCE(renderer_push_light(renderer, light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
 
     renderer_flush(renderer);
 
@@ -476,8 +471,8 @@ static void _game_fini() {
     profile_shutdown();
 #endif
 
-    mem_free(gApp->fatal_error.data);
-    mem_free(gApp->traceback.data);
+    mem_free(gBase.fatal_error.data);
+    mem_free(gBase.traceback.data);
 
     auto &eh = Neko::the<EventHandler>();
     eh.fini();
@@ -511,7 +506,7 @@ bool CL_Think() {
     eh.event_pump();
 
     eh.event_dispatch(event_t{.type = on_preupdate});
-    if (!gApp->error_mode.load()) {
+    if (!gBase.error_mode.load()) {
         eh.event_dispatch(event_t{.type = on_update});
     }
     eh.event_dispatch(event_t{.type = on_postupdate});
@@ -637,6 +632,7 @@ void Game::init() {
             {event_mask::preupdate, (EventCallback)assets_perform_hot_reload_changes},  //
             {event_mask::preupdate, (EventCallback)edit_clear},                         //
             {event_mask::preupdate, (EventCallback)timing_update},                      //
+            {event_mask::preupdate, (EventCallback)script_pre_update_all},              //
 
             {event_mask::update, (EventCallback)script_update_all},
             {event_mask::update, (EventCallback)physics_update_all},

@@ -16,8 +16,8 @@
 #include "base/common/color.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
-#include "engine/scripting/lua_wrapper.hpp"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/scripting.h"
 #include "vendor/luaalloc.h"
 
 static void _error(const char *s) { script_error(s); }

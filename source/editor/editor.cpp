@@ -899,10 +899,10 @@ int Neko::luainspector::luainspector_draw(lua_State* L) {
         if (gApp->cfg.lite_init_path.len && gApp->LiteLua) lt_tick(gApp->LiteLua);
     }
 
-    if (ImGui::Begin("Inspector")) {
+    if (ImGui::Begin("LuaInspector")) {
 
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
-            if (ImGui::BeginTabItem("Console")) {
+            if (ImGui::BeginTabItem("LuaConsole")) {
                 bool textbox_react;
                 model->console_draw(textbox_react);
                 ImGui::EndTabItem();

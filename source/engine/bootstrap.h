@@ -85,17 +85,6 @@ struct App {
 
     bool win_console;
 
-    std::atomic<u64> main_thread_id;
-    std::atomic<bool> error_mode;
-    std::atomic<bool> is_fused;
-
-    Mutex error_mtx;
-    String fatal_error;
-    String traceback;
-
-    std::atomic<bool> hot_reload_enabled;
-    std::atomic<f32> reload_interval;
-
     engine_cfg_t cfg;
 
     bool mouse_state[3];

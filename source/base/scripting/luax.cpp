@@ -2,9 +2,9 @@
 
 #include "base/common/json.hpp"
 #include "base/common/profiler.hpp"
-#include "engine/bootstrap.h"
-#include "engine/scripting/scripting.h"
-#include "lua_wrapper.hpp"
+#include "base/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/cbase.hpp"
 
 using namespace Neko::luabind;
 
@@ -114,7 +114,7 @@ int neko_lua_get_table_pairs_count(lua_State *L, int index) {
 i32 luax_require_script(lua_State *L, String filepath) {
     PROFILE_FUNC();
 
-    if (gApp->error_mode.load()) {
+    if (gBase.error_mode.load()) {
         return LUA_REFNIL;
     }
 
@@ -176,7 +176,7 @@ void luax_neko_get(lua_State *L, const char *field) {
 }
 
 int luax_msgh(lua_State *L) {
-    if (gApp->error_mode.load()) {
+    if (gBase.error_mode.load()) {
         return 0;
     }
 
@@ -192,19 +192,19 @@ int luax_msgh(lua_State *L) {
     // 打印堆栈跟踪
     String traceback = luax_check_string(L, -1);
 
-    if (LockGuard<Mutex> lock{gApp->error_mtx}) {
-        gApp->fatal_error = to_cstr(err);
-        gApp->traceback = to_cstr(traceback);
+    if (LockGuard<Mutex> lock{gBase.error_mtx}) {
+        gBase.fatal_error = to_cstr(err);
+        gBase.traceback = to_cstr(traceback);
 
-        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", gApp->fatal_error.data, gApp->traceback.data);
+        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", gBase.fatal_error.data, gBase.traceback.data);
 
-        for (u64 i = 0; i < gApp->traceback.len; i++) {
-            if (gApp->traceback.data[i] == '\t') {
-                gApp->traceback.data[i] = ' ';
+        for (u64 i = 0; i < gBase.traceback.len; i++) {
+            if (gBase.traceback.data[i] == '\t') {
+                gBase.traceback.data[i] = ' ';
             }
         }
 
-        gApp->error_mode.store(true);
+        gBase.error_mode.store(true);
     }
 
     // 返回带有堆栈跟踪的错误消息

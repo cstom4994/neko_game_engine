@@ -985,7 +985,7 @@ void tiled_render_draw(tiled_renderer *renderer) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-static void tiled_map_fix_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
+static void tiled_map_edit_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
 
     Asset asset = {};
     bool ok = asset_read(tiled->render->map_asset, &asset);
@@ -1006,11 +1006,11 @@ static void tiled_map_fix_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
     asset_write(asset);
 }
 
-void tiled_map_fix(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
+void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
 
-    tiled_map_fix_w(tiled, layer_idx, x, y, id);
+    tiled_map_edit_w(tiled, layer_idx, x, y, id);
 }
 
 int tiled_render(Tiled *tiled) {

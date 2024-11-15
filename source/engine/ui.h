@@ -9,7 +9,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 
 // deps
 #include "vendor/ui.h"

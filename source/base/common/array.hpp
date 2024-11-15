@@ -66,6 +66,8 @@ struct Array {
 
     T* begin() { return data; }
     T* end() { return &data[len]; }
+
+    size_t size() const { return len; }
 };
 
 }  // namespace Neko

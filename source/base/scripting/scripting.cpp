@@ -1,4 +1,4 @@
-#include "engine/scripting/scripting.h"
+#include "base/scripting/scripting.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,9 +13,9 @@
 #include "engine/edit.h"
 #include "engine/event.h"
 #include "engine/input.h"
-#include "engine/scripting/lua_wrapper.hpp"
-#include "engine/scripting/luax.h"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/luax.h"
+#include "base/scripting/scripting.h"
 #include "engine/ui.h"
 
 using namespace Neko::luabind;
@@ -387,9 +387,6 @@ void script_fini() {
         eh.event_dispatch(event_t{.type = on_quit, .p0 = {.v = 199.14f}});
     }
 
-    luax_get(ENGINE_LUA(), "neko", "game_fini");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-
     script_push_event("fini");
     errcheck(luax_pcall_nothrow(L, 1, 0));
 
@@ -401,15 +398,17 @@ void script_fini() {
     vm.Fini(ENGINE_LUA());
 }
 
-int script_update_all(App *app, event_t evt) {
+int script_pre_update_all(App *app, event_t evt) {
     lua_State *L = ENGINE_LUA();
 
-    luax_get(ENGINE_LUA(), "neko", "game_pre_update");
-    luax_pcall(ENGINE_LUA(), 0, 0);
+    script_push_event("pre_update_all");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
 
-    luax_get(ENGINE_LUA(), "neko", "game_loop");
-    LuaPush<f32>(ENGINE_LUA(), get_timing_instance()->dt);
-    luax_pcall(ENGINE_LUA(), 1, 0);
+    return 0;
+}
+
+int script_update_all(App *app, event_t evt) {
+    lua_State *L = ENGINE_LUA();
 
     script_push_event("update_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
@@ -429,9 +428,6 @@ int script_post_update_all(App *app, event_t evt) {
 void script_draw_ui() {
     lua_State *L = ENGINE_LUA();
 
-    luax_get(ENGINE_LUA(), "neko", "game_ui");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-
     script_push_event("draw_ui");
     errcheck(luax_pcall_nothrow(L, 1, 0));
 }
@@ -441,9 +437,6 @@ void script_draw_all() {
 
     script_push_event("draw_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
-
-    luax_get(ENGINE_LUA(), "neko", "game_render");
-    luax_pcall(ENGINE_LUA(), 0, 0);
 }
 
 void script_key_down(KeyCode key) {

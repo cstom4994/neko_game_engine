@@ -1,6 +1,6 @@
 #include "base/common/vfs.hpp"
 #include "engine/component.h"
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 
 #define MAX_DEPTH 256
 #define SHORT_STRING 1024

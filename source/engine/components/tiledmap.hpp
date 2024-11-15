@@ -151,7 +151,7 @@ NEKO_SCRIPT(tiled,
 
             NEKO_EXPORT const char* tiled_get_map(NativeEntity ent);
 
-            NEKO_EXPORT void tiled_map_fix(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
+            NEKO_EXPORT void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
 
 )
 

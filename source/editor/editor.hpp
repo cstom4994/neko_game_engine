@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/imgui.hpp"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/scripting.h"
 
 namespace Neko {
 

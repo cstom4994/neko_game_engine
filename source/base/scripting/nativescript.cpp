@@ -1,4 +1,4 @@
-#include "engine/scripting/nativescript.hpp"
+#include "base/scripting/nativescript.hpp"
 
 #ifdef NEKO_IS_WIN32
 #include <windows.h>

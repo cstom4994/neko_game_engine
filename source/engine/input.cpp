@@ -9,7 +9,7 @@
 #include "engine/component.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/scripting/scripting.h"
+#include "base/scripting/scripting.h"
 #include "engine/ui.h"
 #include "system.h"
 

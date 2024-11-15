@@ -7,7 +7,7 @@
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
-#include "engine/scripting/lua_wrapper.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 
 // deps
 #include "vendor/stb_image.h"
