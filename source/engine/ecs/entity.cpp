@@ -237,8 +237,7 @@ static void _grow(NativeEntityMap* emap) {
 
     // find next power of 2 (TODO: use log?)
     bound = emap->bound;
-    for (new_capacity = emap->capacity; new_capacity < bound; new_capacity <<= 1)
-        ;
+    for (new_capacity = emap->capacity; new_capacity < bound; new_capacity <<= 1);
 
     // grow, clear new
     emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
@@ -253,8 +252,7 @@ static void _shrink(NativeEntityMap* emap) {
     // halve capacity while bound is less than a fourth
     bound_times_4 = emap->bound << 2;
     if (bound_times_4 >= emap->capacity) return;
-    for (new_capacity = emap->capacity; new_capacity > MIN_CAPACITY && bound_times_4 < new_capacity; new_capacity >>= 1)
-        ;
+    for (new_capacity = emap->capacity; new_capacity > MIN_CAPACITY && bound_times_4 < new_capacity; new_capacity >>= 1);
     if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
 
     emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
@@ -315,7 +313,6 @@ static void load_all_lua_scripts(lua_State* L) {
     for (String file : files) {
         if (file.starts_with("script/") && !file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
-        } else {
         }
     }
 }
@@ -415,7 +412,7 @@ void system_init() {
 
     luax_run_nekogame(L);
 
-    Neko::luainspector::luainspector_init(ENGINE_LUA());
+    Neko::EditorInspector::luainspector_init(ENGINE_LUA());
     lua_setglobal(L, "__neko_inspector");
 
     if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {

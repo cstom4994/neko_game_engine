@@ -11,17 +11,6 @@
 // deps
 #include "vendor/sokol_time.h"
 
-namespace Neko {
-Allocator* g_allocator = []() -> Allocator* {
-#ifndef NDEBUG
-    static DebugAllocator alloc;
-#else
-    static HeapAllocator alloc;
-#endif
-    return &alloc;
-}();
-}  // namespace Neko
-
 #ifdef NEKO_IS_WIN32
 #define HACK_CALL __cdecl
 #else
@@ -31,8 +20,8 @@ Allocator* g_allocator = []() -> Allocator* {
 extern "C" void __cxa_pure_virtual() { abort(); }
 
 #ifdef HACK_MEM_CHECK
-void* HACK_CALL operator new(size_t size) { return mem_alloc(size); }
-void* HACK_CALL operator new[](size_t size) { return mem_alloc(size); }
+void* HACK_CALL operator new(size_t size) { return ::Neko::g_allocator->alloc(size, "[operator new]", 0); }
+void* HACK_CALL operator new[](size_t size) { return ::Neko::g_allocator->alloc(size, "[operator new[]]", 0); }
 void HACK_CALL operator delete(void* p) noexcept { mem_free(p); }
 void HACK_CALL operator delete[](void* p) noexcept { mem_free(p); }
 void HACK_CALL operator delete(void* p, size_t) { mem_free(p); }
@@ -82,12 +71,12 @@ void CBase::Fini() {
     neko_println("see ya");
 }
 
-MountResult CBase::LoadVFS() {
+MountResult CBase::LoadVFS(const_str path) {
 
     PROFILE_FUNC();
 
 #if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "../gamedir");
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, path);
     MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "../source/game");
 #else
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
@@ -356,6 +345,8 @@ i32 keyboard_lookup(String str) {
 
 }  // namespace Neko
 
+void gameconsole_print(const char* s);
+
 void neko_log(const char* file, int line, const char* fmt, ...) {
 
     Neko::LockGuard<Neko::Mutex> lock(gBase.log_mtx);
@@ -365,16 +356,14 @@ void neko_log(const char* file, int line, const char* fmt, ...) {
         const char* fmt;
         const char* file;
         u32 time;
-        FILE* udata;
         int line;
     } neko_log_event;
 
-    static auto init_event = [](neko_log_event* ev, void* udata) {
+    static auto init_event = [](neko_log_event* ev) {
         static u32 t = 0;
         if (!ev->time) {
             ev->time = ++t;
         }
-        ev->udata = (FILE*)udata;
     };
 
     neko_log_event ev = {
@@ -383,11 +372,15 @@ void neko_log(const char* file, int line, const char* fmt, ...) {
             .line = line,
     };
 
-    init_event(&ev, stderr);
+    static char cMsg[4096];
+
+    init_event(&ev);
     va_start(ev.ap, fmt);
     // fprintf(ev.udata, "%s:%d: ", neko_util_get_filename(ev.file), ev.line);
-    vfprintf(ev.udata, ev.fmt, ev.ap);
-    fprintf(ev.udata, "\n");
-    fflush(ev.udata);
+    vsprintf_s(cMsg, fmt, ev.ap);
+    vprintf(ev.fmt, ev.ap);
+    printf("\n");
     va_end(ev.ap);
+
+    gameconsole_print(cMsg);
 }

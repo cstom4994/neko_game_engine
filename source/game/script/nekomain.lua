@@ -2,6 +2,7 @@
 -- hot_require 'nekogame'
 mu = neko.ui
 db = neko.db
+imgui = neko.imgui
 
 function neko.__define_default_callbacks()
     neko.before_quit = function()
@@ -24,7 +25,7 @@ function ns.app.key_down(key)
     elseif key == ng.KC_E then
         ns.timing.set_paused(not ns.edit.get_enabled())
         ns.edit.set_enabled(not ns.edit.get_enabled())
-        neko.show_mouse(not ns.edit.get_enabled())
+        neko.show_mouse(ns.edit.get_enabled())
     end
 
     if ns.edit.get_enabled() then

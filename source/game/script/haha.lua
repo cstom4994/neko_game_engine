@@ -123,8 +123,6 @@ function haha()
 
     print("haha __define_default_callbacks")
 
-    -- luainspector = neko.core.inspector_init()
-
     local level_1 = ng.add {
         transform = {
             position = ng.vec2(0, 0),
@@ -167,7 +165,7 @@ function haha()
 
         LocalGame.world:add(player)
         LocalGame.world:add(CEnemy(20, 20))
-        LocalGame.world:add(WorkingMan(50, -50))
+        -- LocalGame.world:add(WorkingMan(50, -50))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
@@ -213,7 +211,6 @@ function haha()
     end
 
     ns.gamelogic.draw_ui = function()
-        neko.core.inspector_draw(neko.core.inspector_get())
     end
 
     -- neko.before_quit = function()

@@ -390,8 +390,7 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
         return;
     }
 
-    neko_gl_data_t *ogl = gfx_ogl();
-    GLuint gl_tex_id = ogl->textures[view.data.tex.id].id;
+    GLuint gl_tex_id = view.data.tex.id;
 
     AseSpriteFrame f = view.data.frames[view.frame()];
 
@@ -535,19 +534,9 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         PROFILE_BLOCK("make image");
 
         u8 *data = reinterpret_cast<u8 *>(image_data);
-
-        gfx_texture_desc_t t_desc = {};
-
-        t_desc.format = GL_RGBA;
-        t_desc.mag_filter = GL_NEAREST;
-        t_desc.min_filter = GL_NEAREST;
-        t_desc.num_mips = 0;
-        t_desc.width = width;
-        t_desc.height = height;
-        t_desc.data = data;
-
         // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
-        gfx_texture_t tex = gfx_texture_create(t_desc);
+        AssetTexture tex{};
+        neko_init_texture_from_memory_uncompressed(&tex, data, width, height, 4, NEKO_TEXTURE_ALIASED);
 
         out->tex.id = tex.id;
         out->tex.width = width;
@@ -635,8 +624,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         float yy = y;
         stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode());
 
-        neko_gl_data_t *ogl = gfx_ogl();
-        GLuint gl_tex_id = ogl->textures[tex_id].id;
+        GLuint gl_tex_id = tex_id;
 
         // float x1 = x + q.x0;
         // float y1 = y + q.y0;

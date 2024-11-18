@@ -3,6 +3,7 @@
 #include <malloc.h>
 
 #include "base/common/base.hpp"
+#include "base/scripting/scripting.h"
 
 // imgui
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -51,49 +52,54 @@ static inline void OutlineText(ImDrawList* drawList, const ImVec2& pos, const ch
     va_end(args);
 }
 
-template <typename T>
-static inline std::string readable_bytes(T num) {
-    char buffer[64];
-
-    if (num >= 1e15) {
-        snprintf(buffer, sizeof(buffer), "%.2f PB", (float)num / 1e15);
-    } else if (num >= 1e12) {
-        snprintf(buffer, sizeof(buffer), "%.2f TB", (float)num / 1e12);
-    } else if (num >= 1e9) {
-        snprintf(buffer, sizeof(buffer), "%.2f GB", (float)num / 1e9);
-    } else if (num >= 1e6) {
-        snprintf(buffer, sizeof(buffer), "%.2f MB", (float)num / 1e6);
-    } else if (num >= 1e3) {
-        snprintf(buffer, sizeof(buffer), "%.2f kB", (float)num / 1e3);
-    } else {
-        snprintf(buffer, sizeof(buffer), "%.2f B", (float)num);
-    }
-
-    return std::string(buffer);
-}
-
-static inline void perf() {
-    ImGuiIO& io = ImGui::GetIO();
-    const ImVec2 screenSize = io.DisplaySize;
-
-    ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-
-    const ImVec2 footer_size(screenSize.x, 20);
-    const ImVec2 footer_pos(0, screenSize.y - footer_size.y);
-    const ImU32 background_color = IM_COL32(0, 0, 0, 102);
-
-    draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
-
-    OutlineText(draw_list, ImVec2(screenSize.x - 60, footer_pos.y + 3), "%.1f FPS", io.Framerate);
-}
-
 }  // namespace imgui
 
 }  // namespace Neko
+
+namespace Neko::imgui::util {
+
+struct TableInteger {
+    const char* name;
+    lua_Integer value;
+};
+
+using GenerateAny = void (*)(lua_State* L);
+struct TableAny {
+    const char* name;
+    GenerateAny value;
+};
+
+struct strbuf {
+    char* data;
+    size_t size;
+};
+
+struct input_context {
+    lua_State* L;
+    int callback;
+};
+
+lua_Integer field_tointeger(lua_State* L, int idx, lua_Integer i);
+lua_Number field_tonumber(lua_State* L, int idx, lua_Integer i);
+bool field_toboolean(lua_State* L, int idx, lua_Integer i);
+ImTextureID get_texture_id(lua_State* L, int idx);
+const char* format(lua_State* L, int idx);
+strbuf* strbuf_create(lua_State* L, int idx);
+strbuf* strbuf_get(lua_State* L, int idx);
+int input_callback(ImGuiInputTextCallbackData* data);
+void create_table(lua_State* L, std::span<TableInteger> l);
+void set_table(lua_State* L, std::span<TableAny> l);
+void struct_gen(lua_State* L, const char* name, std::span<luaL_Reg> funcs, std::span<luaL_Reg> setters, std::span<luaL_Reg> getters);
+void flags_gen(lua_State* L, const char* name);
+void init(lua_State* L);
+
+}  // namespace Neko::imgui::util
 
 struct GLFWwindow;
 
 void imgui_draw_post();
 void imgui_draw_pre();
-void imgui_init(GLFWwindow *window);
+void imgui_init(GLFWwindow* window);
 void imgui_fini();
+
+int open_imgui(lua_State* L);

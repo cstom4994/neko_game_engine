@@ -11,6 +11,8 @@
 // deps
 #include <box2d/box2d.h>
 
+static const_str S_UNKNOWN = "unknown";
+
 static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<AssetTexture> *images) {
     PROFILE_FUNC();
 
@@ -270,6 +272,7 @@ static void make_collision_for_layer(b2Body *body, TilemapLayer *layer, float wo
     Array<bool> filled = {};
     neko_defer(filled.trash());
     filled.resize(layer->c_width * layer->c_height);
+    neko_assert(filled.data);
     memset(filled.data, 0, layer->c_width * layer->c_height);
     for (i32 y = 0; y < layer->c_height; y++) {
         for (i32 x = 0; x < layer->c_width; x++) {
@@ -606,16 +609,12 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             return false;
         }
 
-        void *tex_data = NULL;
+        u8 *tex_data = NULL;
         i32 w, h;
         u32 cc;
-        load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
+        load_texture_data_from_file(full_image_path, &w, &h, &cc, (void **)&tex_data, false);
 
-        gfx_texture_desc_t tileset_tex_decl = {.width = (u32)w, .height = (u32)h, .format = GL_RGBA, .min_filter = GL_NEAREST, .mag_filter = GL_NEAREST, .num_mips = 0};
-
-        tileset_tex_decl.data = tex_data;
-
-        tileset.texture = gfx_texture_create(tileset_tex_decl);
+        neko_init_texture_from_memory_uncompressed(&tileset.texture, tex_data, w, h, 4, NEKO_TEXTURE_ALIASED);
 
         tileset.width = w;
         tileset.height = h;
@@ -697,14 +696,14 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         // 对象组名字
         XMLAttribute *name_attrib = object_group_node->FindAttribute("name");
         if (name_attrib) {
-            String namestring = std::get<String>(name_attrib->value);
-
             object_group.name = std::get<String>(name_attrib->value);
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
-            console_log("objectgroup: %s", namestring);
+            console_log("objectgroup: %s", object_group.name.cstr());
+
         } else {
+            object_group.name = "unknown";
         }
 
         // 对象组默认颜色
@@ -716,10 +715,11 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             object_group.color.a = 128;
         }
 
+        // 对象
         for (auto iit = object_group_node->MakeChildIter("object"); iit.Next();) {
             XMLNode *object_node = iit.current;
 
-            object_t object = {0};
+            object_t object{.defs_luatb = {nullptr}};
             object.id = object_node->Attribute<double>("id");
             object.x = object_node->Attribute<double>("x");
             object.y = object_node->Attribute<double>("y");
@@ -752,6 +752,47 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             }
 #endif
 
+            if ((attrib = object_node->FindAttribute("name"))) {
+                object.name = std::get<String>(attrib->value);
+            } else {
+                object.name = S_UNKNOWN;
+            }
+
+            if ((attrib = object_node->FindAttribute("type"))) {
+                object.class_name = std::get<String>(attrib->value);
+            } else {
+                object.class_name = S_UNKNOWN;
+            }
+
+            console_log("%s %s %s", object_group.name.cstr(), object.name.cstr(), object.class_name.cstr());
+
+            XMLNode *properties = object_node->FindChild("properties");
+            if (properties) {
+                auto L = ENGINE_LUA();
+                object.defs_luatb = LuaRef::NewTable(L);
+                for (auto it = properties->MakeChildIter("property"); it.Next();) {
+                    XMLNode *object_node = it.current;
+                    String property_name = std::get<String>(object_node->FindAttribute("name")->value);
+                    XMLAttribute *type_attr = object_node->FindAttribute("type");
+
+                    if (type_attr) {
+                        String type_name = std::get<String>(type_attr->value);
+                    } else {
+
+                        XMLAttribute *value_attr = object_node->FindAttribute("value");
+
+                        if (!value_attr) continue;
+
+                        // lua表
+                        object.defs_luatb[property_name.cstr()] = std::get<String>(value_attr->value).cstr();
+
+                        object.defs[fnv1a(property_name)] = std::get<String>(value_attr->value);
+
+                        console_log("%s=%s", property_name.cstr(), object.defs[fnv1a(property_name)].cstr());
+                    }
+                }
+            }
+
             object_group.objects.push(object);
         }
 
@@ -777,6 +818,9 @@ void tiled_unload(TiledMap *map) {
     map->tilesets.trash();
 
     for (u32 i = 0; i < map->object_groups.len; i++) {
+        for (u32 j = 0; j < map->object_groups[i].objects.len; j++) {
+            map->object_groups[i].objects[j].defs.trash();
+        }
         map->object_groups[i].objects.trash();
     }
 
@@ -860,8 +904,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
 
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
 
-    neko_gl_data_t *ogl = gfx_ogl();
-    GLuint tex_id = ogl->textures[renderer->batch_texture.id].id;
+    GLuint tex_id = renderer->batch_texture.id;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_id);
@@ -1162,4 +1205,23 @@ const char *tiled_get_map(NativeEntity ent) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
+}
+
+void tiled_loadlua(NativeEntity ent) {
+    Tiled *tiled = Tiled::pool->Get(ent);
+    error_assert(tiled);
+
+    Asset asset = {};
+    bool ok = asset_read(tiled->render->map_asset, &asset);
+    error_assert(ok);
+
+    TiledMap map = asset.tiledmap;
+
+    // LuaRef &table = map.object_groups;
+
+    for (auto &obj_group : map.object_groups)
+        for (object_t &obj : obj_group.objects) {
+        }
+
+    return;
 }

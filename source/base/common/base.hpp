@@ -115,6 +115,13 @@ struct color24_t {
     u8 b;
 };
 
+#ifndef NDEBUG
+#if !defined(USE_PROFILER) && !defined(__EMSCRIPTEN__)
+// #define USE_PROFILER
+#endif
+//#define HACK_MEM_CHECK
+#endif
+
 #if (defined _WIN32 || defined _WIN64)
 #define NEKO_FORCE_INLINE inline
 #elif (defined __APPLE__ || defined _APPLE)

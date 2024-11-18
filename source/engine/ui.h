@@ -83,7 +83,7 @@ typedef struct engine_ui_renderer_t {
     u32 width, height;
 
     rect_t icon_rects[256];
-    neko_texture_t* icon_texture;
+    AssetTexture* icon_texture;
 } engine_ui_renderer_t;
 
 engine_ui_renderer_t* neko_new_ui_renderer();

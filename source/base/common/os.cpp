@@ -96,9 +96,10 @@ String os_program_path() {
 }
 
 u64 os_file_modtime(const char *filename) {
-    HANDLE handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE handle = CreateFileW(win::u2w(filename).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 
     if (handle == INVALID_HANDLE_VALUE) {
+        DWORD error_code = GetLastError();
         return 0;
     }
     neko_defer(CloseHandle(handle));
@@ -216,7 +217,7 @@ bool neko_os_write_file_contents(const char *file_path, const char *mode, void *
 
 bool neko_os_dir_exists(const char *dir_path) {
 #if defined(NEKO_IS_WIN32)
-    DWORD attrib = GetFileAttributesA(dir_path);  // TODO: unicode 路径修复
+    DWORD attrib = GetFileAttributesW(win::u2w(dir_path).c_str());  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #elif defined(NEKO_IS_LINUX) || defined(NEKO_IS_APPLE)
     struct stat st;
@@ -263,7 +264,7 @@ static u32 util_safe_truncate_u64(u64 value) {
 i32 neko_os_file_size_in_bytes(const char *file_path) {
 #ifdef NEKO_IS_WIN32
 
-    HANDLE hFile = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFileW(win::u2w(file_path).c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) return -1;  // error condition, could call GetLastError to find out more
 
     LARGE_INTEGER size;
@@ -311,7 +312,7 @@ i32 neko_os_file_delete(const char *file_path) {
 #if (defined NEKO_IS_WIN32)
 
     // Non-zero if successful
-    return DeleteFileA(file_path);
+    return DeleteFileW(win::u2w(file_path).c_str());
 
 #elif (defined NEKO_IS_LINUX || defined NEKO_IS_APPLE || defined NEKO_IS_ANDROID)
 
@@ -326,7 +327,7 @@ i32 neko_os_file_delete(const char *file_path) {
 i32 neko_os_file_copy(const char *src_path, const char *dst_path) {
 #if (defined NEKO_IS_WIN32)
 
-    return CopyFileA(src_path, dst_path, false);
+    return CopyFileW(win::u2w(src_path).c_str(), win::u2w(dst_path).c_str(), false);
 
 #elif (defined NEKO_IS_LINUX || defined NEKO_IS_APPLE || defined NEKO_IS_ANDROID)
 
@@ -367,7 +368,7 @@ neko_os_file_stats_t neko_os_file_stats(const char *file_path) {
     FILETIME ftime = NEKO_DEFAULT_VAL();
     FILETIME ctime = NEKO_DEFAULT_VAL();
     FILETIME atime = NEKO_DEFAULT_VAL();
-    if (GetFileAttributesExA(file_path, GetFileExInfoStandard, &data)) {
+    if (GetFileAttributesExW(win::u2w(file_path).c_str(), GetFileExInfoStandard, &data)) {
         ftime = data.ftLastWriteTime;
         ctime = data.ftCreationTime;
         atime = data.ftLastAccessTime;
@@ -389,7 +390,7 @@ neko_os_file_stats_t neko_os_file_stats(const char *file_path) {
 
 void *neko_os_library_load(const char *lib_path) {
 #if (defined NEKO_IS_WIN32)
-    return (void *)LoadLibraryA(lib_path);
+    return (void *)LoadLibraryW(win::u2w(lib_path).c_str());
 #elif (defined NEKO_IS_LINUX || defined NEKO_IS_APPLE || defined NEKO_IS_ANDROID)
     return (void *)dlopen(lib_path, RTLD_NOW | RTLD_LOCAL);  // RTLD_LAZY
 #endif

@@ -112,6 +112,8 @@ do
 
     files {"source/base/**.cpp", "source/base/**.hpp", "source/base/**.h", "source/base/**.lua"}
 
+    files {"source/deps/imgui/**.cpp", "source/deps/imgui/**.h"}
+
     files {"source/vendor/cffi/**.cc"}
 
     files {"source/vendor/luaalloc.c", "source/vendor/bit.c", "source/vendor/http.c", "source/vendor/miniz.c",

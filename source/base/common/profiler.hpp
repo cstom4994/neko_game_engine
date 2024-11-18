@@ -7,12 +7,6 @@ namespace Neko {
 void profile_setup();
 void profile_shutdown();
 
-#ifndef NDEBUG
-#if !defined(USE_PROFILER) && !defined(__EMSCRIPTEN__)
-// #define USE_PROFILER
-#endif
-#endif
-
 #ifdef USE_PROFILER
 
 struct TraceEvent {

@@ -5,9 +5,18 @@
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
+#include "base/common/profiler.hpp"
+#include "base/cbase.hpp"
 
 // deps
 #include "vendor/stb_image.h"
+
+#define CUTE_ASEPRITE_ASSERT neko_assert
+#define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
+#define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
+
+#define CUTE_ASEPRITE_IMPLEMENTATION
+#include "vendor/cute_aseprite.h"
 
 extern const mat3* camera_get_inverse_view_matrix_ptr();  // for GLSL binding : in component.cpp
 
@@ -251,16 +260,9 @@ void gfx_fini(gfx_t* render) {
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->ud;
 
-#define OGL_FREE_DATA(SA, T, FUNC)                    \
-    do {                                              \
-        for (auto v : SA) {                           \
-            neko_handle(T) hndl = NEKO_DEFAULT_VAL(); \
-            hndl.id = v.id;                           \
-            FUNC(hndl);                               \
-        }                                             \
-    } while (0)
-
-    if (ogl->textures.len) OGL_FREE_DATA(ogl->textures, gfx_texture_t, gfx_texture_fini);
+    if (ogl->textures.len)
+        for (auto& tex : ogl->textures) {
+        }
 
     ogl->textures.trash();
 
@@ -270,90 +272,8 @@ void gfx_fini(gfx_t* render) {
     render = NULL;
 }
 
-neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32 hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-
-    neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
-    if (hndl) tex = ogl->textures[hndl];
-    u32 width = desc->width;
-    u32 height = desc->height;
-    void* data = desc->data;
-
-    if (!hndl) {
-        glGenTextures(1, &tex.id);
-    }
-    
-    GLenum target = GL_TEXTURE_2D;
-
-    // glActiveTexture(GL_TEXTURE0);
-    glBindTexture(target, tex.id);
-
-    if (tex.desc.width * tex.desc.height < width * height) {
-        // Construct texture based on appropriate format
-        glTexImage2D(target, 0, desc->format, width, height, 0, desc->format, GL_UNSIGNED_BYTE, data);
-
-    } else {
-        // Subimage
-        glTexSubImage2D(target, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, desc->format, GL_UNSIGNED_BYTE, data);
-    }
-
-    i32 mag_filter = desc->mag_filter;
-    i32 min_filter = desc->min_filter;
-
-    if (desc->num_mips) {
-        // if (desc->min_filter == R_TEXTURE_FILTER_NEAREST) {
-        //     min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
-        // } else {
-        //     min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
-        // }
-    }
-
-    const u32 texture_wrap_s = desc->wrap_s == 0 ? GL_REPEAT : desc->wrap_s;
-    const u32 texture_wrap_t = desc->wrap_t == 0 ? GL_REPEAT : desc->wrap_t;
-    const u32 texture_wrap_r = desc->wrap_r == 0 ? GL_REPEAT : desc->wrap_r;
-
-    if (desc->num_mips) {
-        glGenerateMipmap(target);
-    }
-
-    // 在使用之前需要确保它可用
-    CHECK_GL_CORE(float aniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso); glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso););
-
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
-    glTexParameteri(target, GL_TEXTURE_WRAP_R, texture_wrap_r);
-    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
-
-    // Unbind buffers
-    glBindTexture(target, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    // Set description
-    tex.desc = *desc;
-
-    // Add texture to internal resource pool and return handle
-    return tex;
-}
-
-// Resource Creation
-neko_handle(gfx_texture_t) gfx_texture_create_impl(const gfx_texture_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    neko_gl_texture_t tex = gl_texture_update_internal(&desc, 0);
-    // Add texture to internal resource pool and return handle
-    return (neko_handle_create(gfx_texture_t, ogl->textures.push(tex)));
-}
-
-// Resource Destruction
-void gfx_texture_fini_impl(neko_handle(gfx_texture_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!ogl->textures.valid(hndl.id)) return;
-    neko_gl_texture_t* tex = &ogl->textures[hndl.id];
-    glDeleteTextures(1, &tex->id);
-    // neko_slot_array_erase(ogl->textures, hndl.id); // TODO 删除ogl->textures元素
-}
-
-void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* out) {
+#if 0
+void gfx_texture_desc_query(AssetTexture hndl, gfx_texture_desc_t* out) {
     if (!out) return;
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
@@ -369,19 +289,7 @@ void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t*
     *out = tex->desc;
 }
 
-// Resource Updates (main thread only)
-void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
-    if (!desc) return;
-
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!ogl->textures.valid(hndl.id)) {
-        console_log("AssetTexture handle invalid: %zu", hndl.id);
-        return;
-    }
-    gl_texture_update_internal(desc, hndl.id);
-}
-
-void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
+void gfx_texture_read_impl(AssetTexture hndl, gfx_texture_desc_t* desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!desc) return;
     if (!ogl->textures.valid(hndl.id)) {
@@ -397,6 +305,7 @@ void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* 
     glReadPixels(desc->read.x, desc->read.y, desc->read.width, desc->read.height, gl_format, gl_type, desc->data);
     glBindTexture(target, 0x00);
 }
+#endif
 
 neko_gl_data_t* gfx_ogl() {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
@@ -404,17 +313,10 @@ neko_gl_data_t* gfx_ogl() {
 }
 
 void gfx_init(gfx_t* render) {
-    // Push back 0 handles into slot arrays (for 0 init validation)
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->ud;
 
-    neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
-
-    ogl->textures.push(tex);
-
-    // Init info object
     gfx_info_t* info = &RENDER()->info;
 
-    // OpenGL 主机信息
     glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&info->major_version);
     glGetIntegerv(GL_MINOR_VERSION, (GLint*)&info->minor_version);
     info->version = (const_str)glGetString(GL_VERSION);
@@ -429,23 +331,19 @@ void gfx_init(gfx_t* render) {
 
     if (info->max_texture_size < 2048) console_log("OpenGL maximum texture too small");
 
-    // Compute shader info
     info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
     if (info->compute.available) {
         CHECK_GL_CORE({
-            // Work group counts
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (i32*)&info->compute.max_work_group_count[0]);
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (i32*)&info->compute.max_work_group_count[1]);
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (i32*)&info->compute.max_work_group_count[2]);
-            // Work group sizes
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (i32*)&info->compute.max_work_group_size[0]);
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (i32*)&info->compute.max_work_group_size[1]);
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (i32*)&info->compute.max_work_group_size[2]);
-            // Work group invocations
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (i32*)&info->compute.max_work_group_invocations);
         });
     } else {
-        // console_log("OpenGL compute shaders not available");
+        console_log("OpenGL compute shaders not available");
     }
 
 #if defined(_DEBUG) && 0
@@ -459,15 +357,6 @@ void gfx_init(gfx_t* render) {
     neko_printf("\n");
 #endif
 }
-
-neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc) { return gfx_texture_create_impl(desc); }
-
-void gfx_texture_fini(neko_handle(gfx_texture_t) hndl) { gfx_texture_fini_impl(hndl); }
-
-// 资源更新 (仅限主线程)
-void gfx_texture_update(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_update_impl(hndl, desc); }
-
-void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_read_impl(hndl, desc); }
 
 neko_color_t neko_color_from_rgb_color(neko_rgb_color_t rgb) {
     i8 r = (i8)(rgb.r * 255.0);
@@ -657,27 +546,27 @@ void neko_shader_set_m4f(u32 shader, const char* name, mat4 v) {
     glUniformMatrix4fv(location, 1, GL_FALSE, (float*)v.elements);
 }
 
-neko_texture_t* neko_new_texture(neko_resource_t* resource, neko_texture_flags_t flags) {
+AssetTexture* neko_new_texture(neko_resource_t* resource, neko_texture_flags_t flags) {
     assert(resource);
 
-    neko_texture_t* texture = (neko_texture_t*)mem_alloc(sizeof(neko_texture_t));
+    AssetTexture* texture = (AssetTexture*)mem_alloc(sizeof(AssetTexture));
     neko_init_texture(texture, resource, flags);
     return texture;
 }
 
-neko_texture_t* neko_new_texture_from_memory(void* data, u32 size, neko_texture_flags_t flags) {
-    neko_texture_t* texture = (neko_texture_t*)mem_alloc(sizeof(neko_texture_t));
+AssetTexture* neko_new_texture_from_memory(void* data, u32 size, neko_texture_flags_t flags) {
+    AssetTexture* texture = (AssetTexture*)mem_alloc(sizeof(AssetTexture));
     neko_init_texture_from_memory(texture, data, size, flags);
     return texture;
 }
 
-neko_texture_t* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags) {
-    neko_texture_t* texture = (neko_texture_t*)mem_alloc(sizeof(neko_texture_t));
-    neko_init_texture_from_memory_uncompressed(texture, pixels, size, width, height, component_count, flags);
+AssetTexture* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags) {
+    AssetTexture* texture = (AssetTexture*)mem_alloc(sizeof(AssetTexture));
+    neko_init_texture_from_memory_uncompressed(texture, pixels, width, height, component_count, flags);
     return texture;
 }
 
-void neko_init_texture(neko_texture_t* texture, neko_resource_t* resource, neko_texture_flags_t flags) {
+void neko_init_texture(AssetTexture* texture, neko_resource_t* resource, neko_texture_flags_t flags) {
     if (resource->payload == NULL || resource->type != NEKO_RESOURCE_BINARY) {
         console_log("Resource insufficient for texture creation.");
         return;
@@ -686,7 +575,7 @@ void neko_init_texture(neko_texture_t* texture, neko_resource_t* resource, neko_
     neko_init_texture_from_memory(texture, resource->payload, resource->payload_size, flags);
 }
 
-void neko_init_texture_from_memory(neko_texture_t* texture, void* data, u32 size, neko_texture_flags_t flags) {
+void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, neko_texture_flags_t flags) {
     if (data == NULL || size == 0) {
         console_log("Data insufficient for texture creation.");
         return;
@@ -703,20 +592,20 @@ void neko_init_texture_from_memory(neko_texture_t* texture, void* data, u32 size
         return;
     }
 
-    neko_init_texture_from_memory_uncompressed(texture, pixels, size, width, height, component_count, flags);
+    neko_init_texture_from_memory_uncompressed(texture, pixels, width, height, component_count, flags);
 
     mem_free(pixels);
 }
 
-void neko_init_texture_from_memory_uncompressed(neko_texture_t* texture, unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags) {
-    if (pixels == NULL || size == 0) {
+void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned char* pixels, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags) {
+    if (pixels == NULL) {
         console_log("Data insufficient for texture creation.");
         return;
     }
 
     texture->width = width;
     texture->height = height;
-    texture->component_count = component_count;
+    texture->components = component_count;
 
     texture->flags = flags;
 
@@ -735,25 +624,29 @@ void neko_init_texture_from_memory_uncompressed(neko_texture_t* texture, unsigne
 
     u32 format = GL_RGB;
     u32 internal_format = GL_RGB;
-    if (texture->component_count == 4) {
+    if (texture->components == 4) {
         internal_format = GL_RGBA;
         format = GL_RGBA;
-    } else if (texture->component_count == 1) {
+    } else if (texture->components == 1) {
         internal_format = GL_RED;
         format = GL_RED;
     }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, internal_format, GL_UNSIGNED_BYTE, pixels);
+    if (flags & NEKO_TEXTURE_SUBTEX) {
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, internal_format, GL_UNSIGNED_BYTE, pixels);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, internal_format, GL_UNSIGNED_BYTE, pixels);
+    }
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void neko_deinit_texture(neko_texture_t* texture) {
+void neko_deinit_texture(AssetTexture* texture) {
     assert(texture);
     glDeleteTextures(1, &texture->id);
 }
 
-void neko_free_texture(neko_texture_t* texture) {
+void neko_free_texture(AssetTexture* texture) {
     assert(texture);
 
     neko_deinit_texture(texture);
@@ -761,7 +654,7 @@ void neko_free_texture(neko_texture_t* texture) {
     mem_free(texture);
 }
 
-void neko_bind_texture(neko_texture_t* texture, u32 slot) {
+void neko_bind_texture(AssetTexture* texture, u32 slot) {
     glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(GL_TEXTURE_2D, texture ? texture->id : 0);
 }
@@ -812,4 +705,328 @@ void streambuffer_nextframe(StreamBuffer* buffer) {
 
     buffer->index = (buffer->index + 1) % BUFFER_FRAMES;
     buffer->offset = 0;
+}
+
+// -------------------------------------------------------------------------
+
+static void _flip_image_vertical(unsigned char* data, unsigned int width, unsigned int height) {
+    unsigned int size, stride, i, j;
+    unsigned char* new_data;
+
+    size = width * height * 4;
+    stride = sizeof(char) * width * 4;
+
+    new_data = (unsigned char*)mem_alloc(sizeof(char) * size);
+    for (i = 0; i < height; i++) {
+        j = height - i - 1;
+        memcpy(new_data + j * stride, data + i * stride, stride);
+    }
+
+    memcpy(data, new_data, size);
+    mem_free(new_data);
+}
+
+NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
+    u8 rgb[4];
+    for (int y = 0; y < height / 2; y++) {
+        for (int x = 0; x < width; x++) {
+            int top = 4 * (x + y * width);
+            int bottom = 4 * (x + (height - y - 1) * width);
+            memcpy(rgb, data + top, sizeof(rgb));
+            memcpy(data + top, data + bottom, sizeof(rgb));
+            memcpy(data + bottom, rgb, sizeof(rgb));
+        }
+    }
+}
+
+AssetTexture neko_aseprite_simple(String filename) {
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+
+    neko_defer(mem_free(contents.data));
+
+    ase_t* ase;
+
+    {
+        PROFILE_BLOCK("ase_image load");
+        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+        neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+        // neko_aseprite_default_blend_bind(ase);
+    }
+
+    u8* data = reinterpret_cast<u8*>(ase->frames->pixels);
+
+    // gfx_texture_desc_t t_desc = {};
+
+    // t_desc.format = GL_RGBA;
+    // t_desc.mag_filter = GL_NEAREST;
+    // t_desc.min_filter = GL_NEAREST;
+    // t_desc.num_mips = 0;
+    // t_desc.width = ase->w;
+    // t_desc.height = ase->h;
+    //// t_desc.num_comps = 4;
+    // t_desc.data = data;
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8*)(data));
+    // gfx_texture_t tex = gfx_texture_create(t_desc);
+
+    AssetTexture tex{};
+
+    neko_init_texture_from_memory_uncompressed(&tex, data, ase->w, ase->h, 4, NEKO_TEXTURE_ALIASED);
+
+    cute_aseprite_free(ase);
+    return tex;
+}
+
+static void ase_default_blend_bind(ase_t* ase) {
+
+    neko_assert(ase);
+    neko_assert(ase->frame_count);
+
+    // 为了方便起见，将所有单元像素混合到各自的帧中
+    for (int i = 0; i < ase->frame_count; ++i) {
+        ase_frame_t* frame = ase->frames + i;
+        if (frame->pixels != NULL) mem_free(frame->pixels);
+        frame->pixels = (ase_color_t*)mem_alloc((size_t)(sizeof(ase_color_t)) * ase->w * ase->h);
+        memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
+        ase_color_t* dst = frame->pixels;
+
+        console_log("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
+
+        for (int j = 0; j < frame->cel_count; ++j) {  //
+
+            ase_cel_t* cel = frame->cels + j;
+
+            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE))) {
+                continue;
+            }
+
+            while (cel->is_linked) {
+                ase_frame_t* frame = ase->frames + cel->linked_frame_index;
+                int found = 0;
+                for (int k = 0; k < frame->cel_count; ++k) {
+                    if (frame->cels[k].layer == cel->layer) {
+                        cel = frame->cels + k;
+                        found = 1;
+                        break;
+                    }
+                }
+                neko_assert(found);
+            }
+            void* src = cel->pixels;
+            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
+            int cx = cel->x;
+            int cy = cel->y;
+            int cw = cel->w;
+            int ch = cel->h;
+            int cl = -NEKO_MIN(cx, 0);
+            int ct = -NEKO_MIN(cy, 0);
+            int dl = NEKO_MAX(cx, 0);
+            int dt = NEKO_MAX(cy, 0);
+            int dr = NEKO_MIN(ase->w, cw + cx);
+            int db = NEKO_MIN(ase->h, ch + cy);
+            int aw = ase->w;
+            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
+                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
+                    int dst_index = aw * dy + dx;
+                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    ase_color_t dst_color = dst[dst_index];
+                    ase_color_t result = s_blend(src_color, dst_color, opacity);
+                    dst[dst_index] = result;
+                }
+            }
+        }
+    }
+}
+
+u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
+    (void)udata;
+    GLuint location;
+    glGenTextures(1, &location);
+    glBindTexture(GL_TEXTURE_2D, location);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return (u64)location;
+}
+
+void destroy_texture_handle(u64 texture_id, void* udata) {
+    (void)udata;
+    GLuint id = (GLuint)texture_id;
+    glDeleteTextures(1, &id);
+}
+
+bool texture_update_data(AssetTexture* tex, u8* data) {
+
+    LockGuard<Mutex> lock{gBase.gpu_mtx};
+
+    // 如果存在 则释放旧的 GL 纹理
+    if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+    // 生成 GL 纹理
+    glGenTextures(1, &tex->id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    if (tex->flip_image_vertical) {
+        _flip_image_vertical(data, tex->width, tex->height);
+    }
+
+    // 将纹理数据复制到 GL
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return true;
+}
+
+static bool _texture_load_vfs(AssetTexture* tex, String filename) {
+    neko_assert(tex);
+
+    u8* data = nullptr;
+
+    console_log("texture: loading texture '%s' ...", filename.cstr());
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    ase_t* ase;
+
+    if (filename.ends_with(".ase")) {
+
+        {
+            PROFILE_BLOCK("ase_image load");
+            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+            // neko_aseprite_default_blend_bind(ase);
+
+            tex->width = ase->w;
+            tex->height = ase->h;
+        }
+
+        data = reinterpret_cast<u8*>(ase->frames->pixels);
+
+    } else {
+
+        {
+            PROFILE_BLOCK("stb_image load");
+            stbi_set_flip_vertically_on_load(false);
+            data = stbi_load_from_memory((u8*)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
+        }
+    }
+
+    // 读入纹理数据
+    if (!data) {
+        // tex->last_modified = modtime;
+        console_log(" unsuccessful");
+        return false;  // 保持旧的GL纹理
+    }
+
+    {
+        LockGuard<Mutex> lock(gBase.gpu_mtx);
+
+        // 如果存在 则释放旧的 GL 纹理
+        if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+        // 生成 GL 纹理
+        glGenTextures(1, &tex->id);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex->id);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        if (tex->flip_image_vertical) {
+            _flip_image_vertical(data, tex->width, tex->height);
+        }
+
+        // 将纹理数据复制到 GL
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    if (filename.ends_with(".ase")) {
+        cute_aseprite_free(ase);
+    } else {
+        stbi_image_free(data);
+    }
+
+    // tex->last_modified = modtime;
+    console_log(" successful");
+    return true;
+}
+
+bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical) {
+    tex->id = 0;
+    tex->flip_image_vertical = flip_image_vertical;
+    return _texture_load_vfs(tex, filename);
+}
+
+void texture_bind(const char* filename) {
+    LockGuard<Mutex> lock{gBase.gpu_mtx};
+
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+
+    if (ok && a.texture.id != 0) glBindTexture(GL_TEXTURE_2D, a.texture.id);
+}
+
+vec2 texture_get_size(const char* filename) {
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    error_assert(ok);
+    return luavec2(a.texture.width, a.texture.height);
+}
+
+AssetTexture texture_get_ptr(const char* filename) {
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    return a.texture;
+}
+
+bool texture_update(AssetTexture* tex, String filename) { return _texture_load_vfs(tex, filename); }
+
+bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
+    // Load texture data
+
+    int channels;
+    u8* image = (u8*)stbi_load_from_memory((unsigned char*)memory, sz, width, height, &channels, 0);
+
+    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
+
+    *data = image;
+
+    if (!*data) {
+        // neko_image_free(&img);
+        console_log("could not load image %p", memory);
+        return false;
+    }
+    return true;
+}
+
+bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
+    size_t len = 0;
+    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
+    neko_assert(file_data);
+    bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
+    if (!ret) {
+        console_log("could not load texture: %s", file_path);
+    }
+    mem_free(file_data);
+    return ret;
 }

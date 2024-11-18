@@ -17,6 +17,11 @@ find_package(imgui CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(Lua REQUIRED)
 
+find_package(unofficial-libffi CONFIG REQUIRED)
+
+find_path(DETOURS_INCLUDE_DIRS "detours/detours.h")
+find_library(DETOURS_LIBRARY detours REQUIRED)
+
 set(BOX2D
   source/deps/box2d/collision/b2_broad_phase.cpp
   source/deps/box2d/collision/b2_chain_shape.cpp
@@ -125,14 +130,16 @@ endif()
 #   source/deps/imgui/backends/imgui_impl_opengl3.cpp
 # )
 
-add_compile_definitions(WIN32 _WIN32 _WINDOWS NOMINMAX)
+add_compile_definitions(WIN32_LEAN_AND_MEAN WIN32 _WIN32 _WINDOWS NOMINMAX)
 add_compile_definitions(NEKO_CFFI NEKO_BOX2D NEKO_AUDIO=2)
-add_compile_definitions(FFI_LITTLE_ENDIAN)
+add_compile_definitions(FFI_LITTLE_ENDIAN GLFW_INCLUDE_NONE)
 add_compile_definitions(UNICODE _UNICODE)
 
-file(GLOB ENGINE_SRC CONFIGURE_DEPENDS source/engine/*.cpp source/engine/*.h source/engine/*.hpp source/engine/base/*.cpp source/engine/base/*.hpp source/engine/components/*.cpp source/engine/components/*.hpp source/engine/ecs/*.cpp source/engine/ecs/*.hpp source/engine/scripting/*.cpp source/engine/scripting/*.hpp)
+file(GLOB BASE_SRC CONFIGURE_DEPENDS source/base/*.cpp source/base/*.hpp source/base/common/*.cpp source/base/common/*.hpp source/base/scripting/*.cpp source/base/scripting/*.hpp)
+file(GLOB ENGINE_SRC CONFIGURE_DEPENDS source/engine/*.cpp source/engine/*.h source/engine/*.hpp source/engine/components/*.cpp source/engine/components/*.hpp source/engine/ecs/*.cpp source/engine/ecs/*.hpp source/engine/renderer/*.cpp source/engine/renderer/*.h source/engine/scripting/*.cpp source/engine/scripting/*.hpp)
 file(GLOB EDITOR_SRC CONFIGURE_DEPENDS source/editor/*.cpp source/editor/*.h source/editor/*.hpp)
 file(GLOB GAME_SRC CONFIGURE_DEPENDS source/game/*.cpp source/game/*.h source/game/*.hpp)
+file(GLOB GEN_SRC CONFIGURE_DEPENDS source/gen/*.cpp)
 file(GLOB LIB_SRC CONFIGURE_DEPENDS
     #source/deps/lua/onelua.c
     source/vendor/cffi/*.cc 
@@ -146,19 +153,20 @@ file(GLOB LIB_SRC CONFIGURE_DEPENDS
 
 set(MAIN_NAME neko_engine)
 
-add_executable(${MAIN_NAME} ${ENGINE_SRC} ${EDITOR_SRC} ${GAME_SRC} ${LIB_SRC} ${BOX2D} ${LUASOCKET})
+add_executable(${MAIN_NAME} ${BASE_SRC} ${ENGINE_SRC} ${EDITOR_SRC} ${GAME_SRC} ${GEN_SRC} ${LIB_SRC} ${BOX2D} ${LUASOCKET})
 
-target_include_directories(${MAIN_NAME} PRIVATE source source/vendor source/deps/imgui source/deps/box2d source/deps/libffi/include)
+target_include_directories(${MAIN_NAME} PRIVATE source source/vendor source/deps/wamr/include source/deps/box2d)
 target_include_directories(${MAIN_NAME} PRIVATE "${FMOD_LIB_DIR}/api/core/inc" "${FMOD_LIB_DIR}/api/studio/inc")
 
-target_include_directories(${MAIN_NAME} PRIVATE ${LUA_INCLUDE_DIR})
+target_include_directories(${MAIN_NAME} PRIVATE ${LUA_INCLUDE_DIR} ${DETOURS_INCLUDE_DIRS})
 
 target_compile_options(${MAIN_NAME} PRIVATE ${CFLAGS})
 
-target_link_directories(${MAIN_NAME} PRIVATE source/deps/libffi/lib "${FMOD_LIB_DIR}/api/core/lib/x64" "${FMOD_LIB_DIR}/api/studio/lib/x64")
+target_link_directories(${MAIN_NAME} PRIVATE "source/deps/wamr/lib" "${FMOD_LIB_DIR}/api/core/lib/x64" "${FMOD_LIB_DIR}/api/studio/lib/x64")
 
-target_link_libraries(${MAIN_NAME} PRIVATE glfw imgui::imgui ${LUA_LIBRARIES})
-target_link_libraries(${MAIN_NAME} PRIVATE fmod_vc fmodstudio_vc ffi ws2_32 wininet)
+target_link_libraries(${MAIN_NAME} PRIVATE unofficial::libffi::libffi glfw imgui::imgui ${LUA_LIBRARIES} ${DETOURS_LIBRARY})
+
+target_link_libraries(${MAIN_NAME} PRIVATE fmod_vc fmodstudio_vc ws2_32 wininet vmlib iwasm)
 
 
 target_link_libraries(${MAIN_NAME} PRIVATE ${LFLAGS})

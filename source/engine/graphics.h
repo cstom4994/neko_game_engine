@@ -296,48 +296,6 @@ NEKO_API() void gfx_print_error(const char* file, u32 line);
 
 #define neko_enum_decl(NAME, ...) typedef enum NAME { _neko_##NAME##_default = 0x0, __VA_ARGS__, _neko_##NAME##_count, _neko_##NAME##_force_u32 = 0x7fffffff } NAME;
 
-// neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
-//                R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
-//                R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
-
-// neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
-
-typedef struct gfx_shader_source_desc_t {
-    u32 type;            // Shader stage type (vertex, fragment, tesselation, geometry, compute)
-    const char* source;  // Source for shader
-} gfx_shader_source_desc_t;
-
-typedef struct gfx_shader_desc_t {
-    gfx_shader_source_desc_t* sources;  // Array of shader source descriptions
-    size_t size;                        // Size in bytes of shader source desc array
-    char name[64];                      // Optional (for logging and debugging mainly)
-} gfx_shader_desc_t;
-
-// Graphics AssetTexture Desc
-typedef struct gfx_texture_desc_t {
-    u32 width;          // Width of texture in texels
-    u32 height;         // Height of texture in texels
-    u32 depth;          // Depth of texture
-    void* data;         // AssetTexture data to upload (can be null)
-    GLuint format;      // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-    u32 wrap_s;         // Wrapping type for s axis of texture
-    u32 wrap_t;         // Wrapping type for t axis of texture
-    u32 wrap_r;         // Wrapping type for r axis of texture
-    GLuint min_filter;  // Minification filter for texture
-    GLuint mag_filter;  // Magnification filter for texture
-    GLuint mip_filter;  // Mip filter for texture
-    vec2 offset;        // Offset for updates
-    u32 num_mips;       // Number of mips to generate (default 0 is disable mip generation)
-    struct {
-        u32 x;        // X offset in texels to start read
-        u32 y;        // Y offset in texels to start read
-        u32 width;    // Width in texels for texture
-        u32 height;   // Height in texels for texture
-        size_t size;  // Size in bytes for data to be read
-    } read;
-    u16 flip_y;  // Whether or not y is flipped
-} gfx_texture_desc_t;
-
 typedef struct gfx_info_t {
     const_str version;
     const_str vendor;
@@ -357,20 +315,9 @@ typedef struct gfx_info_t {
 // Graphics Interface
 ==========================*/
 
-// Shader
-typedef struct neko_gl_shader_t {
-    u32 id;
-} neko_gl_shader_t;
-
-// AssetTexture
-typedef struct neko_gl_texture_t {
-    u32 id;
-    gfx_texture_desc_t desc;
-} neko_gl_texture_t;
-
 // 内部 OpenGL 数据
 typedef struct neko_gl_data_t {
-    Array<neko_gl_texture_t> textures;
+    Array<AssetTexture> textures;
 } neko_gl_data_t;
 
 typedef struct gfx_t {
@@ -388,10 +335,6 @@ NEKO_API() void gfx_init(gfx_t* render);
 
 NEKO_API() gfx_info_t* gfx_info();
 NEKO_API() neko_gl_data_t* gfx_ogl();
-
-NEKO_API() neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc);
-NEKO_API() void gfx_texture_fini(neko_handle(gfx_texture_t) hndl);
-NEKO_API() void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc);
 
 typedef struct neko_rgb_color_t {
     float r, g, b;
@@ -443,28 +386,16 @@ NEKO_API() void neko_configure_vertex_buffer(neko_vertex_buffer_t* buffer, u32 i
 NEKO_API() void neko_draw_vertex_buffer(neko_vertex_buffer_t* buffer);
 NEKO_API() void neko_draw_vertex_buffer_custom_count(neko_vertex_buffer_t* buffer, u32 count);
 
-typedef enum neko_texture_flags_t {
-    NEKO_TEXTURE_ALIASED = 1 << 0,
-    NEKO_TEXTURE_ANTIALIASED = 1 << 1,
-} neko_texture_flags_t;
+NEKO_API() AssetTexture* neko_new_texture(neko_resource_t* resource, neko_texture_flags_t flags);
+NEKO_API() AssetTexture* neko_new_texture_from_memory(void* data, u32 size, neko_texture_flags_t flags);
+NEKO_API() AssetTexture* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
+NEKO_API() void neko_init_texture(AssetTexture* texture, neko_resource_t* resource, neko_texture_flags_t flags);
+NEKO_API() void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, neko_texture_flags_t flags);
+NEKO_API() void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned char* pixels, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
+NEKO_API() void neko_deinit_texture(AssetTexture* texture);
 
-typedef struct neko_texture_t {
-    u32 id;
-    i32 width, height, component_count;
-
-    neko_texture_flags_t flags;
-} neko_texture_t;
-
-NEKO_API() neko_texture_t* neko_new_texture(neko_resource_t* resource, neko_texture_flags_t flags);
-NEKO_API() neko_texture_t* neko_new_texture_from_memory(void* data, u32 size, neko_texture_flags_t flags);
-NEKO_API() neko_texture_t* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture(neko_texture_t* texture, neko_resource_t* resource, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture_from_memory(neko_texture_t* texture, void* data, u32 size, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture_from_memory_uncompressed(neko_texture_t* texture, unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
-NEKO_API() void neko_deinit_texture(neko_texture_t* texture);
-
-NEKO_API() void neko_free_texture(neko_texture_t* texture);
-NEKO_API() void neko_bind_texture(neko_texture_t* texture, u32 slot);
+NEKO_API() void neko_free_texture(AssetTexture* texture);
+NEKO_API() void neko_bind_texture(AssetTexture* texture, u32 slot);
 
 #define BUFFER_FRAMES 3
 
@@ -492,5 +423,22 @@ typedef struct {
 //     GLuint ebo;
 //     uint16_t indexes[2];
 // } StreamState;
+
+bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
+void texture_bind(const char* filename);
+vec2 texture_get_size(const char* filename);  // (width, height)
+AssetTexture texture_get_ptr(const char* filename);
+bool texture_update(AssetTexture* tex, String filename);
+bool texture_update_data(AssetTexture* tex, u8* data);
+
+u64 generate_texture_handle(void* pixels, int w, int h, void* udata);
+void destroy_texture_handle(u64 texture_id, void* udata);
+
+AssetTexture neko_aseprite_simple(String filename);
+
+// AssetTexture
+
+bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
 
 #endif

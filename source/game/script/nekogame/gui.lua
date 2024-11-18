@@ -40,7 +40,7 @@ function test_window()
     if mu.begin_window("Demo Window", mu.rect(40, 40, 300, 450)) then
         local win = mu.get_current_container()
         local rect = win:rect()
-        win:set_rect {
+        win:set_rect{
             x = rect.x,
             y = rect.y,
             w = math.max(rect.w, 240),
@@ -51,7 +51,7 @@ function test_window()
         if mu.header "Window Info" then
             local win = mu.get_current_container()
             local rect = win:rect()
-            mu.layout_row({ 54, -1 }, 0)
+            mu.layout_row({54, -1}, 0)
             mu.label "Position:"
             mu.label(("%d, %d"):format(rect.x, rect.y))
             mu.label "Size:"
@@ -60,7 +60,7 @@ function test_window()
 
         -- labels + buttons
         if mu.header("Test Buttons", mu.OPT_EXPANDED) then
-            mu.layout_row({ 86, -110, -1 }, 0)
+            mu.layout_row({86, -110, -1}, 0)
             mu.label "Test buttons 1:"
             if mu.button "Button 1" then
                 write_log "Pressed button 1"
@@ -84,7 +84,7 @@ function test_window()
 
         -- tree
         if mu.header("Tree and Text", mu.OPT_EXPANDED) then
-            mu.layout_row({ 140, -1 }, 0)
+            mu.layout_row({140, -1}, 0)
             mu.layout_begin_column()
             if mu.begin_treenode "Test 1" then
                 if mu.begin_treenode "Test 1a" then
@@ -104,7 +104,7 @@ function test_window()
                 mu.end_treenode()
             end
             if mu.begin_treenode "Test 2" then
-                mu.layout_row({ 54, 54 }, 0)
+                mu.layout_row({54, 54}, 0)
                 if mu.button "Button 3" then
                     write_log "Pressed button 3"
                 end
@@ -128,7 +128,7 @@ function test_window()
             mu.layout_end_column()
 
             mu.layout_begin_column()
-            mu.layout_row({ -1 }, 0)
+            mu.layout_row({-1}, 0)
             mu.text(
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus ipsum, eu varius magna felis a nulla.")
             mu.layout_end_column()
@@ -136,9 +136,9 @@ function test_window()
 
         -- background color sliders
         if mu.header("Background Color", mu.OPT_EXPANDED) then
-            mu.layout_row({ -78, -1 }, 74)
+            mu.layout_row({-78, -1}, 74)
             mu.layout_begin_column()
-            mu.layout_row({ 46, -1 }, 0)
+            mu.layout_row({46, -1}, 0)
             mu.label "Red:";
             mu.slider(bg.r, 0, 255)
             mu.label "Green:";
@@ -167,10 +167,10 @@ end
 function log_window()
     if mu.begin_window("Log Window", mu.rect(350, 40, 300, 200)) then
         -- output text panel
-        mu.layout_row({ -1 }, -25)
+        mu.layout_row({-1}, -25)
         mu.begin_panel "Log Output"
         local panel = mu.get_current_container()
-        mu.layout_row({ -1 }, -1)
+        mu.layout_row({-1}, -1)
         mu.text(logbuf:get())
         mu.end_panel()
         if logbuf_updated then
@@ -182,7 +182,7 @@ function log_window()
 
         -- input textbox + buttons
         local submitted = false
-        mu.layout_row({ -120, -60, -1 }, 0)
+        mu.layout_row({-120, -60, -1}, 0)
         if (mu.textbox(log_input) and mu.RES_SUBMIT) ~= 0 then
             mu.set_focus(mu.get_last_id())
             submitted = true
@@ -207,7 +207,7 @@ function style_window()
         local style = mu.get_style()
 
         local sw = mu.get_current_container():body().w * 0.14
-        mu.layout_row({ 80, sw, sw, sw, sw, -1 }, 0)
+        mu.layout_row({80, sw, sw, sw, sw, -1}, 0)
         for _, color in ipairs(ns.gui_test.colors) do
             local label, idx, palette = color[1], color[2], color[3]
             mu.label(label)
@@ -233,20 +233,20 @@ end
 
 function ns.gui_test.add(ent)
     print("ns.gui_test.add", ent)
-    ns.gui_test.colors = { { "text:", mu.COLOR_TEXT, make_color { 230, 230, 230, 255 } },
-        { "border:",      mu.COLOR_BORDER,      make_color { 25, 25, 25, 255 } },
-        { "windowbg:",    mu.COLOR_WINDOWBG,    make_color { 50, 50, 50, 255 } },
-        { "titlebg:",     mu.COLOR_TITLEBG,     make_color { 25, 25, 25, 255 } },
-        { "titletext:",   mu.COLOR_TITLETEXT,   make_color { 240, 240, 240, 255 } },
-        { "panelbg:",     mu.COLOR_PANELBG,     make_color { 0, 0, 0, 0 } },
-        { "button:",      mu.COLOR_BUTTON,      make_color { 75, 75, 75, 255 } },
-        { "buttonhover:", mu.COLOR_BUTTONHOVER, make_color { 95, 95, 95, 255 } },
-        { "buttonfocus:", mu.COLOR_BUTTONFOCUS, make_color { 115, 115, 115, 255 } },
-        { "base:",        mu.COLOR_BASE,        make_color { 30, 30, 30, 255 } },
-        { "basehover:",   mu.COLOR_BASEHOVER,   make_color { 35, 35, 35, 255 } },
-        { "basefocus:",   mu.COLOR_BASEFOCUS,   make_color { 40, 40, 40, 255 } },
-        { "scrollbase:",  mu.COLOR_SCROLLBASE,  make_color { 43, 43, 43, 255 } },
-        { "scrollthumb:", mu.COLOR_SCROLLTHUMB, make_color { 30, 30, 30, 255 } } }
+    ns.gui_test.colors = {{"text:", mu.COLOR_TEXT, make_color {230, 230, 230, 255}},
+                          {"border:", mu.COLOR_BORDER, make_color {25, 25, 25, 255}},
+                          {"windowbg:", mu.COLOR_WINDOWBG, make_color {50, 50, 50, 255}},
+                          {"titlebg:", mu.COLOR_TITLEBG, make_color {25, 25, 25, 255}},
+                          {"titletext:", mu.COLOR_TITLETEXT, make_color {240, 240, 240, 255}},
+                          {"panelbg:", mu.COLOR_PANELBG, make_color {0, 0, 0, 0}},
+                          {"button:", mu.COLOR_BUTTON, make_color {75, 75, 75, 255}},
+                          {"buttonhover:", mu.COLOR_BUTTONHOVER, make_color {95, 95, 95, 255}},
+                          {"buttonfocus:", mu.COLOR_BUTTONFOCUS, make_color {115, 115, 115, 255}},
+                          {"base:", mu.COLOR_BASE, make_color {30, 30, 30, 255}},
+                          {"basehover:", mu.COLOR_BASEHOVER, make_color {35, 35, 35, 255}},
+                          {"basefocus:", mu.COLOR_BASEFOCUS, make_color {40, 40, 40, 255}},
+                          {"scrollbase:", mu.COLOR_SCROLLBASE, make_color {43, 43, 43, 255}},
+                          {"scrollthumb:", mu.COLOR_SCROLLTHUMB, make_color {30, 30, 30, 255}}}
 
     log_input = mu.ref ""
 
@@ -258,7 +258,7 @@ function ns.gui_test.add(ent)
         g = mu.ref(95),
         b = mu.ref(100)
     }
-    checks = map({ true, false, true }, mu.ref)
+    checks = map({true, false, true}, mu.ref)
 
     ns.gui_test.ent = ent
 end
@@ -273,19 +273,13 @@ function ns.gui_test.draw_ui()
         test_lui()
     end
 
-    -- draw_imgui()
+    draw_imgui()
 end
 
 draw_imgui = function(dt)
+    local ImGui = imgui
     ImGui.Begin("Demo")
-    ImGui.Text("选择测试Demo")
-
-    if ImGui.Button("sound") then
-        local music = neko.sound_load(neko.file_path("Run_It_Might_Be_Somebody.wav"))
-        music:set_loop(true)
-        music:set_vol(0.25)
-        music:start()
-    end
+    ImGui.Text("TestDemo")
 
     if ImGui.Button("test_http") then
         local http = require 'http'
@@ -304,7 +298,7 @@ draw_imgui = function(dt)
     end
 
     if ImGui.Button("build_pack") then
-        ng.api.core.pak_build(("fgd.pack"), { "gamedir/assets/test_1.fgd", "gamedir/assets/primext.fgd" })
+        ng.api.core.pak_build(("fgd.pack"), {"gamedir/assets/test_1.fgd", "gamedir/assets/primext.fgd"})
     end
 
     if ImGui.Button("test_reg") then

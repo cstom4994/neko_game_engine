@@ -165,7 +165,7 @@ int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
 void createStructTables(lua_State *L) {
 
     LuaStruct<vec4>(L, "vec4");
-    LuaStruct<gfx_texture_t>(L, "gfx_texture_t");
+    //LuaStruct<AssetTexture>(L, "AssetTexture");
     LuaStruct<Color>(L, "Color");
     LuaStruct<NativeEntity>(L, "NativeEntity");
 }

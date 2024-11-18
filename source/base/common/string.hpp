@@ -12,6 +12,7 @@ struct String {
     String() = default;
     String(const char* cstr) : data((char*)cstr), len(strlen(cstr)) {}
     String(const char* cstr, u64 n) : data((char*)cstr), len(n) {}
+    String(const std::string& str) : data((char*)str.data()), len(str.length()) {}
 
     inline bool is_cstr() { return data[len] == '\0'; }
 

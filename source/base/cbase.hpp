@@ -13,6 +13,7 @@ class CBase {
 
 public:
     Mutex log_mtx;
+    Mutex gpu_mtx;
 
     std::atomic<bool> error_mode;
     std::atomic<bool> is_fused;
@@ -35,7 +36,7 @@ public:
     void Init();
     void Fini();
 
-    MountResult LoadVFS();
+    MountResult LoadVFS(const_str path);
     void UnLoadVFS();
 
     bool InitLuaBase();

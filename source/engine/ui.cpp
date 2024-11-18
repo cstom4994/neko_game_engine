@@ -202,7 +202,7 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
     neko_draw_vertex_buffer_custom_count(renderer->vb, renderer->quad_count * 6);
     neko_bind_vertex_buffer_for_draw(NULL);
 
-    neko_bind_texture(NULL, 0);
+    neko_bind_texture({}, 0);
     neko_bind_shader(NULL);
 
     renderer->quad_count = 0;
@@ -233,8 +233,7 @@ float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *t
         u32 ch = r.charcode();
         stbtt_aligned_quad q = renderer->font->quad(&tex_id, &xx, &yy, 16.f, ch);
 
-        neko_gl_data_t *ogl = gfx_ogl();
-        u32 ch_tex_id = ogl->textures[tex_id].id;
+        u32 ch_tex_id = tex_id;
 
         f32 x1 = x + q.x0;
         f32 y1 = y + q.y0;

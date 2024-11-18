@@ -15,6 +15,7 @@
 #include "engine/sound.h"
 #include "engine/test.h"
 #include "engine/ui.h"
+#include "engine/imgui.hpp"
 
 // deps
 #include "vendor/luaalloc.h"
@@ -66,12 +67,9 @@ NEKO_SCRIPT(
 
 struct lua_State;
 struct App {
-    Mutex gpu_mtx;
 
     bool g_quit = false;  // 如果为 true 则退出主循环
     Mutex g_init_mtx;
-
-    gfx_texture_t test_ase;
 
     AppTime timing_instance;
 
@@ -86,6 +84,8 @@ struct App {
     bool win_console;
 
     engine_cfg_t cfg;
+
+    ImGuiID devui_vp;
 
     bool mouse_state[3];
     bool prev_mouse_state[3];

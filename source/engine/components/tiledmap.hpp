@@ -92,7 +92,7 @@ void tiled_unload(TiledMap* map);
 
 typedef struct tiled_quad_t {
     u32 tileset_id;
-    gfx_texture_t texture;
+    AssetTexture texture;
     vec2 texture_size;
     vec2 position;
     vec2 dimentions;
@@ -118,7 +118,7 @@ typedef struct tiled_renderer {
     GLuint vbo;
     GLuint ib;
 
-    gfx_texture_t batch_texture;            // 当前绘制所用贴图
+    AssetTexture batch_texture;            // 当前绘制所用贴图
     HashMap<tiled_quad_list_t> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
 
     u32 quad_count;

@@ -7,38 +7,13 @@
 #include "base/common/color.hpp"
 #include "base/common/vfs.hpp"
 #include "base/common/xml.hpp"
+#include "base/scripting/lua_wrapper.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
 
 using namespace Neko;
-
-bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
-void texture_bind(const char* filename);
-vec2 texture_get_size(const char* filename);  // (width, height)
-AssetTexture texture_get_ptr(const char* filename);
-bool texture_update(AssetTexture* tex, String filename);
-bool texture_update_data(AssetTexture* tex, u8* data);
-
-u64 generate_texture_handle(void* pixels, int w, int h, void* udata);
-void destroy_texture_handle(u64 texture_id, void* udata);
-
-gfx_texture_t neko_aseprite_simple(String filename);
-
-typedef struct neko_asset_texture_t {
-    neko_handle(gfx_texture_t) hndl;
-    gfx_texture_desc_t desc;
-} neko_asset_texture_t;
-
-// AssetTexture
-
-bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-
-// #if 1
-// bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
-// bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
-// #endif
+using namespace Neko::luabind;
 
 #if 0
 
@@ -73,7 +48,7 @@ struct AseSpriteData {
     Arena arena;
     Slice<AseSpriteFrame> frames;
     HashMap<AseSpriteLoop> by_tag;
-    gfx_texture_t tex;
+    AssetTexture tex;
     i32 width;
     i32 height;
 
@@ -172,7 +147,7 @@ typedef struct tile_t {
 } tile_t;
 
 typedef struct tileset_t {
-    neko_handle(gfx_texture_t) texture;
+    AssetTexture texture;
     u32 tile_count;
     u32 tile_width;
     u32 tile_height;
@@ -191,13 +166,17 @@ typedef struct layer_t {
 
 typedef struct object_t {
     u32 id;
+    String name;
+    String class_name;
     i32 x, y, width, height;
-    // C2_TYPE phy_type;
-    // c2AABB aabb;
-    // union {
-    //     c2AABB box;
-    //     c2Poly poly;
-    // } phy;
+    HashMap<String> defs;
+    LuaRef defs_luatb;
+    //   C2_TYPE phy_type;
+    //   c2AABB aabb;
+    //   union {
+    //       c2AABB box;
+    //       c2Poly poly;
+    //   } phy;
 } object_t;
 
 typedef struct object_group_t {

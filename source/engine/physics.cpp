@@ -235,10 +235,6 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
                 b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
 
                 if (poly->m_count > 0) {
-                    // sgl_disable_texture();
-                    // sgl_begin_line_strip();
-                    // renderer_apply_color();
-
                     for (i32 i = 0; i < poly->m_count; i++) {
                         b2Vec2 pos1 = body->GetWorldPoint(poly->m_vertices[i]);
                         edit_line_add_xy(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
@@ -250,11 +246,6 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
                             edit_line_add_xy(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
                         }
                     }
-
-                    // b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
-                    // edit_line_add_xy(luavec2(pos.x * meter, pos.y * meter), 1.f, color_red);
-
-                    // sgl_end();
                 }
                 break;
             }

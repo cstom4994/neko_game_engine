@@ -19,48 +19,6 @@ inline void neko_panic(const char *fmt, ...) {
     exit(1);
 }
 
-/*===================================
-// Resource Handles
-===================================*/
-
-// Useful typedefs for typesafe, internal resource handles
-
-#define neko_handle(TYPE) neko_handle_##TYPE
-
-#define neko_handle_decl(TYPE)                                              \
-    typedef struct {                                                        \
-        u32 id;                                                             \
-    } neko_handle(TYPE);                                                    \
-    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
-        neko_handle(TYPE) h;                                                \
-        h.id = UINT32_MAX;                                                  \
-        return h;                                                           \
-    }                                                                       \
-                                                                            \
-    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
-        neko_handle(TYPE) h;                                                \
-        h.id = id;                                                          \
-        return h;                                                           \
-    }
-
-#define neko_handle_invalid(__TYPE) neko_handle_invalid_##__TYPE()
-
-#define neko_handle_create(__TYPE, __ID) neko_handle_create_##__TYPE(__ID)
-
-#define neko_handle_is_valid(HNDL) ((HNDL.id) != UINT32_MAX)
-
-neko_handle_decl(gfx_texture_t);
-typedef neko_handle(gfx_texture_t) gfx_texture_t;
-
-// NEKO_FORCE_INLINE char* neko_util_string_concat(char* s1, const char* s2) {
-//     const size_t a = strlen(s1);
-//     const size_t b = strlen(s2);
-//     const size_t ab = a + b + 1;
-//     s1 = (char*)neko_safe_realloc((void*)s1, ab);
-//     memcpy(s1 + a, s2, b + 1);
-//     return s1;
-// }
-
 NEKO_FORCE_INLINE void neko_util_str_to_lower(const char *src, char *buffer, size_t buffer_sz) {
     size_t src_sz = neko_strlen(src);
     size_t len = NEKO_MIN(src_sz, buffer_sz - 1);
@@ -354,12 +312,21 @@ NEKO_SCRIPT(saveload, typedef struct Store Store;
         *((int *)val) = e__;            \
     } while (0)
 
+typedef enum neko_texture_flags_t {
+    NEKO_TEXTURE_ALIASED = 1 << 0,
+    NEKO_TEXTURE_ANTIALIASED = 1 << 1,
+    NEKO_TEXTURE_SUBTEX = 1 << 2,
+} neko_texture_flags_t;
+
 typedef struct AssetTexture {
     u32 id;  // 如果未初始化或纹理错误 则为 0
     int width;
     int height;
     int components;
     bool flip_image_vertical;
+
+    neko_texture_flags_t flags;
+
 } AssetTexture;
 
 typedef enum neko_resource_type_t {
@@ -991,5 +958,26 @@ inline Any Any::invoke(std::string_view name, std::span<Any> args) {
         return &type;                                                                              \
     };                                                                                             \
     }
+
+template <typename T>
+static inline std::string readable_bytes(T num) {
+    char buffer[64];
+
+    if (num >= 1e15) {
+        snprintf(buffer, sizeof(buffer), "%.2f PB", (float)num / 1e15);
+    } else if (num >= 1e12) {
+        snprintf(buffer, sizeof(buffer), "%.2f TB", (float)num / 1e12);
+    } else if (num >= 1e9) {
+        snprintf(buffer, sizeof(buffer), "%.2f GB", (float)num / 1e9);
+    } else if (num >= 1e6) {
+        snprintf(buffer, sizeof(buffer), "%.2f MB", (float)num / 1e6);
+    } else if (num >= 1e3) {
+        snprintf(buffer, sizeof(buffer), "%.2f kB", (float)num / 1e3);
+    } else {
+        snprintf(buffer, sizeof(buffer), "%.2f B", (float)num);
+    }
+
+    return std::string(buffer);
+}
 
 #endif  // NEKO_ENGINE_NEKO_REFL_HPP

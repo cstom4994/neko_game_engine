@@ -30,6 +30,8 @@
 #include "engine/ui.h"
 #include "engine/console.hpp"
 #include "engine/renderer/renderer.h"
+#include "editor/editor.hpp"
+#include "editor/fgd.h"
 
 // deps
 #include "vendor/sokol_time.h"
@@ -74,6 +76,21 @@ CBase gBase;
 #endif
 
 #if 1
+
+static inline void perf() {
+    ImGuiIO &io = ImGui::GetIO();
+    const ImVec2 screenSize = io.DisplaySize;
+
+    ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+
+    const ImVec2 footer_size(20, 20);
+    const ImVec2 footer_pos(screenSize.x - footer_size.x - 20, 20);
+    const ImU32 background_color = IM_COL32(0, 0, 0, 102);
+
+    draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
+
+    Neko::imgui::OutlineText(draw_list, ImVec2(screenSize.x - 60, footer_pos.y + 3), "%.1f FPS", io.Framerate);
+}
 
 i32 neko_buildnum(void) {
     static const char *__build_date = __DATE__;
@@ -256,7 +273,7 @@ int _game_draw(App *app, event_t evt) {
             ImGui::EndMainMenuBar();
         }
 
-        Neko::imgui::perf();
+        perf();
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -308,9 +325,32 @@ int _game_draw(App *app, event_t evt) {
 
         // ImGui::ShowDemoWindow();
 
+        ImGui::SetNextWindowViewport(gApp->devui_vp);
         if (ImGui::Begin("Hello")) {
 
             ImGui::InputFloat("posteffect_intensity", &posteffect_intensity);
+
+            if (ImGui::Button("fgd")) {
+                Fgd fgd("neko_base.fgd");
+                bool ok = fgd.parse();
+                console_log("%d", ok);
+
+                FgdClass *game_lua = nullptr;
+
+                for (auto &[n, c] : fgd.classMap) {
+                    console_log("%s %p", n.c_str(), c);
+
+                    if (n == "game_lua") game_lua = c;
+                }
+
+                neko_assert(game_lua);
+
+                console_log("game_lua: %d %s", game_lua->classType, game_lua->name.c_str());
+
+                for (auto &keydef : game_lua->keyvalues) {
+                    console_log("%s: %s", keydef.name.c_str(), keydef.description.c_str());
+                }
+            }
 
             ImGui::End();
         }
@@ -325,6 +365,8 @@ int _game_draw(App *app, event_t evt) {
         }
 
         neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
+
+        Neko::EditorInspector::luainspector_draw(ENGINE_LUA());
 
         imgui_draw_post();
 
@@ -362,7 +404,7 @@ int _game_draw(App *app, event_t evt) {
         }
     }
 
-    TextruedQuad quad = {
+    TexturedQuad quad = {
             .texture = NULL,
             .position = {0, 0},
             .dimentions = {40, 40},
@@ -387,19 +429,18 @@ void Game::SplashScreen() {
 
     if (1) {
 
-        String contents = {};
-        bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
-        if (!ok) {
-            return;
-        }
-        neko_defer(mem_free(contents.data));
+        // String contents = {};
+        // bool ok = vfs_read_entire_file(&contents, "assets/splash.png");
+        // if (!ok) {
+        //     return;
+        // }
+        // neko_defer(mem_free(contents.data));
 
-        neko_texture_t *splash_texture = neko_new_texture_from_memory(contents.data, contents.len, NEKO_TEXTURE_ANTIALIASED);
+        AssetTexture splash_texture = neko_aseprite_simple("assets/cat.ase");
 
-        // neko_shader_t *shader = neko_load_shader(cfg.splash_shader);
         Asset splash_shader = {};
 
-        ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
+        bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
         error_assert(ok);
 
         GLuint sid = splash_shader.shader.id;
@@ -417,15 +458,15 @@ void Game::SplashScreen() {
         neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
         neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
 
-        mat4 projection = mat4_ortho(-((float)gApp->cfg.width / 2.0f), (float)gApp->cfg.width / 2.0f, (float)gApp->cfg.height / 2.0f, -((float)gApp->cfg.height / 2.0f), -1.0f, 1.0f);
-        mat4 model = mat4_scalev(vec3{splash_texture->width / 2.0f, splash_texture->height / 2.0f, 0.0f});
+        mat4 projection = mat4_ortho(-((float)gApp->cfg.width / 24.0f), (float)gApp->cfg.width / 24.0f, (float)gApp->cfg.height / 24.0f, -((float)gApp->cfg.height / 24.0f), -1.0f, 1.0f);
+        mat4 model = mat4_scalev(vec3{splash_texture.width / 2.0f, splash_texture.height / 2.0f, 0.0f});
 
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
         neko_bind_shader(sid);
-        neko_bind_texture(splash_texture, 0);
+        neko_bind_texture(&splash_texture, 0);
         neko_shader_set_int(sid, "image", 0);
         neko_shader_set_m4f(sid, "transform", model);
         neko_shader_set_m4f(sid, "projection", projection);
@@ -437,7 +478,7 @@ void Game::SplashScreen() {
 
         neko_free_vertex_buffer(quad);
 
-        neko_free_texture(splash_texture);
+        // neko_free_texture(&splash_texture);
 
         neko_check_gl_error();
     }
@@ -605,13 +646,12 @@ void Game::init() {
 
     // init systems
     console_puts("welcome to neko!");
+
     system_init();
 
     assets_start_hot_reload();
 
     {  // just for test
-
-        gApp->test_ase = neko_aseprite_simple("assets/cat.ase");
 
         gApp->ui = (ui_context_t *)mem_alloc(sizeof(ui_context_t));
         ui_init(gApp->ui);

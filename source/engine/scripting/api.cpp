@@ -2527,10 +2527,6 @@ static int open_embed_core(lua_State *L) {
             // reg
             {"from_registry", from_registry},
 
-            {"inspector_init", Neko::luainspector::luainspector_init},
-            {"inspector_draw", Neko::luainspector::luainspector_draw},
-            {"inspector_get", Neko::luainspector::luainspector_get},
-
             {NULL, NULL}};
 
     luaL_newlib(L, reg);
@@ -2840,6 +2836,9 @@ void open_neko_api(lua_State *L) {
 
     open_db(L);
     lua_setfield(L, -2, "db");
+
+    open_imgui(L);
+    lua_setfield(L, -2, "imgui");
 
     lua_pop(L, 1);
 

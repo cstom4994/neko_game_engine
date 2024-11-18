@@ -11,8 +11,8 @@
 
 void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color256 outline_col) {
 
-    ImGuiViewport *viewport = ImGui::GetMainViewport();
-    ImDrawList *draw_list = ImGui::GetBackgroundDrawList(viewport);
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImDrawList* draw_list = ImGui::GetBackgroundDrawList(viewport);
 
     if (outline) {
 
@@ -33,17 +33,28 @@ void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color25
     draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
 }
 
-void imgui_init(GLFWwindow *window) {
+void imgui_init(GLFWwindow* window) {
     PROFILE_FUNC();
 
     ImGui::SetAllocatorFunctions(
-            +[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
+            +[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;    // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;  // Enable Multi-Viewport / Platform Windows
 
     ImGui::StyleColorsDark();
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
@@ -65,6 +76,10 @@ void imgui_init(GLFWwindow *window) {
         io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     }
 #endif
+
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+
+    gApp->devui_vp = ImGui::GetMainViewport()->ID;
 }
 
 void imgui_fini() {
@@ -82,56 +97,24 @@ void imgui_draw_pre() {
 
 void imgui_draw_post() {
     ImGui::Render();
-    // int displayX, displayY;
-    // glfwGetFramebufferSize(window, &displayX, &displayY);
-    // glViewport(0, 0, displayX, displayY);
-    // glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-    // glClear(GL_COLOR_BUFFER_BIT);
+
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
 }
 
-#if 0
+#if 1
 
-
-namespace Neko::imgui::util {
-
-struct TableInteger {
-    const char* name;
-    lua_Integer value;
-};
-
-using GenerateAny = void (*)(lua_State* L);
-struct TableAny {
-    const char* name;
-    GenerateAny value;
-};
-
-struct strbuf {
-    char* data;
-    size_t size;
-};
-
-struct input_context {
-    lua_State* L;
-    int callback;
-};
-
-lua_Integer field_tointeger(lua_State* L, int idx, lua_Integer i);
-lua_Number field_tonumber(lua_State* L, int idx, lua_Integer i);
-bool field_toboolean(lua_State* L, int idx, lua_Integer i);
-ImTextureID get_texture_id(lua_State* L, int idx);
-const char* format(lua_State* L, int idx);
-strbuf* strbuf_create(lua_State* L, int idx);
-strbuf* strbuf_get(lua_State* L, int idx);
-int input_callback(ImGuiInputTextCallbackData* data);
-void create_table(lua_State* L, std::span<TableInteger> l);
-void set_table(lua_State* L, std::span<TableAny> l);
-void struct_gen(lua_State* L, const char* name, std::span<luaL_Reg> funcs, std::span<luaL_Reg> setters, std::span<luaL_Reg> getters);
-void flags_gen(lua_State* L, const char* name);
-void init(lua_State* L);
-
-}  // namespace Neko::imgui::util
-
+namespace Neko::imgui::wrap_ImGuiInputTextCallbackData {
+void pointer(lua_State* L, ImGuiInputTextCallbackData& v);
+}
 
 namespace Neko::imgui::util {
 
@@ -271,8 +254,8 @@ int input_callback(ImGuiInputTextCallbackData* data) {
     auto ctx = (input_context*)data->UserData;
     lua_State* L = ctx->L;
     lua_pushvalue(L, ctx->callback);
-    // wrap_ImGuiInputTextCallbackData::pointer(L, *data);
-    if (luax_pcall(L, 1, 1) != LUA_OK) {
+    wrap_ImGuiInputTextCallbackData::pointer(L, *data);
+    if (lua_pcall(L, 1, 1, 1) != LUA_OK) {
         return 1;
     }
     lua_Integer retval = lua_tointeger(L, -1);

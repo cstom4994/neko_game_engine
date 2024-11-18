@@ -70,13 +70,13 @@ struct luainspector_hints {
     static std::string common_prefix(const std::vector<std::string>& possible);
 };
 
-class luainspector;
+class EditorInspector;
 
 struct command_line_input_callback_UserData {
     std::string* Str;
     ImGuiInputTextCallback ChainCallback;
     void* ChainCallbackUserData;
-    Neko::luainspector* luainspector_ptr;
+    Neko::EditorInspector* luainspector_ptr;
 };
 
 struct inspect_table_config {
@@ -86,7 +86,7 @@ struct inspect_table_config {
 
 enum luainspector_logtype { LUACON_LOG_TYPE_WARNING = 1, LUACON_LOG_TYPE_ERROR = 2, LUACON_LOG_TYPE_NOTE = 4, LUACON_LOG_TYPE_SUCCESS = 0, LUACON_LOG_TYPE_MESSAGE = 3 };
 
-class luainspector {
+class EditorInspector {
 private:
     std::vector<std::pair<std::string, luainspector_logtype>> messageLog;
 
@@ -120,11 +120,11 @@ public:
 
     static bool visible;
 
-    static luainspector* get_from_registry(lua_State* L);
+    static EditorInspector* get_from_registry(lua_State* L);
     static void inspect_table(lua_State* L, inspect_table_config& cfg);
+    static void print(const std::string& msg, luainspector_logtype type);
     static int luainspector_init(lua_State* L);
     static int luainspector_draw(lua_State* L);
-    static int luainspector_get(lua_State* L);
     static int command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept;
 
     void setL(lua_State* L);
@@ -220,10 +220,6 @@ public:
 }  // namespace Neko
 
 NEKO_SCRIPT(inspector,
-
-            // NEKO_EXPORT void console_set_entity(NativeEntity ent);
-
-            // NEKO_EXPORT NativeEntity console_get_entity();  // 如果没有设置则entity_nil
 
             NEKO_EXPORT void inspector_set_visible(bool visible);
 
