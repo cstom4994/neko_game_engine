@@ -38,6 +38,6 @@ function ns.rotator.update_all()
     ng.entity_table_remove_destroyed(ns.rotator.tbl, ns.rotator.remove)
 
     for ent, rotator in pairs(ns.rotator.tbl) do
-        ns.transform.rotate(ent, rotator.speed * ng.get_timing_instance().dt)
+        ns.transform.rotate(ent, rotator.speed * neko.dt())
     end
 end

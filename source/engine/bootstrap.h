@@ -37,33 +37,32 @@ using namespace Neko::ecs;
 
 extern CBase gBase;
 
-NEKO_SCRIPT(
-        timing,
+typedef struct AppTime {
+    u64 startup;
+    u64 last;
+    u64 accumulator;
+    u64 target_ticks;
+    f64 delta;
 
-        typedef struct AppTime {
-            u64 startup;
-            u64 last;
-            u64 accumulator;
-            u64 target_ticks;
-            f64 delta;
+    f32 dt;
+    f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
+} AppTime;
 
-            f32 dt;
-            f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
-        } AppTime;
+NEKO_SCRIPT(timing,
 
-        NEKO_EXPORT AppTime * get_timing_instance();
+            NEKO_EXPORT void timing_set_scale(f32 s);
 
-        NEKO_EXPORT void timing_set_scale(f32 s);
+            NEKO_EXPORT f32 timing_get_scale();
 
-        NEKO_EXPORT f32 timing_get_scale();
+            NEKO_EXPORT f32 timing_get_elapsed();
 
-        NEKO_EXPORT f32 timing_get_elapsed();
+            NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
 
-        NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
-
-        NEKO_EXPORT bool timing_get_paused();
+            NEKO_EXPORT bool timing_get_paused();
 
 )
+
+AppTime get_timing_instance();
 
 struct lua_State;
 struct App {

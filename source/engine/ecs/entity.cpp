@@ -318,20 +318,20 @@ static void load_all_lua_scripts(lua_State* L) {
 }
 
 static void _key_down(KeyCode key, int scancode, int mode) {
-    gui_key_down(key);
+    //gui_key_down(key);
     script_key_down(key);
 }
 static void _key_up(KeyCode key, int scancode, int mode) {
-    gui_key_up(key);
+    //gui_key_up(key);
     script_key_up(key);
 }
-static void _char_down(unsigned int c) { gui_char_down(c); }
+static void _char_down(unsigned int c) { /*gui_char_down(c);*/ }
 static void _mouse_down(MouseCode mouse) {
-    gui_mouse_down(mouse);
+    //gui_mouse_down(mouse);
     script_mouse_down(mouse);
 }
 static void _mouse_up(MouseCode mouse) {
-    gui_mouse_up(mouse);
+    //gui_mouse_up(mouse);
     script_mouse_up(mouse);
 }
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
@@ -401,7 +401,6 @@ void system_init() {
     tiled_init();
     font_init();
     imgui_init(gApp->game_window);
-    gui_init();
     console_init();
     sound_init();
     physics_init();
@@ -457,7 +456,7 @@ void system_init() {
     input_add_scroll_callback(_scroll);
 
     if (gApp->cfg.target_fps != 0) {
-        get_timing_instance()->target_ticks = 1000000000 / gApp->cfg.target_fps;
+        gApp->timing_instance.target_ticks = 1000000000 / gApp->cfg.target_fps;
     }
 
 #ifdef NEKO_IS_WIN32
@@ -478,7 +477,6 @@ void system_fini() {
     tiled_fini();
     sprite_fini();
     batch_fini(gApp->batch);
-    gui_fini();
     camera_fini();
     transform_fini();
     entity_fini();
@@ -524,7 +522,6 @@ static void _saveload_all(void* s, bool save) {
     saveload(camera);
     saveload(sprite);
     saveload(physics);
-    saveload(gui);
     saveload(edit);
     saveload(sound);
 

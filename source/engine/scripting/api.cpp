@@ -484,7 +484,7 @@ static int neko_platform(lua_State *L) {
 }
 
 static int neko_dt(lua_State *L) {
-    lua_pushnumber(L, get_timing_instance()->dt);
+    lua_pushnumber(L, get_timing_instance().dt);
     return 1;
 }
 
@@ -524,7 +524,7 @@ static int neko_difftime(lua_State *L) {
 }
 
 static int neko_elapsed(lua_State *L) {
-    lua_pushnumber(L, stm_sec(stm_now() - get_timing_instance()->startup));
+    lua_pushnumber(L, stm_sec(stm_now() - get_timing_instance().startup));
     return 1;
 }
 
@@ -2128,8 +2128,7 @@ static int open_enum(lua_State *L) {
         return 1;                                                                                            \
     }
 
-#define NEKO_LUA_INSPECT_REG(NAME) \
-    { "inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator }
+#define NEKO_LUA_INSPECT_REG(NAME) {"inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator}
 
 // NEKO_LUA_INSPECT_ITER(textures)
 // NEKO_LUA_INSPECT_ITER(vertex_buffers)
@@ -2481,6 +2480,45 @@ LUA_FUNCTION(ltype) {
     return 1;
 }
 
+static int l_bbox_bound(lua_State *L) {
+    vec2 *v1 = (vec2 *)lua_touserdata(L, 1);
+    vec2 *v2 = (vec2 *)lua_touserdata(L, 2);
+    BBox v = bbox_bound(*v1, *v2);
+    LuaPush<BBox>(L, v);
+    return 1;
+}
+
+static int l_bbox_merge(lua_State *L) {
+    auto v1 = LuaGet<BBox>(L, 1);
+    auto v2 = LuaGet<BBox>(L, 2);
+    BBox v = bbox_merge(*v1, *v2);
+    LuaPush<BBox>(L, v);
+    return 1;
+}
+
+static int l_bbox_contains(lua_State *L) {
+    auto v1 = LuaGet<BBox>(L, 1);
+    auto v2 = (vec2 *)lua_touserdata(L, 2);
+    bool v = bbox_contains(*v1, *v2);
+    lua_pushboolean(L, v);
+    return 1;
+}
+
+static int l_bbox_transform(lua_State *L) {
+    auto v1 = (mat3 *)lua_touserdata(L, 1);
+    auto v2 = LuaGet<BBox>(L, 2);
+    BBox v = bbox_transform(*v1, *v2);
+    LuaPush<BBox>(L, v);
+    return 1;
+}
+
+static int l_edit_bboxes_get_nth_bbox(lua_State *L) {
+    int i = lua_tointeger(L, 1);
+    BBox v = edit_bboxes_get_nth_bbox(i);
+    LuaPush<BBox>(L, v);
+    return 1;
+}
+
 static void typeclosure(lua_State *L) {
     static const char *typenames[] = {
             "nil",       // 0
@@ -2738,6 +2776,12 @@ static int open_neko(lua_State *L) {
             {"mouse_delta", neko_mouse_delta},
             {"show_mouse", neko_show_mouse},
             {"scroll_wheel", neko_scroll_wheel},
+
+            {"bbox_bound", l_bbox_bound},
+            {"bbox_merge", l_bbox_merge},
+            {"bbox_contains", l_bbox_contains},
+            {"bbox_transform", l_bbox_transform},
+            {"edit_bboxes_get_nth_bbox", l_edit_bboxes_get_nth_bbox},
 
             // draw
             // {"scissor_rect", neko_scissor_rect},

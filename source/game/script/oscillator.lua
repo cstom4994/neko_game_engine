@@ -35,6 +35,6 @@ function ns.oscillator.update_all()
         local pos = ns.transform.get_position(ent)
         pos.x = osc.initx + osc.amp * math.sin(2 * math.pi * (osc.phase + osc.freq * osc.t))
         ns.transform.set_position(ent, pos)
-        osc.t = osc.t + ng.get_timing_instance().dt
+        osc.t = osc.t + neko.dt()
     end
 end

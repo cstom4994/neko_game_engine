@@ -354,27 +354,21 @@ typedef struct neko_resource_t {
     u32 file_name_hash;
 } neko_resource_t;
 
-NEKO_SCRIPT(
-        bbox,
+typedef struct BBox {
+    vec2 min;
+    vec2 max;
+} BBox;
 
-        typedef struct BBox BBox;
-        struct BBox {
-            vec2 min;
-            vec2 max;
-        };
+BBox bbox(vec2 min, vec2 max);
 
-        NEKO_EXPORT BBox bbox(vec2 min, vec2 max);
+BBox bbox_bound(vec2 a, vec2 b);
 
-        NEKO_EXPORT BBox bbox_bound(vec2 a, vec2 b);
+BBox bbox_merge(BBox a, BBox b);
 
-        NEKO_EXPORT BBox bbox_merge(BBox a, BBox b);
+bool bbox_contains(BBox b, vec2 p);
 
-        NEKO_EXPORT bool bbox_contains(BBox b, vec2 p);
-
-        // 返回 bbox 围绕改造后的盒子
-        NEKO_EXPORT BBox bbox_transform(mat3 m, BBox b);
-
-)
+// 返回 bbox 围绕改造后的盒子
+BBox bbox_transform(mat3 m, BBox b);
 
 #endif
 

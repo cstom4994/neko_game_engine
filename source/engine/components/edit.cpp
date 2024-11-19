@@ -42,29 +42,17 @@ BBox edit_bboxes_get(NativeEntity ent) {
     return elem->bbox;
 }
 
-unsigned int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
+int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
 
-NativeEntity edit_bboxes_get_nth_ent(unsigned int n) {
-    BBoxPoolElem* elem;
-    // struct EntityBBoxPair bbpair {};
-
+NativeEntity edit_bboxes_get_nth_ent(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
-
-    // bbpair.ent = elem->pool_elem.ent;
-    // bbpair.bbox = elem->bbox;
+    BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
     return elem->pool_elem.ent;
 }
 
-BBox edit_bboxes_get_nth_bbox(unsigned int n) {
-    BBoxPoolElem* elem;
-    // struct EntityBBoxPair bbpair {};
-
+BBox edit_bboxes_get_nth_bbox(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
-
-    // bbpair.ent = elem->pool_elem.ent;
-    // bbpair.bbox = elem->bbox;
+    BBoxPoolElem* elem = entitypool_nth(BBoxPoolElem::pool, n);
     return elem->bbox;
 }
 
@@ -240,15 +228,15 @@ static GLuint line_vbo;
 typedef struct LinePoint LinePoint;
 struct LinePoint {
     vec2 position;
-    Scalar point_size;
+    Float32 point_size;
     Color color;
 };
 
 static Array<LinePoint> line_points;  // 每个连续的对都是一条线
 
-void edit_line_add_xy(vec2 p, Scalar point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
+void edit_line_add_xy(vec2 p, Float32 point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
 
-void edit_line_add(vec2 a, vec2 b, Scalar point_size, Color color) {
+void edit_line_add(vec2 a, vec2 b, Float32 point_size, Color color) {
     edit_line_add_xy(a, point_size, color);
     edit_line_add_xy(b, point_size, color);
 }

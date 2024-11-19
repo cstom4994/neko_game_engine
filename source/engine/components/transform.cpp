@@ -182,18 +182,18 @@ void transform_translate(NativeEntity ent, vec2 trans) {
     _modified(transform);
 }
 
-void transform_set_rotation(NativeEntity ent, Scalar rot) {
+void transform_set_rotation(NativeEntity ent, Float32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation = rot;
     _modified(transform);
 }
-Scalar transform_get_rotation(NativeEntity ent) {
+Float32 transform_get_rotation(NativeEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->rotation;
 }
-void transform_rotate(NativeEntity ent, Scalar rot) {
+void transform_rotate(NativeEntity ent, Float32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation += rot;
@@ -217,7 +217,7 @@ vec2 transform_get_world_position(NativeEntity ent) {
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
 }
-Scalar transform_get_world_rotation(NativeEntity ent) {
+Float32 transform_get_world_rotation(NativeEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);

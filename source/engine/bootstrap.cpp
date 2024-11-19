@@ -233,18 +233,10 @@ int _game_draw(App *app, event_t evt) {
 
     auto &game = Neko::the<Game>();
 
-    static bool first = true;
-
     lua_State *L = ENGINE_LUA();
 
-    // 不绘制第一帧 等待完整更新
-    if (first) {
-        first = false;
-        return 0;
-    }
-
     luax_neko_get(L, "__timer_update");
-    lua_pushnumber(L, get_timing_instance()->delta);
+    lua_pushnumber(L, get_timing_instance().delta);
     luax_pcall(L, 1, 0);
 
     if (!gBase.error_mode.load()) {
@@ -257,8 +249,6 @@ int _game_draw(App *app, event_t evt) {
         glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        imgui_draw_pre();
-
         if (ImGui::BeginMainMenuBar()) {
             ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
 
@@ -267,8 +257,8 @@ int _game_draw(App *app, event_t evt) {
             // }
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), get_timing_instance()->true_dt * 1000.f,
-                        1.f / get_timing_instance()->true_dt);
+            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), get_timing_instance().true_dt * 1000.f,
+                        1.f / get_timing_instance().true_dt);
 
             ImGui::EndMainMenuBar();
         }
@@ -299,7 +289,6 @@ int _game_draw(App *app, event_t evt) {
             batch_draw_all(gApp->batch);
             edit_draw_all();
             physics_draw_all();
-            gui_draw_all();
 
             // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -368,8 +357,6 @@ int _game_draw(App *app, event_t evt) {
 
         Neko::EditorInspector::luainspector_draw(ENGINE_LUA());
 
-        imgui_draw_post();
-
     } else {
 
         glEnable(GL_BLEND);
@@ -417,6 +404,8 @@ int _game_draw(App *app, event_t evt) {
     NEKO_INVOKE_ONCE(renderer_push_light(renderer, light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
 
     renderer_flush(renderer);
+
+    imgui_draw_post();
 
     neko_check_gl_error();
 
@@ -490,6 +479,8 @@ static void _game_fini() {
     glDeleteFramebuffers(1, &fbo);
     glDeleteTextures(1, &fbo_tex);
     glDeleteRenderbuffers(1, &rbo);
+
+    free_renderer(renderer);
 
     bool dump_allocs_detailed = gApp->cfg.dump_allocs_detailed;
 
@@ -641,8 +632,8 @@ void Game::init() {
     srand(time(NULL));
 
     // time set
-    get_timing_instance()->startup = stm_now();
-    get_timing_instance()->last = stm_now();
+    gApp->timing_instance.startup = stm_now();
+    gApp->timing_instance.last = stm_now();
 
     // init systems
     console_puts("welcome to neko!");
@@ -673,13 +664,13 @@ void Game::init() {
             {event_mask::preupdate, (EventCallback)edit_clear},                         //
             {event_mask::preupdate, (EventCallback)timing_update},                      //
             {event_mask::preupdate, (EventCallback)script_pre_update_all},              //
+            {event_mask::preupdate, (EventCallback)gui_pre_update_all},                 //
 
             {event_mask::update, (EventCallback)script_update_all},
             {event_mask::update, (EventCallback)physics_update_all},
             {event_mask::update, (EventCallback)transform_update_all},
 
             {event_mask::update, (EventCallback)camera_update_all},
-            {event_mask::update, (EventCallback)gui_update_all},
             {event_mask::update, (EventCallback)sprite_update_all},
             {event_mask::update, (EventCallback)batch_update_all},
             {event_mask::update, (EventCallback)sound_update_all},
@@ -690,7 +681,6 @@ void Game::init() {
             {event_mask::postupdate, (EventCallback)physics_post_update_all},
             {event_mask::postupdate, (EventCallback)sound_postupdate},
             {event_mask::postupdate, (EventCallback)entity_update_all},
-            {event_mask::postupdate, (EventCallback)gui_event_clear},
 
             {event_mask::draw, (EventCallback)_game_draw},
     };
@@ -904,7 +894,7 @@ void test_native_script() {
     sprite_set_texsize(player, luavec2(32.0f, 32.0f));
 }
 
-AppTime *get_timing_instance() { return &gApp->timing_instance; }
+AppTime get_timing_instance() { return gApp->timing_instance; }
 
 f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 
@@ -924,12 +914,12 @@ int timing_update(App *app, event_t evt) {
     if (last_time < 0) last_time = glfwGetTime();
 
     curr_time = glfwGetTime();
-    get_timing_instance()->true_dt = curr_time - last_time;
-    get_timing_instance()->dt = gApp->paused ? 0.0f : gApp->scale * get_timing_instance()->true_dt;
+    gApp->timing_instance.true_dt = curr_time - last_time;
+    gApp->timing_instance.dt = gApp->paused ? 0.0f : gApp->scale * get_timing_instance().true_dt;
     last_time = curr_time;
 
     {
-        AppTime *time = get_timing_instance();
+        AppTime *time = &gApp->timing_instance;
 
 #if 0
         if (time->target_ticks > 0) {

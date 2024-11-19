@@ -60,10 +60,10 @@ void package_preload_embed(lua_State *L) {
 
     luaL_Reg preloads[] = {
 #if defined(NEKO_CFFI)
-        {"ffi", luaopen_cffi},
-        {"bit", luaopen_bit},
+            {"ffi", luaopen_cffi},
+            {"bit", luaopen_bit},
 #endif
-        {"http", luaopen_http},
+            {"http", luaopen_http},
     };
 
     for (int i = 0; i < NEKO_ARR_SIZE(preloads); i++) {
@@ -164,15 +164,18 @@ int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
 
 void createStructTables(lua_State *L) {
 
+    // LuaStruct<vec2_t>(L, "vec2_t");
     LuaStruct<vec4>(L, "vec4");
-    //LuaStruct<AssetTexture>(L, "AssetTexture");
+    // LuaStruct<AssetTexture>(L, "AssetTexture");
     LuaStruct<Color>(L, "Color");
     LuaStruct<NativeEntity>(L, "NativeEntity");
+    // LuaStruct<mat3_t>(L, "mat3_t");
+    LuaStruct<BBox>(L, "BBox");
 }
 
-static const char **nekogame_ffi[] = {&nekogame_ffi_scalar, &nekogame_ffi_saveload, &nekogame_ffi_vec2,  &nekogame_ffi_mat3,   &nekogame_ffi_bbox,    &nekogame_ffi_color,  &nekogame_ffi_fs,
-                                      &nekogame_ffi_game,   &nekogame_ffi_system,   &nekogame_ffi_input, &nekogame_ffi_entity, &nekogame_ffi_prefab,  &nekogame_ffi_timing, &nekogame_ffi_transform,
-                                      &nekogame_ffi_camera, &nekogame_ffi_sprite,   &nekogame_ffi_tiled, &nekogame_ffi_gui,    &nekogame_ffi_console, &nekogame_ffi_edit,   &nekogame_ffi_inspector};
+static const char **nekogame_ffi[] = {&nekogame_ffi_scalar, &nekogame_ffi_saveload, &nekogame_ffi_vec2,   &nekogame_ffi_mat3,    &nekogame_ffi_color,  &nekogame_ffi_fs,        &nekogame_ffi_game,
+                                      &nekogame_ffi_system, &nekogame_ffi_input,    &nekogame_ffi_entity, &nekogame_ffi_prefab,  &nekogame_ffi_timing, &nekogame_ffi_transform, &nekogame_ffi_camera,
+                                      &nekogame_ffi_sprite, &nekogame_ffi_tiled,    &nekogame_ffi_gui,    &nekogame_ffi_console, &nekogame_ffi_edit,   &nekogame_ffi_inspector};
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 

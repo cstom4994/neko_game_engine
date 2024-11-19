@@ -622,7 +622,7 @@ static int mt_b2_world_gc(lua_State *L) {
 
 static int mt_b2_world_step(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
-    lua_Number dt = luaL_optnumber(L, 2, get_timing_instance()->dt);
+    lua_Number dt = luaL_optnumber(L, 2, get_timing_instance().dt);
     lua_Integer vel_iters = luaL_optinteger(L, 3, 6);
     lua_Integer pos_iters = luaL_optinteger(L, 4, 2);
 

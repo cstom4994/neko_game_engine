@@ -413,14 +413,14 @@ void draw_gui() {
                 ui_layout_row(gApp->ui, 1, ui_widths(-1), 0);
 
                 static f32 delta, fps = NEKO_DEFAULT_VAL();
-                delta = get_timing_instance()->true_dt;
+                delta = get_timing_instance().true_dt;
                 fps = 1.f / delta;
 
                 Color256 col = NEKO_COLOR_GREEN;
                 // ui_textf_colored(g_app->ui, &col, "Neko %d", neko_buildnum());
 
                 ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(ENGINE_LUA(), LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024),
-                          get_timing_instance()->true_dt * 1000.f, 1.f / get_timing_instance()->true_dt);
+                          get_timing_instance().true_dt * 1000.f, 1.f / get_timing_instance().true_dt);
 
                 ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
 

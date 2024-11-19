@@ -47,12 +47,12 @@ NativeEntity camera_get_current_camera() {
     return curr_camera;
 }
 
-void camera_set_viewport_height(NativeEntity ent, Scalar height) {
+void camera_set_viewport_height(NativeEntity ent, Float32 height) {
     Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
-Scalar camera_get_viewport_height(NativeEntity ent) {
+Float32 camera_get_viewport_height(NativeEntity ent) {
     Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     return camera->viewport_height;
@@ -89,7 +89,7 @@ void camera_fini() { entitypool_free(Camera::pool); }
 
 int camera_update_all(App *app, event_t evt) {
     vec2 win_size;
-    Scalar aspect;
+    Float32 aspect;
     Camera *camera;
     NativeEntity cam;
     vec2 scale;

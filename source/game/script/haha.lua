@@ -40,6 +40,10 @@ function haha()
     -- })
     ns.rotator.add(block, 1 * math.pi)
 
+    ns.edit_inspector.add(block, "transform")
+
+    print("blockblockblock", block.id)
+
     local game_tick = 0
 
     draw_fixtures = true
@@ -192,7 +196,7 @@ function haha()
 
     end
     ns.gamelogic.update_all = function()
-        local dt = ng.get_timing_instance().dt
+        local dt = neko.dt()
 
         LocalGame.b2:step(dt)
         LocalGame.world:update(dt)
@@ -201,7 +205,7 @@ function haha()
     end
 
     ns.gamelogic.draw_all = function()
-        local dt = ng.get_timing_instance().dt
+        local dt = neko.dt()
 
         LocalGame.world:draw()
 

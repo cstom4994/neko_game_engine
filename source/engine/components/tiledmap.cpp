@@ -719,7 +719,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         for (auto iit = object_group_node->MakeChildIter("object"); iit.Next();) {
             XMLNode *object_node = iit.current;
 
-            object_t object{.defs_luatb = {nullptr}};
+            object_t object{.defs_luatb = {ENGINE_LUA()}};
             object.id = object_node->Attribute<double>("id");
             object.x = object_node->Attribute<double>("x");
             object.y = object_node->Attribute<double>("y");

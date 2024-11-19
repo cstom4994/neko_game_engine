@@ -185,29 +185,29 @@ function ffi_reflect()
     -- * Whether the sib field is meaningful.
     -- * Zero or more applicable boolean flags.
     local CTs = {
-        [0] = { "int", "", "size", false, { 0x08000000, "bool" }, { 0x04000000, "float", "subwhat" }, { 0x02000000, "const" },
-            { 0x01000000, "volatile" }, { 0x00800000, "unsigned" }, { 0x00400000, "long" } },
-        { "struct", "", "size", true, { 0x02000000, "const" }, { 0x01000000, "volatile" }, { 0x00800000, "union", "subwhat" },
-            { 0x00100000, "vla" } },
-        { "ptr", "element_type", "size", false, { 0x02000000, "const" }, { 0x01000000, "volatile" },
-            { 0x00800000, "ref",  "subwhat" } },
-        { "array", "element_type", "size", false, { 0x08000000, "vector" }, { 0x04000000, "complex" }, { 0x02000000, "const" },
-            { 0x01000000, "volatile" }, { 0x00100000, "vla" } },
-        { "void", "",            "size",  false, { 0x02000000, "const" },  { 0x01000000, "volatile" } },
-        { "enum", "type",        "size",  true },
-        { "func", "return_type", "nargs", true,  { 0x00800000, "vararg" }, { 0x00400000, "sse_reg_params" } },
-        { "typedef", -- Not seen
-            "element_type", "", false },
-        { "attrib",  -- Only seen internally
-            "type", "value", true },
-        { "field",    "type", "offset", true },
-        { "bitfield", "", "offset", true, { 0x08000000, "bool" }, { 0x02000000, "const" }, { 0x01000000, "volatile" },
-            { 0x00800000, "unsigned" } },
-        { "constant", "type", "value",  true, { 0x02000000, "const" } },
-        { "extern", -- Not seen
-            "CID", "", true },
-        { "kw",     -- Not seen
-            "TOK", "size" }
+        [0] = {"int", "", "size", false, {0x08000000, "bool"}, {0x04000000, "float", "subwhat"}, {0x02000000, "const"},
+               {0x01000000, "volatile"}, {0x00800000, "unsigned"}, {0x00400000, "long"}},
+        {"struct", "", "size", true, {0x02000000, "const"}, {0x01000000, "volatile"}, {0x00800000, "union", "subwhat"},
+         {0x00100000, "vla"}},
+        {"ptr", "element_type", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"},
+         {0x00800000, "ref", "subwhat"}},
+        {"array", "element_type", "size", false, {0x08000000, "vector"}, {0x04000000, "complex"}, {0x02000000, "const"},
+         {0x01000000, "volatile"}, {0x00100000, "vla"}},
+        {"void", "", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"}},
+        {"enum", "type", "size", true},
+        {"func", "return_type", "nargs", true, {0x00800000, "vararg"}, {0x00400000, "sse_reg_params"}},
+        {"typedef", -- Not seen
+        "element_type", "", false},
+        {"attrib", -- Only seen internally
+        "type", "value", true},
+        {"field", "type", "offset", true},
+        {"bitfield", "", "offset", true, {0x08000000, "bool"}, {0x02000000, "const"}, {0x01000000, "volatile"},
+         {0x00800000, "unsigned"}},
+        {"constant", "type", "value", true, {0x02000000, "const"}},
+        {"extern", -- Not seen
+        "CID", "", true},
+        {"kw", -- Not seen
+        "TOK", "size"}
     }
 
     -- Set of CType::cid roles which are a CTypeID.
@@ -405,8 +405,8 @@ function ffi_reflect()
         return (miscmap or init_miscmap())[-tonumber(ffi.typeof(x))]
     end
 
-    local t_concat = default_require "table".concat
-    local new = default_require "ffi".new
+    local t_concat = default_require"table".concat
+    local new = default_require"ffi".new
     local cache = setmetatable({}, {
         __mode = "v"
     })
@@ -560,20 +560,20 @@ end
 -- return serialized string for cdata, func must be of form
 -- void (typeof(cdata) *, Serializer *)
 function ng.c_serialize(func, cdata)
-    --local s = ng.store_open()
-    --func(cdata, nil, s)
-    --local dump = ffi.string(ng.store_write_str(s))
-    --ng.store_close(s)
+    -- local s = ng.store_open()
+    -- func(cdata, nil, s)
+    -- local dump = ffi.string(ng.store_write_str(s))
+    -- ng.store_close(s)
     return dump
 end
 
 -- return struct deserialized from string 'str', func must be of form
 -- void (ctype *, Deserializer *)
 function ng.c_deserialize(ctype, func, str)
-    --local cdata = ctype {}
-    --local s = ng.store_open_str(str)
-    --func(cdata, nil, cdata, s)
-    --ng.store_close(s)
+    -- local cdata = ctype {}
+    -- local s = ng.store_open_str(str)
+    -- func(cdata, nil, cdata, s)
+    -- ng.store_close(s)
     return cdata
 end
 
@@ -596,7 +596,7 @@ end
 ng.NativeEntity = ffi.metatype('NativeEntity', {
     __eq = function(a, b)
         return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
-            ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
+                   ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
     end,
     __index = {
         __serialize = function(e)
@@ -655,13 +655,13 @@ ng.Mat3 = ffi.metatype('mat3', {
 
 --- BBox -----------------------------------------------------------------------
 
-ng.BBox = ffi.metatype('BBox', {
-    __index = {
-        __serialize = function(b)
-            return string.format('ng.bbox(ng.vec2(%f, %f), ng.vec2(%f, %f))', b.min.x, b.min.y, b.max.x, b.max.y)
-        end
-    }
-})
+-- ng.BBox = ffi.metatype('BBox', {
+--     __index = {
+--         __serialize = function(b)
+--             return string.format('ng.bbox(ng.vec2(%f, %f), ng.vec2(%f, %f))', b.min.x, b.min.y, b.max.x, b.max.y)
+--         end
+--     }
+-- })
 
 -- hot_require 'nekogame.entity_table'
 
@@ -977,11 +977,11 @@ function ng.setter(sys, prop)
 end
 
 function ng.get(sys, prop, ...)
-    return ng.getter(sys, prop)(unpack({ ... }))
+    return ng.getter(sys, prop)(unpack({...}))
 end
 
 function ng.set(sys, prop, ...)
-    ng.setter(sys, prop)(unpack({ ... }))
+    ng.setter(sys, prop)(unpack({...}))
 end
 
 function ng.adder(sys)
@@ -993,7 +993,7 @@ function ng.remover(sys)
 end
 
 function ng.remove(sys, ...)
-    ng.remover(sys)(unpack({ ... }))
+    ng.remover(sys)(unpack({...}))
 end
 
 -- multi-purpose system adder/setter, used as follows:
@@ -1132,7 +1132,7 @@ end
 ns.name = {}
 
 local entity_name = ng.entity_table() -- entity -> name map
-local name_entity = {}                -- name -> entity map
+local name_entity = {} -- name -> entity map
 
 function ns.name.add(ent)
 end
@@ -1206,7 +1206,7 @@ end
 -- hot_require 'nekogame.group'
 ns.group = {}
 
-local group_entities = {}               -- group name --> entity_table
+local group_entities = {} -- group name --> entity_table
 local entity_groups = ng.entity_table() -- entity --> set of group names
 
 -- iterate over a group collection, which can be a string of
@@ -1420,10 +1420,10 @@ function ng.input_mousecode_to_string(mouse)
 end
 
 -- hot_require 'nekogame.gui'
-local root = ns.gui.get_root()
-ns.group.set_groups(root, 'builtin')
+-- local root = ns.gui.get_root()
+-- ns.group.set_groups(root, 'builtin')
 
-ng.wrap_string('gui_text', 'str')
+-- ng.wrap_string('gui_text', 'str')
 
 --- event ----------------------------------------------------------------------
 
@@ -1466,416 +1466,6 @@ function ns.gui_event.update_all()
             if r ~= event_defaults[event] then
                 f(ent, r)
             end
-        end
-    end
-end
-
---- window ---------------------------------------------------------------------
-
-ns.gui_window = {
-    auto_saveload = true
-}
-
-ns.gui_window.tbl = ng.entity_table()
-
-function ns.gui_window.add(ent)
-    if ns.gui_window.tbl[ent] then
-        return
-    end
-    ns.gui_window.tbl[ent] = {}
-    local window = ns.gui_window.tbl[ent]
-
-    -- add ent to gui_rect as container
-    ng.add {
-        ent = ent,
-        gui_rect = {},
-        gui = {
-            color = ng.color_from_hex("#434343")
-        }
-    }
-
-    -- titlebar containing text, minimize button
-    window.titlebar = ng.add {
-        transform = {
-            parent = ent
-        },
-        gui_rect = {
-            hfill = true
-        },
-        gui = {
-            padding = ng.vec2_zero,
-            color = ng.color_from_hex("#3d85c6"),
-            valign = ng.GA_TABLE,
-            halign = ng.GA_MIN
-        }
-    }
-    window.title_buttons_area = ng.add {
-        transform = {
-            parent = window.titlebar
-        },
-        gui_rect = {},
-        gui = {
-            padding = ng.vec2_zero,
-            color = ng.color(0.0, 0.0, 0.0, 0.0),
-            valign = ng.GA_MAX,
-            halign = ng.GA_TABLE
-        }
-    }
-    window.close_text = ng.add {
-        transform = {
-            parent = window.title_buttons_area
-        },
-        gui = {
-            color = ng.color_white,
-            valign = ng.GA_MAX,
-            halign = ng.GA_TABLE
-        },
-        gui_text = {
-            str = 'x'
-        }
-    }
-    window.minmax_text = ng.add {
-        transform = {
-            parent = window.title_buttons_area
-        },
-        gui = {
-            color = ng.color_white,
-            valign = ng.GA_MAX,
-            halign = ng.GA_TABLE
-        },
-        gui_text = {
-            str = '-'
-        }
-    }
-    window.title_text_area = ng.add {
-        transform = {
-            parent = window.titlebar
-        },
-        gui_rect = {
-            hfill = true
-        },
-        gui = {
-            padding = ng.vec2_zero,
-            color = ng.color(0.0, 0.0, 0.0, 0.0),
-            valign = ng.GA_MAX,
-            halign = ng.GA_TABLE
-        }
-    }
-    window.title_text = ng.add {
-        transform = {
-            parent = window.title_text_area
-        },
-        gui = {
-            color = ng.color_white,
-            valign = ng.GA_MAX,
-            halign = ng.GA_MID
-        },
-        gui_text = {
-            str = 'new window'
-        }
-    }
-
-    -- body containing contents
-    window.body = ng.add {
-        transform = {
-            parent = ent
-        },
-        gui_rect = {},
-        gui = {
-            padding = ng.vec2_zero,
-            color = ng.color(0.0, 0.0, 0.0, 0.0),
-            valign = ng.GA_TABLE,
-            halign = ng.GA_MIN
-        }
-    }
-
-    window.statusbar = ng.add {
-        transform = {
-            parent = window.body
-        },
-        gui_rect = {
-            -- hfill = true
-        },
-        gui = {
-            padding = ng.vec2_zero,
-            color = ng.color_from_hex("#ff0000"),
-            valign = ng.GA_TABLE,
-            halign = ng.GA_MID
-        },
-        gui_text = {
-            str = 'statusbar'
-        }
-    }
-end
-
-function ns.gui_window.remove(ent)
-    local window = ns.gui_window.tbl[ent]
-    if window then
-        ns.transform.destroy_rec(ent)
-    end
-    ns.gui_window.tbl[ent] = nil
-end
-
-function ns.gui_window.has(ent)
-    return ns.gui_window.tbl[ent] ~= nil
-end
-
-ng.simple_props(ns.gui_window, {
-    minimized = false,
-    closeable = true,
-    highlight = false,
-    resizable = true
-})
-
-function ns.gui_window.set_title(ent, str)
-    local window = ns.gui_window.tbl[ent]
-    if window then
-        ns.gui_text.set_str(window.title_text, str)
-    end
-end
-
-function ns.gui_window.get_title(ent)
-    local window = ns.gui_window.tbl[ent]
-    if window then
-        return ns.gui_text.get_str(window.title_text)
-    end
-end
-
-function ns.gui_window.get_title_buttons_area(ent)
-    local window = ns.gui_window.tbl[ent]
-    if window then
-        return window.title_buttons_area
-    end
-end
-
-function ns.gui_window.get_body(ent)
-    local window = ns.gui_window.tbl[ent]
-    if window then
-        return window.body
-    end
-end
-
--- window that is being dragged
-local drag_window
-local mouse_prev = nil
-local mouse_curr
-
-function ns.gui_window.mouse_up(mouse)
-    if mouse == ng.MC_LEFT then
-        drag_window = nil
-    end
-end
-
-function ns.gui_window.update_all()
-    -- get mouse position
-    local mouse_curr = ns.input.get_mouse_pos_pixels()
-    if not mouse_prev then
-        mouse_prev = mouse_curr
-    end
-
-    -- close button clicked?
-    for ent, window in pairs(ns.gui_window.tbl) do
-        if ns.gui.event_mouse_down(window.close_text) == ng.MC_LEFT and window.closeable then
-            ns.entity.destroy(ent)
-        end
-        -- if ns.gui.event_mouse_down(window.statusbar) == ng.MC_LEFT then
-        --     print("resize " .. window)
-        -- end
-        if ns.gui.event_mouse_down(window.body) == ng.MC_LEFT then
-            print("body " .. ent.id)
-        end
-    end
-
-    -- clear destroyed
-    if drag_window and ns.entity.destroyed(drag_window) then
-        drag_window = nil
-    end
-    for ent in pairs(ns.gui_window.tbl) do
-        if ns.entity.destroyed(ent) then
-            ns.gui_window.remove(ent)
-        end
-    end
-
-    -- update all
-    for ent, window in pairs(ns.gui_window.tbl) do
-        -- new drag motion?
-        if ns.gui.event_mouse_down(window.titlebar) == ng.MC_LEFT and ns.gui.get_halign(ent) == ng.GA_NONE and
-            ns.gui.get_valign(ent) == ng.GA_NONE then
-            drag_window = ent
-        end
-
-        -- highlight?
-        if window.highlight then
-            ns.gui.set_color(window.title_text, ng.color(1, 1, 0.2, 1))
-        else
-            ns.gui.set_color(window.title_text, ng.color_white)
-        end
-
-        -- closeable?
-        ns.gui.set_visible(window.close_text, window.closeable)
-
-        -- update maximize/minimize
-        if ns.gui.event_mouse_down(window.minmax_text) == ng.MC_LEFT then
-            window.minimized = not window.minimized
-        end
-        ns.gui.set_visible(window.body, not window.minimized)
-        ns.gui_text.set_str(window.minmax_text, window.minimized and '+' or '-')
-    end
-
-    -- move dragged window
-    if drag_window then
-        ns.transform.translate(drag_window, mouse_curr - mouse_prev)
-    end
-
-    mouse_prev = mouse_curr
-end
-
---- textbox --------------------------------------------------------------------
-
-ns.gui_textbox = {
-    auto_saveload = true
-}
-
-ns.gui_textbox.tbl = ng.entity_table()
-
-function ns.gui_textbox.add(ent)
-    if ns.gui_textbox.tbl[ent] then
-        return
-    end
-    ns.gui_textbox.tbl[ent] = {}
-    local gui_textbox = ns.gui_textbox.tbl[ent]
-
-    -- add ent to gui_rect as container
-    ng.add {
-        ent = ent,
-        gui_rect = {}
-    }
-
-    -- add text child
-    gui_textbox.text = ng.add {
-        transform = {
-            parent = ent
-        },
-        gui = {
-            color = ng.color_white,
-            valign = ng.GA_MAX,
-            halign = ng.GA_MIN
-        },
-        gui_text = {}
-    }
-end
-
-function ns.gui_textbox.remove(ent)
-    local textbox = ns.gui_textbox.tbl[ent]
-    if textbox then
-        ns.transform.destroy_rec(ent)
-    end
-    ns.gui_textbox.tbl[ent] = nil
-end
-
-function ns.gui_textbox.has(ent)
-    return ns.gui_textbox.tbl[ent] ~= nil
-end
-
-ng.simple_props(ns.gui_textbox, {
-    click_focus = false
-})
-
-function ns.gui_textbox.get_text(ent)
-    local gui_textbox = ns.gui_textbox.tbl[ent]
-    if gui_textbox then
-        return gui_textbox.text
-    end
-end
-
-function ns.gui_textbox.update_all()
-    for ent in pairs(ns.gui_textbox.tbl) do
-        if ns.entity.destroyed(ent) then
-            ns.gui_textbox.remove(ent)
-        end
-    end
-
-    for ent, textbox in pairs(ns.gui_textbox.tbl) do
-        if textbox.click_focus and ns.gui.event_mouse_up(ent) == ng.MC_LEFT then
-            ns.gui.set_focus(textbox.text, true)
-        end
-    end
-end
-
---- gui_checkbox ---------------------------------------------------------------
-
-ns.gui_checkbox = {
-    auto_saveload = true
-}
-
-ns.gui_checkbox.tbl = ng.entity_table()
-
-function ns.gui_checkbox.add(ent)
-    if ns.gui_checkbox.tbl[ent] then
-        return
-    end
-
-    local checkbox = {}
-    ns.gui_checkbox.tbl[ent] = checkbox
-
-    checkbox.checked = false
-
-    ns.gui_textbox.add(ent)
-    checkbox.ent = ent
-    checkbox.text = ns.gui_textbox.get_text(ent)
-end
-
-function ns.gui_checkbox.remove(ent)
-    ns.gui_textbox.remove(ent)
-    ns.gui_checkbox.tbl[ent] = nil
-end
-
-function ns.gui_checkbox.has(ent)
-    return ns.gui_checkbox.tbl[ent] ~= nil
-end
-
-local function checkbox_toggle(checkbox)
-    checkbox.checked = not checkbox.checked
-    ns.gui.fire_event_changed(checkbox.ent)
-end
-function ns.gui_checkbox.toggle(ent)
-    local checkbox = ns.gui_checkbox.tbl[ent]
-    if checkbox then
-        checkbox_toggle(checkbox)
-    end
-end
-
-function ns.gui_checkbox.set_checked(ent, checked)
-    local checkbox = ns.gui_checkbox.tbl[ent]
-    -- do it this way to fire 'changed' event correctly
-    if checkbox.checked ~= checked then
-        checkbox_toggle(checkbox)
-    end
-end
-
-function ns.gui_checkbox.get_checked(ent, checked)
-    local checkbox = ns.gui_checkbox.tbl[ent]
-    if checkbox then
-        return checkbox.checked
-    end
-end
-
-function ns.gui_checkbox.update_all(ent)
-    for ent in pairs(ns.gui_checkbox.tbl) do
-        if ns.entity.destroyed(ent) then
-            ns.gui_checkbox.remove(ent)
-        end
-    end
-
-    for ent, checkbox in pairs(ns.gui_checkbox.tbl) do
-        if ns.gui.event_mouse_down(ent) == ng.MC_LEFT then
-            checkbox_toggle(checkbox)
-        end
-
-        if checkbox.checked then
-            ns.gui_text.set_str(checkbox.text, 'yes')
-        else
-            ns.gui_text.set_str(checkbox.text, 'no')
         end
     end
 end

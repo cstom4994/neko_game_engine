@@ -53,15 +53,15 @@ vec2 vec2_div(vec2 u, vec2 v) { return luavec2(u.x / v.x, u.y / v.y); }
 
 vec2 vec2_neg(vec2 v) { return luavec2(-v.x, -v.y); }
 
-Scalar vec2_len(vec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
+Float32 vec2_len(vec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
 vec2 vec2_normalize(vec2 v) {
     if (v.x == 0 && v.y == 0) return v;
     return vec2_scalar_div(v, vec2_len(v));
 }
-Scalar vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
-Scalar vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
+Float32 vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
+Float32 vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
 
-Scalar vec2_atan2(vec2 v) { return scalar_atan2(v.y, v.x); }
+Float32 vec2_atan2(vec2 v) { return scalar_atan2(v.y, v.x); }
 
 #endif
 
@@ -75,14 +75,14 @@ vec2 vec2_div(vec2 v0, vec2 v1) { return vec2_ctor(v0.x / v1.x, v0.y / v1.y); }
 
 vec2 vec2_zero = {0.0, 0.0};
 
-vec2 vec2_rot(vec2 v, Scalar rot) { return luavec2(v.x * scalar_cos(rot) - v.y * scalar_sin(rot), v.x * scalar_sin(rot) + v.y * scalar_cos(rot)); }
+vec2 vec2_rot(vec2 v, Float32 rot) { return luavec2(v.x * scalar_cos(rot) - v.y * scalar_sin(rot), v.x * scalar_sin(rot) + v.y * scalar_cos(rot)); }
 
-vec2 vec2_scalar_mul(vec2 v, Scalar f) { return luavec2(v.x * f, v.y * f); }
-vec2 vec2_scalar_div(vec2 v, Scalar f) { return luavec2(v.x / f, v.y / f); }
-vec2 scalar_vec2_div(Scalar f, vec2 v) { return luavec2(f / v.x, f / v.y); }
+vec2 vec2_scalar_mul(vec2 v, Float32 f) { return luavec2(v.x * f, v.y * f); }
+vec2 vec2_scalar_div(vec2 v, Float32 f) { return luavec2(v.x / f, v.y / f); }
+vec2 scalar_vec2_div(Float32 f, vec2 v) { return luavec2(f / v.x, f / v.y); }
 
 #undef luavec2
-vec2 luavec2(Scalar x, Scalar y) { return vec2{x, y}; }
+vec2 luavec2(Float32 x, Float32 y) { return vec2{x, y}; }
 
 void vec2_save(vec2 *v, const char *n, Store *s) {}
 bool vec2_load(vec2 *v, const char *n, vec2 d, Store *s) { return true; }
@@ -102,7 +102,7 @@ mat3 mat3_mul(mat3 m, mat3 n) {
 
 
 mat3 mat3_inverse(mat3 m) {
-    Scalar det;
+    Float32 det;
     mat3 inv;
 
     inv.m[0][0] = m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1];`
@@ -136,19 +136,19 @@ mat3 mat3_inverse(mat3 m) {
 
 vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0], m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1]); }
 
-mat3 mat3_scaling_rotation_translation(vec2 scale, Scalar rot, vec2 trans) {
+mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans) {
     return luamat3(scale.x * scalar_cos(rot), scale.x * scalar_sin(rot), 0.0f, scale.y * -scalar_sin(rot), scale.y * scalar_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
 }
 
 vec2 mat3_get_translation(mat3 m) { return luavec2(m.m[2][0], m.m[2][1]); }
-Scalar mat3_get_rotation(mat3 m) { return scalar_atan2(m.m[0][1], m.m[0][0]); }
+Float32 mat3_get_rotation(mat3 m) { return scalar_atan2(m.m[0][1], m.m[0][0]); }
 vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1]), scalar_sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1])); }
 
 void mat3_save(mat3 *m, const char *n, Store *s) {}
 bool mat3_load(mat3 *m, const char *n, mat3 d, Store *s) { return true; }
 
 #undef luamat3
-mat3 luamat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22) { return mat3{.m = {{m00, m01, m02}, {m10, m11, m12}, {m20, m21, m22}}}; }
+mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22) { return mat3{.m = {{m00, m01, m02}, {m10, m11, m12}, {m20, m21, m22}}}; }
 
 mat3 mat3_identity() { return mat3_diag(1.f); }
 

@@ -85,6 +85,6 @@ else
     ns.edit.set_enabled(true)
 end
 
-ns.edit.undo_save()
+-- ns.edit.undo_save()
 
 print("nekomain.lua loaded default")

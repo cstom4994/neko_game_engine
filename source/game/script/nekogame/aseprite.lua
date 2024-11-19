@@ -8,7 +8,7 @@ function ns.aseprite.update_all()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
-            local dt = ng.get_timing_instance().dt
+            local dt = neko.dt()
             ase_data:update(dt)
             ase_data:play "Idle"
         end
@@ -19,7 +19,7 @@ function ns.aseprite.draw_all()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
-            local dt = ng.get_timing_instance().dt
+            local dt = neko.dt()
 
             local pos = ns.transform.get_position(ent)
 
