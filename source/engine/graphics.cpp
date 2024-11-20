@@ -583,7 +583,7 @@ void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, 
 
     i32 width, height, component_count;
 
-    stbi_set_flip_vertically_on_load(true);
+    if (!(flags & NEKO_TEXTURE_NO_FLIP_VERTICAL)) stbi_set_flip_vertically_on_load(true);
 
     u8* pixels = stbi_load_from_memory((u8*)data, size, &width, &height, &component_count, 0);
 

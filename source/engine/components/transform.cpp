@@ -104,6 +104,7 @@ void transform_remove(NativeEntity ent) {
 }
 bool transform_has(NativeEntity ent) { return Transform::pool->Get(ent) != NULL; }
 
+// 根转换具有父级 = entity_nil
 void transform_set_parent(NativeEntity ent, NativeEntity parent) {
     Transform *t, *oldp, *newp;
 
@@ -149,6 +150,7 @@ NativeEntity *transform_get_children(NativeEntity ent) {
     error_assert(transform);
     return transform->children.len ? transform->children.begin() : NULL;
 }
+// 脱离父项和所有子项
 void transform_detach_all(NativeEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
@@ -228,15 +230,16 @@ vec2 transform_get_world_scale(NativeEntity ent) {
     return mat3_get_scale(transform->worldmat_cache);
 }
 
-mat3 transform_get_world_matrix(NativeEntity ent) {
+mat3 *transform_get_world_matrix(NativeEntity ent) {
     Transform *transform;
 
-    if (native_entity_eq(ent, entity_nil)) return mat3_identity();
+    if (native_entity_eq(ent, entity_nil)) return NULL;
 
     transform = Transform::pool->Get(ent);
     error_assert(transform);
-    return transform->worldmat_cache;
+    return &transform->worldmat_cache;
 }
+
 mat3 transform_get_matrix(NativeEntity ent) {
     Transform *transform;
 

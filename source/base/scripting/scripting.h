@@ -12,6 +12,8 @@ NEKO_API() void script_run_string(const char *s);
 NEKO_API() void script_run_file(const char *filename);
 NEKO_API() void script_error(const char *s);
 
+NEKO_API() void ng_push_cdata(const char *t, void *p);
+
 NEKO_API() void script_init();
 NEKO_API() void script_fini();
 NEKO_API() int script_pre_update_all(App *app, event_t evt);

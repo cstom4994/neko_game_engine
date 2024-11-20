@@ -32,36 +32,22 @@ NEKO_SCRIPT(
 
         struct NativeEntity { ecs_id_t id; };
 
-        NEKO_EXPORT NativeEntity entity_nil;  // 没有有效的实体具有此值
+        NEKO_EXPORT NativeEntity entity_nil;
 
-        NEKO_EXPORT NativeEntity entity_create();  // 声明未使用的实体 ID
-
-        NEKO_EXPORT void entity_destroy(NativeEntity ent);  // 释放实体 ID
-
-        NEKO_EXPORT void entity_destroy_all();
-
-        NEKO_EXPORT bool entity_destroyed(NativeEntity ent);
-
-        NEKO_EXPORT bool native_entity_eq(NativeEntity e, NativeEntity f);
-
-        //  如果为任何实体设置为 TRUE 则仅保存设置为 TRUE 的那些实体
-        //  如果设置为 False 则不会保存此项的实体
-
-        NEKO_EXPORT void entity_set_save_filter(NativeEntity ent, bool filter);
-
-        NEKO_EXPORT bool entity_get_save_filter(NativeEntity ent);
-
-        NEKO_EXPORT void entity_clear_save_filters();
-
-        // save/load 仅适用于 ID
         NEKO_EXPORT void entity_save(NativeEntity* ent, const char* name, Store* s);
 
         NEKO_EXPORT bool entity_load(NativeEntity* ent, const char* name, NativeEntity d, Store* s);
 
-        // 获取用于合并的已解析 ID 供内部使用
-        NEKO_EXPORT NativeEntity _entity_resolve_saved_id(ecs_id_t id);
-
 )
+
+NativeEntity entity_create();
+void entity_destroy(NativeEntity ent);
+void entity_destroy_all();
+bool entity_destroyed(NativeEntity ent);
+bool native_entity_eq(NativeEntity e, NativeEntity f);
+void entity_set_save_filter(NativeEntity ent, bool filter);
+bool entity_get_save_filter(NativeEntity ent);
+void entity_clear_save_filters();
 
 struct App;
 
@@ -294,10 +280,8 @@ void system_fini();
 
 NEKO_SCRIPT(prefab,
 
-            // 将所有过滤的实体保存为预制件 并将root作为根
             NEKO_EXPORT void prefab_save(const char* filename, NativeEntity root);
 
-            // 加载已保存的预制件 返回已保存的根实体
             NEKO_EXPORT NativeEntity prefab_load(const char* filename);
 
 )

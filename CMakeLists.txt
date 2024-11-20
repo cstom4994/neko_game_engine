@@ -145,7 +145,6 @@ file(GLOB LIB_SRC CONFIGURE_DEPENDS
     source/vendor/cffi/*.cc 
     source/vendor/cffi/*.hh
     source/vendor/luaalloc.c
-    source/vendor/bit.c
     source/vendor/http.c
     source/vendor/miniz.c
     source/vendor/ui.cpp

@@ -134,21 +134,22 @@ mat3 mat3_inverse(mat3 m) {
 
 #endif
 
-vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0], m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1]); }
+vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.v[0] * v.x + m.v[3] * v.y + m.v[6], m.v[1] * v.x + m.v[4] * v.y + m.v[7]); }
 
+// 按顺序应用 scale rot 和 trans 的矩阵
 mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans) {
     return luamat3(scale.x * scalar_cos(rot), scale.x * scalar_sin(rot), 0.0f, scale.y * -scalar_sin(rot), scale.y * scalar_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
 }
 
-vec2 mat3_get_translation(mat3 m) { return luavec2(m.m[2][0], m.m[2][1]); }
-Float32 mat3_get_rotation(mat3 m) { return scalar_atan2(m.m[0][1], m.m[0][0]); }
-vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1]), scalar_sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1])); }
+vec2 mat3_get_translation(mat3 m) { return luavec2(m.v[6], m.v[7]); }
+Float32 mat3_get_rotation(mat3 m) { return scalar_atan2(m.v[1], m.v[0]); }
+vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.v[0] * m.v[0] + m.v[1] * m.v[1]), scalar_sqrt(m.v[3] * m.v[3] + m.v[4] * m.v[4])); }
 
 void mat3_save(mat3 *m, const char *n, Store *s) {}
 bool mat3_load(mat3 *m, const char *n, mat3 d, Store *s) { return true; }
 
 #undef luamat3
-mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22) { return mat3{.m = {{m00, m01, m02}, {m10, m11, m12}, {m20, m21, m22}}}; }
+mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22) { return mat3{{m00, m01, m02, m10, m11, m12, m20, m21, m22}}; }
 
 mat3 mat3_identity() { return mat3_diag(1.f); }
 

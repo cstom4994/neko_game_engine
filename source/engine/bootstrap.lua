@@ -5,7 +5,8 @@ FFI = require("ffi")
 
 -- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用
 -- 例如C函数 vec2(...) 可用为 ng.vec2(...) 在 Lua 中
-local ffi = FFI
+ffi = FFI
+
 ng = setmetatable({}, {
     __index = ffi.C
 })
@@ -92,16 +93,16 @@ function common.memoize(fn)
             c[a] = c[a] or {}
             c = c[a]
         end
-        c[memoize_fnkey] = c[memoize_fnkey] or { fn(...) }
+        c[memoize_fnkey] = c[memoize_fnkey] or {fn(...)}
         return unpack(c[memoize_fnkey])
     end
 end
 
 function common.fn(fn, ...)
     assert(is_callable(fn), "expected a function as the first argument")
-    local args = { ... }
+    local args = {...}
     return function(...)
-        local a = common.concat(args, { ... })
+        local a = common.concat(args, {...})
         return fn(unpack(a))
     end
 end
@@ -569,7 +570,7 @@ local types = {
     }, object_mt)
 }
 
-for _, v in ipairs { 0, false, "" } do
+for _, v in ipairs {0, false, ""} do
     types[type(v)] = gen_type(v)
 end
 
@@ -723,7 +724,7 @@ common.va = function()
 
     setmetatable(va, {
         __call = function(_, ...) -- 将变长参数捕获为一个表
-            return { ... }
+            return {...}
         end
     })
 
@@ -812,7 +813,7 @@ common.prefabs = prefabs
 __print = print
 
 function table.show(t, name, indent)
-    local cart    -- 一个容器
+    local cart -- 一个容器
     local autoref -- 供自我参考
     local function isemptytable(t)
         return next(t) == nil
@@ -880,7 +881,7 @@ end
 
 print = function(...)
     local print_func = ng.api.core.print
-    local tb = { ... }
+    local tb = {...}
     local n = select("#", ...)
     if n == 1 and type(tb[1]) == "table" then
         print_func(table.show(tb))
@@ -915,10 +916,10 @@ end
 
 function neko.__start(arg)
     if arg[#arg] == "-mobdebug" then
-        unsafe_require "mobdebug".start()
+        unsafe_require"mobdebug".start()
     end
     if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
-        unsafe_require "lldebugger".start()
+        unsafe_require"lldebugger".start()
         print("LOCAL_LUA_DEBUGGER_VSCODE=1")
     end
 end
@@ -996,7 +997,7 @@ function starts_with(str, start)
 end
 
 function ends_with(str, ending)
-    return ending == "" or str:sub(- #ending) == ending
+    return ending == "" or str:sub(-#ending) == ending
 end
 
 function neko_sleep(n)
@@ -1470,7 +1471,7 @@ function ECS:query(t)
 end
 
 function ECS:select(columns)
-    return self:query {
+    return self:query{
         select = columns
     }
 end
@@ -1712,7 +1713,7 @@ function zip(lhs, rhs)
     local len = math.min(#lhs, #rhs)
     local t = {}
     for i = 1, len do
-        t[i] = { lhs[i], rhs[i] }
+        t[i] = {lhs[i], rhs[i]}
     end
     return t
 end

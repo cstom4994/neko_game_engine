@@ -316,6 +316,7 @@ typedef enum neko_texture_flags_t {
     NEKO_TEXTURE_ALIASED = 1 << 0,
     NEKO_TEXTURE_ANTIALIASED = 1 << 1,
     NEKO_TEXTURE_SUBTEX = 1 << 2,
+    NEKO_TEXTURE_NO_FLIP_VERTICAL = 1 << 3,
 } neko_texture_flags_t;
 
 typedef struct AssetTexture {

@@ -31,13 +31,14 @@ typedef enum SaveFilter {
     SF_UNSET,    // 未设置过滤器 -- 使用默认值
 } SaveFilter;
 
-NativeEntity entity_nil = {0};
+NativeEntity entity_nil = {0};  // 没有有效的实体具有此值
 static ecs_id_t counter = 1;
 
 // typedef struct ExistsPoolElem {
 //     EntityPoolElem pool_elem;
 // } ExistsPoolElem;
 
+// 声明未使用的实体 ID
 NativeEntity entity_create() {
     NativeEntity ent;
 
@@ -55,6 +56,7 @@ NativeEntity entity_create() {
 
 static void entity_remove(NativeEntity ent) { EcsEntityDel(ENGINE_LUA(), ent.id); }
 
+// 释放实体 ID
 void entity_destroy(NativeEntity ent) { entity_remove(ent); }
 
 void entity_destroy_all() {
@@ -67,6 +69,8 @@ bool entity_destroyed(NativeEntity ent) {
     return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id);
 }
 
+//  如果为任何实体设置为 TRUE 则仅保存设置为 TRUE 的那些实体
+//  如果设置为 False 则不会保存此项的实体
 void entity_set_save_filter(NativeEntity ent, bool filter) {
     // if (filter) {
     //     entitymap_set(save_filter_map, ent, SF_SAVE);
@@ -136,6 +140,7 @@ int entity_update_all(App* app, event_t evt) {
     return 0;
 }
 
+// save/load 仅适用于 ID
 void entity_save(NativeEntity* ent, const char* n, Store* s) {
     Store* t;
 
@@ -318,20 +323,20 @@ static void load_all_lua_scripts(lua_State* L) {
 }
 
 static void _key_down(KeyCode key, int scancode, int mode) {
-    //gui_key_down(key);
+    // gui_key_down(key);
     script_key_down(key);
 }
 static void _key_up(KeyCode key, int scancode, int mode) {
-    //gui_key_up(key);
+    // gui_key_up(key);
     script_key_up(key);
 }
 static void _char_down(unsigned int c) { /*gui_char_down(c);*/ }
 static void _mouse_down(MouseCode mouse) {
-    //gui_mouse_down(mouse);
+    // gui_mouse_down(mouse);
     script_mouse_down(mouse);
 }
 static void _mouse_up(MouseCode mouse) {
-    //gui_mouse_up(mouse);
+    // gui_mouse_up(mouse);
     script_mouse_up(mouse);
 }
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }

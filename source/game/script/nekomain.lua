@@ -14,7 +14,7 @@ end
 -- misc
 ns.app = {}
 function ns.app.key_down(key)
-    if ns.gui.has_focus() then
+    if neko.gui_has_focus() then
         return
     end
 

@@ -118,7 +118,7 @@ typedef struct tiled_renderer {
     GLuint vbo;
     GLuint ib;
 
-    AssetTexture batch_texture;            // 当前绘制所用贴图
+    AssetTexture batch_texture;             // 当前绘制所用贴图
     HashMap<tiled_quad_list_t> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
 
     u32 quad_count;
@@ -139,21 +139,12 @@ struct Tiled;
 
 int tiled_render(Tiled* tiled);
 
-NEKO_SCRIPT(tiled,
-
-            NEKO_EXPORT void tiled_add(NativeEntity ent);
-
-            NEKO_EXPORT void tiled_remove(NativeEntity ent);
-
-            NEKO_EXPORT bool tiled_has(NativeEntity ent);
-
-            NEKO_EXPORT void tiled_set_map(NativeEntity ent, const char* str);
-
-            NEKO_EXPORT const char* tiled_get_map(NativeEntity ent);
-
-            NEKO_EXPORT void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
-
-)
+void tiled_add(NativeEntity ent);
+void tiled_remove(NativeEntity ent);
+bool tiled_has(NativeEntity ent);
+void tiled_set_map(NativeEntity ent, const char* str);
+const char* tiled_get_map(NativeEntity ent);
+void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
 
 void tiled_init();
 void tiled_fini();

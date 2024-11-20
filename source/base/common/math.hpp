@@ -174,33 +174,27 @@ NEKO_SCRIPT(
 
 #define luavec2(x, y) (vec2{(float)(x), (float)(y)})
 
+/*
+ * 按列优先顺序存储
+ *
+ *     m = /                                 \
+ *         | m.m[0][0]  m.m[1][0]  m.m[2][0] |
+ *         | m.m[0][1]  m.m[1][1]  m.m[2][1] |
+ *         | m.m[0][2]  m.m[1][2]  m.m[2][2] |
+ *         \                                 /
+ */
 NEKO_SCRIPT(
         mat3,
 
-        /*
-         * 按列优先顺序存储
-         *
-         *     m = /                                 \
-         *         | m.m[0][0]  m.m[1][0]  m.m[2][0] |
-         *         | m.m[0][1]  m.m[1][1]  m.m[2][1] |
-         *         | m.m[0][2]  m.m[1][2]  m.m[2][2] |
-         *         \                                 /
-         */
         typedef struct mat3_t mat3;
-        struct mat3_t {
-            union {
-                Float32 v[9];
-                Float32 m[3][3];
-            };
-        };
+        struct mat3_t { Float32 v[9]; };
 
         NEKO_EXPORT mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22);
 
-        NEKO_EXPORT mat3 mat3_identity();  // 返回单位矩阵
+        NEKO_EXPORT mat3 mat3_identity();
 
         NEKO_EXPORT mat3 mat3_mul(mat3 m, mat3 n);
 
-        // 按顺序应用 scale rot 和 trans 的矩阵
         NEKO_EXPORT mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans);
 
         NEKO_EXPORT vec2 mat3_get_translation(mat3 m);
@@ -219,7 +213,7 @@ NEKO_SCRIPT(
 
 )
 
-#define luamat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (mat3{.m = {{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
+#define luamat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (mat3{{(m00), (m01), (m02), (m10), (m11), (m12), (m20), (m21), (m22)}})
 
 inline vec2 vec2_ctor(f32 _x, f32 _y) {
     vec2 v;

@@ -116,7 +116,7 @@ do
 
     files {"source/vendor/cffi/**.cc"}
 
-    files {"source/vendor/luaalloc.c", "source/vendor/bit.c", "source/vendor/http.c", "source/vendor/miniz.c",
+    files {"source/vendor/luaalloc.c", "source/vendor/http.c", "source/vendor/miniz.c",
            "source/vendor/glad/glad.c", "source/vendor/ui.cpp", "source/vendor/vtf/*.*"}
 
     files {"premake5.lua"}
@@ -145,45 +145,28 @@ do
     links {"fmod_vc","fmodstudio_vc", "ffi", "ws2_32", "wininet"}
 
     links {"base"}
+    links {"luaffi"}
 
     files {"premake5.lua"}
 
     -- warnings "off"
 end
 
-group "gs"
+project "luaffi"
 do
-    project "engine2"
-    do
-        kind "StaticLib"
-        language "C++"
-        targetdir "./bin"
-        debugdir "./bin"
+    kind "StaticLib"
+    language "C++"
+    targetdir "./bin"
+    debugdir "./bin"
 
-        defines {"NETWORKING", "DONT_USE_VAO"}
+    defines {"NETWORKING", "DONT_USE_VAO"}
 
-        includedirs {"source", "source/engine2"}
+    includedirs {"source", "source/vendor/luaffi/src"}
 
-        files {"source/game/**.cpp", "source/game/**.hpp", "source/game/**.h", "source/game/**.lua"}
+    files {"source/vendor/luaffi/src/**.c", "source/vendor/luaffi/src/**.hpp", "source/vendor/luaffi/src/**.h", "source/vendor/luaffi/src/**.lua"}
 
-        -- links {"glfw3", "ffi"}
+    files {"premake5.lua"}
 
-        links {"base"}
+    -- warnings "off"
 
-        links {"vmlib", "iwasm"}
-
-
-        links {"base"}
-
-        -- links {"SDL2"}
-
-        links {"ws2_32", "winmm", "user32"}
-
-        links {"opengl32"}
-
-        files {"premake5.lua"}
-
-        -- warnings "off"
-
-    end
 end

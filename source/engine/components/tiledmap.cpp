@@ -609,15 +609,14 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             return false;
         }
 
-        u8 *tex_data = NULL;
-        i32 w, h;
-        u32 cc;
-        load_texture_data_from_file(full_image_path, &w, &h, &cc, (void **)&tex_data, false);
+        size_t len = 0;
+        const_str tex_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, full_image_path, &len);
+        neko_assert(tex_data);
 
-        neko_init_texture_from_memory_uncompressed(&tileset.texture, tex_data, w, h, 4, NEKO_TEXTURE_ALIASED);
+        neko_init_texture_from_memory(&tileset.texture, (u8 *)tex_data, len, neko_texture_flags_t(NEKO_TEXTURE_ALIASED | NEKO_TEXTURE_NO_FLIP_VERTICAL));
 
-        tileset.width = w;
-        tileset.height = h;
+        tileset.width = tileset.texture.width;
+        tileset.height = tileset.texture.height;
 
         mem_free(tex_data);
 

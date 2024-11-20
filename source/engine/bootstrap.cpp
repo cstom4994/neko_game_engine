@@ -205,15 +205,21 @@ static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severi
 }
 
 void rescale_framebuffer(float width, float height) {
+    if (fbo_tex == 0 || rbo == 0) return;
+
     glBindTexture(GL_TEXTURE_2D, fbo_tex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
 
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
 // 窗口大小改变的回调函数
@@ -593,7 +599,7 @@ void Game::init() {
 #if defined(NDEBUG)
     console_log("neko %d", neko_buildnum());
 #else
-    console_log("neko %d (debug build) (%s, %s)", neko_buildnum(), LUA_VERSION, LUAJIT_VERSION);
+    console_log("neko %d (debug build) (Lua %s.%s.%s, %s)", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
 #endif
 
     // create glfw window
@@ -901,7 +907,7 @@ f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 void timing_set_scale(f32 s) { gApp->scale = s; }
 f32 timing_get_scale() { return gApp->scale; }
 
-void timing_set_paused(bool p) { gApp->paused = p; }
+void timing_set_paused(bool p) { gApp->paused = p; }  // 暂停将刻度设置为 0 并在恢复时恢复它
 bool timing_get_paused() { return gApp->paused; }
 
 int timing_update(App *app, event_t evt) {

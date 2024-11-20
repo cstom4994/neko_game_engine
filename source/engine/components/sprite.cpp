@@ -113,9 +113,9 @@ void sprite_init() {
     glBindVertexArray(sprite_vao);
     glGenBuffers(1, &sprite_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", Sprite, wmat.m[0]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", Sprite, wmat.m[1]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", Sprite, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", Sprite, wmat.v[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", Sprite, wmat.v[3]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", Sprite, wmat.v[6]);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", Sprite, size);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texcell", Sprite, texcell);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texsize", Sprite, texsize);
@@ -137,7 +137,7 @@ int sprite_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Sprite::pool, sprite_remove);
 
-    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
+    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = *transform_get_world_matrix(sprite->pool_elem.ent); });
 
     if (edit_get_enabled()) {
         Sprite::pool->ForEach([](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });

@@ -59,473 +59,8 @@ function ng.gc_setmetatable()
     return setmetatable
 end
 
-function ffi_reflect()
-    local ffi = default_require "ffi"
-    local bit = default_require "bit"
-    local reflect = {}
-
-    local CTState, init_CTState
-    local miscmap, init_miscmap
-
-    local function gc_str(gcref) -- Convert a GCref (to a GCstr) into a string
-        if gcref ~= 0 then
-            local ts = ffi.cast("uint32_t*", gcref)
-            return ffi.string(ts + 4, ts[3])
-        end
-    end
-
-    local typeinfo = rawget(ffi, "typeinfo")
-
-    typeinfo = typeinfo or function(id)
-        -- ffi.typeof is present in LuaJIT v2.1 since 8th Oct 2014 (d6ff3afc)
-        -- this is an emulation layer for older versions of LuaJIT
-        local ctype = (CTState or init_CTState()).tab[id]
-        return {
-            info = ctype.info,
-            size = bit.bnot(ctype.size) ~= 0 and ctype.size,
-            sib = ctype.sib ~= 0 and ctype.sib,
-            name = gc_str(ctype.name)
-        }
-    end
-
-    local function memptr(gcobj)
-        return tonumber(tostring(gcobj):match "%x*$", 16)
-    end
-
-    init_CTState = function()
-        -- Relevant minimal definitions from lj_ctype.h
-        ffi.cdef [[
-    typedef struct CType {
-      uint32_t info;
-      uint32_t size;
-      uint16_t sib;
-      uint16_t next;
-      uint32_t name;
-    } CType;
-
-    typedef struct CTState {
-      CType *tab;
-      uint32_t top;
-      uint32_t sizetab;
-      void *L;
-      void *g;
-      void *finalizer;
-      void *miscmap;
-    } CTState;
-  ]]
-
-        -- Acquire a pointer to this Lua universe's CTState
-        local co = coroutine.create(function(f, ...)
-            return f(...)
-        end)
-        local uintgc = ffi.abi "gc64" and "uint64_t" or "uint32_t"
-        local uintgc_ptr = ffi.typeof(uintgc .. "*")
-        local G = ffi.cast(uintgc_ptr, ffi.cast(uintgc_ptr, memptr(co))[2])
-        -- In global_State, `MRef ctype_state` precedes `GCRef gcroot[GCROOT_MAX]`.
-        -- We first find (an entry in) gcroot by looking for a metamethod name string.
-        local anchor = ffi.cast(uintgc, ffi.cast("const char*", "__index"))
-        local i = 0
-        while math.abs(tonumber(G[i] - anchor)) > 64 do
-            i = i + 1
-        end
-        -- Since Aug 2013, `GCRef cur_L` has preceded `MRef ctype_state`. Try to find it.
-        local ok, i2 = coroutine.resume(co, function(coptr)
-            for i2 = i - 3, i - 20, -1 do
-                if G[i2] == coptr then
-                    return i2
-                end
-            end
-        end, memptr(co))
-        if ok and i2 then
-            -- If we found it, work forwards looking for something resembling ctype_state.
-            for i = i2 + 2, i - 1 do
-                local Gi = G[i]
-                if Gi ~= 0 and bit.band(Gi, 3) == 0 then
-                    CTState = ffi.cast("CTState*", Gi)
-                    if ffi.cast(uintgc_ptr, CTState.g) == G then
-                        return CTState
-                    end
-                end
-            end
-        else
-            -- Otherwise, work backwards looking for something resembling ctype_state.
-            -- Note that since Jun 2020, this walks over the PRNGState, which is bad.
-            for i = i - 1, 0, -1 do
-                local Gi = G[i]
-                if Gi ~= 0 and bit.band(Gi, 3) == 0 then
-                    CTState = ffi.cast("CTState*", Gi)
-                    if ffi.cast(uintgc_ptr, CTState.g) == G then
-                        return CTState
-                    end
-                end
-            end
-        end
-    end
-
-    init_miscmap = function()
-        -- Acquire the CTState's miscmap table as a Lua variable
-        local t = {};
-        t[0] = t
-        local uptr = ffi.cast("uintptr_t", (CTState or init_CTState()).miscmap)
-        if ffi.abi "gc64" then
-            local tvalue = ffi.cast("uint64_t**", memptr(t))[2]
-            tvalue[0] = bit.bor(bit.lshift(bit.rshift(tvalue[0], 47), 47), uptr)
-        else
-            local tvalue = ffi.cast("uint32_t*", memptr(t))[2]
-            ffi.cast("uint32_t*", tvalue)[ffi.abi "le" and 0 or 1] = ffi.cast("uint32_t", uptr)
-        end
-        miscmap = t[0]
-        return miscmap
-    end
-
-    -- Information for unpacking a `struct CType`.
-    -- One table per CT_* constant, containing:
-    -- * A name for that CT_
-    -- * Roles of the cid and size fields.
-    -- * Whether the sib field is meaningful.
-    -- * Zero or more applicable boolean flags.
-    local CTs = {
-        [0] = {"int", "", "size", false, {0x08000000, "bool"}, {0x04000000, "float", "subwhat"}, {0x02000000, "const"},
-               {0x01000000, "volatile"}, {0x00800000, "unsigned"}, {0x00400000, "long"}},
-        {"struct", "", "size", true, {0x02000000, "const"}, {0x01000000, "volatile"}, {0x00800000, "union", "subwhat"},
-         {0x00100000, "vla"}},
-        {"ptr", "element_type", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"},
-         {0x00800000, "ref", "subwhat"}},
-        {"array", "element_type", "size", false, {0x08000000, "vector"}, {0x04000000, "complex"}, {0x02000000, "const"},
-         {0x01000000, "volatile"}, {0x00100000, "vla"}},
-        {"void", "", "size", false, {0x02000000, "const"}, {0x01000000, "volatile"}},
-        {"enum", "type", "size", true},
-        {"func", "return_type", "nargs", true, {0x00800000, "vararg"}, {0x00400000, "sse_reg_params"}},
-        {"typedef", -- Not seen
-        "element_type", "", false},
-        {"attrib", -- Only seen internally
-        "type", "value", true},
-        {"field", "type", "offset", true},
-        {"bitfield", "", "offset", true, {0x08000000, "bool"}, {0x02000000, "const"}, {0x01000000, "volatile"},
-         {0x00800000, "unsigned"}},
-        {"constant", "type", "value", true, {0x02000000, "const"}},
-        {"extern", -- Not seen
-        "CID", "", true},
-        {"kw", -- Not seen
-        "TOK", "size"}
-    }
-
-    -- Set of CType::cid roles which are a CTypeID.
-    local type_keys = {
-        element_type = true,
-        return_type = true,
-        value_type = true,
-        type = true
-    }
-
-    -- Create a metatable for each CT.
-    local metatables = {}
-    for _, CT in ipairs(CTs) do
-        local what = CT[1]
-        local mt = {
-            __index = {}
-        }
-        metatables[what] = mt
-    end
-
-    -- Logic for merging an attribute CType onto the annotated CType.
-    local CTAs = {
-        [0] = function(a, refct)
-            error("TODO: CTA_NONE")
-        end,
-        function(a, refct)
-            error("TODO: CTA_QUAL")
-        end,
-        function(a, refct)
-            a = 2 ^ a.value
-            refct.alignment = a
-            refct.attributes.align = a
-        end,
-        function(a, refct)
-            refct.transparent = true
-            refct.attributes.subtype = refct.typeid
-        end,
-        function(a, refct)
-            refct.sym_name = a.name
-        end,
-        function(a, refct)
-            error("TODO: CTA_BAD")
-        end
-    }
-
-    -- C function calling conventions (CTCC_* constants in lj_refct.h)
-    local CTCCs = {
-        [0] = "cdecl",
-        "thiscall",
-        "fastcall",
-        "stdcall"
-    }
-
-    local function refct_from_id(id) -- refct = refct_from_id(CTypeID)
-        local ctype = typeinfo(id)
-        local CT_code = bit.rshift(ctype.info, 28)
-        local CT = CTs[CT_code]
-        local what = CT[1]
-        local refct = setmetatable({
-            what = what,
-            typeid = id,
-            name = ctype.name
-        }, metatables[what])
-
-        -- Interpret (most of) the CType::info field
-        for i = 5, #CT do
-            if bit.band(ctype.info, CT[i][1]) ~= 0 then
-                if CT[i][3] == "subwhat" then
-                    refct.what = CT[i][2]
-                else
-                    refct[CT[i][2]] = true
-                end
-            end
-        end
-        if CT_code <= 5 then
-            refct.alignment = bit.lshift(1, bit.band(bit.rshift(ctype.info, 16), 15))
-        elseif what == "func" then
-            refct.convention = CTCCs[bit.band(bit.rshift(ctype.info, 16), 3)]
-        end
-
-        if CT[2] ~= "" then -- Interpret the CType::cid field
-            local k = CT[2]
-            local cid = bit.band(ctype.info, 0xffff)
-            if type_keys[k] then
-                if cid == 0 then
-                    cid = nil
-                else
-                    cid = refct_from_id(cid)
-                end
-            end
-            refct[k] = cid
-        end
-
-        if CT[3] ~= "" then -- Interpret the CType::size field
-            local k = CT[3]
-            refct[k] = ctype.size or (k == "size" and "none")
-        end
-
-        if what == "attrib" then
-            -- Merge leading attributes onto the type being decorated.
-            local CTA = CTAs[bit.band(bit.rshift(ctype.info, 16), 0xff)]
-            if refct.type then
-                local ct = refct.type
-                ct.attributes = {}
-                CTA(refct, ct)
-                ct.typeid = refct.typeid
-                refct = ct
-            else
-                refct.CTA = CTA
-            end
-        elseif what == "bitfield" then
-            -- Decode extra bitfield fields, and make it look like a normal field.
-            refct.offset = refct.offset + bit.band(ctype.info, 127) / 8
-            refct.size = bit.band(bit.rshift(ctype.info, 8), 127) / 8
-            refct.type = {
-                what = "int",
-                bool = refct.bool,
-                const = refct.const,
-                volatile = refct.volatile,
-                unsigned = refct.unsigned,
-                size = bit.band(bit.rshift(ctype.info, 16), 127)
-            }
-            refct.bool, refct.const, refct.volatile, refct.unsigned = nil
-        end
-
-        if CT[4] then -- Merge sibling attributes onto this type.
-            while ctype.sib do
-                local entry = typeinfo(ctype.sib)
-                if CTs[bit.rshift(entry.info, 28)][1] ~= "attrib" then
-                    break
-                end
-                if bit.band(entry.info, 0xffff) ~= 0 then
-                    break
-                end
-                local sib = refct_from_id(ctype.sib)
-                sib:CTA(refct)
-                ctype = entry
-            end
-        end
-
-        return refct
-    end
-
-    local function sib_iter(s, refct)
-        repeat
-            local ctype = typeinfo(refct.typeid)
-            if not ctype.sib then
-                return
-            end
-            refct = refct_from_id(ctype.sib)
-        until refct.what ~= "attrib" -- Pure attribs are skipped.
-        return refct
-    end
-
-    local function siblings(refct)
-        -- Follow to the end of the attrib chain, if any.
-        while refct.attributes do
-            refct = refct_from_id(refct.attributes.subtype or typeinfo(refct.typeid).sib)
-        end
-
-        return sib_iter, nil, refct
-    end
-
-    metatables.struct.__index.members = siblings
-    metatables.func.__index.arguments = siblings
-    metatables.enum.__index.values = siblings
-
-    local function find_sibling(refct, name)
-        local num = tonumber(name)
-        if num then
-            for sib in siblings(refct) do
-                if num == 1 then
-                    return sib
-                end
-                num = num - 1
-            end
-        else
-            for sib in siblings(refct) do
-                if sib.name == name then
-                    return sib
-                end
-            end
-        end
-    end
-
-    metatables.struct.__index.member = find_sibling
-    metatables.func.__index.argument = find_sibling
-    metatables.enum.__index.value = find_sibling
-
-    function reflect.typeof(x) -- refct = reflect.typeof(ct)
-        return refct_from_id(tonumber(ffi.typeof(x)))
-    end
-
-    function reflect.getmetatable(x) -- mt = reflect.getmetatable(ct)
-        return (miscmap or init_miscmap())[-tonumber(ffi.typeof(x))]
-    end
-
-    local t_concat = default_require"table".concat
-    local new = default_require"ffi".new
-    local cache = setmetatable({}, {
-        __mode = "v"
-    })
-
-    local inline_comment = "^%s*//[^\n]*\n()"
-    local multi_line_comment = "^%s*/%*.-*/%s*()"
-    local enumpat = "^(%s*([%w_][%a_]*)%s*(=?)%s*([x%x]*)%s*())"
-
-    local function enum(defs)
-        local cached = cache[defs]
-        if cached then
-            return cached
-        end
-
-        local N = 0
-        local pos = 1
-        local len = #defs
-        local res = {}
-        local coma = false
-
-        while true do
-            if pos == len + 1 then
-                break
-            end
-            if pos > len + 1 then
-                error("LARGER: " .. pos .. " " .. len)
-            end
-
-            local p = defs:match(inline_comment, pos) or defs:match(multi_line_comment, pos)
-
-            if not p then
-                if coma then
-                    p = defs:match("^%s*,%s*()", pos)
-                    if not p then
-                        error "malformed enum: coma expected"
-                    end
-                    coma = false
-                else
-                    local chunk, name, eq, value
-                    chunk, name, eq, value, p = defs:match(enumpat, pos)
-                    if not p then
-                        error("malformed enum definition")
-                    end
-
-                    if value ~= "" then
-                        assert(value:find "^%-?%d+$" or value:find "0x%x+",
-                            "badly formed number " .. value .. " in enum")
-                        N = tonumber(value)
-                    end
-
-                    local i = N
-                    N = N + 1
-
-                    if eq == "" and value == "" or eq == "=" and value ~= "" then
-                        res[#res + 1] = "  static const int " .. name .. " = " .. i .. ";"
-                    else
-                        error("badly formed enum: " .. chunk)
-                    end
-                    coma = true
-                end
-            end
-
-            pos = p
-        end
-
-        res = new("struct{ \n" .. t_concat(res, "\n") .. "\n}")
-        cache[defs] = res
-        return res
-    end
-
-    local definepat = "^(#define[ \t]+([%w_][%a_]*)[ \t]+([x%x]+)[ \t]*(\n?)())"
-
-    local function enum_define(defs)
-        local cached = cache[defs]
-        if cached then
-            return cached
-        end
-
-        local pos = defs:match("^%s*\n()") or 1
-        local len = #defs
-        local res = {}
-
-        while true do
-            if pos == len + 1 then
-                break
-            end
-            if pos > len + 1 then
-                error("LARGER: " .. pos .. " " .. len)
-            end
-
-            local chunk, name, value, lf, p = defs:match(definepat, pos)
-            p = p or defs:match(inline_comment, pos) or defs:match(multi_line_comment, pos)
-            if chunk then
-                if lf ~= "\n" and p ~= len + 1 then
-                    error("end of line expected after: " .. chunk)
-                end
-                assert(value:find "^%-?%d+$" or value:find "0x%x+", "badly formed number " .. value .. " in enum")
-
-                res[#res + 1] = "  static const int " .. name .. " = " .. value .. ";"
-            elseif not p then
-                p = defs:match("^[ \t]+()", pos)
-                assert(p, "malformed #define")
-            end
-            pos = p
-        end
-        res = new("struct{ \n" .. t_concat(res, "\n") .. "\n}")
-        cache[defs] = res
-        return res
-    end
-
-    reflect.enum = enum
-    reflect.enum_define = enum_define
-
-    return reflect
-end
-
 -- hot_require 'nekogame.struct'
 local ffi = FFI
-local refct = ffi_reflect()
 
 --- utilities ------------------------------------------------------------------
 
@@ -541,9 +76,11 @@ function ng.enum_values(typename)
         return enum_values_map[typename]
     end
     enum_values_map[typename] = {}
-    for v in refct.typeof(typename):values() do
-        enum_values_map[typename][v.name] = true
-    end
+
+    -- Lua贫瘠的反射
+    -- for v in refct.typeof(typename):values() do
+    --     enum_values_map[typename][v.name] = true
+    -- end
     return enum_values_map[typename]
 end
 
@@ -647,8 +184,8 @@ ng.mat3 = ng.luamat3
 ng.Mat3 = ffi.metatype('mat3', {
     __index = {
         __serialize = function(m)
-            return string.format('ng.mat3(%f, %f, %f, %f, %f, %f, %f, %f, %f)', m.m[0][0], m.m[0][1], m.m[0][2],
-                m.m[1][0], m.m[1][1], m.m[1][2], m.m[2][0], m.m[2][1], m.m[2][2])
+            return string.format('ng.mat3(%f, %f, %f, %f, %f, %f, %f, %f, %f)', m.v[0], m.v[1], m.v[2], m.v[3], m.v[4],
+                m.v[5], m.v[6], m.v[7], m.v[8])
         end
     }
 })
@@ -864,6 +401,16 @@ end
 local system_binds = {}
 local systems_mt = {
     __index = function(t, k)
+
+        local call_api = function(name)
+            -- if ng.api[name] ~= nil then
+            --     return ng.api[name]
+            -- else
+            --     return ng[name]
+            -- end
+            return ng[name]
+        end
+
         local v = rawget(t, k)
 
         if v ~= nil then
@@ -880,11 +427,11 @@ local systems_mt = {
             __index = function(_, k2)
                 local name = names[k2]
                 if name ~= nil then
-                    return ng[name]
+                    return call_api(name)
                 end
                 name = k .. '_' .. k2
                 names[k2] = name
-                return ng[name]
+                return call_api(name)
             end
         })
         system_binds[k] = v
@@ -968,12 +515,72 @@ end
 
 unpack = table.unpack
 
+--- hook ----------------------------------------------------------------------
+
+ng["tiled_add"] = function(ent)
+    return neko.tiled_add(ent.id)
+end
+ng["tiled_remove"] = function(ent)
+    return neko.tiled_remove(ent.id)
+end
+ng["tiled_has"] = function(ent)
+    return neko.tiled_has(ent.id)
+end
+ng["tiled_set_map"] = function(ent, val)
+    return neko.tiled_set_map(ent.id, val)
+end
+ng["tiled_get_map"] = function(ent)
+    return neko.tiled_get_map(ent.id)
+end
+ng["tiled_map_edit"] = function(ent, layer, x, y, t)
+    return neko.tiled_map_edit(ent.id, layer, x, y, t)
+end
+
+ng["entity_create"] = function()
+    return ng.NativeEntity(neko.entity_create())
+end
+ng["entity_destroy"] = function(ent)
+    return neko.entity_destroy(ent.id)
+end
+ng["entity_destroy_all"] = function()
+    return neko.entity_destroy_all()
+end
+ng["entity_destroyed"] = function(ent)
+    return neko.entity_destroyed(ent.id)
+end
+ng["native_entity_eq"] = function(a,b)
+    return neko.native_entity_eq(a.id,b.id)
+end
+ng["entity_set_save_filter"] = function(ent, filter)
+    return neko.entity_set_save_filter(ent.id, filter)
+end
+ng["entity_get_save_filter"] = function(ent)
+    return neko.entity_get_save_filter(ent.id)
+end
+ng["entity_clear_save_filters"] = function()
+    return neko.entity_clear_save_filters()
+end
+
+--- call ----------------------------------------------------------------------
+
+local _call_raw = function(sys, func_name)
+    return ns[sys][func_name]
+end
+
 function ng.getter(sys, prop)
-    return ns[sys]['get_' .. prop] -- 这里转发到 ffi.C
+    return _call_raw(sys, 'get_' .. prop) -- 这里转发到 ffi.C
 end
 
 function ng.setter(sys, prop)
-    return ns[sys]['set_' .. prop] -- 这里转发到 ffi.C
+    return _call_raw(sys, 'set_' .. prop) -- 这里转发到 ffi.C
+end
+
+function ng.adder(sys)
+    return _call_raw(sys, 'add') -- 这里转发到 ffi.C
+end
+
+function ng.remover(sys)
+    return _call_raw(sys, 'remove') -- 这里转发到 ffi.C
 end
 
 function ng.get(sys, prop, ...)
@@ -982,14 +589,6 @@ end
 
 function ng.set(sys, prop, ...)
     ng.setter(sys, prop)(unpack({...}))
-end
-
-function ng.adder(sys)
-    return ns[sys]['add'] -- 这里转发到 ffi.C
-end
-
-function ng.remover(sys)
-    return ns[sys]['remove'] -- 这里转发到 ffi.C
 end
 
 function ng.remove(sys, ...)

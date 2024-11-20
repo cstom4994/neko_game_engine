@@ -13,8 +13,8 @@ ns.edit = {
 
 --- expose C functions ---------------------------------------------------------
 
-ns.edit.set_enabled = ng.edit_set_enabled
-ns.edit.get_enabled = ng.edit_get_enabled
+ns.edit.set_enabled = neko.edit_set_enabled
+ns.edit.get_enabled = neko.edit_get_enabled
 
 ns.edit.set_editable = ng.edit_set_editable
 ns.edit.get_editable = ng.edit_get_editable
@@ -88,28 +88,28 @@ function ns.edit._mode_exec_bind(up, codestr)
 end
 
 function ns.edit.mode_key_down(key)
-    if ns.gui.captured_event() then
+    if neko.gui_captured_event() then
         return
     end
     ns.edit._mode_exec_bind(false, ns.input.keycode_to_string(key))
 end
 
 function ns.edit.mode_key_up(key)
-    if ns.gui.captured_event() then
+    if neko.gui_captured_event() then
         return
     end
     ns.edit._mode_exec_bind(true, ns.input.keycode_to_string(key))
 end
 
 function ns.edit.mode_mouse_down(mouse)
-    if ns.gui.captured_event() then
+    if neko.gui_captured_event() then
         return
     end
     ns.edit._mode_exec_bind(false, ns.input.mousecode_to_string(mouse))
 end
 
 function ns.edit.mode_mouse_up(mouse)
-    if ns.gui.captured_event() then
+    if neko.gui_captured_event() then
         return
     end
     ns.edit._mode_exec_bind(true, ns.input.mousecode_to_string(mouse))
@@ -306,7 +306,6 @@ end
 --- 单击选择 ---------------------------------------------------------------
 
 local function _get_entities_under_mouse()
-    -- local ents = {ng.NativeEntity(3)}
 
     local ents = {}
 
@@ -314,19 +313,15 @@ local function _get_entities_under_mouse()
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
         local bbox = neko.edit_bboxes_get_nth_bbox(i)
+        local wmat = neko.transform_get_world_matrix(ent.id)
+        if neko.bbox_contains2(bbox, wmat, mouse_pos) then
+            table.insert(ents, ng.NativeEntity(ent))
+        end
 
-        print("_get_entities_under_mouse",ent.id, bbox)
-
-        -- local bbox = ns.edit.bboxes_get(ent)
-
-        -- transform mouse_pos to local space
-        -- local t = ng.mat3_inverse(ns.transform.get_world_matrix(ent))
-        -- if neko.bbox_contains(bbox, ng.mat3_transform(t, mouse_pos)) then
-        --     table.insert(ents, ng.NativeEntity(ent))
-        -- end
+        print("_get_entities_under_mouse", ent.id, bbox)
     end
 
-    -- sort by distance to mouse
+    -- 按与鼠标的距离排序
     local distcomp = function(e1, e2)
         local p1 = ns.transform.get_world_position(e1)
         local p2 = ns.transform.get_world_position(e2)
@@ -1091,6 +1086,10 @@ field_types['NativeEntity'] = {
         --     ns.edit.select_clear()
         --     ns.edit.select[val] = true
         -- end
+    end,
+
+    update = function(field, val)
+        ImGui.Text("%llu", val.id)
     end
 }
 
@@ -1145,20 +1144,30 @@ local function custom_event(inspector, evt)
     end
 end
 
--- returns field type, C type
+--- 返回字段类型和C类型
+---@param inspector any
+---@param name any
 local function property_type(inspector, name)
     local r = ng.get(inspector.sys, name, inspector.ent)
 
+    -- TODO 这里需要等到全面改用NekoLuaWrapper及相应反射才能
+    --      通过userdata确定具体C类型
     local field_type = type(r)
+
+    -- print("property_type", name, field_type)
+
     local ctype = nil
-    if field_type == 'cdata' then
-        local refctt = refct.typeof(r)
-        ctype = refctt.name
-        if refctt.what == 'enum' then
-            field_type = 'enum'
-        else
-            field_type = ctype
-        end
+    if field_type == 'cdata' or field_type == 'userdata' then
+        -- local refctt = neko.refct.typeof(r)
+
+        -- print("ffi.typeof", ffi.typeof(r))
+
+        -- ctype = refctt.name
+        -- if refctt.what == 'enum' then
+        --     field_type = 'enum'
+        -- else
+        --     field_type = ctype
+        -- end
     end
     if field_type == 'number' then
         field_type = 'Float32'
@@ -1189,6 +1198,9 @@ local function add_property(inspector, name)
             label = name
         }
     }
+
+    print("add_property", name)
+
 end
 
 -- add all properties for an inspector, either through ns.meta.props or
@@ -1344,9 +1356,11 @@ local function update_inspector(inspector)
 
     -- update_group_editable_rec(inspector.window)
 
-    for _, prop in pairs(inspector.props) do
+    ImGui.Separator()
+
+    for k, prop in pairs(inspector.props) do
+        ImGui.Text("%s %s %s", k, inspector.sys, prop.name)
         ng.edit_field_update(prop.field, ng.get(inspector.sys, prop.name, inspector.ent))
-        ImGui.Text("%s %s", inspector.sys, prop.name)
     end
     custom_event(inspector, 'update')
 
@@ -1374,7 +1388,7 @@ local function post_update_inspector(inspector)
         ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
     end
 
-    for _, prop in pairs(inspector.props) do
+    for k, prop in pairs(inspector.props) do
         ng.edit_field_post_update(prop.field, ng.get(inspector.sys, prop.name, inspector.ent), function(val)
             ng.set(inspector.sys, prop.name, inspector.ent, val)
         end)

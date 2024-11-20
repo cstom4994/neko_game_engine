@@ -36,8 +36,7 @@ void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color25
 void imgui_init(GLFWwindow* window) {
     PROFILE_FUNC();
 
-    ImGui::SetAllocatorFunctions(
-            +[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
+    ImGui::SetAllocatorFunctions(+[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

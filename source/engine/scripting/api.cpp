@@ -2504,6 +2504,18 @@ static int l_bbox_contains(lua_State *L) {
     return 1;
 }
 
+static int l_bbox_contains2(lua_State *L) {
+    auto v1 = LuaGet<BBox>(L, 1);
+    mat3 *v2 = (mat3 *)lua_touserdata(L, 2);
+    vec2 *v3 = (vec2 *)lua_touserdata(L, 3);
+
+    vec2 pos = mat3_transform(mat3_inverse(*v2), *v3);
+
+    bool v = bbox_contains(*v1, pos);
+    lua_pushboolean(L, v);
+    return 1;
+}
+
 static int l_bbox_transform(lua_State *L) {
     auto v1 = (mat3 *)lua_touserdata(L, 1);
     auto v2 = LuaGet<BBox>(L, 2);
@@ -2516,6 +2528,47 @@ static int l_edit_bboxes_get_nth_bbox(lua_State *L) {
     int i = lua_tointeger(L, 1);
     BBox v = edit_bboxes_get_nth_bbox(i);
     LuaPush<BBox>(L, v);
+    return 1;
+}
+
+static int l_edit_line_add(lua_State *L) {
+    vec2 *a = (vec2 *)lua_touserdata(L, 1);
+    vec2 *b = (vec2 *)lua_touserdata(L, 2);
+    Float32 p = lua_tonumber(L, 3);
+    Color *col = (Color *)lua_touserdata(L, 4);
+    edit_line_add(*a, *b, p, *col);
+    return 0;
+}
+
+static int l_edit_set_enabled(lua_State *L) {
+    bool enable = lua_toboolean(L, 1);
+    edit_set_enabled(enable);
+    return 0;
+}
+
+static int l_edit_get_enabled(lua_State *L) {
+    bool enable = edit_get_enabled();
+    lua_pushboolean(L, enable);
+    return 1;
+}
+
+static int l_transform_get_world_matrix(lua_State *L) {
+    ecs_id_t i = (ecs_id_t)lua_tointeger(L, 1);
+    mat3 *v = transform_get_world_matrix({i});
+    // ng_push_cdata("mat3 *", v);
+    lua_pushlightuserdata(L, v);
+    return 1;
+}
+
+static int l_gui_has_focus(lua_State *L) {
+    bool has = gui_has_focus();
+    lua_pushboolean(L, has);
+    return 1;
+}
+
+static int l_gui_captured_event(lua_State *L) {
+    bool has = gui_captured_event();
+    lua_pushboolean(L, has);
     return 1;
 }
 
@@ -2780,8 +2833,111 @@ static int open_neko(lua_State *L) {
             {"bbox_bound", l_bbox_bound},
             {"bbox_merge", l_bbox_merge},
             {"bbox_contains", l_bbox_contains},
+            {"bbox_contains2", l_bbox_contains2},
             {"bbox_transform", l_bbox_transform},
             {"edit_bboxes_get_nth_bbox", l_edit_bboxes_get_nth_bbox},
+            {"edit_line_add", l_edit_line_add},
+            {"edit_set_enabled", l_edit_set_enabled},
+            {"edit_get_enabled", l_edit_get_enabled},
+            {"gui_has_focus", l_gui_has_focus},
+            {"gui_captured_event", l_gui_captured_event},
+            {"transform_get_world_matrix", l_transform_get_world_matrix},
+
+            {"tiled_add",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 tiled_add({id});
+                 return 0;
+             }},
+            {"tiled_remove",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 tiled_remove({id});
+                 return 0;
+             }},
+            {"tiled_has",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 bool has = tiled_has({id});
+                 lua_pushboolean(L, has);
+                 return 1;
+             }},
+            {"tiled_set_map",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 const_str name = lua_tostring(L, 2);
+                 tiled_set_map({id}, name);
+                 return 0;
+             }},
+            {"tiled_get_map",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 const_str name = tiled_get_map({id});
+                 lua_pushstring(L, name);
+                 return 1;
+             }},
+            {"tiled_map_edit",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 u32 layer = lua_tointeger(L, 2);
+                 u32 x = lua_tointeger(L, 3);
+                 u32 y = lua_tointeger(L, 4);
+                 u32 t = lua_tointeger(L, 5);
+                 tiled_map_edit({id}, layer, x, y, t);
+                 return 0;
+             }},
+
+            {"entity_create",
+             [](lua_State *L) -> int {
+                 NativeEntity ent = entity_create();
+                 lua_pushinteger(L, ent.id);
+                 return 1;
+             }},
+            {"entity_destroy",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 entity_destroy({id});
+                 return 0;
+             }},
+            {"entity_destroy_all",
+             [](lua_State *L) -> int {
+                 entity_destroy_all();
+                 return 0;
+             }},
+            {"entity_destroyed",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 bool v = entity_destroyed({id});
+                 lua_pushboolean(L, v);
+                 return 1;
+             }},
+            {"native_entity_eq",
+             [](lua_State *L) -> int {
+                 ecs_id_t a = lua_tointeger(L, 1);
+                 ecs_id_t b = lua_tointeger(L, 2);
+                 bool v = (a == b);
+                 lua_pushboolean(L, v);
+                 return 1;
+             }},
+            {"entity_set_save_filter",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 bool filter = lua_toboolean(L, 2);
+                 entity_set_save_filter({id}, filter);
+                 return 0;
+             }},
+            {"entity_get_save_filter",
+             [](lua_State *L) -> int {
+                 ecs_id_t id = lua_tointeger(L, 1);
+                 bool v = entity_get_save_filter({id});
+                 lua_pushboolean(L, v);
+                 return 1;
+             }},
+            {"entity_clear_save_filters",
+             [](lua_State *L) -> int {
+                 entity_clear_save_filters();
+                 return 0;
+             }},
 
             // draw
             // {"scissor_rect", neko_scissor_rect},

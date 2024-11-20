@@ -8,6 +8,7 @@ static bool enabled;
 void edit_set_enabled(bool e) { enabled = e; }
 bool edit_get_enabled() { return enabled; }
 
+// 无法选择不可编辑的实体
 void edit_set_editable(NativeEntity ent, bool editable) {
     if (editable)
         uneditable::pool->Remove(ent);
@@ -82,9 +83,9 @@ static void _bboxes_init() {
     glBindVertexArray(bboxes_vao);
     glGenBuffers(1, &bboxes_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", BBoxPoolElem, wmat.m[0]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", BBoxPoolElem, wmat.m[1]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", BBoxPoolElem, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", BBoxPoolElem, wmat.v[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", BBoxPoolElem, wmat.v[3]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", BBoxPoolElem, wmat.v[6]);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmin", BBoxPoolElem, bbox.min);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmax", BBoxPoolElem, bbox.max);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "selected", BBoxPoolElem, selected);
@@ -110,7 +111,7 @@ static void _bboxes_update_all() {
         if (!transform_has(ent)) continue;
 
         // update world matrix
-        elem->wmat = transform_get_world_matrix(ent);
+        elem->wmat = *transform_get_world_matrix(ent);
 
         // if no bbox, make default
         if (elem->bbox.max.x - elem->bbox.min.x <= SCALAR_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= SCALAR_EPSILON) elem->bbox = defaultbb;
@@ -141,6 +142,7 @@ static void _bboxes_draw_all() {
 
 static vec2 grid_size = {1.0, 1.0};
 
+// 每个维度上都是非负的 零意味着没有网格
 void edit_set_grid_size(vec2 size) {
     if (size.x < 0.0) size.x = 0.0;
     if (size.y < 0.0) size.y = 0.0;
@@ -161,7 +163,7 @@ static void _grid_create_cells() {
     if (native_entity_eq(camera, entity_nil))
         cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
-        cbox = bbox_transform(transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
+        cbox = bbox_transform(*transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
     csize = luavec2(cbox.max.x - cbox.min.x, cbox.max.y - cbox.min.y);
 
     // create grid cell bbox
@@ -236,6 +238,7 @@ static Array<LinePoint> line_points;  // 每个连续的对都是一条线
 
 void edit_line_add_xy(vec2 p, Float32 point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
 
+// 在两个世界空间坐标之间画一条线
 void edit_line_add(vec2 a, vec2 b, Float32 point_size, Color color) {
     edit_line_add_xy(a, point_size, color);
     edit_line_add_xy(b, point_size, color);

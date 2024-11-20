@@ -4,8 +4,7 @@
 
 namespace Neko::imgui {
 
-#define X(prefix, name) \
-    { #name, prefix##_##name }
+#define X(prefix, name) {#name, prefix##_##name}
 
 static util::TableInteger WindowFlags[] = {
         X(ImGuiWindowFlags, None),
