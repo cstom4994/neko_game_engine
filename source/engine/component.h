@@ -12,24 +12,6 @@
 
 NEKO_SCRIPT(transform,
 
-            NEKO_EXPORT void transform_add(NativeEntity ent);
-
-            NEKO_EXPORT void transform_remove(NativeEntity ent);
-
-            NEKO_EXPORT bool transform_has(NativeEntity ent);
-
-            NEKO_EXPORT void transform_set_parent(NativeEntity ent, NativeEntity parent);
-
-            NEKO_EXPORT NativeEntity transform_get_parent(NativeEntity ent);
-
-            NEKO_EXPORT ecs_id_t transform_get_num_children(NativeEntity ent);
-
-            NEKO_EXPORT NativeEntity * transform_get_children(NativeEntity ent);
-
-            NEKO_EXPORT void transform_detach_all(NativeEntity ent);
-            // destroy ent and all children
-            NEKO_EXPORT void transform_destroy_rec(NativeEntity ent);
-
             NEKO_EXPORT void transform_set_position(NativeEntity ent, vec2 pos);
 
             NEKO_EXPORT vec2 transform_get_position(NativeEntity ent);
@@ -65,6 +47,16 @@ NEKO_SCRIPT(transform,
             NEKO_EXPORT void transform_set_save_filter_rec(NativeEntity ent, bool filter);
 
 )
+
+void transform_add(NativeEntity ent);
+void transform_remove(NativeEntity ent);
+bool transform_has(NativeEntity ent);
+void transform_set_parent(NativeEntity ent, NativeEntity parent);
+NativeEntity transform_get_parent(NativeEntity ent);
+ecs_id_t transform_get_num_children(NativeEntity ent);
+NativeEntity* transform_get_children(NativeEntity ent);
+void transform_detach_all(NativeEntity ent);
+void transform_destroy_rec(NativeEntity ent);  // destroy ent and all children
 
 void transform_init();
 void transform_fini();
@@ -106,16 +98,13 @@ NEKO_SCRIPT(camera,
 
             NEKO_EXPORT mat3 camera_get_inverse_view_matrix();
 
-            // screen-space coordinates <-> world coordinates transformations
-            NEKO_EXPORT vec2 camera_world_to_pixels(vec2 p);
-
-            NEKO_EXPORT vec2 camera_world_to_unit(vec2 p);
-
-            NEKO_EXPORT vec2 camera_pixels_to_world(vec2 p);
-
-            NEKO_EXPORT vec2 camera_unit_to_world(vec2 p);
-
 )
+
+// screen-space coordinates <-> world coordinates transformations
+vec2 camera_world_to_pixels(vec2 p);
+vec2 camera_world_to_unit(vec2 p);
+vec2 camera_pixels_to_world(vec2 p);
+vec2 camera_unit_to_world(vec2 p);
 
 const mat3* camera_get_inverse_view_matrix_ptr();  // for quick GLSL binding
 

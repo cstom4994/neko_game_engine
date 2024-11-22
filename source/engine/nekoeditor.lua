@@ -589,7 +589,7 @@ end
 local last_save = nekogame_usr_path .. 'levels/'
 function ns.edit.command_save()
     local function save(f)
-        ns.console.printf("edit: saving group 'default' to file '" .. f .. "' ... ")
+        print("edit: saving group 'default' to file '" .. f .. "' ... ")
         ns.group.set_save_filter('default', true)
         -- local s = ng.store_open()
         -- ns.system.save_all(s)
@@ -610,7 +610,7 @@ function ns.edit.command_load()
     local function load(f)
         ns.group.destroy('default')
 
-        ns.console.printf("edit: loading from file '" .. f .. "' ... ")
+        print("edit: loading from file '" .. f .. "' ... ")
         local s = ng.store_open_file(f)
         ns.system.load_all(s)
         ng.store_close(s)

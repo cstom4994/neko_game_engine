@@ -36,10 +36,6 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT Color color_clear;  // zero alpha
 
-        NEKO_EXPORT void color_save(Color *c, const char *name, Store *s);
-
-        NEKO_EXPORT bool color_load(Color *c, const char *name, Color d, Store *s);
-
 )
 
 namespace Neko {

@@ -289,30 +289,6 @@ void console_puts(const char *s) {
     _print("\n");
 }
 
-void console_printf(const char *fmt, ...) {
-    va_list ap1, ap2;
-    unsigned int n;
-    char *s;
-
-    va_start(ap1, fmt);
-    va_copy(ap2, ap1);
-
-    // how much space do we need?
-    n = vsnprintf(NULL, 0, fmt, ap2);
-    va_end(ap2);
-
-    // allocate, sprintf, print
-    s = (char *)mem_alloc(n + 1);
-    vsprintf(s, fmt, ap1);
-    va_end(ap1);
-
-    _print(s);
-
-    // neko_console_printf(&g_console, s);
-
-    mem_free(s);
-}
-
 void console_init() {
     PROFILE_FUNC();
 

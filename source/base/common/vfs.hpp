@@ -40,54 +40,19 @@ bool vfs_list_all_files(String fsname, Array<String>* files);
 
 void* vfs_for_miniaudio();
 
-NEKO_SCRIPT(
-        fs,
+typedef struct vfs_file {
+    const_str data;
+    size_t len;
+    u64 offset;
+} vfs_file;
 
-        typedef struct vfs_file {
-            const_str data;
-            size_t len;
-            u64 offset;
-        } vfs_file;
-
-        NEKO_EXPORT size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
-
-        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
-
-        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
-
-        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
-
-        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-
-        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
-
-)
+size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
+int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
+u64 neko_capi_vfs_ftell(vfs_file* vf);
+vfs_file neko_capi_vfs_fopen(const_str path);
+int neko_capi_vfs_fclose(vfs_file* vf);
+int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
+const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
 
 }  // namespace Neko
-
-struct file_dateinfo_t {
-    file_dateinfo_t() : year(0), month(0), day(0), hour(0), minute(0), second(0) {}
-
-    Int32 year;
-    Int32 month;
-    Int32 day;
-    Int32 hour;
-    Int32 minute;
-    Int32 second;
-};
-
-struct file_interface_t {
-    const u8* (*pfnLoadFile)(const Char* pstrpath, Uint32* psize);
-    bool (*pfnWriteFile)(const u8* pdata, Uint32 size, const Char* pstrpath, bool append);
-    void (*pfnFreeFile)(const void* pfile);
-    bool (*pfnFileExists)(const Char* pstrpath);
-    bool (*pfnDeleteFile)(const Char* pstrpath);
-    bool (*pfnCreateDirectory)(const Char* pstrpath);
-    bool (*pfnGetFileDate)(const Char* pstrFile, file_dateinfo_t& dateinfo);
-    Int32 (*pfnCompareFileDates)(const file_dateinfo_t& d1, const file_dateinfo_t& d2);
-    const Char* (*pfnGetGameDirectory)(void);
-};

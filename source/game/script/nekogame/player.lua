@@ -84,7 +84,7 @@ function CPlayer:run(dt)
             return
         end
 
-        if ng.input_key_down(ng.KC_LEFT_SHIFT) then
+        if ng.input_key_down("KC_LEFT_SHIFT") then
             mag = 250
         end
 

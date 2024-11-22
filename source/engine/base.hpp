@@ -4,6 +4,7 @@
 
 #include "base/common/base.hpp"
 #include "base/common/string.hpp"
+#include "base/common/math.hpp"
 
 using namespace Neko;
 
@@ -293,12 +294,6 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-#include "base/common/math.hpp"
-
-NEKO_SCRIPT(saveload, typedef struct Store Store;
-
-)
-
 #define enum_save(val, n, s)    \
     do {                        \
         int e__;                \
@@ -312,12 +307,12 @@ NEKO_SCRIPT(saveload, typedef struct Store Store;
         *((int *)val) = e__;            \
     } while (0)
 
-typedef enum neko_texture_flags_t {
+enum neko_texture_flags_t : int {
     NEKO_TEXTURE_ALIASED = 1 << 0,
     NEKO_TEXTURE_ANTIALIASED = 1 << 1,
     NEKO_TEXTURE_SUBTEX = 1 << 2,
     NEKO_TEXTURE_NO_FLIP_VERTICAL = 1 << 3,
-} neko_texture_flags_t;
+};
 
 typedef struct AssetTexture {
     u32 id;  // 如果未初始化或纹理错误 则为 0

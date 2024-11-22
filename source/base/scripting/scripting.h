@@ -5,6 +5,7 @@
 #include "engine/event.h"
 #include "engine/input.h"
 #include "base/scripting/luax.h"
+#include "base/scripting/lua_wrapper.hpp"
 
 struct App;
 
@@ -36,15 +37,15 @@ void luax_run_nekogame(lua_State *L);
 NEKO_API() int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
 NEKO_API() void script_push_event(const char *event);
 
-#define errcheck(...)                                         \
-    do                                                        \
-        if (__VA_ARGS__) {                                    \
-            console_printf("lua: %s\n", lua_tostring(L, -1)); \
-            lua_pop(L, 1);                                    \
-            if (LockGuard<Mutex> lock{gBase.error_mtx}) {     \
-                gBase.error_mode.store(true);                 \
-            }                                                 \
-        }                                                     \
+#define errcheck(...)                                      \
+    do                                                     \
+        if (__VA_ARGS__) {                                 \
+            console_log("lua: %s\n", lua_tostring(L, -1)); \
+            lua_pop(L, 1);                                 \
+            if (LockGuard<Mutex> lock{gBase.error_mtx}) {  \
+                gBase.error_mode.store(true);              \
+            }                                              \
+        }                                                  \
     while (0)
 
 #endif
@@ -74,7 +75,8 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
             if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
                 auto ff = [&]<typename S>(const_str name, Neko::reflection::Any &var, S &t) {
                     if (value.GetType() == Neko::reflection::type_of<S>()) {
-                        S s = detail::LuaStack<std::remove_reference_t<S>>::Get(L, -1);
+                        S s{};
+                        detail::LuaStack::Get(L, -1, s);
                         value.cast<S>() = s;
                     }
                 };
@@ -90,5 +92,17 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
 }
 
 }  // namespace Neko::luabind
+
+namespace Neko::luabind::detail {
+
+template <typename T>
+auto Get(lua_State *L, int idx, T &x)
+    requires std::is_same_v<T, Neko::String>
+{
+    x = luax_check_string(L, idx);
+    return;
+}
+
+}  // namespace Neko::luabind::detail
 
 #endif

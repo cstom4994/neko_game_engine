@@ -548,8 +548,8 @@ end
 ng["entity_destroyed"] = function(ent)
     return neko.entity_destroyed(ent.id)
 end
-ng["native_entity_eq"] = function(a,b)
-    return neko.native_entity_eq(a.id,b.id)
+ng["native_entity_eq"] = function(a, b)
+    return neko.native_entity_eq(a.id, b.id)
 end
 ng["entity_set_save_filter"] = function(ent, filter)
     return neko.entity_set_save_filter(ent.id, filter)
@@ -561,6 +561,121 @@ ng["entity_clear_save_filters"] = function()
     return neko.entity_clear_save_filters()
 end
 
+ng["console_set_visible"] = function(val)
+    return neko.console_set_visible(val)
+end
+ng["console_get_visible"] = function()
+    return neko.console_get_visible()
+end
+ng["console_puts"] = function(str)
+    return neko.console_puts(str)
+end
+
+ng["timing_set_scale"] = function(v)
+    return neko.timing_set_scale(v)
+end
+ng["timing_get_scale"] = function()
+    return neko.timing_get_scale()
+end
+ng["timing_get_elapsed"] = function()
+    return neko.timing_get_elapsed()
+end
+ng["timing_set_paused"] = function(v)
+    return neko.timing_set_paused(v)
+end
+ng["timing_get_paused"] = function()
+    return neko.timing_get_paused()
+end
+
+ng["window_clipboard"] = function()
+    return neko.window_clipboard()
+end
+ng["window_prompt"] = function(msg, title)
+    return neko.window_prompt(msg, title)
+end
+ng["window_setclipboard"] = function(v)
+    return neko.window_setclipboard(v)
+end
+ng["window_focus"] = function()
+    return neko.window_focus()
+end
+ng["window_has_focus"] = function()
+    return neko.window_has_focus()
+end
+ng["window_scale"] = function()
+    return neko.window_scale()
+end
+
+ng["transform_add"] = function(v)
+    return neko.transform_add(v.id)
+end
+ng["transform_remove"] = function(v)
+    return neko.transform_remove(v.id)
+end
+ng["transform_has"] = function(v)
+    return neko.transform_has(v.id)
+end
+ng["transform_set_parent"] = function(a, b)
+    return neko.transform_set_parent(a.id, b.id)
+end
+ng["transform_get_parent"] = function(v)
+    return ng.NativeEntity(neko.transform_get_parent(v.id))
+end
+ng["transform_get_num_children"] = function(v)
+    return neko.transform_get_num_children(v.id)
+end
+ng["transform_get_children"] = function(v)
+    return ng.NativeEntity(neko.transform_get_children(v.id))
+end
+ng["transform_detach_all"] = function(v)
+    return neko.transform_detach_all(v.id)
+end
+ng["transform_destroy_rec"] = function(v)
+    return neko.transform_destroy_rec(v.id)
+end
+
+ng["input_key_down"] = function(v)
+    return neko.input_key_down(v)
+end
+ng["input_key_release"] = function(v)
+    return neko.input_key_release(v)
+end
+ng["input_get_mouse_pos_pixels_fix"] = function()
+    return neko.input_get_mouse_pos_pixels_fix()
+end
+ng["input_get_mouse_pos_pixels"] = function()
+    return neko.input_get_mouse_pos_pixels()
+end
+ng["input_get_mouse_pos_unit"] = function()
+    return neko.input_get_mouse_pos_unit()
+end
+ng["input_mouse_down"] = function(v)
+    return neko.input_mouse_down(v)
+end
+
+ng["camera_world_to_pixels"] = function(v)
+    return neko.camera_world_to_pixels(v)
+end
+ng["camera_world_to_unit"] = function(v)
+    return neko.camera_world_to_unit(v)
+end
+ng["camera_pixels_to_world"] = function(v)
+    return neko.camera_pixels_to_world(v)
+end
+ng["camera_unit_to_world"] = function(v)
+    return neko.camera_unit_to_world(v)
+end
+
+ng["inspector_set_visible"] = function(v)
+    return neko.inspector_set_visible(v)
+end
+ng["inspector_get_visible"] = function()
+    return neko.inspector_get_visible()
+end
+
+ng.MC_NONE = 32
+ng.KC_NONE = -1
+
 --- call ----------------------------------------------------------------------
 
 local _call_raw = function(sys, func_name)
@@ -568,19 +683,19 @@ local _call_raw = function(sys, func_name)
 end
 
 function ng.getter(sys, prop)
-    return _call_raw(sys, 'get_' .. prop) -- 这里转发到 ffi.C
+    return _call_raw(sys, 'get_' .. prop) -- 这里转发到 ffi.C.* / neko.*
 end
 
 function ng.setter(sys, prop)
-    return _call_raw(sys, 'set_' .. prop) -- 这里转发到 ffi.C
+    return _call_raw(sys, 'set_' .. prop) -- 这里转发到 ffi.C.* / neko.*
 end
 
 function ng.adder(sys)
-    return _call_raw(sys, 'add') -- 这里转发到 ffi.C
+    return _call_raw(sys, 'add') -- 这里转发到 ffi.C.* / neko.*
 end
 
 function ng.remover(sys)
-    return _call_raw(sys, 'remove') -- 这里转发到 ffi.C
+    return _call_raw(sys, 'remove') -- 这里转发到 ffi.C.* / neko.*
 end
 
 function ng.get(sys, prop, ...)
@@ -929,90 +1044,90 @@ end
 
 -- hot_require 'nekogame.input'
 local keycode_to_string_tbl = {
-    [ng.KC_ESCAPE] = '<escape>',
-    [ng.KC_ENTER] = '<enter>',
-    [ng.KC_TAB] = '<tab>',
-    [ng.KC_BACKSPACE] = '<backspace>',
-    [ng.KC_INSERT] = '<insert>',
-    [ng.KC_DELETE] = '<delete>',
-    [ng.KC_RIGHT] = '<right>',
-    [ng.KC_LEFT] = '<left>',
-    [ng.KC_DOWN] = '<down>',
-    [ng.KC_UP] = '<up>',
-    [ng.KC_PAGE_UP] = '<page_up>',
-    [ng.KC_PAGE_DOWN] = '<page_down>',
-    [ng.KC_HOME] = '<home>',
-    [ng.KC_END] = '<end>',
-    [ng.KC_CAPS_LOCK] = '<caps_lock>',
-    [ng.KC_SCROLL_LOCK] = '<scroll_lock>',
-    [ng.KC_NUM_LOCK] = '<num_lock>',
-    [ng.KC_PRINT_SCREEN] = '<print_screen>',
-    [ng.KC_PAUSE] = '<pause>',
-    [ng.KC_F1] = '<f1>',
-    [ng.KC_F2] = '<f2>',
-    [ng.KC_F3] = '<f3>',
-    [ng.KC_F4] = '<f4>',
-    [ng.KC_F5] = '<f5>',
-    [ng.KC_F6] = '<f6>',
-    [ng.KC_F7] = '<f7>',
-    [ng.KC_F8] = '<f8>',
-    [ng.KC_F9] = '<f9>',
-    [ng.KC_F10] = '<f10>',
-    [ng.KC_F11] = '<f11>',
-    [ng.KC_F12] = '<f12>',
-    [ng.KC_F13] = '<f13>',
-    [ng.KC_F14] = '<f14>',
-    [ng.KC_F15] = '<f15>',
-    [ng.KC_F16] = '<f16>',
-    [ng.KC_F17] = '<f17>',
-    [ng.KC_F18] = '<f18>',
-    [ng.KC_F19] = '<f19>',
-    [ng.KC_F20] = '<f20>',
-    [ng.KC_F21] = '<f21>',
-    [ng.KC_F22] = '<f22>',
-    [ng.KC_F23] = '<f23>',
-    [ng.KC_F24] = '<f24>',
-    [ng.KC_F25] = '<f25>',
-    [ng.KC_KP_0] = '<kp_0>',
-    [ng.KC_KP_1] = '<kp_1>',
-    [ng.KC_KP_2] = '<kp_2>',
-    [ng.KC_KP_3] = '<kp_3>',
-    [ng.KC_KP_4] = '<kp_4>',
-    [ng.KC_KP_5] = '<kp_5>',
-    [ng.KC_KP_6] = '<kp_6>',
-    [ng.KC_KP_7] = '<kp_7>',
-    [ng.KC_KP_8] = '<kp_8>',
-    [ng.KC_KP_9] = '<kp_9>',
-    [ng.KC_KP_DECIMAL] = '<kp_decimal>',
-    [ng.KC_KP_DIVIDE] = '<kp_divide>',
-    [ng.KC_KP_MULTIPLY] = '<kp_multiply>',
-    [ng.KC_KP_SUBTRACT] = '<kp_subtract>',
-    [ng.KC_KP_ADD] = '<kp_add>',
-    [ng.KC_KP_ENTER] = '<kp_enter>',
-    [ng.KC_KP_EQUAL] = '<kp_equal>',
-    [ng.KC_LEFT_SHIFT] = '<shift>',
-    [ng.KC_LEFT_CONTROL] = '<control>',
-    [ng.KC_LEFT_ALT] = '<alt>',
-    [ng.KC_LEFT_SUPER] = '<super>',
-    [ng.KC_RIGHT_SHIFT] = '<shift>',
-    [ng.KC_RIGHT_CONTROL] = '<control>',
-    [ng.KC_RIGHT_ALT] = '<alt>',
-    [ng.KC_RIGHT_SUPER] = '<super>',
-    [ng.KC_MENU] = '<menu>'
+    KC_ESCAPE = '<escape>',
+    KC_ENTER = '<enter>',
+    KC_TAB = '<tab>',
+    KC_BACKSPACE = '<backspace>',
+    KC_INSERT = '<insert>',
+    KC_DELETE = '<delete>',
+    KC_RIGHT = '<right>',
+    KC_LEFT = '<left>',
+    KC_DOWN = '<down>',
+    KC_UP = '<up>',
+    KC_PAGE_UP = '<page_up>',
+    KC_PAGE_DOWN = '<page_down>',
+    KC_HOME = '<home>',
+    KC_END = '<end>',
+    KC_CAPS_LOCK = '<caps_lock>',
+    KC_SCROLL_LOCK = '<scroll_lock>',
+    KC_NUM_LOCK = '<num_lock>',
+    KC_PRINT_SCREEN = '<print_screen>',
+    KC_PAUSE = '<pause>',
+    KC_F1 = '<f1>',
+    KC_F2 = '<f2>',
+    KC_F3 = '<f3>',
+    KC_F4 = '<f4>',
+    KC_F5 = '<f5>',
+    KC_F6 = '<f6>',
+    KC_F7 = '<f7>',
+    KC_F8 = '<f8>',
+    KC_F9 = '<f9>',
+    KC_F10 = '<f10>',
+    KC_F11 = '<f11>',
+    KC_F12 = '<f12>',
+    KC_F13 = '<f13>',
+    KC_F14 = '<f14>',
+    KC_F15 = '<f15>',
+    KC_F16 = '<f16>',
+    KC_F17 = '<f17>',
+    KC_F18 = '<f18>',
+    KC_F19 = '<f19>',
+    KC_F20 = '<f20>',
+    KC_F21 = '<f21>',
+    KC_F22 = '<f22>',
+    KC_F23 = '<f23>',
+    KC_F24 = '<f24>',
+    KC_F25 = '<f25>',
+    KC_KP_0 = '<kp_0>',
+    KC_KP_1 = '<kp_1>',
+    KC_KP_2 = '<kp_2>',
+    KC_KP_3 = '<kp_3>',
+    KC_KP_4 = '<kp_4>',
+    KC_KP_5 = '<kp_5>',
+    KC_KP_6 = '<kp_6>',
+    KC_KP_7 = '<kp_7>',
+    KC_KP_8 = '<kp_8>',
+    KC_KP_9 = '<kp_9>',
+    KC_KP_DECIMAL = '<kp_decimal>',
+    KC_KP_DIVIDE = '<kp_divide>',
+    KC_KP_MULTIPLY = '<kp_multiply>',
+    KC_KP_SUBTRACT = '<kp_subtract>',
+    KC_KP_ADD = '<kp_add>',
+    KC_KP_ENTER = '<kp_enter>',
+    KC_KP_EQUAL = '<kp_equal>',
+    KC_LEFT_SHIFT = '<shift>',
+    KC_LEFT_CONTROL = '<control>',
+    KC_LEFT_ALT = '<alt>',
+    KC_LEFT_SUPER = '<super>',
+    KC_RIGHT_SHIFT = '<shift>',
+    KC_RIGHT_CONTROL = '<control>',
+    KC_RIGHT_ALT = '<alt>',
+    KC_RIGHT_SUPER = '<super>',
+    KC_MENU = '<menu>'
 }
 function ng.input_keycode_to_string(key)
-    return keycode_to_string_tbl[tonumber(key)] or string.char(ns.input.keycode_to_char(key))
+    return keycode_to_string_tbl[neko.input_keycode_str(key)] or neko.input_keycode_str(key)
 end
 
 local mousecode_to_string_tbl = {
-    [ng.MC_1] = '<mouse_1>',
-    [ng.MC_2] = '<mouse_2>',
-    [ng.MC_3] = '<mouse_3>',
-    [ng.MC_4] = '<mouse_4>',
-    [ng.MC_5] = '<mouse_5>',
-    [ng.MC_6] = '<mouse_6>',
-    [ng.MC_7] = '<mouse_7>',
-    [ng.MC_8] = '<mouse_8>'
+    [0] = '<mouse_1>', -- MC_LEFT
+    [1] = '<mouse_2>', -- MC_RIGHT
+    [2] = '<mouse_3>', -- MC_MIDDLE
+    [3] = '<mouse_4>',
+    [4] = '<mouse_5>',
+    [5] = '<mouse_6>',
+    [6] = '<mouse_7>',
+    [7] = '<mouse_8>'
 }
 function ng.input_mousecode_to_string(mouse)
     return mousecode_to_string_tbl[tonumber(mouse)]

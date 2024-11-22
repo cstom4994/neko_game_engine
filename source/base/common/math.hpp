@@ -166,9 +166,6 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT Float32 vec2_atan2(vec2 v);
 
-        NEKO_EXPORT void vec2_save(vec2* v, const char* name, Store* s);
-
-        NEKO_EXPORT bool vec2_load(vec2* v, const char* name, vec2 d, Store* s);
 
 )
 
@@ -207,9 +204,6 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT vec2 mat3_transform(mat3 m, vec2 v);
 
-        NEKO_EXPORT void mat3_save(mat3* m, const char* name, Store* s);
-
-        NEKO_EXPORT bool mat3_load(mat3* m, const char* name, mat3 d, Store* s);
 
 )
 

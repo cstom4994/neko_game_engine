@@ -18,18 +18,20 @@ function ns.app.key_down(key)
         return
     end
 
-    if key == ng.KC_F1 then
+    local keyname = neko.input_keycode_str(key)
+
+    if keyname == "KC_F1" then
         ns.console.set_visible(not ns.console.get_visible())
-    elseif key == ng.KC_F2 then
+    elseif keyname == "KC_F2" then
         ns.inspector.set_visible(not ns.inspector.get_visible())
-    elseif key == ng.KC_E then
+    elseif keyname == "KC_E" then
         ns.timing.set_paused(not ns.edit.get_enabled())
         ns.edit.set_enabled(not ns.edit.get_enabled())
         neko.show_mouse(ns.edit.get_enabled())
     end
 
     if ns.edit.get_enabled() then
-        if key == ng.KC_C then
+        if keyname == "KC_C" then
             print("destroying group 'default'")
             ns.group.destroy('default')
         end

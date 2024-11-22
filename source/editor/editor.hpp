@@ -219,10 +219,5 @@ public:
 };
 }  // namespace Neko
 
-NEKO_SCRIPT(inspector,
-
-            NEKO_EXPORT void inspector_set_visible(bool visible);
-
-            NEKO_EXPORT bool inspector_get_visible();
-
-)
+void inspector_set_visible(bool visible);
+bool inspector_get_visible();

@@ -204,9 +204,29 @@ constexpr auto field_count_impl() {
     }
 }
 
+struct UniversalType {
+    template <typename T>
+    operator T();
+};
+
+template <typename T, typename... Args>
+consteval auto memberCount() {
+    static_assert(std::is_aggregate_v<std::remove_cvref_t<T>>);
+
+    if constexpr (requires { T{{Args{}}..., {UniversalType{}}}; } == false) {
+        return sizeof...(Args);
+    } else {
+        return memberCount<T, Args..., UniversalType>();
+    }
+}
+
+// template <typename T>
+//     requires std::is_aggregate_v<T>
+// static constexpr auto field_count = field_count_impl<T>();
+
 template <typename T>
     requires std::is_aggregate_v<T>
-static constexpr auto field_count = field_count_impl<T>();
+static constexpr auto field_count = memberCount<T>();
 
 #if defined(_MSC_VER)
 #pragma warning(push)
@@ -493,4 +513,3 @@ constexpr Type getEnumValue(unsigned int index) {
 }  // namespace reflection
 
 }  // namespace Neko
-

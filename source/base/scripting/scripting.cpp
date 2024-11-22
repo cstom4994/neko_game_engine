@@ -55,7 +55,6 @@ int luaopen_cffi(lua_State *L);
 #endif
 
 int luaopen_ffi(lua_State *L);
-
 }
 
 void package_preload_embed(lua_State *L) {
@@ -165,18 +164,21 @@ int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
 
 void createStructTables(lua_State *L) {
 
-    // LuaStruct<vec2_t>(L, "vec2_t");
+    LuaEnum<KeyCode, -1, 350>(L);
+    LuaEnum<MouseCode>(L);
+    LuaEnum<neko_texture_flags_t>(L);
+
+    LuaStruct<vec2>(L, "vec2");
     LuaStruct<vec4>(L, "vec4");
-    // LuaStruct<AssetTexture>(L, "AssetTexture");
+    LuaStruct<mat3>(L, "mat3");
+    LuaStruct<AssetTexture>(L, "AssetTexture");
     LuaStruct<Color>(L, "Color");
     LuaStruct<NativeEntity>(L, "NativeEntity");
-    // LuaStruct<mat3>(L, "mat3");
     LuaStruct<BBox>(L, "BBox");
 }
 
-static const char **nekogame_ffi[] = {&nekogame_ffi_scalar,    &nekogame_ffi_saveload, &nekogame_ffi_vec2,   &nekogame_ffi_mat3,    &nekogame_ffi_color,  &nekogame_ffi_fs,
-                                      &nekogame_ffi_game,      &nekogame_ffi_system,   &nekogame_ffi_input,  &nekogame_ffi_entity,  &nekogame_ffi_prefab, &nekogame_ffi_timing,
-                                      &nekogame_ffi_transform, &nekogame_ffi_camera,   &nekogame_ffi_sprite, &nekogame_ffi_console, &nekogame_ffi_edit,   &nekogame_ffi_inspector};
+static const char **nekogame_ffi[] = {&nekogame_ffi_scalar,    &nekogame_ffi_vec2,   &nekogame_ffi_mat3,   &nekogame_ffi_color, &nekogame_ffi_core,
+                                      &nekogame_ffi_transform, &nekogame_ffi_camera, &nekogame_ffi_sprite, &nekogame_ffi_edit};
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
@@ -447,14 +449,14 @@ void script_key_down(KeyCode key) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("key_down");
-    ng_push_cdata("KeyCode *", &key);
+    LuaPush<int>(L, key);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 void script_key_up(KeyCode key) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("key_up");
-    ng_push_cdata("KeyCode *", &key);
+    LuaPush<int>(L, key);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
@@ -462,14 +464,14 @@ void script_mouse_down(MouseCode mouse) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("mouse_down");
-    ng_push_cdata("MouseCode *", &mouse);
+    LuaPush<int>(L, mouse);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 void script_mouse_up(MouseCode mouse) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("mouse_up");
-    ng_push_cdata("MouseCode *", &mouse);
+    LuaPush<int>(L, mouse);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 

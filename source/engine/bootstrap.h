@@ -48,19 +48,11 @@ typedef struct AppTime {
     f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
 } AppTime;
 
-NEKO_SCRIPT(timing,
-
-            NEKO_EXPORT void timing_set_scale(f32 s);
-
-            NEKO_EXPORT f32 timing_get_scale();
-
-            NEKO_EXPORT f32 timing_get_elapsed();
-
-            NEKO_EXPORT void timing_set_paused(bool p);
-
-            NEKO_EXPORT bool timing_get_paused();
-
-)
+void timing_set_scale(f32 s);
+f32 timing_get_scale();
+f32 timing_get_elapsed();
+void timing_set_paused(bool p);
+bool timing_get_paused();
 
 AppTime get_timing_instance();
 
@@ -157,21 +149,12 @@ public:
     void SplashScreen();
 };
 
-NEKO_SCRIPT(game,
-
-            NEKO_EXPORT const char *window_clipboard();
-
-            NEKO_EXPORT int window_prompt(const char *msg, const char *title);
-
-            NEKO_EXPORT void window_setclipboard(const char *text);
-
-            NEKO_EXPORT void window_focus();
-
-            NEKO_EXPORT int window_has_focus();
-
-            NEKO_EXPORT double window_scale();
-
-)
+const char *window_clipboard();
+int window_prompt(const char *msg, const char *title);
+void window_setclipboard(const char *text);
+void window_focus();
+int window_has_focus();
+double window_scale();
 
 int timing_update(App *app, event_t evt);
 void timing_save_all(Store *s);

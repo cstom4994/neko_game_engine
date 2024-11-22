@@ -84,9 +84,6 @@ vec2 scalar_vec2_div(Float32 f, vec2 v) { return luavec2(f / v.x, f / v.y); }
 #undef luavec2
 vec2 luavec2(Float32 x, Float32 y) { return vec2{x, y}; }
 
-void vec2_save(vec2 *v, const char *n, Store *s) {}
-bool vec2_load(vec2 *v, const char *n, vec2 d, Store *s) { return true; }
-
 #if 0
 
 mat3 mat3_mul(mat3 m, mat3 n) {
@@ -145,9 +142,6 @@ vec2 mat3_get_translation(mat3 m) { return luavec2(m.v[6], m.v[7]); }
 Float32 mat3_get_rotation(mat3 m) { return scalar_atan2(m.v[1], m.v[0]); }
 vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.v[0] * m.v[0] + m.v[1] * m.v[1]), scalar_sqrt(m.v[3] * m.v[3] + m.v[4] * m.v[4])); }
 
-void mat3_save(mat3 *m, const char *n, Store *s) {}
-bool mat3_load(mat3 *m, const char *n, mat3 d, Store *s) { return true; }
-
 #undef luamat3
 mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22) { return mat3{{m00, m01, m02, m10, m11, m12, m20, m21, m22}}; }
 
@@ -182,9 +176,6 @@ Color color_red = {1.0, 0.0, 0.0, 1.0};
 Color color_green = {0.0, 1.0, 0.0, 1.0};
 Color color_blue = {0.0, 0.0, 1.0, 1.0};
 Color color_clear = {0.0, 0.0, 0.0, 0.0};
-
-void color_save(Color *c, const char *n, Store *s) {}
-bool color_load(Color *c, const char *n, Color d, Store *s) { return true; }
 
 #undef color_opaque
 Color color_opaque(f32 r, f32 g, f32 b) { return color(r, g, b, 1); }

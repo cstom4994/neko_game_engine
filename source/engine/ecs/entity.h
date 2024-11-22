@@ -24,7 +24,7 @@ enum ComponentTypeE {
 };
 
 NEKO_SCRIPT(
-        entity,
+        core,
 
         typedef struct NativeEntity NativeEntity;
 
@@ -34,9 +34,6 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT NativeEntity entity_nil;
 
-        NEKO_EXPORT void entity_save(NativeEntity* ent, const char* name, Store* s);
-
-        NEKO_EXPORT bool entity_load(NativeEntity* ent, const char* name, NativeEntity d, Store* s);
 
 )
 
@@ -268,23 +265,8 @@ auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
 #define entitypool_save_foreach(var, var_s, pool, n, s) if (0)
 #define entitypool_load_foreach(var, var_s, pool, n, s) if (0)
 
-NEKO_SCRIPT(system,
-
-            NEKO_EXPORT void system_load_all(Store* f);
-            NEKO_EXPORT void system_save_all(Store* f);
-
-)
-
 void system_init();
 void system_fini();
-
-NEKO_SCRIPT(prefab,
-
-            NEKO_EXPORT void prefab_save(const char* filename, NativeEntity root);
-
-            NEKO_EXPORT NativeEntity prefab_load(const char* filename);
-
-)
 
 void prefab_save_all(Store* s);
 void prefab_load_all(Store* s);
