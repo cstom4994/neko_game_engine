@@ -8,6 +8,7 @@ function neko.__define_default_callbacks()
     neko.before_quit = function()
     end
     neko.args = function(args)
+        neko.__start(args)
     end
 end
 
@@ -56,7 +57,7 @@ if run then
     if ng.is_nil_entity(ns.camera.get_current_camera()) then
         ng.add {
             transform = {
-                position = ng.vec2(0, 0)
+                position = ng.Vec2(0, 0)
             },
             camera = {
                 viewport_height = 18.75

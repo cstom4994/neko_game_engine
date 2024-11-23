@@ -1,5 +1,4 @@
 -- hot_require 'nekogame.edit'
-local ffi = FFI
 
 local ImGui = neko.imgui
 
@@ -313,12 +312,12 @@ local function _get_entities_under_mouse()
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
         local bbox = neko.edit_bboxes_get_nth_bbox(i)
-        local wmat = neko.transform_get_world_matrix(ent.id)
+        local wmat = neko.transform_get_world_matrix(ent)
         if neko.bbox_contains2(bbox, wmat, mouse_pos) then
-            table.insert(ents, ng.NativeEntity(ent))
+            table.insert(ents, ent)
         end
 
-        print("_get_entities_under_mouse", ent.id, bbox)
+        print("_get_entities_under_mouse", ent, bbox)
     end
 
     -- 按与鼠标的距离排序
@@ -554,7 +553,7 @@ end
 -- 询问网格大小
 local function command_gridx(x)
     local function gridy(y)
-        ns.edit.set_grid_size(ng.vec2(tonumber(x) or 0, tonumber(y) or 0))
+        ns.edit.set_grid_size(ng.Vec2(tonumber(x) or 0, tonumber(y) or 0))
     end
     ns.edit.command_start('grid y: ', gridy)
 end
@@ -1001,10 +1000,10 @@ field_types['Vec2'] = {
 
     post_update = function(field, val, setter)
         ng.edit_field_post_update(field.x_field, val.x, function(x)
-            setter(ng.vec2(x, val.y))
+            setter(ng.Vec2(x, val.y))
         end)
         ng.edit_field_post_update(field.y_field, val.y, function(y)
-            setter(ng.vec2(val.x, y))
+            setter(ng.Vec2(val.x, y))
         end)
     end,
 
@@ -1228,11 +1227,11 @@ end
 local function make_inspector(ent, sys)
     local inspector = {}
 
-    inspector.ent = ng.NativeEntity(ent)
+    inspector.ent = ent
     inspector.sys = sys
 
     -- put near entity initially
-    local pos = ng.vec2(16, -16)
+    local pos = ng.Vec2(16, -16)
     if ns.transform.has(ent) then
         pos = ns.transform.local_to_world(ent, ng.vec2_zero)
     end
@@ -1383,7 +1382,7 @@ end
 local function post_update_inspector(inspector)
     -- 从inspector到目标实体绘制一条线
     if ns.transform.has(inspector.ent) then
-        local a = ns.transform.local_to_world(inspector.ent, ng.vec2(0, -16)) -- 这里应该用imgui窗口的pos
+        local a = ns.transform.local_to_world(inspector.ent, ng.Vec2(0, -16)) -- 这里应该用imgui窗口的pos
         local b = ns.transform.local_to_world(inspector.ent, ng.vec2_zero)
         ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
     end
@@ -1438,7 +1437,6 @@ end
 
 -- system-specific
 -- hot_require 'nekogame.edit_entity'
-local ffi = FFI
 
 function ns.edit.destroy_rec()
     for ent in pairs(ns.edit.select) do

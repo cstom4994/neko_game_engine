@@ -49,20 +49,12 @@ extern const uint8_t *get_nekoeditor_lua();
 
 extern "C" {
 int luaopen_http(lua_State *L);
-
-#if defined(NEKO_CFFI)
-int luaopen_cffi(lua_State *L);
-#endif
-
 int luaopen_ffi(lua_State *L);
 }
 
 void package_preload_embed(lua_State *L) {
 
     luaL_Reg preloads[] = {
-#if defined(NEKO_CFFI)
-            {"ffi", luaopen_cffi},
-#endif
             {"http", luaopen_http},
     };
 
@@ -177,8 +169,7 @@ void createStructTables(lua_State *L) {
     LuaStruct<BBox>(L, "BBox");
 }
 
-static const char **nekogame_ffi[] = {&nekogame_ffi_scalar,    &nekogame_ffi_vec2,   &nekogame_ffi_mat3,   &nekogame_ffi_color, &nekogame_ffi_core,
-                                      &nekogame_ffi_transform, &nekogame_ffi_camera, &nekogame_ffi_sprite, &nekogame_ffi_edit};
+static const char **nekogame_ffi[] = {&nekogame_ffi_scalar};
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
@@ -287,6 +278,7 @@ static void _fix_exports(char *s) {
 static void _load_nekogame_ffi() {
     lua_State *L = ENGINE_LUA();
 
+#if 0
     unsigned int i;
     char *fixed;
     luaL_Buffer buf;  // 将累积 nekogame_ffi cdefs 到这里
@@ -309,6 +301,7 @@ static void _load_nekogame_ffi() {
     luaL_pushresult(&buf);
 
     errcheck(luax_pcall_nothrow(L, 1, 0));
+#endif
 }
 
 int app_stop(App *app, event_t evt) {
@@ -396,7 +389,6 @@ void script_fini() {
     script_push_event("fini");
     errcheck(luax_pcall_nothrow(L, 1, 0));
 
-    lua_pop(L, 1);  // FFI
     lua_pop(L, 1);  // luax_msgh
 
     LuaVM vm{ENGINE_LUA()};
@@ -479,7 +471,8 @@ void script_mouse_move(vec2 pos) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("mouse_move");
-    ng_push_cdata("vec2 *", &pos);
+    // ng_push_cdata("vec2 *", &pos);
+    LuaPush<vec2>(L, pos);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
@@ -487,7 +480,8 @@ void script_scroll(vec2 scroll) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("scroll");
-    ng_push_cdata("vec2 *", &scroll);
+    // ng_push_cdata("vec2 *", &scroll);
+    LuaPush<vec2>(L, scroll);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 

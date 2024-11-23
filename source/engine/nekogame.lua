@@ -59,15 +59,12 @@ function ng.gc_setmetatable()
     return setmetatable
 end
 
--- hot_require 'nekogame.struct'
-local ffi = FFI
-
 --- utilities ------------------------------------------------------------------
 
 -- dereference a cdata from a pointer
-function ng.__deref_cdata(ct, p)
-    return ffi.cast(ct, p)[0]
-end
+-- function ng.__deref_cdata(ct, p)
+--     return ffi.cast(ct, p)[0]
+-- end
 
 -- enum --> values and enum --> string functions
 local enum_values_map = {}
@@ -130,23 +127,42 @@ _cge = function(id)
     return ng._entity_resolve_saved_id(id)
 end
 
-ng.NativeEntity = ffi.metatype('NativeEntity', {
+-- ng.NativeEntity = ffi.metatype('NativeEntity', {
+--     __eq = function(a, b)
+--         return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
+--                    ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
+--     end,
+--     __index = {
+--         __serialize = function(e)
+--             return string.format('_cge(%u)', e.id)
+--         end
+--     }
+-- })
+
+ng.NativeEntity = function(id)
+    local ent = neko.core.NativeEntity.new()
+    ent.id = id
+    return ent
+end
+
+neko.core.NativeEntity.metatype({
     __eq = function(a, b)
-        return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
-                   ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
-    end,
-    __index = {
-        __serialize = function(e)
-            return string.format('_cge(%u)', e.id)
-        end
-    }
+        return a.id == b.id
+    end
 })
 
 --- Vec2 -----------------------------------------------------------------------
 
-ng.vec2 = ng.luavec2
+ng.Vec2 = function(v1, v2)
+    local v = neko.vec2_alloc(v1, v2)
+    return v
+end
 
-ng.Vec2 = ffi.metatype('vec2', {
+ng.vec2_zero = neko.core.vec2.new()
+ng.vec2_zero.x = 0
+ng.vec2_zero.y = 0
+
+neko.core.vec2.metatype({
     __add = ng.vec2_add,
     __sub = ng.vec2_sub,
     __unm = function(v)
@@ -169,26 +185,52 @@ ng.Vec2 = ffi.metatype('vec2', {
         else
             return ng.vec2_div(a, b)
         end
-    end,
-    __index = {
-        __serialize = function(v)
-            return string.format('ng.vec2(%f, %f)', v.x, v.y)
-        end
-    }
+    end
 })
+
+-- ng.Vec2 = ffi.metatype('vec2', {
+--     __add = ng.vec2_add,
+--     __sub = ng.vec2_sub,
+--     __unm = function(v)
+--         return ng.vec2_neg(v)
+--     end,
+--     __mul = function(a, b)
+--         if type(a) == 'number' then
+--             return ng.vec2_scalar_mul(b, a)
+--         elseif type(b) == 'number' then
+--             return ng.vec2_scalar_mul(a, b)
+--         else
+--             return ng.vec2_mul(a, b)
+--         end
+--     end,
+--     __div = function(a, b)
+--         if type(b) == 'number' then
+--             return ng.vec2_scalar_div(a, b)
+--         elseif type(a) == 'number' then
+--             return ng.scalar_vec2_div(a, b)
+--         else
+--             return ng.vec2_div(a, b)
+--         end
+--     end,
+--     __index = {
+--         __serialize = function(v)
+--             return string.format('ng.vec2(%f, %f)', v.x, v.y)
+--         end
+--     }
+-- })
 
 --- Mat3 -----------------------------------------------------------------------
 
 ng.mat3 = ng.luamat3
 
-ng.Mat3 = ffi.metatype('mat3', {
-    __index = {
-        __serialize = function(m)
-            return string.format('ng.mat3(%f, %f, %f, %f, %f, %f, %f, %f, %f)', m.v[0], m.v[1], m.v[2], m.v[3], m.v[4],
-                m.v[5], m.v[6], m.v[7], m.v[8])
-        end
-    }
-})
+-- ng.Mat3 = ffi.metatype('mat3', {
+--     __index = {
+--         __serialize = function(m)
+--             return string.format('ng.mat3(%f, %f, %f, %f, %f, %f, %f, %f, %f)', m.v[0], m.v[1], m.v[2], m.v[3], m.v[4],
+--                 m.v[5], m.v[6], m.v[7], m.v[8])
+--         end
+--     }
+-- })
 
 --- BBox -----------------------------------------------------------------------
 
@@ -246,7 +288,7 @@ local entity_table_mt = {
         end
         bind_defaults(t, v)
         map[k.id] = {
-            ['k'] = ng.NativeEntity(k),
+            ['k'] = k,
             ['v'] = v
         }
     end,
@@ -517,162 +559,6 @@ unpack = table.unpack
 
 --- hook ----------------------------------------------------------------------
 
-ng["tiled_add"] = function(ent)
-    return neko.tiled_add(ent.id)
-end
-ng["tiled_remove"] = function(ent)
-    return neko.tiled_remove(ent.id)
-end
-ng["tiled_has"] = function(ent)
-    return neko.tiled_has(ent.id)
-end
-ng["tiled_set_map"] = function(ent, val)
-    return neko.tiled_set_map(ent.id, val)
-end
-ng["tiled_get_map"] = function(ent)
-    return neko.tiled_get_map(ent.id)
-end
-ng["tiled_map_edit"] = function(ent, layer, x, y, t)
-    return neko.tiled_map_edit(ent.id, layer, x, y, t)
-end
-
-ng["entity_create"] = function()
-    return ng.NativeEntity(neko.entity_create())
-end
-ng["entity_destroy"] = function(ent)
-    return neko.entity_destroy(ent.id)
-end
-ng["entity_destroy_all"] = function()
-    return neko.entity_destroy_all()
-end
-ng["entity_destroyed"] = function(ent)
-    return neko.entity_destroyed(ent.id)
-end
-ng["native_entity_eq"] = function(a, b)
-    return neko.native_entity_eq(a.id, b.id)
-end
-ng["entity_set_save_filter"] = function(ent, filter)
-    return neko.entity_set_save_filter(ent.id, filter)
-end
-ng["entity_get_save_filter"] = function(ent)
-    return neko.entity_get_save_filter(ent.id)
-end
-ng["entity_clear_save_filters"] = function()
-    return neko.entity_clear_save_filters()
-end
-
-ng["console_set_visible"] = function(val)
-    return neko.console_set_visible(val)
-end
-ng["console_get_visible"] = function()
-    return neko.console_get_visible()
-end
-ng["console_puts"] = function(str)
-    return neko.console_puts(str)
-end
-
-ng["timing_set_scale"] = function(v)
-    return neko.timing_set_scale(v)
-end
-ng["timing_get_scale"] = function()
-    return neko.timing_get_scale()
-end
-ng["timing_get_elapsed"] = function()
-    return neko.timing_get_elapsed()
-end
-ng["timing_set_paused"] = function(v)
-    return neko.timing_set_paused(v)
-end
-ng["timing_get_paused"] = function()
-    return neko.timing_get_paused()
-end
-
-ng["window_clipboard"] = function()
-    return neko.window_clipboard()
-end
-ng["window_prompt"] = function(msg, title)
-    return neko.window_prompt(msg, title)
-end
-ng["window_setclipboard"] = function(v)
-    return neko.window_setclipboard(v)
-end
-ng["window_focus"] = function()
-    return neko.window_focus()
-end
-ng["window_has_focus"] = function()
-    return neko.window_has_focus()
-end
-ng["window_scale"] = function()
-    return neko.window_scale()
-end
-
-ng["transform_add"] = function(v)
-    return neko.transform_add(v.id)
-end
-ng["transform_remove"] = function(v)
-    return neko.transform_remove(v.id)
-end
-ng["transform_has"] = function(v)
-    return neko.transform_has(v.id)
-end
-ng["transform_set_parent"] = function(a, b)
-    return neko.transform_set_parent(a.id, b.id)
-end
-ng["transform_get_parent"] = function(v)
-    return ng.NativeEntity(neko.transform_get_parent(v.id))
-end
-ng["transform_get_num_children"] = function(v)
-    return neko.transform_get_num_children(v.id)
-end
-ng["transform_get_children"] = function(v)
-    return ng.NativeEntity(neko.transform_get_children(v.id))
-end
-ng["transform_detach_all"] = function(v)
-    return neko.transform_detach_all(v.id)
-end
-ng["transform_destroy_rec"] = function(v)
-    return neko.transform_destroy_rec(v.id)
-end
-
-ng["input_key_down"] = function(v)
-    return neko.input_key_down(v)
-end
-ng["input_key_release"] = function(v)
-    return neko.input_key_release(v)
-end
-ng["input_get_mouse_pos_pixels_fix"] = function()
-    return neko.input_get_mouse_pos_pixels_fix()
-end
-ng["input_get_mouse_pos_pixels"] = function()
-    return neko.input_get_mouse_pos_pixels()
-end
-ng["input_get_mouse_pos_unit"] = function()
-    return neko.input_get_mouse_pos_unit()
-end
-ng["input_mouse_down"] = function(v)
-    return neko.input_mouse_down(v)
-end
-
-ng["camera_world_to_pixels"] = function(v)
-    return neko.camera_world_to_pixels(v)
-end
-ng["camera_world_to_unit"] = function(v)
-    return neko.camera_world_to_unit(v)
-end
-ng["camera_pixels_to_world"] = function(v)
-    return neko.camera_pixels_to_world(v)
-end
-ng["camera_unit_to_world"] = function(v)
-    return neko.camera_unit_to_world(v)
-end
-
-ng["inspector_set_visible"] = function(v)
-    return neko.inspector_set_visible(v)
-end
-ng["inspector_get_visible"] = function()
-    return neko.inspector_get_visible()
-end
-
 ng.MC_NONE = 32
 ng.KC_NONE = -1
 
@@ -683,19 +569,19 @@ local _call_raw = function(sys, func_name)
 end
 
 function ng.getter(sys, prop)
-    return _call_raw(sys, 'get_' .. prop) -- 这里转发到 ffi.C.* / neko.*
+    return _call_raw(sys, 'get_' .. prop) -- 这里转发到 neko.*
 end
 
 function ng.setter(sys, prop)
-    return _call_raw(sys, 'set_' .. prop) -- 这里转发到 ffi.C.* / neko.*
+    return _call_raw(sys, 'set_' .. prop) -- 这里转发到 neko.*
 end
 
 function ng.adder(sys)
-    return _call_raw(sys, 'add') -- 这里转发到 ffi.C.* / neko.*
+    return _call_raw(sys, 'add') -- 这里转发到 neko.*
 end
 
 function ng.remover(sys)
-    return _call_raw(sys, 'remove') -- 这里转发到 ffi.C.* / neko.*
+    return _call_raw(sys, 'remove') -- 这里转发到 neko.*
 end
 
 function ng.get(sys, prop, ...)

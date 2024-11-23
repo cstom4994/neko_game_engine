@@ -1,23 +1,15 @@
 unsafe_require = require
 
 -- runs on start of the engine
-FFI = require("ffi")
-
--- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用
--- 例如C函数 vec2(...) 可用为 ng.vec2(...) 在 Lua 中
-ffi = FFI
 
 ng = setmetatable({}, {
-    __index = ffi.C
+    __index = neko
 })
 
 ng.api = neko
 
 -- 命令行参数
 ng.args = nekogame_args
-
--- 有用的 ffi 函数
-ng.string = ffi.string
 
 -- ffi = unsafe_require("ffi")
 
@@ -159,27 +151,27 @@ end
 
 local cdata = {}
 
-function cdata:new_struct(name, struct)
-    ffi.cdef(struct)
+-- function cdata:new_struct(name, struct)
+--     ffi.cdef(struct)
 
-    self.structs = self.structs or {}
-    self.structs[name] = ffi.typeof(name)
+--     self.structs = self.structs or {}
+--     self.structs[name] = ffi.typeof(name)
 
-    self.pointers = self.pointers or {}
-    self.pointers[name] = ffi.typeof(name .. "*")
-end
+--     self.pointers = self.pointers or {}
+--     self.pointers[name] = ffi.typeof(name .. "*")
+-- end
 
-function cdata:set_struct(name, data)
-    return ffi.new(self.structs[name], data)
-end
+-- function cdata:set_struct(name, data)
+--     return ffi.new(self.structs[name], data)
+-- end
 
-function cdata:encode(data)
-    return ffi.string(ffi.cast("const char*", data), ffi.sizeof(data))
-end
+-- function cdata:encode(data)
+--     return ffi.string(ffi.cast("const char*", data), ffi.sizeof(data))
+-- end
 
-function cdata:decode(name, data)
-    return ffi.cast(self.pointers[name], data)[0]
-end
+-- function cdata:decode(name, data)
+--     return ffi.cast(self.pointers[name], data)[0]
+-- end
 
 common.cdata = cdata
 

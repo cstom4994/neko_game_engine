@@ -114,8 +114,6 @@ do
 
     files {"source/deps/imgui/**.cpp", "source/deps/imgui/**.h"}
 
-    files {"source/vendor/cffi/**.cc"}
-
     files {"source/vendor/luaalloc.c", "source/vendor/http.c", "source/vendor/miniz.c",
            "source/vendor/glad/glad.c", "source/vendor/ui.cpp", "source/vendor/vtf/*.*"}
 

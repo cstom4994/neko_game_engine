@@ -127,47 +127,29 @@ NEKO_SCRIPT(scalar,
 
 #define scalar_floor floor
 
-NEKO_SCRIPT(
-        vec2,
+typedef struct {
+    f32 x, y;
+} vec2_t;
 
-        typedef struct { f32 x, y; } vec2_t;
+typedef vec2_t vec2;
 
-        typedef vec2_t vec2;
+NEKO_EXPORT vec2 luavec2(Float32 x, Float32 y);
+NEKO_EXPORT vec2 vec2_zero;
 
-        NEKO_EXPORT vec2 luavec2(Float32 x, Float32 y);
-
-        NEKO_EXPORT vec2 vec2_zero;
-
-        NEKO_EXPORT vec2 vec2_add(vec2 u, vec2 v);
-
-        NEKO_EXPORT vec2 vec2_sub(vec2 u, vec2 v);
-
-        NEKO_EXPORT vec2 vec2_mul(vec2 u, vec2 v);  // u * v componentwise
-
-        NEKO_EXPORT vec2 vec2_div(vec2 u, vec2 v);  // u / v componentwise
-
-        NEKO_EXPORT vec2 vec2_scalar_mul(vec2 v, Float32 f);
-
-        NEKO_EXPORT vec2 vec2_scalar_div(vec2 v, Float32 f);  // (v.x / f, v.y / f)
-
-        NEKO_EXPORT vec2 scalar_vec2_div(Float32 f, vec2 v);  // (f / v.x, f / v.y)
-
-        NEKO_EXPORT vec2 vec2_neg(vec2 v);
-
-        NEKO_EXPORT Float32 vec2_len(vec2 v);
-
-        NEKO_EXPORT vec2 vec2_normalize(vec2 v);
-
-        NEKO_EXPORT Float32 vec2_dot(vec2 u, vec2 v);
-
-        NEKO_EXPORT Float32 vec2_dist(vec2 u, vec2 v);
-
-        NEKO_EXPORT vec2 vec2_rot(vec2 v, Float32 rot);
-
-        NEKO_EXPORT Float32 vec2_atan2(vec2 v);
-
-
-)
+NEKO_EXPORT vec2 vec2_add(vec2 u, vec2 v);
+NEKO_EXPORT vec2 vec2_sub(vec2 u, vec2 v);
+NEKO_EXPORT vec2 vec2_mul(vec2 u, vec2 v);  // u * v componentwise
+NEKO_EXPORT vec2 vec2_div(vec2 u, vec2 v);  // u / v componentwise
+NEKO_EXPORT vec2 vec2_scalar_mul(vec2 v, Float32 f);
+NEKO_EXPORT vec2 vec2_scalar_div(vec2 v, Float32 f);  // (v.x / f, v.y / f)
+NEKO_EXPORT vec2 scalar_vec2_div(Float32 f, vec2 v);  // (f / v.x, f / v.y)
+NEKO_EXPORT vec2 vec2_neg(vec2 v);
+NEKO_EXPORT Float32 vec2_len(vec2 v);
+NEKO_EXPORT vec2 vec2_normalize(vec2 v);
+NEKO_EXPORT Float32 vec2_dot(vec2 u, vec2 v);
+NEKO_EXPORT Float32 vec2_dist(vec2 u, vec2 v);
+NEKO_EXPORT vec2 vec2_rot(vec2 v, Float32 rot);
+NEKO_EXPORT Float32 vec2_atan2(vec2 v);
 
 #define luavec2(x, y) (vec2{(float)(x), (float)(y)})
 
@@ -180,32 +162,22 @@ NEKO_SCRIPT(
  *         | m.m[0][2]  m.m[1][2]  m.m[2][2] |
  *         \                                 /
  */
-NEKO_SCRIPT(
-        mat3,
 
-        typedef struct mat3_t mat3;
-        struct mat3_t { Float32 v[9]; };
+typedef struct mat3_t mat3;
+struct mat3_t {
+    Float32 v[9];
+};
 
-        NEKO_EXPORT mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22);
+NEKO_EXPORT mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22);
 
-        NEKO_EXPORT mat3 mat3_identity();
-
-        NEKO_EXPORT mat3 mat3_mul(mat3 m, mat3 n);
-
-        NEKO_EXPORT mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans);
-
-        NEKO_EXPORT vec2 mat3_get_translation(mat3 m);
-
-        NEKO_EXPORT Float32 mat3_get_rotation(mat3 m);
-
-        NEKO_EXPORT vec2 mat3_get_scale(mat3 m);
-
-        NEKO_EXPORT mat3 mat3_inverse(mat3 m);
-
-        NEKO_EXPORT vec2 mat3_transform(mat3 m, vec2 v);
-
-
-)
+NEKO_EXPORT mat3 mat3_identity();
+NEKO_EXPORT mat3 mat3_mul(mat3 m, mat3 n);
+NEKO_EXPORT mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans);
+NEKO_EXPORT vec2 mat3_get_translation(mat3 m);
+NEKO_EXPORT Float32 mat3_get_rotation(mat3 m);
+NEKO_EXPORT vec2 mat3_get_scale(mat3 m);
+NEKO_EXPORT mat3 mat3_inverse(mat3 m);
+NEKO_EXPORT vec2 mat3_transform(mat3 m, vec2 v);
 
 #define luamat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (mat3{{(m00), (m01), (m02), (m10), (m11), (m12), (m20), (m21), (m22)}})
 

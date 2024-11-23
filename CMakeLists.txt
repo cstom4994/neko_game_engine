@@ -142,8 +142,6 @@ file(GLOB GAME_SRC CONFIGURE_DEPENDS source/game/*.cpp source/game/*.h source/ga
 file(GLOB GEN_SRC CONFIGURE_DEPENDS source/gen/*.cpp)
 file(GLOB LIB_SRC CONFIGURE_DEPENDS
     #source/deps/lua/onelua.c
-    source/vendor/cffi/*.cc 
-    source/vendor/cffi/*.hh
     source/vendor/luaalloc.c
     source/vendor/http.c
     source/vendor/miniz.c

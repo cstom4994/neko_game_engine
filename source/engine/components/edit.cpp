@@ -111,7 +111,7 @@ static void _bboxes_update_all() {
         if (!transform_has(ent)) continue;
 
         // update world matrix
-        elem->wmat = *transform_get_world_matrix(ent);
+        elem->wmat = transform_get_world_matrix(ent);
 
         // if no bbox, make default
         if (elem->bbox.max.x - elem->bbox.min.x <= SCALAR_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= SCALAR_EPSILON) elem->bbox = defaultbb;
@@ -163,7 +163,7 @@ static void _grid_create_cells() {
     if (native_entity_eq(camera, entity_nil))
         cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
-        cbox = bbox_transform(*transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
+        cbox = bbox_transform(transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
     csize = luavec2(cbox.max.x - cbox.min.x, cbox.max.y - cbox.min.y);
 
     // create grid cell bbox

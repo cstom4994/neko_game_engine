@@ -23,19 +23,15 @@ enum ComponentTypeE {
     COMPONENT_COUNT
 };
 
-NEKO_SCRIPT(
-        core,
+typedef struct NativeEntity NativeEntity;
 
-        typedef struct NativeEntity NativeEntity;
+typedef uint32_t ecs_id_t;
 
-        typedef uint32_t ecs_id_t;
+struct NativeEntity {
+    ecs_id_t id;
+};
 
-        struct NativeEntity { ecs_id_t id; };
-
-        NEKO_EXPORT NativeEntity entity_nil;
-
-
-)
+NEKO_EXPORT NativeEntity entity_nil;
 
 NativeEntity entity_create();
 void entity_destroy(NativeEntity ent);

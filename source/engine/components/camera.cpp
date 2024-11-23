@@ -111,7 +111,7 @@ int camera_update_all(App *app, event_t evt) {
     if (native_entity_eq(cam, entity_nil))
         inverse_view_matrix = mat3_identity();
     else
-        inverse_view_matrix = mat3_inverse(*transform_get_world_matrix(cam));
+        inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));
 
     return 0;
 }

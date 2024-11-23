@@ -137,7 +137,7 @@ int sprite_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Sprite::pool, sprite_remove);
 
-    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = *transform_get_world_matrix(sprite->pool_elem.ent); });
+    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
 
     if (edit_get_enabled()) {
         Sprite::pool->ForEach([](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });

@@ -230,14 +230,14 @@ vec2 transform_get_world_scale(NativeEntity ent) {
     return mat3_get_scale(transform->worldmat_cache);
 }
 
-mat3 *transform_get_world_matrix(NativeEntity ent) {
+mat3 transform_get_world_matrix(NativeEntity ent) {
     Transform *transform;
 
-    if (native_entity_eq(ent, entity_nil)) return NULL;
+    if (native_entity_eq(ent, entity_nil)) return mat3_identity();
 
     transform = Transform::pool->Get(ent);
     error_assert(transform);
-    return &transform->worldmat_cache;
+    return transform->worldmat_cache;
 }
 
 mat3 transform_get_matrix(NativeEntity ent) {

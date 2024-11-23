@@ -51,19 +51,22 @@ vec2 vec2_sub(vec2 u, vec2 v) { return luavec2(u.x - v.x, u.y - v.y); }
 vec2 vec2_mul(vec2 u, vec2 v) { return luavec2(u.x * v.x, u.y * v.y); }
 vec2 vec2_div(vec2 u, vec2 v) { return luavec2(u.x / v.x, u.y / v.y); }
 
-vec2 vec2_neg(vec2 v) { return luavec2(-v.x, -v.y); }
 
 Float32 vec2_len(vec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
+
+Float32 vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
+Float32 vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
+
+#endif
+
 vec2 vec2_normalize(vec2 v) {
     if (v.x == 0 && v.y == 0) return v;
     return vec2_scalar_div(v, vec2_len(v));
 }
-Float32 vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
-Float32 vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
+
+vec2 vec2_neg(vec2 v) { return luavec2(-v.x, -v.y); }
 
 Float32 vec2_atan2(vec2 v) { return scalar_atan2(v.y, v.x); }
-
-#endif
 
 vec2 vec2_add(vec2 v0, vec2 v1) { return vec2_ctor(v0.x + v1.x, v0.y + v1.y); }
 

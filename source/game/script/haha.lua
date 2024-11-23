@@ -20,16 +20,18 @@ function haha()
     ns.camera.add(LocalGame.camera)
     ns.camera.set_viewport_height(LocalGame.camera, 120)
 
+    ns.camera.set_current_camera(LocalGame.camera)
+
     -- 添加一些block
 
     local block = ng.add {
         transform = {
-            position = ng.vec2(0, 0),
-            scale = ng.vec2(20, 20)
+            position = ng.Vec2(0, 0),
+            scale = ng.Vec2(20, 20)
         },
         sprite = {
-            texcell = ng.vec2(32, 32),
-            texsize = ng.vec2(32, 32)
+            texcell = ng.Vec2(32, 32),
+            texsize = ng.Vec2(32, 32)
         }
     }
 
@@ -54,8 +56,8 @@ function haha()
 
     -- local player_ent = ng.add {
     --     transform = {
-    --         position = ng.vec2(0, 0),
-    --         scale = ng.vec2(0, 0)
+    --         position = ng.Vec2(0, 0),
+    --         scale = ng.Vec2(0, 0)
     --     },
     --     player = {}
     --     -- aseprite = {
@@ -129,8 +131,8 @@ function haha()
 
     local level_1 = ng.add {
         transform = {
-            position = ng.vec2(0, 0),
-            scale = ng.vec2(2, 2)
+            position = ng.Vec2(0, 0),
+            scale = ng.Vec2(2, 2)
         },
         tiled = {
             map = "assets/maps/map.tmx"
@@ -322,7 +324,7 @@ function haha_test_gui()
 
     win = ng.add {
         transform = {
-            position = ng.vec2(42, -42)
+            position = ng.Vec2(42, -42)
         },
         gui_window = {
             title = 'free window!'
@@ -441,19 +443,19 @@ function haha_huge()
         while math.abs(y) < 1.5 do
             y = 8 * symrand()
         end
-        local pos = ng.vec2(8 * symrand(), y)
+        local pos = ng.Vec2(8 * symrand(), y)
 
         ns.transform.add(block)
         ns.transform.set_position(block, pos)
 
         ns.sprite.add(block)
         if symrand() < 0 then
-            ns.sprite.set_texcell(block, ng.vec2(0.0, 32.0))
+            ns.sprite.set_texcell(block, ng.Vec2(0.0, 32.0))
             ns.edit.select[block] = true
         else
-            ns.sprite.set_texcell(block, ng.vec2(32.0, 32.0))
+            ns.sprite.set_texcell(block, ng.Vec2(32.0, 32.0))
         end
-        ns.sprite.set_texsize(block, ng.vec2(32.0, 32.0))
+        ns.sprite.set_texsize(block, ng.Vec2(32.0, 32.0))
 
         ns.oscillator.add(block, {
             amp = 3 * math.random(),
@@ -467,13 +469,13 @@ function haha_huge()
     player = ns.entity.create()
 
     ns.transform.add(player)
-    ns.transform.set_position(player, ng.vec2(0.0, 0.0))
+    ns.transform.set_position(player, ng.Vec2(0.0, 0.0))
 
     ns.sprite.add(player)
-    ns.sprite.set_texcell(player, ng.vec2(0.0, 32.0))
-    ns.sprite.set_texsize(player, ng.vec2(32.0, 32.0))
+    ns.sprite.set_texcell(player, ng.Vec2(0.0, 32.0))
+    ns.sprite.set_texsize(player, ng.Vec2(32.0, 32.0))
 
-    ns.transform.set_scale(player, ng.vec2(2, 2))
+    ns.transform.set_scale(player, ng.Vec2(2, 2))
 end
 
 function haha_basic()
@@ -498,11 +500,11 @@ function haha_basic()
     for i = 0, n_blocks do
         local block = ng.add {
             transform = {
-                position = ng.vec2(i - 8, i - 8)
+                position = ng.Vec2(i - 8, i - 8)
             },
             sprite = {
-                texcell = ng.vec2(i / 2 == math.floor(i / 2) and 0 or 32, 32),
-                texsize = ng.vec2(32, 32)
+                texcell = ng.Vec2(i / 2 == math.floor(i / 2) and 0 or 32, 32),
+                texsize = ng.Vec2(32, 32)
             }
         }
 
@@ -518,37 +520,37 @@ function haha_basic()
 
     player = ng.add {
         transform = {
-            position = ng.vec2(0, 0),
-            scale = ng.vec2(2, 2),
+            position = ng.Vec2(0, 0),
+            scale = ng.Vec2(2, 2),
             rotation = math.pi / 16
         },
         sprite = {
-            texcell = ng.vec2(0, 32),
-            texsize = ng.vec2(32, 32)
+            texcell = ng.Vec2(0, 32),
+            texsize = ng.Vec2(32, 32)
         }
     }
 
     rchild = ng.add {
         transform = {
             parent = player,
-            position = ng.vec2(1, 0),
-            scale = ng.vec2(0.5, 0.5)
+            position = ng.Vec2(1, 0),
+            scale = ng.Vec2(0.5, 0.5)
         },
         sprite = {
-            texcell = ng.vec2(32, 32),
-            texsize = ng.vec2(32, 32)
+            texcell = ng.Vec2(32, 32),
+            texsize = ng.Vec2(32, 32)
         }
     }
 
     lchild = ng.add {
         transform = {
             parent = player,
-            position = ng.vec2(-1, 0),
-            scale = ng.vec2(0.5, 0.5)
+            position = ng.Vec2(-1, 0),
+            scale = ng.Vec2(0.5, 0.5)
         },
         sprite = {
-            texcell = ng.vec2(32, 32),
-            texsize = ng.vec2(32, 32)
+            texcell = ng.Vec2(32, 32),
+            texsize = ng.Vec2(32, 32)
         }
     }
 
