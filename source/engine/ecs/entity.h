@@ -37,7 +37,6 @@ NativeEntity entity_create();
 void entity_destroy(NativeEntity ent);
 void entity_destroy_all();
 bool entity_destroyed(NativeEntity ent);
-bool native_entity_eq(NativeEntity e, NativeEntity f);
 void entity_set_save_filter(NativeEntity ent, bool filter);
 bool entity_get_save_filter(NativeEntity ent);
 void entity_clear_save_filters();
@@ -53,7 +52,7 @@ NEKO_API() void entity_load_all(Store* s);
 NEKO_API() void entity_load_all_begin();
 NEKO_API() void entity_load_all_end();
 
-#define native_entity_eq(e, f) ((e).id == (f).id)
+inline bool native_entity_eq(NativeEntity e, NativeEntity f) { return e.id == f.id; }
 
 class NativeEntityMap {
 public:

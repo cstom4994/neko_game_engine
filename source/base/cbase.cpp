@@ -347,6 +347,25 @@ i32 keyboard_lookup(String str) {
 
 void gameconsole_print(const char* s);
 
+i32 neko_buildnum(void) {
+    static const char* __build_date = __DATE__;
+    static const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    static const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    i32 m = 0, d = 0, y = 0;
+    static i32 b = 0;
+    if (b != 0) return b;  // 优化
+    for (m = 0; m < 11; m++) {
+        if (!strncmp(&__build_date[0], mon[m], 3)) break;
+        d += mond[m];
+    }
+    d += atoi(&__build_date[4]) - 1;
+    y = atoi(&__build_date[7]) - 2023;
+    b = d + (i32)((y - 1) * 365.25f);
+    if (((y % 4) == 0) && m > 1) b += 1;
+    b -= 211;
+    return b;
+}
+
 void neko_log(const char* file, int line, const char* fmt, ...) {
 
     Neko::LockGuard<Neko::Mutex> lock(gBase.log_mtx);

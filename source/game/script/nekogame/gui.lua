@@ -298,7 +298,20 @@ draw_imgui = function(dt)
     end
 
     if ImGui.Button("build_pack") then
-        ng.api.core.pak_build(("fgd.pack"), {"gamedir/assets/test_1.fgd", "gamedir/assets/primext.fgd"})
+        neko.core.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
+    end
+
+    if ImGui.Button("read_pack") then
+        local test_pack, test_handle, test_items
+
+        local test_pack_buildnum, test_pack_item_count = neko.core.bindata_info("fgd.pack")
+        print("pack_info", test_pack_buildnum, test_pack_item_count)
+        test_pack = neko.bindata_load("test_pack_handle", "fgd.pack")
+        test_handle = test_pack:assets_load("neko_base.fgd")
+        test_items = test_pack:items()
+        print(type(test_handle))
+        test_pack:assets_unload(test_handle)
+        print(table.show(test_items))
     end
 
     if ImGui.Button("test_reg") then

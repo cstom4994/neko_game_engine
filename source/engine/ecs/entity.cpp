@@ -25,12 +25,6 @@
 using namespace Neko::luabind;
 using namespace Neko::ecs;
 
-typedef enum SaveFilter {
-    SF_SAVE,     // 保存此实体
-    SF_NO_SAVE,  // 不要保存此实体
-    SF_UNSET,    // 未设置过滤器 -- 使用默认值
-} SaveFilter;
-
 NativeEntity entity_nil = {0};  // 没有有效的实体具有此值
 static ecs_id_t counter = 1;
 
@@ -170,9 +164,6 @@ void entity_load_all_end() {
     // entitymap_free(load_map);
     // entity_clear_save_filters();
 }
-
-#undef native_entity_eq
-bool native_entity_eq(NativeEntity e, NativeEntity f) { return e.id == f.id; }
 
 void entity_save_all(Store* s) {
     // DestroyEntry* entry;

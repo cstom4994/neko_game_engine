@@ -110,8 +110,6 @@ void fatal_error(String str);
 inline lua_State *&ENGINE_LUA() { return gApp->L; }
 inline EcsWorld *&ENGINE_ECS() { return gApp->ECS; }
 
-i32 neko_buildnum(void);
-
 // ECS_COMPONENT_EXTERN(pos_t);
 // ECS_COMPONENT_EXTERN(vel_t);
 // ECS_COMPONENT_EXTERN(rect_t);

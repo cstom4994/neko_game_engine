@@ -188,8 +188,6 @@ void luax_new_userdata(lua_State *L, T data, const char *tname) {
 
 struct LuaNil {};
 
-namespace detail {
-
 template <typename T, typename I>
 constexpr bool check_integral_limit(I i) {
     static_assert(std::is_integral_v<I>);
@@ -395,6 +393,8 @@ T tolightud(lua_State *L, int arg) {
         return std::bit_cast<T>(tolightud<void *>(L, arg));
     }
 }
+
+namespace detail {
 
 template <typename T>
 auto Push(lua_State *L, T x)

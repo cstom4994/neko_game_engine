@@ -43,17 +43,6 @@ public:
     void FiniLuaBase();
 };
 
-inline const_str UTIL_filename(const_str path) {
-    neko_assert(path);
-    size_t len = neko_strlen(path);
-    for (size_t i = len - 1; i >= 0; i--) {
-        if (path[i] == '\\' || path[i] == '/') {
-            return path + i + 1;
-        }
-    }
-    return path;
-}
-
 i32 keyboard_lookup(String str);
 
 }  // namespace Neko
@@ -61,6 +50,8 @@ i32 keyboard_lookup(String str);
 using Neko::CBase;
 
 extern CBase gBase;
+
+i32 neko_buildnum(void);
 
 inline void fatal_error(Neko::String str) {
     if (!gBase.error_mode.load()) {
