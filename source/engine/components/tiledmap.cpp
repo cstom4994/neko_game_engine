@@ -718,7 +718,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         for (auto iit = object_group_node->MakeChildIter("object"); iit.Next();) {
             XMLNode *object_node = iit.current;
 
-            object_t object{.defs_luatb = {ENGINE_LUA()}};
+            object_t object{};
             object.id = object_node->Attribute<double>("id");
             object.x = object_node->Attribute<double>("x");
             object.y = object_node->Attribute<double>("y");
@@ -767,8 +767,8 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
             XMLNode *properties = object_node->FindChild("properties");
             if (properties) {
-                auto L = ENGINE_LUA();
-                object.defs_luatb = LuaRef::NewTable(L);
+                // auto L = ENGINE_LUA();
+                // object.defs_luatb = LuaRef::NewTable(L);
                 for (auto it = properties->MakeChildIter("property"); it.Next();) {
                     XMLNode *object_node = it.current;
                     String property_name = std::get<String>(object_node->FindAttribute("name")->value);
@@ -783,7 +783,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
                         if (!value_attr) continue;
 
                         // lua表
-                        object.defs_luatb[property_name.cstr()] = std::get<String>(value_attr->value).cstr();
+                        // object.defs_luatb[property_name.cstr()] = std::get<String>(value_attr->value).cstr();
 
                         object.defs[fnv1a(property_name)] = std::get<String>(value_attr->value);
 

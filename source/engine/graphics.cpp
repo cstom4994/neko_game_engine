@@ -9,14 +9,14 @@
 #include "base/cbase.hpp"
 
 // deps
-#include "vendor/stb_image.h"
+#include "extern/stb_image.h"
 
 #define CUTE_ASEPRITE_ASSERT neko_assert
 #define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
 #define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
-#include "vendor/cute_aseprite.h"
+#include "extern/cute_aseprite.h"
 
 extern const mat3* camera_get_inverse_view_matrix_ptr();  // for GLSL binding : in component.cpp
 

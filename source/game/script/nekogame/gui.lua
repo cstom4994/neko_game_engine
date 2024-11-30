@@ -290,21 +290,21 @@ draw_imgui = function(dt)
         print(status)
         print(data)
 
-        local json_data = ng.api.json_read(common.decode_unicode_escape(data))
+        local json_data = neko.json_read(common.decode_unicode_escape(data))
 
         print(table.show(json_data))
 
-        print(ng.api.json_write(json_data))
+        print(neko.json_write(json_data))
     end
 
     if ImGui.Button("build_pack") then
-        neko.core.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
+        neko.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
     end
 
     if ImGui.Button("read_pack") then
         local test_pack, test_handle, test_items
 
-        local test_pack_buildnum, test_pack_item_count = neko.core.bindata_info("fgd.pack")
+        local test_pack_buildnum, test_pack_item_count = neko.bindata_info("fgd.pack")
         print("pack_info", test_pack_buildnum, test_pack_item_count)
         test_pack = neko.bindata_load("test_pack_handle", "fgd.pack")
         test_handle = test_pack:assets_load("neko_base.fgd")
@@ -315,11 +315,34 @@ draw_imgui = function(dt)
     end
 
     if ImGui.Button("test_reg") then
-        local reg = ng.api.core.from_registry("_PRELOAD")
+        local reg = neko.from_registry("_PRELOAD")
         dump_func(reg)
 
-        reg = ng.api.core.from_registry(LUA_RIDX_GLOBALS, "sandbox")
+        reg = neko.from_registry(LUA_RIDX_GLOBALS, "sandbox")
         dump_func(reg)
+    end
+
+    if ImGui.Button("test_traceback") then
+
+        local function bar(f1, f2)
+            print(neko.traceback(10, 10, true, true))
+        end
+        local function foo(a, b, c)
+            bar(print, foo)
+        end
+        foo("s", {}, 234)
+    end
+
+    if ImGui.Button("test_callback") then
+
+        local f = function(f1, f2)
+            print(neko.traceback(10, 10, true, true))
+        end
+
+        neko.callback_save("test1", f)
+
+        neko.callback_call("test1", "haha", 114514)
+
     end
 
     -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)

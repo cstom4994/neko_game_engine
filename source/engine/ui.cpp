@@ -17,10 +17,10 @@
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "base/scripting/lua_wrapper.hpp"
-#include "vendor/atlas.h"
+#include "extern/atlas.h"
 
 // deps
-#include "vendor/stb_truetype.h"
+#include "extern/stb_truetype.h"
 
 using namespace Neko;
 

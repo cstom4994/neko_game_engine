@@ -18,7 +18,7 @@
 #include "engine/imgui.hpp"
 
 // deps
-#include "vendor/luaalloc.h"
+#include "extern/luaalloc.h"
 
 #define NEKO_C_EXTERN extern "C"
 

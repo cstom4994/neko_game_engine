@@ -21,15 +21,18 @@
 #include "engine/bindata.h"
 
 // deps
-#include "vendor/sokol_time.h"
+#include "extern/sokol_time.h"
 
 using namespace Neko::luabind;
 
 void open_luasocket(lua_State *L);
 
-namespace Neko::luabind {
+namespace Neko {
+size_t luax_dump_traceback(lua_State *L, char *buf, size_t sz, int is_show_var, int is_show_tmp_var, int top_max, int bottom_max);
+namespace luabind {
 void package_preload(lua_State *L);
-}  // namespace Neko::luabind
+}  // namespace luabind
+}  // namespace Neko
 
 void package_preload_embed(lua_State *L);
 
@@ -2295,7 +2298,7 @@ static int l_edit_bboxes_get_nth_bbox(lua_State *L) {
 static int l_edit_line_add(lua_State *L) {
     vec2 *a = LuaGet<vec2>(L, 1);
     vec2 *b = LuaGet<vec2>(L, 2);
-    Float32 p = lua_tonumber(L, 3);
+    f32 p = lua_tonumber(L, 3);
     Color *col = LuaGet<Color>(L, 4);
     edit_line_add(*a, *b, p, *col);
     return 0;
@@ -2354,11 +2357,16 @@ static void typeclosure(lua_State *L) {
     lua_pushcclosure(L, ltype, n);
 }
 
-static int open_embed_core(lua_State *L) {
+#endif
 
-    luaL_checkversion(L);
+// DEFINE_LUAOPEN_EXTERN(luadb)
+DEFINE_LUAOPEN_EXTERN(unittest)
 
+static int open_neko(lua_State *L) {
     luaL_Reg reg[] = {
+            // internal
+            {"__registry_load", neko_registry_load},
+            {"__registry_lua_script", neko_require_lua_script},
 
             {"ecs_f", __neko_bind_ecs_f},
 
@@ -2377,51 +2385,6 @@ static int open_embed_core(lua_State *L) {
 
             // reg
             {"from_registry", from_registry},
-
-            {NULL, NULL}};
-
-    luaL_newlib(L, reg);
-
-#if 0
-    luaL_Reg inspector_reg[] = {{"inspect_shaders", __neko_bind_inspect_shaders},
-
-                                NEKO_LUA_INSPECT_REG(shaders),
-                                NEKO_LUA_INSPECT_REG(textures),
-                                NEKO_LUA_INSPECT_REG(vertex_buffers),
-                                NEKO_LUA_INSPECT_REG(index_buffers),
-                                NEKO_LUA_INSPECT_REG(frame_buffers),
-                                // NEKO_LUA_INSPECT_REG(uniform_buffers),
-                                // NEKO_LUA_INSPECT_REG(storage_buffers),
-                                // NEKO_LUA_INSPECT_REG(uniforms),
-                                // NEKO_LUA_INSPECT_REG(pipelines),
-                                // NEKO_LUA_INSPECT_REG(renderpasses),
-                                {NULL, NULL}};
-    luaL_setfuncs(L, inspector_reg, 0);
-#endif
-
-    typeclosure(L);
-    lua_setfield(L, -2, "ltype");
-
-    createStructTables(L);
-
-    return 1;
-}
-
-// namespace Neko::luabind::__core {
-// int luaopen(lua_State *L) { return open_embed_core(L); }
-// }  // namespace Neko::luabind::__core
-// DEFINE_LUAOPEN(core)
-
-#endif
-
-// DEFINE_LUAOPEN_EXTERN(luadb)
-DEFINE_LUAOPEN_EXTERN(unittest)
-
-static int open_neko(lua_State *L) {
-    luaL_Reg reg[] = {
-            // internal
-            {"__registry_load", neko_registry_load},
-            {"__registry_lua_script", neko_require_lua_script},
 
             // core
             {"version", neko_version},
@@ -3180,24 +3143,24 @@ static int open_neko(lua_State *L) {
         LuaPush<vec2>(L, ret);
         return 1;
     });
-    X("vec2_scalar_mul", [](lua_State *L) -> int {
+    X("vec2_float_mul", [](lua_State *L) -> int {
         vec2 *v1 = LuaGet<vec2>(L, 1);
         f32 v2 = LuaGet<f32>(L, 2);
-        vec2 ret = vec2_scalar_mul(*v1, v2);
+        vec2 ret = vec2_float_mul(*v1, v2);
         LuaPush<vec2>(L, ret);
         return 1;
     });
-    X("vec2_scalar_div", [](lua_State *L) -> int {
+    X("vec2_float_div", [](lua_State *L) -> int {
         vec2 *v1 = LuaGet<vec2>(L, 1);
         f32 v2 = LuaGet<f32>(L, 2);
-        vec2 ret = vec2_scalar_div(*v1, v2);
+        vec2 ret = vec2_float_div(*v1, v2);
         LuaPush<vec2>(L, ret);
         return 1;
     });
-    X("scalar_vec2_div", [](lua_State *L) -> int {
+    X("float_vec2_div", [](lua_State *L) -> int {
         f32 v1 = LuaGet<f32>(L, 1);
         vec2 *v2 = LuaGet<vec2>(L, 2);
-        vec2 ret = scalar_vec2_div(v1, *v2);
+        vec2 ret = float_vec2_div(v1, *v2);
         LuaPush<vec2>(L, ret);
         return 1;
     });
@@ -3265,6 +3228,26 @@ static int open_neko(lua_State *L) {
         return 1;
     });
 
+    X("traceback", [](lua_State *L) -> int {
+        lua_State *LD = L;
+        if (lua_isthread(L, 1)) {
+            LD = lua_tothread(L, 1);
+            lua_remove(L, 1);
+        }
+        int top_max = luaL_optinteger(L, 1, 32);
+        int bottom_max = luaL_optinteger(L, 2, 16);
+        bool is_show_var = lua_isnoneornil(L, 3) ? true : lua_toboolean(L, 3);
+        bool is_show_tmp_var = lua_isnoneornil(L, 4) ? true : lua_toboolean(L, 4);
+        size_t buff_sz = luaL_optinteger(L, 5, 32 * 1024);
+
+        char *buff = (char *)mem_alloc(buff_sz);
+        if (buff == NULL) return 0;
+        size_t len = luax_dump_traceback(LD, buff, buff_sz, is_show_var, is_show_tmp_var, top_max, bottom_max);
+        lua_pushlstring(L, buff, len);
+        mem_free(buff);
+        return 1;
+    });
+
 #undef X
 
     return 1;
@@ -3306,8 +3289,27 @@ void open_neko_api(lua_State *L) {
 
     luaL_requiref(L, "neko", open_neko, 1);
 
-    open_embed_core(L);
-    lua_setfield(L, -2, "core");
+#if 0
+    luaL_Reg inspector_reg[] = {{"inspect_shaders", __neko_bind_inspect_shaders},
+
+                                NEKO_LUA_INSPECT_REG(shaders),
+                                NEKO_LUA_INSPECT_REG(textures),
+                                NEKO_LUA_INSPECT_REG(vertex_buffers),
+                                NEKO_LUA_INSPECT_REG(index_buffers),
+                                NEKO_LUA_INSPECT_REG(frame_buffers),
+                                // NEKO_LUA_INSPECT_REG(uniform_buffers),
+                                // NEKO_LUA_INSPECT_REG(storage_buffers),
+                                // NEKO_LUA_INSPECT_REG(uniforms),
+                                // NEKO_LUA_INSPECT_REG(pipelines),
+                                // NEKO_LUA_INSPECT_REG(renderpasses),
+                                {NULL, NULL}};
+    luaL_setfuncs(L, inspector_reg, 0);
+#endif
+
+    typeclosure(L);
+    lua_setfield(L, -2, "ltype");
+
+    createStructTables(L);
 
     open_ui(L);
     lua_setfield(L, -2, "ui");

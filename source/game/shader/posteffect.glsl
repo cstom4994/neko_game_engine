@@ -27,6 +27,7 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
+uniform int enable;
 uniform sampler2D screenTexture;
 
 uniform float intensity = 2;
@@ -56,15 +57,29 @@ uniform float rOffset = 0.005;
 uniform float gOffset = 0.005;
 uniform float bOffset = -0.005;
 
-void main()
-{ 
-	// vec4 pixel = texelFetch(screenTexture, ivec2(vert_pos.xy), 0);
-    vec4 pixel = texture(screenTexture, TexCoords);
-    float effect = pow(distance(vert_pos / start, vec2(0)), intensity);
-    pixel = vec4(mix(pixel.xyz, vec3(0), effect), pixel.w);
+uniform vec2 pixel_count = vec2(512.0, 512.0 * (9.0/16.0));
 
-	// 伽马矫正
-    pixel = vec4(pow(pixel.xyz, vec3(1) / power), pixel.w);
+void main()
+{
+
+    vec4 pixel;
+
+    if(enable==1){
+        vec2 uv = TexCoords;
+        uv *= pixel_count;
+        uv = floor(uv);
+        uv = uv / pixel_count;
+
+        // vec4 pixel = texelFetch(screenTexture, ivec2(vert_pos.xy), 0);
+        pixel = texture(screenTexture, uv);
+        float effect = pow(distance(vert_pos / start, vec2(0)), intensity);
+        pixel = vec4(mix(pixel.xyz, vec3(0), effect), pixel.w);
+
+        // 伽马矫正
+        pixel = vec4(pow(pixel.xyz, vec3(1) / power), pixel.w);
+    }else{
+        pixel = texture(screenTexture, TexCoords);
+    }
 
     // // 高斯模糊
     // vec3 blur_pixel = vec3(0.0);
@@ -88,6 +103,8 @@ void main()
 	// 	texture(screenTexture, vert_uv + bOffset * chromatic_aberration_effect).b,
 	// 	1
     // );
+
+
 
 	FragColor = pixel;
 }

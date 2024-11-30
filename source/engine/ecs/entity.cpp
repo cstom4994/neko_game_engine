@@ -291,7 +291,7 @@ static void load_all_lua_scripts(lua_State* L) {
 
     bool ok = false;
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) || 1
     ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
 #else
     ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
@@ -345,7 +345,29 @@ void system_init() {
     gBase.is_fused.store(mount.is_fused);
 
     if (!gBase.error_mode.load() && mount.ok) {
-        asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
+        bool ok = asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
+        if (!ok) {
+            String conf = R"(
+function neko.conf(t)
+
+    t.app = {
+        title = "ahaha",
+        width = 1280.0,
+        height = 720.0,
+        game_proxy = "default",
+        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        -- lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
+        dump_allocs_detailed = true,
+        swap_interval = 1,
+        target_fps = 120,
+        reload_interval = 1,
+        debug_on = false,
+        batch_vertex_capacity = 2048
+    }
+end
+)";
+            luax_require_script_buffer(L, conf, "<builtin_conf>");
+        }
     }
 
     lua_newtable(L);
@@ -407,7 +429,7 @@ void system_init() {
 
     luax_run_nekogame(L);
 
-    Neko::EditorInspector::luainspector_init(ENGINE_LUA());
+    Neko::LuaInspector::luainspector_init(ENGINE_LUA());
     lua_setglobal(L, "__neko_inspector");
 
     if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {

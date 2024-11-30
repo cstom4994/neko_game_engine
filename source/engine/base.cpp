@@ -18,7 +18,7 @@
 #include "engine/graphics.h"
 #include "base/scripting/lua_wrapper.hpp"
 #include "base/scripting/scripting.h"
-#include "vendor/luaalloc.h"
+#include "extern/luaalloc.h"
 
 static void _error(const char *s) { script_error(s); }
 
@@ -52,21 +52,21 @@ vec2 vec2_mul(vec2 u, vec2 v) { return luavec2(u.x * v.x, u.y * v.y); }
 vec2 vec2_div(vec2 u, vec2 v) { return luavec2(u.x / v.x, u.y / v.y); }
 
 
-Float32 vec2_len(vec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
+f32 vec2_len(vec2 v) { return float_sqrt(v.x * v.x + v.y * v.y); }
 
-Float32 vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
-Float32 vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
+f32 vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
+f32 vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
 
 #endif
 
 vec2 vec2_normalize(vec2 v) {
     if (v.x == 0 && v.y == 0) return v;
-    return vec2_scalar_div(v, vec2_len(v));
+    return vec2_float_div(v, vec2_len(v));
 }
 
 vec2 vec2_neg(vec2 v) { return luavec2(-v.x, -v.y); }
 
-Float32 vec2_atan2(vec2 v) { return scalar_atan2(v.y, v.x); }
+f32 vec2_atan2(vec2 v) { return float_atan2(v.y, v.x); }
 
 vec2 vec2_add(vec2 v0, vec2 v1) { return vec2_ctor(v0.x + v1.x, v0.y + v1.y); }
 
@@ -78,14 +78,14 @@ vec2 vec2_div(vec2 v0, vec2 v1) { return vec2_ctor(v0.x / v1.x, v0.y / v1.y); }
 
 vec2 vec2_zero = {0.0, 0.0};
 
-vec2 vec2_rot(vec2 v, Float32 rot) { return luavec2(v.x * scalar_cos(rot) - v.y * scalar_sin(rot), v.x * scalar_sin(rot) + v.y * scalar_cos(rot)); }
+vec2 vec2_rot(vec2 v, f32 rot) { return luavec2(v.x * float_cos(rot) - v.y * float_sin(rot), v.x * float_sin(rot) + v.y * float_cos(rot)); }
 
-vec2 vec2_scalar_mul(vec2 v, Float32 f) { return luavec2(v.x * f, v.y * f); }
-vec2 vec2_scalar_div(vec2 v, Float32 f) { return luavec2(v.x / f, v.y / f); }
-vec2 scalar_vec2_div(Float32 f, vec2 v) { return luavec2(f / v.x, f / v.y); }
+vec2 vec2_float_mul(vec2 v, f32 f) { return luavec2(v.x * f, v.y * f); }
+vec2 vec2_float_div(vec2 v, f32 f) { return luavec2(v.x / f, v.y / f); }
+vec2 float_vec2_div(f32 f, vec2 v) { return luavec2(f / v.x, f / v.y); }
 
 #undef luavec2
-vec2 luavec2(Float32 x, Float32 y) { return vec2{x, y}; }
+vec2 luavec2(f32 x, f32 y) { return vec2{x, y}; }
 
 #if 0
 
@@ -102,7 +102,7 @@ mat3 mat3_mul(mat3 m, mat3 n) {
 
 
 mat3 mat3_inverse(mat3 m) {
-    Float32 det;
+    f32 det;
     mat3 inv;
 
     inv.m[0][0] = m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1];`
@@ -137,21 +137,21 @@ mat3 mat3_inverse(mat3 m) {
 vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.v[0] * v.x + m.v[3] * v.y + m.v[6], m.v[1] * v.x + m.v[4] * v.y + m.v[7]); }
 
 // 按顺序应用 scale rot 和 trans 的矩阵
-mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans) {
-    return luamat3(scale.x * scalar_cos(rot), scale.x * scalar_sin(rot), 0.0f, scale.y * -scalar_sin(rot), scale.y * scalar_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
+mat3 mat3_scaling_rotation_translation(vec2 scale, f32 rot, vec2 trans) {
+    return luamat3(scale.x * float_cos(rot), scale.x * float_sin(rot), 0.0f, scale.y * -float_sin(rot), scale.y * float_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
 }
 
 vec2 mat3_get_translation(mat3 m) { return luavec2(m.v[6], m.v[7]); }
-Float32 mat3_get_rotation(mat3 m) { return scalar_atan2(m.v[1], m.v[0]); }
-vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.v[0] * m.v[0] + m.v[1] * m.v[1]), scalar_sqrt(m.v[3] * m.v[3] + m.v[4] * m.v[4])); }
+f32 mat3_get_rotation(mat3 m) { return float_atan2(m.v[1], m.v[0]); }
+vec2 mat3_get_scale(mat3 m) { return luavec2(float_sqrt(m.v[0] * m.v[0] + m.v[1] * m.v[1]), float_sqrt(m.v[3] * m.v[3] + m.v[4] * m.v[4])); }
 
 #undef luamat3
-mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22) { return mat3{{m00, m01, m02, m10, m11, m12, m20, m21, m22}}; }
+mat3 luamat3(f32 m00, f32 m01, f32 m02, f32 m10, f32 m11, f32 m12, f32 m20, f32 m21, f32 m22) { return mat3{{m00, m01, m02, m10, m11, m12, m20, m21, m22}}; }
 
 mat3 mat3_identity() { return mat3_diag(1.f); }
 
-BBox bbox_merge(BBox a, BBox b) { return bbox(luavec2(scalar_min(a.min.x, b.min.x), scalar_min(a.min.y, b.min.y)), luavec2(scalar_max(a.max.x, b.max.x), scalar_max(a.max.y, b.max.y))); }
-BBox bbox_bound(vec2 a, vec2 b) { return bbox(luavec2(scalar_min(a.x, b.x), scalar_min(a.y, b.y)), luavec2(scalar_max(a.x, b.x), scalar_max(a.y, b.y))); }
+BBox bbox_merge(BBox a, BBox b) { return bbox(luavec2(float_min(a.min.x, b.min.x), float_min(a.min.y, b.min.y)), luavec2(float_max(a.max.x, b.max.x), float_max(a.max.y, b.max.y))); }
+BBox bbox_bound(vec2 a, vec2 b) { return bbox(luavec2(float_min(a.x, b.x), float_min(a.y, b.y)), luavec2(float_max(a.x, b.x), float_max(a.y, b.y))); }
 bool bbox_contains(BBox b, vec2 p) { return b.min.x <= p.x && p.x <= b.max.x && b.min.y <= p.y && p.y <= b.max.y; }
 
 BBox bbox(vec2 min, vec2 max) {
@@ -214,36 +214,36 @@ REGISTER_TYPE_DF(String)
 #endif
 
 #define SOKOL_TIME_IMPL
-#include "vendor/sokol_time.h"
+#include "extern/sokol_time.h"
 
 #define STBI_MALLOC(sz) mem_alloc(sz)
 #define STBI_REALLOC(p, newsz) mem_realloc(p, newsz)
 #define STBI_FREE(p) mem_free(p)
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "vendor/stb_image.h"
+#include "extern/stb_image.h"
 
 #define STBIR_MALLOC(size, user_data) ((void)(user_data), mem_alloc(size))
 #define STBIR_FREE(ptr, user_data) ((void)(user_data), mem_free(ptr))
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "vendor/stb_image_resize2.h"
+#include "extern/stb_image_resize2.h"
 
 #define STBIW_MALLOC(sz) mem_alloc(sz)
 #define STBIW_REALLOC(p, newsz) mem_realloc(p, newsz)
 #define STBIW_FREE(p) mem_free(p)
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "vendor/stb_image_write.h"
+#include "extern/stb_image_write.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
-#include "vendor/stb_rect_pack.h"
+#include "extern/stb_rect_pack.h"
 
 #define STBTT_malloc(x, u) ((void)(u), mem_alloc(x))
 #define STBTT_free(x, u) ((void)(u), mem_free(x))
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "vendor/stb_truetype.h"
+#include "extern/stb_truetype.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push

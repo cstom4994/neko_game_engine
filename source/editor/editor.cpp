@@ -20,16 +20,16 @@
 
 using namespace Neko::imgui;
 
-Neko::EditorInspector* g_inspector;
+Neko::LuaInspector* g_inspector;
 
 static int __luainspector_echo(lua_State* L) {
-    Neko::EditorInspector* m = *static_cast<Neko::EditorInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
+    Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
     if (m) m->print_line(luaL_checkstring(L, 1), Neko::LUACON_LOG_TYPE_MESSAGE);
     return 0;
 }
 
 static int __luainspector_gc(lua_State* L) {
-    Neko::EditorInspector* m = *static_cast<Neko::EditorInspector**>(lua_touserdata(L, 1));
+    Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, 1));
     if (m) {
         m->variable_pool_free();
         m->setL(0x0);
@@ -182,11 +182,11 @@ static void* __neko_lua_inspector_print_func_lightkey() {
     return &KEY;
 }
 
-Neko::EditorInspector* Neko::EditorInspector::get_from_registry(lua_State* L) {
+Neko::LuaInspector* Neko::LuaInspector::get_from_registry(lua_State* L) {
     lua_pushlightuserdata(L, __neko_lua_inspector_lightkey());  // # -1
     lua_gettable(L, LUA_REGISTRYINDEX);
 
-    Neko::EditorInspector* ret = nullptr;
+    Neko::LuaInspector* ret = nullptr;
 
     if (lua_type(L, -1) == LUA_TUSERDATA && lua_getmetatable(L, -1)) {
         // # -1 = metatable
@@ -196,7 +196,7 @@ Neko::EditorInspector* Neko::EditorInspector::get_from_registry(lua_State* L) {
         // # -2 = metatable
         // # -3 = userdata
         if (neko_lua_equal(L, -1, -2)) {                                      // determine is two metatable equal
-            ret = *static_cast<Neko::EditorInspector**>(lua_touserdata(L, -3));  // inspector userdata
+            ret = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, -3));  // inspector userdata
         }
 
         lua_pop(L, 2);  // pop two
@@ -206,7 +206,7 @@ Neko::EditorInspector* Neko::EditorInspector::get_from_registry(lua_State* L) {
     return ret;
 }
 
-void Neko::EditorInspector::print_luastack(int first, int last, luainspector_logtype logtype) {
+void Neko::LuaInspector::print_luastack(int first, int last, luainspector_logtype logtype) {
     std::stringstream ss;
     for (int i = first; i <= last; ++i) {
         switch (lua_type(L, i)) {
@@ -231,7 +231,7 @@ void Neko::EditorInspector::print_luastack(int first, int last, luainspector_log
     print_line(ss.str(), logtype);
 }
 
-bool Neko::EditorInspector::try_eval(std::string m_buffcmd, bool addreturn) {
+bool Neko::LuaInspector::try_eval(std::string m_buffcmd, bool addreturn) {
     if (addreturn) {
         const std::string code = "return " + m_buffcmd;
         if (LUA_OK == luaL_loadstring(L, code.c_str())) {
@@ -252,12 +252,12 @@ static inline std::string adjust_error_msg(lua_State* L, int idx) {
     return std::string("(non string error value - ") + lua_typename(L, t) + ")";
 }
 
-void Neko::EditorInspector::setL(lua_State* L) {
+void Neko::LuaInspector::setL(lua_State* L) {
     this->L = L;
 
     if (!L) return;
 
-    Neko::EditorInspector** ptr = static_cast<Neko::EditorInspector**>(lua_newuserdata(L, sizeof(Neko::EditorInspector*)));
+    Neko::LuaInspector** ptr = static_cast<Neko::LuaInspector**>(lua_newuserdata(L, sizeof(Neko::LuaInspector*)));
     (*ptr) = this;
 
     luaL_newmetatable(L, kMetaname);  // table
@@ -274,7 +274,7 @@ void Neko::EditorInspector::setL(lua_State* L) {
     lua_setglobal(L, "echo");
 }
 
-std::string Neko::EditorInspector::read_history(int change) {
+std::string Neko::LuaInspector::read_history(int change) {
     const bool was_promp = static_cast<std::size_t>(m_hindex) == m_history.size();
 
     m_hindex += change;
@@ -288,7 +288,7 @@ std::string Neko::EditorInspector::read_history(int change) {
     }
 }
 
-std::string Neko::EditorInspector::try_complete(std::string inputbuffer) {
+std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     if (!L) {
         print_line("Lua state pointer is NULL, no completion available", LUACON_LOG_TYPE_ERROR);
         return inputbuffer;
@@ -363,12 +363,12 @@ std::string Neko::EditorInspector::try_complete(std::string inputbuffer) {
 //     return true;
 // }
 
-int Neko::EditorInspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
+int Neko::LuaInspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
-    return reinterpret_cast<Neko::EditorInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
+    return reinterpret_cast<Neko::LuaInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
 }
 
-int Neko::EditorInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
+int Neko::LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
 
     auto paste_buffer = [data](auto begin, auto end, auto buffer_shift) {
@@ -413,7 +413,7 @@ int Neko::EditorInspector::command_line_input_callback(ImGuiInputTextCallbackDat
     return 0;
 }
 
-bool Neko::EditorInspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool Neko::LuaInspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -425,7 +425,7 @@ bool Neko::EditorInspector::command_line_input(const char* label, std::string* s
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, command_line_callback_st, &cb_user_data);
 }
 
-void Neko::EditorInspector::show_autocomplete() noexcept {
+void Neko::LuaInspector::show_autocomplete() noexcept {
     constexpr ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
                                                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
 
@@ -532,7 +532,7 @@ void Neko::EditorInspector::show_autocomplete() noexcept {
     }
 }
 
-void Neko::EditorInspector::console_draw(bool& textbox_react) noexcept {
+void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -632,9 +632,9 @@ void Neko::EditorInspector::console_draw(bool& textbox_react) noexcept {
     show_autocomplete();
 }
 
-void Neko::EditorInspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
+void Neko::LuaInspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
 
-void Neko::EditorInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
+void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
         while (*str != '\0') {
             if (*str == '\n') return true;
@@ -810,22 +810,22 @@ void Neko::EditorInspector::inspect_table(lua_State* L, inspect_table_config& cf
     }
 }
 
-void Neko::EditorInspector::print(const std::string& msg, luainspector_logtype type) {
+void Neko::LuaInspector::print(const std::string& msg, luainspector_logtype type) {
     if (!g_inspector) return;
     g_inspector->print_line(msg, type);
 }
 
-void gameconsole_print(const char* s) { Neko::EditorInspector::print(s, LUACON_LOG_TYPE_MESSAGE); }
+void gameconsole_print(const char* s) { Neko::LuaInspector::print(s, LUACON_LOG_TYPE_MESSAGE); }
 
 Neko::CCharacter cJohn;
 
 extern Assets g_assets;
 
-int Neko::EditorInspector::luainspector_init(lua_State* L) {
+int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
-    void* model_mem = lua_newuserdata(L, sizeof(Neko::EditorInspector));
+    void* model_mem = lua_newuserdata(L, sizeof(Neko::LuaInspector));
 
-    Neko::EditorInspector* inspector = new (model_mem) Neko::EditorInspector();
+    Neko::LuaInspector* inspector = new (model_mem) Neko::LuaInspector();
 
     inspector->setL(L);
     inspector->m_history.resize(8);
@@ -866,11 +866,11 @@ int Neko::EditorInspector::luainspector_init(lua_State* L) {
     return 1;
 }
 
-bool Neko::EditorInspector::visible = false;
+bool Neko::LuaInspector::visible = false;
 
-int Neko::EditorInspector::luainspector_draw(lua_State* L) {
+int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
-    Neko::EditorInspector* model = Neko::EditorInspector::get_from_registry(L);
+    Neko::LuaInspector* model = Neko::LuaInspector::get_from_registry(L);
 
     if (!visible) {
         return 0;
@@ -1418,5 +1418,5 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
 #endif
 
-void inspector_set_visible(bool visible) { Neko::EditorInspector::visible = visible; }
-bool inspector_get_visible() { return Neko::EditorInspector::visible; }
+void inspector_set_visible(bool visible) { Neko::LuaInspector::visible = visible; }
+bool inspector_get_visible() { return Neko::LuaInspector::visible; }

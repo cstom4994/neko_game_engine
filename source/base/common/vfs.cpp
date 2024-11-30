@@ -7,7 +7,7 @@
 #include "base/common/util.hpp"
 
 // miniz
-#include "vendor/miniz.h"
+#include "extern/miniz.h"
 
 void fatal_error(Neko::String str);
 

@@ -7,7 +7,7 @@
 #include "base/scripting/lua_wrapper.hpp"
 
 // miniz
-#include "vendor/miniz.h"
+#include "extern/miniz.h"
 
 namespace Neko {
 

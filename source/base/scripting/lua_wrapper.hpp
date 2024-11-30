@@ -1695,7 +1695,7 @@ int LuaStructField_w(lua_State *L, const char *typeName, const char *field, int 
 };
 
 template <typename T>
-void LuaStruct(lua_State *L, const char *fieldName) {
+void LuaStruct(lua_State *L, const char *fieldName = reflection::GetTypeName<T>()) {
 
     auto fieldaccess = [](lua_State *L) -> int {
         int index = 1;
@@ -2142,6 +2142,29 @@ inline void LuaTypeTo(lua_State *L, LuaTypeid type_id, void *c_out, int index) {
 
     lua_pushfstring(L, "LuaTypeTo: conversion from Lua object to type '%s' not registered!", GetLuaTypeinfo(L, type_id).name);
     lua_error(L);
+}
+
+inline void VaradicLuaPush(lua_State *L) {}
+
+template <typename T, typename... Args>
+inline void VaradicLuaPush(lua_State *L, T &&t, Args... args) {
+    LuaPush<T>(L, std::forward<T>(t));
+    VaradicLuaPush(L, args...);
+}
+
+template <typename R, typename... Args>
+R InvokeLua(lua_State *L, const char *name, Args... args) {
+    lua_getglobal(L, name);
+    if (!lua_isfunction(L, -1)) {
+        lua_pushstring(L, "not a function\n");
+        lua_error(L);
+    }
+    VaradicLuaPush(L, args...);
+    const auto size = sizeof...(args);
+    lua_pcall(L, size, 1, 0);
+    R ret = LuaGet<R>(L, -1);
+    lua_pop(L, 1);
+    return ret;
 }
 
 struct callfunc {

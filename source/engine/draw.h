@@ -6,7 +6,7 @@
 #include "engine/graphics.h"
 
 // deps
-#include "vendor/stb_truetype.h"
+#include "extern/stb_truetype.h"
 
 struct DrawDescription {
     float x;

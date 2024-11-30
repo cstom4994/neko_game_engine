@@ -9,7 +9,7 @@ void profile_shutdown() {}
 
 #ifdef USE_PROFILER
 
-#include "vendor/sokol_time.h"
+#include "extern/sokol_time.h"
 
 struct Profile {
     Queue<TraceEvent> events;

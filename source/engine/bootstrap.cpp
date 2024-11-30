@@ -34,7 +34,7 @@
 #include "editor/fgd.h"
 
 // deps
-#include "vendor/sokol_time.h"
+#include "extern/sokol_time.h"
 
 #define REFL_FIELDS(C, field) type.fields.insert({#field, {type_of<decltype(C::field)>(), offsetof(C, field)}})
 
@@ -215,6 +215,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 }
 
 float posteffect_intensity = 2.0f;
+int posteffect_enable = 1;
 
 int _game_draw(App *app, event_t evt) {
 
@@ -277,6 +278,8 @@ int _game_draw(App *app, event_t evt) {
             edit_draw_all();
             physics_draw_all();
 
+            posteffect_enable = !edit_get_enabled();
+
             // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glDisable(GL_DEPTH_TEST);  // 禁用深度测试，以便屏幕空间四边形不会因深度测试而被丢弃。
@@ -288,6 +291,7 @@ int _game_draw(App *app, event_t evt) {
             glUseProgram(sid);
 
             glUniform1f(glGetUniformLocation(sid, "intensity"), posteffect_intensity);
+            glUniform1i(glGetUniformLocation(sid, "enable"), posteffect_enable);
 
             glBindVertexArray(quadVAO);
             glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
@@ -342,7 +346,7 @@ int _game_draw(App *app, event_t evt) {
 
         neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
 
-        Neko::EditorInspector::luainspector_draw(ENGINE_LUA());
+        Neko::LuaInspector::luainspector_draw(ENGINE_LUA());
 
     } else {
 
@@ -550,13 +554,13 @@ vec2 Game::get_window_size() {
     return luavec2(w, h);
 }
 vec2 Game::unit_to_pixels(vec2 p) {
-    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
+    vec2 hw = vec2_float_mul(get_window_size(), 0.5f);
     p = vec2_mul(p, hw);
     p = luavec2(p.x + hw.x, p.y - hw.y);
     return p;
 }
 vec2 Game::pixels_to_unit(vec2 p) {
-    vec2 hw = vec2_scalar_mul(get_window_size(), 0.5f);
+    vec2 hw = vec2_float_mul(get_window_size(), 0.5f);
     p = luavec2(p.x - hw.x, p.y + hw.y);
     p = vec2_div(p, hw);
     return p;
@@ -957,12 +961,12 @@ int timing_update(App *app, event_t evt) {
 void timing_save_all(Store *s) {
     // Store *t;
 
-    // if (store_child_save(&t, "timing", s)) scalar_save(&g_app->scale, "scale", t);
+    // if (store_child_save(&t, "timing", s)) float_save(&g_app->scale, "scale", t);
 }
 void timing_load_all(Store *s) {
     // Store *t;
 
-    // if (store_child_load(&t, "timing", s)) scalar_load(&g_app->scale, "scale", 1, t);
+    // if (store_child_load(&t, "timing", s)) float_load(&g_app->scale, "scale", 1, t);
 }
 
 #endif

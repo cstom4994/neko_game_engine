@@ -3,6 +3,7 @@
 
 #include "base/common/profiler.hpp"
 #include "base/common/vfs.hpp"
+#include "base/scripting/reflection.hpp"
 #include "engine/bootstrap.h"
 
 #if NEKO_AUDIO == 1
@@ -232,87 +233,49 @@ int open_mt_sound(lua_State *L) {
 #include <fmod.hpp>
 #include <fmod_studio.hpp>
 
-namespace FMOD {
-namespace Studio {
-class EventDescription;
-class Bank;
-}  // namespace Studio
-}  // namespace FMOD
-
 namespace Neko {
 
-class audio_event;
-
-class event_instance {
-    audio_event *type;
-
-    void start();
-    void stop();
-};
-
-struct audio_event {
+struct FMODAuidoEvent {
     FMOD::Studio::EventDescription *fmod_bank;
     std::string path;
-
-    event_instance instance();
 };
 
-struct bank {
+struct FMODBank {
     FMOD::Studio::Bank *fmod_bank;
-    std::unordered_map<std::string, audio_event> event_map;
-    bank(FMOD::Studio::Bank *fmod_bank);
+    std::unordered_map<std::string, FMODAuidoEvent> event_map;
+    FMODBank(FMOD::Studio::Bank *fmod_bank);
 
-    audio_event *load_event(const char *path);
+    FMODAuidoEvent *load_event(const char *path);
 };
-
-class bank_manager {
-    std::unordered_map<std::string, bank> bank_map;
-    bank_manager();
-
-public:
-    static bank_manager &instance();
-    bank *load(const char *path);
-};
-
-void init_fmod_system();
-
-FMOD::Studio::System *get_fmod_system();
-FMOD::System *get_fmod_core_system();
-
-struct fmod_exception {
-    const char *message;
-};
-
-inline void check_err(FMOD_RESULT res) {
-    if (res != FMOD_OK) {
-        // throw fmod_exception{FMOD_ErrorString(res)};
-    }
-}
 
 class FMODAudio {
+    FMOD::Studio::System *fmod_system = nullptr;
+    FMOD::System *lowLevelSystem = nullptr;
+
+    std::unordered_map<std::string, FMOD::Sound *> g_mapSoundPrecache;
+    std::unordered_map<int, std::string> g_mapSoundPrecacheSV;
+
+    int next_channel_id;
+
+    HashMap<FMOD::Studio::Bank *> banks;
+    HashMap<FMOD::Sound *> sounds;
+    HashMap<FMOD::Studio::EventInstance *> audio_events;
+    HashMap<FMOD::Channel *> audio_channels;
+
+    std::unordered_map<std::string, FMODBank> bank_map;
+
+    FMODBank *bank_load(const char *path);
 
 public:
-    struct Implementation {
-        Implementation();
-        ~Implementation();
-
-        void Update();
-
-        int next_channel_id;
-
-        HashMap<FMOD::Studio::Bank *> banks;
-        HashMap<FMOD::Sound *> sounds;
-        HashMap<FMOD::Studio::EventInstance *> audio_events;
-        HashMap<FMOD::Channel *> audio_channels;
-    };
+    void init_fmod_system();
+    FMOD::Studio::System *get_fmod_system();
+    FMOD::System *get_fmod_core_system();
 
 public:
-    static void Init();
-    static void Update();
-    static void Shutdown();
+    void Init();
+    void Update();
+    void Shutdown();
     static int ErrorCheck(FMOD_RESULT result);
-
-    static Implementation *fmod_impl;
 
     void LoadBank(const String &strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags);
     void LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS flags);
@@ -320,20 +283,19 @@ public:
     void LoadEvent(const String &strEventName);
     void LoadSound(const String &strSoundName, bool b3d = true, bool bLooping = false, bool bStream = false);
     void UnLoadSound(const String &strSoundName);
-    void Set3dListenerAndOrientation(const vec3 &vPosition, const vec3 &vLook, const vec3 &vUp);
     int PlaySounds(const String &strSoundName, const vec3 &vPos = vec3{0, 0, 0}, float fVolumedB = 0.0f);
     void PlayEvent(const String &strEventName);
     FMOD::Studio::EventInstance *GetEvent(const String &strEventName);
-    void StopChannel(int channel_id);
     void StopEvent(const String &strEventName, bool bImmediate = false);
     void GetEventParameter(const String &strEventName, const String &strEventParameter, float *parameter);
     void SetEventParameter(const String &strEventName, const String &strParameterName, float fValue);
     void SetGlobalParameter(const String &strParameterName, float fValue);
     void GetGlobalParameter(const String &strEventParameter, float *parameter);
+    void StopChannel(int channel_id);
     void StopAllChannels();
+    bool IsPlaying(int channel_id) const;
     void SetChannel3dPosition(int channel_id, const vec3 &vPosition);
     void SetChannelVolume(int channel_id, float fVolumedB);
-    bool IsPlaying(int channel_id) const;
     bool IsEventPlaying(const String &strEventName) const;
     float dbToVolume(float dB);
     float VolumeTodB(float volume);
@@ -348,102 +310,69 @@ public:
 
 namespace Neko {
 
-void event_instance::start() { assert(false && "Unimpl"); }
-
-void event_instance::stop() { assert(false && "Unimpl"); }
-
-event_instance audio_event::instance() {
-    assert(false && "Unimpl");
-    return event_instance{};
-}
-
-bank::bank(FMOD::Studio::Bank *fmod_bank) : fmod_bank(fmod_bank) {
+FMODBank::FMODBank(FMOD::Studio::Bank *fmod_bank) : fmod_bank(fmod_bank) {
     int num_events;
-    check_err(fmod_bank->getEventCount(&num_events));
+    FMODAudio::ErrorCheck(fmod_bank->getEventCount(&num_events));
     std::cout << "Num events = " << num_events << std::endl;
     if (num_events > 0) {
         std::vector<FMOD::Studio::EventDescription *> event_descriptions(num_events);
-        check_err(fmod_bank->getEventList(event_descriptions.data(), num_events, &num_events));
+        FMODAudio::ErrorCheck(fmod_bank->getEventList(event_descriptions.data(), num_events, &num_events));
 
         for (int ii = 0; ii < num_events; ++ii) {
             // Get the event name
             int name_len;
-            check_err(event_descriptions[ii]->getPath(nullptr, 0, &name_len));
+            FMODAudio::ErrorCheck(event_descriptions[ii]->getPath(nullptr, 0, &name_len));
             char *name_chars = new char[name_len];
-            check_err(event_descriptions[ii]->getPath(name_chars, name_len, nullptr));
+            FMODAudio::ErrorCheck(event_descriptions[ii]->getPath(name_chars, name_len, nullptr));
             std::string name(name_chars);
             delete[] name_chars;
             std::cout << "Event name = " << name.c_str() << std::endl;
-            event_map.insert(std::make_pair(name, audio_event{event_descriptions[ii], name}));
+            event_map.insert(std::make_pair(name, FMODAuidoEvent{event_descriptions[ii], name}));
         }
     }
 }
 
-audio_event *bank::load_event(const char *path) {
+FMODAuidoEvent *FMODBank::load_event(const char *path) {
     const auto cached = event_map.find(path);
     return (cached != event_map.end()) ? &cached->second : nullptr;
 }
 
-bank_manager *bank_manager_instance = nullptr;
-
-bank_manager::bank_manager() {}
-
-bank_manager &bank_manager::instance() {
-    if (!bank_manager_instance) {
-        bank_manager_instance = new bank_manager();
-    }
-    return *bank_manager_instance;
-}
-
-bank *bank_manager::load(const char *path) {
+FMODBank *FMODAudio::bank_load(const char *path) {
     const auto cached = bank_map.find(path);
     if (cached != bank_map.end()) {
         return &cached->second;
     }
     const auto system = get_fmod_system();
     FMOD::Studio::Bank *fmod_bank = nullptr;
-    check_err(system->loadBankFile(path, FMOD_STUDIO_LOAD_BANK_NORMAL, &fmod_bank));
+    FMODAudio::ErrorCheck(system->loadBankFile(path, FMOD_STUDIO_LOAD_BANK_NORMAL, &fmod_bank));
 
     // make the bank & insert
-    bank b{fmod_bank};
+    FMODBank b{fmod_bank};
     return &bank_map.insert(std::make_pair(std::string(path), std::move(b))).first->second;
 }
 
-FMOD::Studio::System *fmod_system = nullptr;
-FMOD::System *lowLevelSystem = nullptr;
+void FMODAudio::init_fmod_system() {
+    FMODAudio::ErrorCheck(FMOD::Studio::System::create(&fmod_system));
 
-void init_fmod_system() {
-    check_err(FMOD::Studio::System::create(&fmod_system));
+    FMODAudio::ErrorCheck(fmod_system->getCoreSystem(&lowLevelSystem));
+    FMODAudio::ErrorCheck(lowLevelSystem->setSoftwareFormat(0, FMOD_SPEAKERMODE_5POINT1, 0));
 
-    check_err(fmod_system->getCoreSystem(&lowLevelSystem));
-    check_err(lowLevelSystem->setSoftwareFormat(0, FMOD_SPEAKERMODE_5POINT1, 0));
-
-    check_err(fmod_system->initialize(512, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, 0));
+    FMODAudio::ErrorCheck(fmod_system->initialize(512, FMOD_STUDIO_INIT_NORMAL, FMOD_INIT_NORMAL, 0));
 }
 
-FMOD::Studio::System *get_fmod_system() {
+FMOD::Studio::System *FMODAudio::get_fmod_system() {
     assert(fmod_system != nullptr);
     return fmod_system;
 }
 
-FMOD::System *get_fmod_core_system() {
+FMOD::System *FMODAudio::get_fmod_core_system() {
     assert(lowLevelSystem != nullptr);
     return lowLevelSystem;
 }
 
-FMODAudio::Implementation::Implementation() { init_fmod_system(); }
+void FMODAudio::Init() { init_fmod_system(); }
 
-FMODAudio::Implementation::~Implementation() {
-    FMODAudio::ErrorCheck(get_fmod_system()->unloadAll());
-    FMODAudio::ErrorCheck(get_fmod_system()->release());
-
-    banks.trash();
-    audio_events.trash();
-    sounds.trash();
-    audio_channels.trash();
-}
-
-void FMODAudio::Implementation::Update() {
+void FMODAudio::Update() {
     Array<u64> pStoppedChannels;
     for (auto c : audio_channels) {
         bool bIsPlaying = false;
@@ -458,15 +387,9 @@ void FMODAudio::Implementation::Update() {
     FMODAudio::ErrorCheck(get_fmod_system()->update());
 }
 
-FMODAudio::Implementation *FMODAudio::fmod_impl;
-
-void FMODAudio::Init() { fmod_impl = new Implementation; }
-
-void FMODAudio::Update() { fmod_impl->Update(); }
-
 void FMODAudio::LoadSound(const String &strSoundName, bool b3d, bool bLooping, bool bStream) {
     u64 key = fnv1a(strSoundName);
-    auto sound = fmod_impl->sounds.get(key);
+    auto sound = this->sounds.get(key);
     if (sound != nullptr) return;
 
     FMOD_MODE eMode = FMOD_DEFAULT;
@@ -476,25 +399,25 @@ void FMODAudio::LoadSound(const String &strSoundName, bool b3d, bool bLooping, b
     FMOD::Sound *pSound = nullptr;
     FMODAudio::ErrorCheck(get_fmod_core_system()->createSound(strSoundName.cstr(), eMode, nullptr, &pSound));
     if (pSound) {
-        fmod_impl->sounds[key] = pSound;
+        this->sounds[key] = pSound;
     }
 }
 
 void FMODAudio::UnLoadSound(const String &strSoundName) {
     u64 key = fnv1a(strSoundName);
-    auto sound = fmod_impl->sounds.get(key);
+    auto sound = this->sounds.get(key);
     if (sound == nullptr) return;
     FMODAudio::ErrorCheck((*sound)->release());
-    fmod_impl->sounds.unset(key);
+    this->sounds.unset(key);
 }
 
 int FMODAudio::PlaySounds(const String &strSoundName, const vec3 &vPosition, float fVolumedB) {
-    int channel_id = fmod_impl->next_channel_id++;
+    int channel_id = this->next_channel_id++;
     u64 key = fnv1a(strSoundName);
-    auto sound = fmod_impl->sounds.get(key);
+    auto sound = this->sounds.get(key);
     if (sound == nullptr) {
         LoadSound(strSoundName);
-        sound = fmod_impl->sounds.get(key);
+        sound = this->sounds.get(key);
         if (sound == nullptr) {
             return channel_id;
         }
@@ -510,13 +433,34 @@ int FMODAudio::PlaySounds(const String &strSoundName, const vec3 &vPosition, flo
         }
         FMODAudio::ErrorCheck(pChannel->setVolume(dbToVolume(fVolumedB)));
         FMODAudio::ErrorCheck(pChannel->setPaused(false));
-        fmod_impl->audio_channels[channel_id] = pChannel;
+        this->audio_channels[channel_id] = pChannel;
     }
     return channel_id;
 }
 
+void FMODAudio::StopChannel(int channel_id) {
+    auto channel = this->audio_channels.get(channel_id);
+    if (channel == nullptr) return;
+
+    FMODAudio::ErrorCheck((*channel)->stop());
+}
+
+void FMODAudio::StopAllChannels() {
+    for (auto channel : this->audio_channels) {
+        FMODAudio::ErrorCheck((*channel.value)->stop());
+    }
+}
+
+bool FMODAudio::IsPlaying(int channel_id) const {
+    auto channel = this->audio_channels.get(channel_id);
+    if (channel == nullptr) return false;
+    bool playing;
+    FMODAudio::ErrorCheck((*channel)->isPlaying(&playing));
+    return playing;
+}
+
 void FMODAudio::SetChannel3dPosition(int channel_id, const vec3 &vPosition) {
-    auto channel = fmod_impl->audio_channels.get(channel_id);
+    auto channel = this->audio_channels.get(channel_id);
     if (channel == nullptr) return;
 
     FMOD_VECTOR position = VectorToFmod(vPosition);
@@ -524,7 +468,7 @@ void FMODAudio::SetChannel3dPosition(int channel_id, const vec3 &vPosition) {
 }
 
 void FMODAudio::SetChannelVolume(int channel_id, float fVolumedB) {
-    auto channel = fmod_impl->audio_channels.get(channel_id);
+    auto channel = this->audio_channels.get(channel_id);
     if (channel == nullptr) return;
 
     FMODAudio::ErrorCheck((*channel)->setVolume(dbToVolume(fVolumedB)));
@@ -533,20 +477,20 @@ void FMODAudio::SetChannelVolume(int channel_id, float fVolumedB) {
 void FMODAudio::LoadBank(const String &strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
 
     u64 key = fnv1a(strBankName);
-    auto bank = fmod_impl->banks.get(key);
+    auto bank = this->banks.get(key);
     if (bank != nullptr) return;
 
     FMOD::Studio::Bank *pBank;
     FMODAudio::ErrorCheck(get_fmod_system()->loadBankFile(strBankName.cstr(), flags, &pBank));
     if (pBank) {
-        fmod_impl->banks[key] = pBank;
+        this->banks[key] = pBank;
     }
 }
 
 void FMODAudio::LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
 
     u64 key = fnv1a(filepath);
-    auto bank = fmod_impl->banks.get(key);
+    auto bank = this->banks.get(key);
     if (bank != nullptr) return;
 
     FMOD::Studio::Bank *pBank;
@@ -561,18 +505,18 @@ void FMODAudio::LoadBankVfs(const String &filepath, FMOD_STUDIO_LOAD_BANK_FLAGS 
     FMODAudio::ErrorCheck(get_fmod_system()->loadBankMemory(contents.data, contents.len, FMOD_STUDIO_LOAD_MEMORY, flags, &pBank));
 
     if (pBank) {
-        fmod_impl->banks[key] = pBank;
+        this->banks[key] = pBank;
     }
 }
 
 FMOD::Studio::Bank *FMODAudio::GetBank(const String &strBankName) {
     u64 key = fnv1a(strBankName);
-    return fmod_impl->banks[key];
+    return this->banks[key];
 }
 
 void FMODAudio::LoadEvent(const String &strEventName) {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event != nullptr) return;
 
     FMOD::Studio::EventDescription *pEventDescription = NULL;
@@ -581,7 +525,7 @@ void FMODAudio::LoadEvent(const String &strEventName) {
         FMOD::Studio::EventInstance *pEventInstance = NULL;
         FMODAudio::ErrorCheck(pEventDescription->createInstance(&pEventInstance));
         if (pEventInstance) {
-            fmod_impl->audio_events[key] = pEventInstance;
+            this->audio_events[key] = pEventInstance;
         }
     }
 }
@@ -589,10 +533,10 @@ void FMODAudio::LoadEvent(const String &strEventName) {
 void FMODAudio::PlayEvent(const String &strEventName) {
 
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) {
         LoadEvent(strEventName);
-        event = fmod_impl->audio_events.get(key);
+        event = this->audio_events.get(key);
         if (event == nullptr) return;
     }
     (*event)->start();
@@ -600,10 +544,10 @@ void FMODAudio::PlayEvent(const String &strEventName) {
 
 FMOD::Studio::EventInstance *FMODAudio::GetEvent(const String &strEventName) {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) {
         LoadEvent(strEventName);
-        event = fmod_impl->audio_events.get(key);
+        event = this->audio_events.get(key);
         if (event == nullptr) return nullptr;
     }
     return *event;
@@ -611,7 +555,7 @@ FMOD::Studio::EventInstance *FMODAudio::GetEvent(const String &strEventName) {
 
 void FMODAudio::StopEvent(const String &strEventName, bool bImmediate) {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) return;
     FMOD_STUDIO_STOP_MODE eMode;
     eMode = bImmediate ? FMOD_STUDIO_STOP_IMMEDIATE : FMOD_STUDIO_STOP_ALLOWFADEOUT;
@@ -620,7 +564,7 @@ void FMODAudio::StopEvent(const String &strEventName, bool bImmediate) {
 
 bool FMODAudio::IsEventPlaying(const String &strEventName) const {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) return false;
 
     FMOD_STUDIO_PLAYBACK_STATE *state = NULL;
@@ -632,7 +576,7 @@ bool FMODAudio::IsEventPlaying(const String &strEventName) const {
 
 void FMODAudio::GetEventParameter(const String &strEventName, const String &strParameterName, float *parameter) {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) return;
     FMODAudio::ErrorCheck((*event)->getParameterByName(strParameterName.cstr(), parameter));
     // CAudioEngine::ErrorCheck(pParameter->getValue(parameter));
@@ -640,7 +584,7 @@ void FMODAudio::GetEventParameter(const String &strEventName, const String &strP
 
 void FMODAudio::SetEventParameter(const String &strEventName, const String &strParameterName, float fValue) {
     u64 key = fnv1a(strEventName);
-    auto event = fmod_impl->audio_events.get(key);
+    auto event = this->audio_events.get(key);
     if (event == nullptr) return;
     FMODAudio::ErrorCheck((*event)->setParameterByName(strParameterName.cstr(), fValue));
 }
@@ -659,7 +603,9 @@ FMOD_VECTOR FMODAudio::VectorToFmod(const vec3 &vPosition) {
 
 int FMODAudio::ErrorCheck(FMOD_RESULT result) {
     if (result != FMOD_OK) {
-        console_log("[Audio] FMOD Error: %d", result);
+        std::map<int, std::string> values;
+        Neko::reflection::guess_enum_range<FMOD_RESULT, 0>(values, std::make_integer_sequence<int, 81>());
+        console_log("FMOD Error: %d %s", result, values[result].c_str());
         return -1;
     }
     return 0;
@@ -669,7 +615,15 @@ float FMODAudio::dbToVolume(float dB) { return powf(10.0f, 0.05f * dB); }
 
 float FMODAudio::VolumeTodB(float volume) { return 20.0f * log10f(volume); }
 
-void FMODAudio::Shutdown() { delete fmod_impl; }
+void FMODAudio::Shutdown() {
+    FMODAudio::ErrorCheck(get_fmod_system()->unloadAll());
+    FMODAudio::ErrorCheck(get_fmod_system()->release());
+
+    banks.trash();
+    audio_events.trash();
+    sounds.trash();
+    audio_channels.trash();
+}
 
 }  // namespace Neko
 

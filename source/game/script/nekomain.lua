@@ -77,7 +77,7 @@ else
         }
     }
 
-    -- ng.api.set_window_title("Sandbox")
+    -- neko.set_window_title("Sandbox")
 
     if ng.args[1] == "unittest" then
         hot_require('test').UnitTest()

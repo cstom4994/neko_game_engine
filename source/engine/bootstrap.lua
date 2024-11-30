@@ -872,7 +872,7 @@ function table.show(t, name, indent)
 end
 
 print = function(...)
-    local print_func = ng.api.core.print
+    local print_func = neko.print
     local tb = {...}
     local n = select("#", ...)
     if n == 1 and type(tb[1]) == "table" then
@@ -1022,7 +1022,7 @@ function read_file(filename)
     local file = io.open(filename, "r")
     local content
     if not file then
-        content = ng.api.core.vfs_read_file(filename)
+        content = neko.vfs_read_file(filename)
         if content ~= nil then
             return content
         end

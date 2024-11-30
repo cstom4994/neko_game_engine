@@ -12,7 +12,7 @@
 #include "base/scripting/lua_wrapper.hpp"
 
 // deps
-#include "vendor/ui.h"
+#include "extern/ui.h"
 
 #ifdef __cplusplus
 #define ui_widths(...)                            \

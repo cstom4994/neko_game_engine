@@ -111,7 +111,7 @@ typedef struct object_t {
     String class_name;
     i32 x, y, width, height;
     HashMap<String> defs;
-    LuaRef defs_luatb;
+    // LuaRef defs_luatb;
     //   C2_TYPE phy_type;
     //   c2AABB aabb;
     //   union {

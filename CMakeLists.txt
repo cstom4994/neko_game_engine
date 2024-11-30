@@ -23,67 +23,67 @@ find_path(DETOURS_INCLUDE_DIRS "detours/detours.h")
 find_library(DETOURS_LIBRARY detours REQUIRED)
 
 set(BOX2D
-  source/deps/box2d/collision/b2_broad_phase.cpp
-  source/deps/box2d/collision/b2_chain_shape.cpp
-  source/deps/box2d/collision/b2_circle_shape.cpp
-  source/deps/box2d/collision/b2_collide_circle.cpp
-  source/deps/box2d/collision/b2_collide_edge.cpp
-  source/deps/box2d/collision/b2_collide_polygon.cpp
-  source/deps/box2d/collision/b2_collision.cpp
-  source/deps/box2d/collision/b2_distance.cpp
-  source/deps/box2d/collision/b2_dynamic_tree.cpp
-  source/deps/box2d/collision/b2_edge_shape.cpp
-  source/deps/box2d/collision/b2_polygon_shape.cpp
-  source/deps/box2d/collision/b2_time_of_impact.cpp
-  source/deps/box2d/common/b2_block_allocator.cpp
-  source/deps/box2d/common/b2_draw.cpp
-  source/deps/box2d/common/b2_math.cpp
-  source/deps/box2d/common/b2_settings.cpp
-  source/deps/box2d/common/b2_stack_allocator.cpp
-  source/deps/box2d/common/b2_timer.cpp
-  source/deps/box2d/dynamics/b2_body.cpp
-  source/deps/box2d/dynamics/b2_chain_circle_contact.cpp
-  source/deps/box2d/dynamics/b2_chain_polygon_contact.cpp
-  source/deps/box2d/dynamics/b2_circle_contact.cpp
-  source/deps/box2d/dynamics/b2_contact.cpp
-  source/deps/box2d/dynamics/b2_contact_manager.cpp
-  source/deps/box2d/dynamics/b2_contact_solver.cpp
-  source/deps/box2d/dynamics/b2_distance_joint.cpp
-  source/deps/box2d/dynamics/b2_edge_circle_contact.cpp
-  source/deps/box2d/dynamics/b2_edge_polygon_contact.cpp
-  source/deps/box2d/dynamics/b2_fixture.cpp
-  source/deps/box2d/dynamics/b2_friction_joint.cpp
-  source/deps/box2d/dynamics/b2_gear_joint.cpp
-  source/deps/box2d/dynamics/b2_island.cpp
-  source/deps/box2d/dynamics/b2_joint.cpp
-  source/deps/box2d/dynamics/b2_motor_joint.cpp
-  source/deps/box2d/dynamics/b2_mouse_joint.cpp
-  source/deps/box2d/dynamics/b2_polygon_circle_contact.cpp
-  source/deps/box2d/dynamics/b2_polygon_contact.cpp
-  source/deps/box2d/dynamics/b2_prismatic_joint.cpp
-  source/deps/box2d/dynamics/b2_pulley_joint.cpp
-  source/deps/box2d/dynamics/b2_revolute_joint.cpp
-  source/deps/box2d/dynamics/b2_weld_joint.cpp
-  source/deps/box2d/dynamics/b2_wheel_joint.cpp
-  source/deps/box2d/dynamics/b2_world.cpp
-  source/deps/box2d/dynamics/b2_world_callbacks.cpp
-  source/deps/box2d/rope/b2_rope.cpp
+  source/extern/box2d/collision/b2_broad_phase.cpp
+  source/extern/box2d/collision/b2_chain_shape.cpp
+  source/extern/box2d/collision/b2_circle_shape.cpp
+  source/extern/box2d/collision/b2_collide_circle.cpp
+  source/extern/box2d/collision/b2_collide_edge.cpp
+  source/extern/box2d/collision/b2_collide_polygon.cpp
+  source/extern/box2d/collision/b2_collision.cpp
+  source/extern/box2d/collision/b2_distance.cpp
+  source/extern/box2d/collision/b2_dynamic_tree.cpp
+  source/extern/box2d/collision/b2_edge_shape.cpp
+  source/extern/box2d/collision/b2_polygon_shape.cpp
+  source/extern/box2d/collision/b2_time_of_impact.cpp
+  source/extern/box2d/common/b2_block_allocator.cpp
+  source/extern/box2d/common/b2_draw.cpp
+  source/extern/box2d/common/b2_math.cpp
+  source/extern/box2d/common/b2_settings.cpp
+  source/extern/box2d/common/b2_stack_allocator.cpp
+  source/extern/box2d/common/b2_timer.cpp
+  source/extern/box2d/dynamics/b2_body.cpp
+  source/extern/box2d/dynamics/b2_chain_circle_contact.cpp
+  source/extern/box2d/dynamics/b2_chain_polygon_contact.cpp
+  source/extern/box2d/dynamics/b2_circle_contact.cpp
+  source/extern/box2d/dynamics/b2_contact.cpp
+  source/extern/box2d/dynamics/b2_contact_manager.cpp
+  source/extern/box2d/dynamics/b2_contact_solver.cpp
+  source/extern/box2d/dynamics/b2_distance_joint.cpp
+  source/extern/box2d/dynamics/b2_edge_circle_contact.cpp
+  source/extern/box2d/dynamics/b2_edge_polygon_contact.cpp
+  source/extern/box2d/dynamics/b2_fixture.cpp
+  source/extern/box2d/dynamics/b2_friction_joint.cpp
+  source/extern/box2d/dynamics/b2_gear_joint.cpp
+  source/extern/box2d/dynamics/b2_island.cpp
+  source/extern/box2d/dynamics/b2_joint.cpp
+  source/extern/box2d/dynamics/b2_motor_joint.cpp
+  source/extern/box2d/dynamics/b2_mouse_joint.cpp
+  source/extern/box2d/dynamics/b2_polygon_circle_contact.cpp
+  source/extern/box2d/dynamics/b2_polygon_contact.cpp
+  source/extern/box2d/dynamics/b2_prismatic_joint.cpp
+  source/extern/box2d/dynamics/b2_pulley_joint.cpp
+  source/extern/box2d/dynamics/b2_revolute_joint.cpp
+  source/extern/box2d/dynamics/b2_weld_joint.cpp
+  source/extern/box2d/dynamics/b2_wheel_joint.cpp
+  source/extern/box2d/dynamics/b2_world.cpp
+  source/extern/box2d/dynamics/b2_world_callbacks.cpp
+  source/extern/box2d/rope/b2_rope.cpp
 )
 
 set(LUASOCKET
-  source/deps/luasocket/auxiliar.c
-  source/deps/luasocket/buffer.c
-  source/deps/luasocket/compat.c
-  source/deps/luasocket/except.c
-  source/deps/luasocket/inet.c
-  source/deps/luasocket/io.c
-  source/deps/luasocket/luasocket.c
-  source/deps/luasocket/mime.c
-  source/deps/luasocket/options.c
-  source/deps/luasocket/select.c
-  source/deps/luasocket/tcp.c
-  source/deps/luasocket/timeout.c
-  source/deps/luasocket/udp.c
+  source/extern/luasocket/auxiliar.c
+  source/extern/luasocket/buffer.c
+  source/extern/luasocket/compat.c
+  source/extern/luasocket/except.c
+  source/extern/luasocket/inet.c
+  source/extern/luasocket/io.c
+  source/extern/luasocket/luasocket.c
+  source/extern/luasocket/mime.c
+  source/extern/luasocket/options.c
+  source/extern/luasocket/select.c
+  source/extern/luasocket/tcp.c
+  source/extern/luasocket/timeout.c
+  source/extern/luasocket/udp.c
 )
 
 if(EMSCRIPTEN)
@@ -93,7 +93,7 @@ if(EMSCRIPTEN)
   set(LFLAGS -lpthread -sASYNCIFY -sALLOW_MEMORY_GROWTH -sUSE_WEBGL2)
 
 elseif(WIN32)
-  set(LUASOCKET ${LUASOCKET} source/deps/luasocket/wsocket.c)
+  set(LUASOCKET ${LUASOCKET} source/extern/luasocket/wsocket.c)
   add_compile_definitions(LUA_USE_LONGJMP)
 
   set(CFLAGS ${CFLAGS}
@@ -110,24 +110,24 @@ elseif(WIN32)
 elseif(UNIX)
   set(LUASOCKET
     ${LUASOCKET}
-    source/deps/luasocket/serial.c
-    source/deps/luasocket/unix.c
-    source/deps/luasocket/unixdgram.c
-    source/deps/luasocket/unixstream.c
-    source/deps/luasocket/usocket.c
+    source/extern/luasocket/serial.c
+    source/extern/luasocket/unix.c
+    source/extern/luasocket/unixdgram.c
+    source/extern/luasocket/unixstream.c
+    source/extern/luasocket/usocket.c
   )
   add_compile_definitions(LUA_USE_LINUX)
   set(LFLAGS -lX11 -lXi -lXcursor -lasound -lGL -ldl -lpthread -lm)
 endif()
 
 # set(IMGUI_SRC
-#   source/deps/imgui/imgui.cpp
-#   source/deps/imgui/imgui_demo.cpp
-#   source/deps/imgui/imgui_draw.cpp
-#   source/deps/imgui/imgui_tables.cpp
-#   source/deps/imgui/imgui_widgets.cpp
-#   source/deps/imgui/backends/imgui_impl_glfw.cpp
-#   source/deps/imgui/backends/imgui_impl_opengl3.cpp
+#   source/extern/imgui/imgui.cpp
+#   source/extern/imgui/imgui_demo.cpp
+#   source/extern/imgui/imgui_draw.cpp
+#   source/extern/imgui/imgui_tables.cpp
+#   source/extern/imgui/imgui_widgets.cpp
+#   source/extern/imgui/backends/imgui_impl_glfw.cpp
+#   source/extern/imgui/backends/imgui_impl_opengl3.cpp
 # )
 
 add_compile_definitions(WIN32_LEAN_AND_MEAN WIN32 _WIN32 _WINDOWS NOMINMAX)
@@ -141,7 +141,7 @@ file(GLOB EDITOR_SRC CONFIGURE_DEPENDS source/editor/*.cpp source/editor/*.h sou
 file(GLOB GAME_SRC CONFIGURE_DEPENDS source/game/*.cpp source/game/*.h source/game/*.hpp)
 file(GLOB GEN_SRC CONFIGURE_DEPENDS source/gen/*.cpp)
 file(GLOB LIB_SRC CONFIGURE_DEPENDS
-    #source/deps/lua/onelua.c
+    #source/extern/lua/onelua.c
     source/vendor/luaalloc.c
     source/vendor/http.c
     source/vendor/miniz.c
@@ -152,14 +152,14 @@ set(MAIN_NAME neko_engine)
 
 add_executable(${MAIN_NAME} ${BASE_SRC} ${ENGINE_SRC} ${EDITOR_SRC} ${GAME_SRC} ${GEN_SRC} ${LIB_SRC} ${BOX2D} ${LUASOCKET})
 
-target_include_directories(${MAIN_NAME} PRIVATE source source/vendor source/deps/wamr/include source/deps/box2d)
+target_include_directories(${MAIN_NAME} PRIVATE source source/vendor source/extern/wamr/include source/extern/box2d)
 target_include_directories(${MAIN_NAME} PRIVATE "${FMOD_LIB_DIR}/api/core/inc" "${FMOD_LIB_DIR}/api/studio/inc")
 
 target_include_directories(${MAIN_NAME} PRIVATE ${LUA_INCLUDE_DIR} ${DETOURS_INCLUDE_DIRS})
 
 target_compile_options(${MAIN_NAME} PRIVATE ${CFLAGS})
 
-target_link_directories(${MAIN_NAME} PRIVATE "source/deps/wamr/lib" "${FMOD_LIB_DIR}/api/core/lib/x64" "${FMOD_LIB_DIR}/api/studio/lib/x64")
+target_link_directories(${MAIN_NAME} PRIVATE "source/extern/wamr/lib" "${FMOD_LIB_DIR}/api/core/lib/x64" "${FMOD_LIB_DIR}/api/studio/lib/x64")
 
 target_link_libraries(${MAIN_NAME} PRIVATE unofficial::libffi::libffi glfw imgui::imgui ${LUA_LIBRARIES} ${DETOURS_LIBRARY})
 

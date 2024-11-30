@@ -140,12 +140,12 @@ end
 -- })
 
 ng.NativeEntity = function(id)
-    local ent = neko.core.NativeEntity.new()
+    local ent = neko.NativeEntity.new()
     ent.id = id
     return ent
 end
 
-neko.core.NativeEntity.metatype({
+neko.NativeEntity.metatype({
     __eq = function(a, b)
         return a.id == b.id
     end
@@ -158,11 +158,11 @@ ng.Vec2 = function(v1, v2)
     return v
 end
 
-ng.vec2_zero = neko.core.vec2.new()
+ng.vec2_zero = neko.vec2.new()
 ng.vec2_zero.x = 0
 ng.vec2_zero.y = 0
 
-neko.core.vec2.metatype({
+neko.vec2.metatype({
     __add = ng.vec2_add,
     __sub = ng.vec2_sub,
     __unm = function(v)
@@ -170,18 +170,18 @@ neko.core.vec2.metatype({
     end,
     __mul = function(a, b)
         if type(a) == 'number' then
-            return ng.vec2_scalar_mul(b, a)
+            return ng.vec2_float_mul(b, a)
         elseif type(b) == 'number' then
-            return ng.vec2_scalar_mul(a, b)
+            return ng.vec2_float_mul(a, b)
         else
             return ng.vec2_mul(a, b)
         end
     end,
     __div = function(a, b)
         if type(b) == 'number' then
-            return ng.vec2_scalar_div(a, b)
+            return ng.vec2_float_div(a, b)
         elseif type(a) == 'number' then
-            return ng.scalar_vec2_div(a, b)
+            return ng.float_vec2_div(a, b)
         else
             return ng.vec2_div(a, b)
         end
@@ -196,18 +196,18 @@ neko.core.vec2.metatype({
 --     end,
 --     __mul = function(a, b)
 --         if type(a) == 'number' then
---             return ng.vec2_scalar_mul(b, a)
+--             return ng.vec2_float_mul(b, a)
 --         elseif type(b) == 'number' then
---             return ng.vec2_scalar_mul(a, b)
+--             return ng.vec2_float_mul(a, b)
 --         else
 --             return ng.vec2_mul(a, b)
 --         end
 --     end,
 --     __div = function(a, b)
 --         if type(b) == 'number' then
---             return ng.vec2_scalar_div(a, b)
+--             return ng.vec2_float_div(a, b)
 --         elseif type(a) == 'number' then
---             return ng.scalar_vec2_div(a, b)
+--             return ng.float_vec2_div(a, b)
 --         else
 --             return ng.vec2_div(a, b)
 --         end
@@ -432,7 +432,7 @@ end
 -- hot_require 'nekogame.system'
 
 ng.cent = function(ent)
-    local ent_c = ng.api.core.NativeEntity.new()
+    local ent_c = neko.NativeEntity.new()
     ent_c.id = ent.id
     return ent_c
 end

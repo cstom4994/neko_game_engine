@@ -12,9 +12,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
+#include "lauxlib.h"
+#include "lua.h"
+#include "lualib.h"
 
 #ifndef NEKO_CFFI
 #include <luajit.h>
@@ -317,6 +317,7 @@ void lua_channels_shutdown();
 
 void luax_neko_get(lua_State *L, const char *field);
 int luax_msgh(lua_State *L);
+i32 luax_require_script_buffer(lua_State *L, String &contents, String name = "<luax_require_script_buffer>");
 i32 luax_require_script(lua_State *L, String filepath);
 
 enum W_LUA_UPVALUES { NEKO_W_COMPONENTS_NAME = 1, NEKO_W_UPVAL_N };

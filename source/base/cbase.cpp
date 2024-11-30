@@ -9,7 +9,7 @@
 #include <cstdlib>
 
 // deps
-#include "vendor/sokol_time.h"
+#include "extern/sokol_time.h"
 
 #ifdef NEKO_IS_WIN32
 #define HACK_CALL __cdecl
@@ -75,7 +75,7 @@ MountResult CBase::LoadVFS(const_str path) {
 
     PROFILE_FUNC();
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) || 1
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, path);
     MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "../source/game");
 #else

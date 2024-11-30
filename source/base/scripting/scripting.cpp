@@ -50,6 +50,8 @@ extern const uint8_t *get_nekoeditor_lua();
 extern "C" {
 int luaopen_http(lua_State *L);
 int luaopen_ffi(lua_State *L);
+int luaopen_source_gen_nekogame_luaot(lua_State *L);
+int luaopen_source_gen_nekoeditor_luaot(lua_State *L);
 }
 
 void package_preload_embed(lua_State *L) {
@@ -75,7 +77,25 @@ void luax_run_bootstrap(lua_State *L) {
     }
     console_log("loaded bootstrap");
 }
+
+int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
+    neko_lua_preload(L, f, name);
+    lua_getglobal(L, "require");
+    lua_pushstring(L, name);
+    if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+        const char *errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "luax_aot_load error: %s\n", errorMsg);
+        lua_pop(L, 1);
+        neko_panic("failed to load luaot %s", name);
+    }
+    console_log("loaded luaot %s", name);
+    return 0;
+}
+
 void luax_run_nekogame(lua_State *L) {
+
+#if 1
+
     if (luaL_loadbuffer(L, (const_str)get_nekogame_lua(), neko_strlen((const_str)get_nekogame_lua()), "<nekogame>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekogame");
@@ -99,6 +119,13 @@ void luax_run_nekogame(lua_State *L) {
         neko_panic("failed to run nekoeditor");
     }
     console_log("loaded nekoeditor");
+
+#else
+
+    luax_aot_load(L, luaopen_source_gen_nekogame_luaot, "source_gen_nekogame_luaot");
+    luax_aot_load(L, luaopen_source_gen_nekoeditor_luaot, "source_gen_nekoeditor_luaot");
+
+#endif
 }
 
 #if LUA_VERSION_NUM < 504
@@ -160,18 +187,14 @@ void createStructTables(lua_State *L) {
     LuaEnum<MouseCode>(L);
     LuaEnum<neko_texture_flags_t>(L);
 
-    LuaStruct<vec2>(L, "vec2");
-    LuaStruct<vec4>(L, "vec4");
-    LuaStruct<mat3>(L, "mat3");
-    LuaStruct<AssetTexture>(L, "AssetTexture");
-    LuaStruct<Color>(L, "Color");
-    LuaStruct<NativeEntity>(L, "NativeEntity");
-    LuaStruct<BBox>(L, "BBox");
+    LuaStruct<vec2>(L);
+    LuaStruct<vec4>(L);
+    LuaStruct<mat3>(L);
+    LuaStruct<AssetTexture>(L);
+    LuaStruct<Color>(L);
+    LuaStruct<NativeEntity>(L);
+    LuaStruct<BBox>(L);
 }
-
-static const char **nekogame_ffi[] = {&nekogame_ffi_scalar};
-
-static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
 static int _traceback(lua_State *L) {
     if (!lua_isstring(L, 1)) {

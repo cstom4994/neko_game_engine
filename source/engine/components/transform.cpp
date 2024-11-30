@@ -184,18 +184,18 @@ void transform_translate(NativeEntity ent, vec2 trans) {
     _modified(transform);
 }
 
-void transform_set_rotation(NativeEntity ent, Float32 rot) {
+void transform_set_rotation(NativeEntity ent, f32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation = rot;
     _modified(transform);
 }
-Float32 transform_get_rotation(NativeEntity ent) {
+f32 transform_get_rotation(NativeEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->rotation;
 }
-void transform_rotate(NativeEntity ent, Float32 rot) {
+void transform_rotate(NativeEntity ent, f32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation += rot;
@@ -219,7 +219,7 @@ vec2 transform_get_world_position(NativeEntity ent) {
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
 }
-Float32 transform_get_world_rotation(NativeEntity ent) {
+f32 transform_get_world_rotation(NativeEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);
@@ -341,7 +341,7 @@ void transform_save_all(Store *s) {
 
     // if (store_child_save(&t, "transform", s)) entitypool_save_foreach(transform, transform_s, Transform::pool, "pool", t) {
     //         vec2_save(&transform->position, "position", transform_s);
-    //         scalar_save(&transform->rotation, "rotation", transform_s);
+    //         float_save(&transform->rotation, "rotation", transform_s);
     //         vec2_save(&transform->scale, "scale", transform_s);
 
     //         if (entity_get_save_filter(transform->parent))
@@ -363,7 +363,7 @@ void transform_load_all(Store *s) {
     // if (store_child_load(&t, "transform", s)) {
     //     entitypool_load_foreach(transform, transform_s, Transform::pool, "pool", t) {
     //         vec2_load(&transform->position, "position", vec2_zero, transform_s);
-    //         scalar_load(&transform->rotation, "rotation", 0, transform_s);
+    //         float_load(&transform->rotation, "rotation", 0, transform_s);
     //         vec2_load(&transform->scale, "scale", luavec2(1, 1), transform_s);
 
     //         entity_load(&transform->parent, "parent", entity_nil, transform_s);

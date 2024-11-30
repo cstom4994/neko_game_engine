@@ -88,68 +88,38 @@ inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
 // Vec2
 ================================================================================*/
 
-NEKO_SCRIPT(scalar,
+#define NEKO_INFINITY INFINITY
+#define NEKO_EPSILON FLT_EPSILON
 
-            typedef float Float32;
+#define float_cos cosf
+#define float_sin sinf
+#define float_atan2 atan2f
+#define float_sqrt sqrtf
+#define float_min fminf
+#define float_max fmaxf
+#define float_floor floor
 
-            typedef float f32;
-
-            typedef double f64;
-
-            typedef uint16_t u16;
-
-            typedef uint32_t u32;
-
-            typedef uint64_t u64;
-
-            typedef const char* const_str;
-
-)
-
-#ifdef M_PI
-#define SCALAR_PI M_PI
-#else
-#define SCALAR_PI 3.14159265358979323846264338327950288
-#endif
-
-#define SCALAR_INFINITY INFINITY
-
-#define SCALAR_EPSILON FLT_EPSILON
-
-#define scalar_cos cosf
-#define scalar_sin sinf
-#define scalar_atan2 atan2f
-
-#define scalar_sqrt sqrtf
-
-#define scalar_min fminf
-#define scalar_max fmaxf
-
-#define scalar_floor floor
-
-typedef struct {
+struct vec2 {
     f32 x, y;
-} vec2_t;
+};
 
-typedef vec2_t vec2;
-
-NEKO_EXPORT vec2 luavec2(Float32 x, Float32 y);
+NEKO_EXPORT vec2 luavec2(f32 x, f32 y);
 NEKO_EXPORT vec2 vec2_zero;
 
 NEKO_EXPORT vec2 vec2_add(vec2 u, vec2 v);
 NEKO_EXPORT vec2 vec2_sub(vec2 u, vec2 v);
 NEKO_EXPORT vec2 vec2_mul(vec2 u, vec2 v);  // u * v componentwise
 NEKO_EXPORT vec2 vec2_div(vec2 u, vec2 v);  // u / v componentwise
-NEKO_EXPORT vec2 vec2_scalar_mul(vec2 v, Float32 f);
-NEKO_EXPORT vec2 vec2_scalar_div(vec2 v, Float32 f);  // (v.x / f, v.y / f)
-NEKO_EXPORT vec2 scalar_vec2_div(Float32 f, vec2 v);  // (f / v.x, f / v.y)
+NEKO_EXPORT vec2 vec2_float_mul(vec2 v, f32 f);
+NEKO_EXPORT vec2 vec2_float_div(vec2 v, f32 f);  // (v.x / f, v.y / f)
+NEKO_EXPORT vec2 float_vec2_div(f32 f, vec2 v);  // (f / v.x, f / v.y)
 NEKO_EXPORT vec2 vec2_neg(vec2 v);
-NEKO_EXPORT Float32 vec2_len(vec2 v);
+NEKO_EXPORT f32 vec2_len(vec2 v);
 NEKO_EXPORT vec2 vec2_normalize(vec2 v);
-NEKO_EXPORT Float32 vec2_dot(vec2 u, vec2 v);
-NEKO_EXPORT Float32 vec2_dist(vec2 u, vec2 v);
-NEKO_EXPORT vec2 vec2_rot(vec2 v, Float32 rot);
-NEKO_EXPORT Float32 vec2_atan2(vec2 v);
+NEKO_EXPORT f32 vec2_dot(vec2 u, vec2 v);
+NEKO_EXPORT f32 vec2_dist(vec2 u, vec2 v);
+NEKO_EXPORT vec2 vec2_rot(vec2 v, f32 rot);
+NEKO_EXPORT f32 vec2_atan2(vec2 v);
 
 #define luavec2(x, y) (vec2{(float)(x), (float)(y)})
 
@@ -163,18 +133,17 @@ NEKO_EXPORT Float32 vec2_atan2(vec2 v);
  *         \                                 /
  */
 
-typedef struct mat3_t mat3;
-struct mat3_t {
-    Float32 v[9];
+struct mat3 {
+    f32 v[9];
 };
 
-NEKO_EXPORT mat3 luamat3(Float32 m00, Float32 m01, Float32 m02, Float32 m10, Float32 m11, Float32 m12, Float32 m20, Float32 m21, Float32 m22);
+NEKO_EXPORT mat3 luamat3(f32 m00, f32 m01, f32 m02, f32 m10, f32 m11, f32 m12, f32 m20, f32 m21, f32 m22);
 
 NEKO_EXPORT mat3 mat3_identity();
 NEKO_EXPORT mat3 mat3_mul(mat3 m, mat3 n);
-NEKO_EXPORT mat3 mat3_scaling_rotation_translation(vec2 scale, Float32 rot, vec2 trans);
+NEKO_EXPORT mat3 mat3_scaling_rotation_translation(vec2 scale, f32 rot, vec2 trans);
 NEKO_EXPORT vec2 mat3_get_translation(mat3 m);
-NEKO_EXPORT Float32 mat3_get_rotation(mat3 m);
+NEKO_EXPORT f32 mat3_get_rotation(mat3 m);
 NEKO_EXPORT vec2 mat3_get_scale(mat3 m);
 NEKO_EXPORT mat3 mat3_inverse(mat3 m);
 NEKO_EXPORT vec2 mat3_transform(mat3 m, vec2 v);
@@ -238,17 +207,14 @@ inline bool vec2_equal(vec2 a, vec2 b) { return (a.x == b.x && a.y == b.y); }
 // Vec3
 ================================================================================*/
 
-typedef struct {
+struct vec3 {
     union {
         f32 xyz[3];
         struct {
             f32 x, y, z;
         };
     };
-
-} vec3_t;
-
-typedef vec3_t vec3;
+};
 
 inline vec3 vec3_ctor(f32 _x, f32 _y, f32 _z) {
     vec3 v;
@@ -338,11 +304,9 @@ inline vec3 vec3_triple_cross_product(vec3 a, vec3 b, vec3 c) { return vec3_sub(
 // Vec4
 ================================================================================*/
 
-struct vec4_t {
+struct vec4 {
     f32 x, y, z, w;
 };
-
-typedef vec4_t vec4;
 
 inline vec4 vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
     vec4 v;
@@ -510,7 +474,7 @@ inline mat3 mat3_inverse(mat3 m) {
     Matrices are stored in linear, contiguous memory and assume a column-major ordering.
 */
 
-typedef struct mat4 {
+struct mat4 {
     union {
         vec4 rows[4];
         float m[4][4];
@@ -519,9 +483,7 @@ typedef struct mat4 {
             vec4 right, up, dir, position;
         } v;
     };
-} mat4_t;
-
-typedef mat4_t mat4;
+};
 
 inline mat4 mat4_diag(f32 val) {
     mat4 m;

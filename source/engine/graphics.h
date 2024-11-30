@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 // 确保在 GLFW 标头之前包含 GLEW 标头
-#include "vendor/glad/glad.h"
+#include "extern/glad/glad.h"
 
 // GLFW
 #include <GLFW/glfw3.h>

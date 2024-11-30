@@ -860,10 +860,10 @@ end
 local field_types = {}
 
 -- edit_field makes it easy to provide editors for simple properties of various
--- types (Vec2, Float32 etc.)
+-- types (Vec2, f32 etc.)
 
 -- 'args' may contain:
---      field_type: the field type (boolean, string, Float32, enum, Vec2,
+--      field_type: the field type (boolean, string, f32, enum, Vec2,
 --                                  Color, NativeEntity)
 --      ctype: the name of the underlying C type, if any
 --      parent: the parent GUI entity
@@ -933,7 +933,7 @@ field_types['string'] = {
     end
 }
 
-field_types['Float32'] = {
+field_types['f32'] = {
     create = function(args)
         local field = field_create_common(args)
         field.textbox = {}
@@ -982,15 +982,15 @@ field_types['Vec2'] = {
     create = function(args)
         local field = field_create_common(args)
         field.x_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
         }
         field.y_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
@@ -1016,29 +1016,29 @@ field_types['Color'] = {
     create = function(args)
         local field = field_create_common(args)
         field.r_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
         }
         field.g_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
         }
         field.b_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
         }
         field.a_field = ng.edit_field_create {
-            field_type = 'Float32',
-            ctype = 'Float32',
+            field_type = 'f32',
+            ctype = 'f32',
             parent = field.container,
             valign = ng.GA_MAX,
             halign = ng.GA_TABLE
@@ -1169,7 +1169,7 @@ local function property_type(inspector, name)
         -- end
     end
     if field_type == 'number' then
-        field_type = 'Float32'
+        field_type = 'f32'
     end
 
     return field_type, ctype

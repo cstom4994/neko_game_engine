@@ -25,7 +25,7 @@ source/game/*/libs
 source/tests
 source/vendor
 source/engine2
-deps/
+extern/
 examples/
 
 build.bat

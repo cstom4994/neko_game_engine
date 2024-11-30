@@ -18,19 +18,19 @@
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "base/scripting/lua_wrapper.hpp"
-#include "vendor/glad/glad.h"
+#include "extern/glad/glad.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
 // deps
-#include "vendor/stb_image.h"
+#include "extern/stb_image.h"
 
 // miniz
-#include "vendor/miniz.h"
+#include "extern/miniz.h"
 
-#include "vendor/cute_aseprite.h"
+#include "extern/cute_aseprite.h"
 
 using namespace Neko::luabind;
 

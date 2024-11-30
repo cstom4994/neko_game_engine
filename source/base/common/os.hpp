@@ -118,4 +118,7 @@ std::wstring a2w(std::string_view str) noexcept;
 std::string w2a(std::wstring_view wstr) noexcept;
 std::string a2u(std::string_view str) noexcept;
 std::string u2a(std::string_view str) noexcept;
+
+BOOL EnumerateExports(HMODULE hModule, BOOL (*Callback)(LPCSTR pszFuncName, PVOID pFuncAddr));
+
 }  // namespace Neko::win

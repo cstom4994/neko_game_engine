@@ -13,13 +13,13 @@
 NEKO_EXPORT void transform_set_position(NativeEntity ent, vec2 pos);
 NEKO_EXPORT vec2 transform_get_position(NativeEntity ent);
 NEKO_EXPORT void transform_translate(NativeEntity ent, vec2 trans);
-NEKO_EXPORT void transform_set_rotation(NativeEntity ent, Float32 rot);
-NEKO_EXPORT Float32 transform_get_rotation(NativeEntity ent);
-NEKO_EXPORT void transform_rotate(NativeEntity ent, Float32 rot);
+NEKO_EXPORT void transform_set_rotation(NativeEntity ent, f32 rot);
+NEKO_EXPORT f32 transform_get_rotation(NativeEntity ent);
+NEKO_EXPORT void transform_rotate(NativeEntity ent, f32 rot);
 NEKO_EXPORT void transform_set_scale(NativeEntity ent, vec2 scale);
 NEKO_EXPORT vec2 transform_get_scale(NativeEntity ent);
 NEKO_EXPORT vec2 transform_get_world_position(NativeEntity ent);
-NEKO_EXPORT Float32 transform_get_world_rotation(NativeEntity ent);
+NEKO_EXPORT f32 transform_get_world_rotation(NativeEntity ent);
 NEKO_EXPORT vec2 transform_get_world_scale(NativeEntity ent);
 NEKO_EXPORT mat3 transform_get_world_matrix(NativeEntity ent);  // world-space
 NEKO_EXPORT mat3 transform_get_matrix(NativeEntity ent);        // parent-space
@@ -70,9 +70,9 @@ NEKO_EXPORT void camera_set_current_camera(NativeEntity ent);
 NEKO_EXPORT NativeEntity camera_get_current_camera();
 
 // number of world units to fit vertically on screen
-NEKO_EXPORT void camera_set_viewport_height(NativeEntity ent, Float32 height);
+NEKO_EXPORT void camera_set_viewport_height(NativeEntity ent, f32 height);
 
-NEKO_EXPORT Float32 camera_get_viewport_height(NativeEntity ent);
+NEKO_EXPORT f32 camera_get_viewport_height(NativeEntity ent);
 
 NEKO_EXPORT mat3 camera_get_inverse_view_matrix();
 
@@ -135,7 +135,7 @@ bool edit_bboxes_has(NativeEntity ent);
 int edit_bboxes_get_num();
 NativeEntity edit_bboxes_get_nth_ent(int n);
 void edit_bboxes_set_selected(NativeEntity ent, bool selected);
-void edit_line_add(vec2 a, vec2 b, Float32 point_size, Color color);
+void edit_line_add(vec2 a, vec2 b, f32 point_size, Color color);
 
 void edit_set_enabled(bool e);
 bool edit_get_enabled();
@@ -145,7 +145,7 @@ void edit_bboxes_update(NativeEntity ent, BBox bbox);  // 合并bbox
 
 BBox edit_bboxes_get_nth_bbox(int n);
 
-void edit_line_add_xy(vec2 p, Float32 point_size, Color color);
+void edit_line_add_xy(vec2 p, f32 point_size, Color color);
 
 struct App;
 

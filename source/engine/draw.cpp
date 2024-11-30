@@ -12,12 +12,12 @@
 #include "engine/edit.h"
 
 // deps
-#include "vendor/cute_aseprite.h"
+#include "extern/cute_aseprite.h"
 
 // deps
-#include "vendor/stb_image.h"
-#include "vendor/stb_rect_pack.h"
-#include "vendor/stb_truetype.h"
+#include "extern/stb_image.h"
+#include "extern/stb_rect_pack.h"
+#include "extern/stb_truetype.h"
 
 using namespace Neko::luabind;
 

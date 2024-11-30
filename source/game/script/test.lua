@@ -205,7 +205,7 @@ local function UnitTest()
             end)
 
             it('feature_bind_struct', function()
-                local v4 = ng.api.core.vec4.new()
+                local v4 = neko.vec4.new()
                 v4.x = 10
                 v4.y = 10
                 v4.z = 10
@@ -265,16 +265,16 @@ local function UnitTest()
             end)
 
             it('feature_nameof', function()
-                print("Name of table: ", ng.api.core.nameof({}))
-                print("Name of string.sub: ", ng.api.core.nameof(string.sub))
-                print("Name of print: ", ng.api.core.nameof(print))
+                print("Name of table: ", neko.nameof({}))
+                print("Name of string.sub: ", neko.nameof(string.sub))
+                print("Name of print: ", neko.nameof(print))
 
                 local Field_foo = 100
-                print(ng.api.core.nameof(Field_foo))
+                print(neko.nameof(Field_foo))
             end)
 
             it('feature_ltype', function()
-                local coroutine_create, type = coroutine.create, ng.api.core.ltype
+                local coroutine_create, type = coroutine.create, neko.ltype
                 local nil_ = nil
                 local boolean_ = true
                 local number_ = 123
@@ -295,7 +295,7 @@ local function UnitTest()
             -- it('feature_pak', function()
             --     local test_pack, test_handle, test_items
 
-            --     local test_pack_buildnum, test_pack_item_count = ng.api.core.pak_info("fgd.pack")
+            --     local test_pack_buildnum, test_pack_item_count = neko.pak_info("fgd.pack")
             --     print("pack_info", test_pack_buildnum, test_pack_item_count)
             --     test_pack = neko.pak_load("test_pack_handle", "fgd.pack")
             --     test_handle = test_pack:assets_load("gamedir/assets/test_1.fgd")
@@ -308,7 +308,7 @@ local function UnitTest()
 
             --     expect(Test.TestEcs()).to.be.truthy()
 
-            --     local w = ng.api.core.ecs_f()
+            --     local w = neko.ecs_f()
 
             --     local csb = w:csb()
 

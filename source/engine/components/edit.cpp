@@ -114,7 +114,7 @@ static void _bboxes_update_all() {
         elem->wmat = transform_get_world_matrix(ent);
 
         // if no bbox, make default
-        if (elem->bbox.max.x - elem->bbox.min.x <= SCALAR_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= SCALAR_EPSILON) elem->bbox = defaultbb;
+        if (elem->bbox.max.x - elem->bbox.min.x <= NEKO_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= NEKO_EPSILON) elem->bbox = defaultbb;
     }
 }
 
@@ -178,15 +178,15 @@ static void _grid_create_cells() {
         cellbox.max.y = csize.y + 1;
 
     // make it bigger if it's too small
-    while (csize.x / cellbox.max.x > 70 || csize.y / cellbox.max.y > 70) cellbox.max = vec2_scalar_mul(cellbox.max, 2);
+    while (csize.x / cellbox.max.x > 70 || csize.y / cellbox.max.y > 70) cellbox.max = vec2_float_mul(cellbox.max, 2);
 
     // find lower grid snap for min
     if (grid_size.x > 0)
-        cbox.min.x = cellbox.max.x * scalar_floor(cbox.min.x / cellbox.max.x);
+        cbox.min.x = cellbox.max.x * float_floor(cbox.min.x / cellbox.max.x);
     else
         cbox.min.x -= 0.5;
     if (grid_size.y > 0)
-        cbox.min.y = cellbox.max.y * scalar_floor(cbox.min.y / cellbox.max.y);
+        cbox.min.y = cellbox.max.y * float_floor(cbox.min.y / cellbox.max.y);
     else
         cbox.min.y -= 0.5;
 
@@ -230,16 +230,16 @@ static GLuint line_vbo;
 typedef struct LinePoint LinePoint;
 struct LinePoint {
     vec2 position;
-    Float32 point_size;
+    f32 point_size;
     Color color;
 };
 
 static Array<LinePoint> line_points;  // 每个连续的对都是一条线
 
-void edit_line_add_xy(vec2 p, Float32 point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
+void edit_line_add_xy(vec2 p, f32 point_size, Color color) { line_points.push(LinePoint{.position = p, .point_size = point_size, .color = color}); }
 
 // 在两个世界空间坐标之间画一条线
-void edit_line_add(vec2 a, vec2 b, Float32 point_size, Color color) {
+void edit_line_add(vec2 a, vec2 b, f32 point_size, Color color) {
     edit_line_add_xy(a, point_size, color);
     edit_line_add_xy(b, point_size, color);
 }

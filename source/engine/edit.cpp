@@ -37,9 +37,9 @@
 #include "engine/console.hpp"
 
 // deps
-#include "vendor/stb_image.h"
-#include "vendor/stb_image_write.h"
-#include "vendor/stb_rect_pack.h"
+#include "extern/stb_image.h"
+#include "extern/stb_image_write.h"
+#include "extern/stb_rect_pack.h"
 
 static int limginfo(lua_State *L) {
     const char *filename = luaL_checkstring(L, 1);

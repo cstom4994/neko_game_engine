@@ -20,7 +20,7 @@ void luax_pcall(lua_State *L, i32 args, i32 results) {
     }
 }
 
-int g_lua_callbacks_table_ref;  // LUA_NOREF
+int g_lua_callbacks_table_ref = LUA_NOREF;  // LUA_NOREF
 
 int __neko_bind_callback_save(lua_State *L) {
     const_str identifier = luaL_checkstring(L, 1);
@@ -111,6 +111,48 @@ int neko_lua_get_table_pairs_count(lua_State *L, int index) {
     return count;
 }
 
+i32 luax_require_script_buffer(lua_State *L, String &contents, String name) {
+    PROFILE_FUNC();
+
+    if (gBase.error_mode.load()) {
+        return LUA_REFNIL;
+    }
+
+    lua_newtable(L);
+    i32 module_table = lua_gettop(L);
+
+    {
+        PROFILE_BLOCK("load lua script");
+
+        if (luaL_loadbuffer(L, contents.data, contents.len, name.cstr()) != LUA_OK) {
+            String error_message = luax_check_string(L, -1);
+            lua_pop(L, 1);  // 弹出错误消息
+            StringBuilder sb = {};
+            neko_defer(sb.trash());
+            fatal_error(String(sb << "Error loading script buffer: " << name << "\n" << error_message));
+            return LUA_REFNIL;
+        }
+    }
+
+    // run script
+    if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {
+        String error_message = luax_check_string(L, -1);
+        lua_pop(L, 2);  // 弹出错误消息和模块表
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+        fatal_error(String(sb << "Error running script buffer: " << name << "\n" << error_message));
+        return LUA_REFNIL;
+    }
+
+    // copy return results to module table
+    i32 top = lua_gettop(L);
+    for (i32 i = 1; i <= top - module_table; i++) {
+        lua_seti(L, module_table, i);
+    }
+
+    return luaL_ref(L, LUA_REGISTRYINDEX);
+}
+
 i32 luax_require_script(lua_State *L, String filepath) {
     PROFILE_FUNC();
 
@@ -134,39 +176,7 @@ i32 luax_require_script(lua_State *L, String filepath) {
     }
     neko_defer(mem_free(contents.data));
 
-    lua_newtable(L);
-    i32 module_table = lua_gettop(L);
-
-    {
-        PROFILE_BLOCK("load lua script");
-
-        if (luaL_loadbuffer(L, contents.data, contents.len, filepath.data) != LUA_OK) {
-            String error_message = luax_check_string(L, -1);
-            lua_pop(L, 1);  // 弹出错误消息
-            StringBuilder sb = {};
-            neko_defer(sb.trash());
-            fatal_error(String(sb << "Error loading script: " << filepath << "\n" << error_message));
-            return LUA_REFNIL;
-        }
-    }
-
-    // run script
-    if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {
-        String error_message = luax_check_string(L, -1);
-        lua_pop(L, 2);  // 弹出错误消息和模块表
-        StringBuilder sb = {};
-        neko_defer(sb.trash());
-        fatal_error(String(sb << "Error running script: " << filepath << "\n" << error_message));
-        return LUA_REFNIL;
-    }
-
-    // copy return results to module table
-    i32 top = lua_gettop(L);
-    for (i32 i = 1; i <= top - module_table; i++) {
-        lua_seti(L, module_table, i);
-    }
-
-    return luaL_ref(L, LUA_REGISTRYINDEX);
+    return luax_require_script_buffer(L, contents, filepath);
 }
 
 void luax_neko_get(lua_State *L, const char *field) {
@@ -734,6 +744,117 @@ String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width) {
 
     *contents = String(sb);
     return err;
+}
+
+size_t luax_dump_traceback(lua_State *L, char *buf, size_t sz, int is_show_var, int is_show_tmp_var, int top_max, int bottom_max) {
+    size_t e = 0;
+    int level = 1;
+    int firstpart = 1;
+    lua_Debug ar;
+    int i = 0;
+
+    auto get_params = [](lua_State *L, char nparams, char isvararg, lua_Debug *ar, char *buff, size_t buff_sz) -> int {
+        int i = 0;
+        const char *name;
+        size_t e = 0;
+        while ((name = lua_getlocal(L, ar, i++)) != NULL) {
+            e += snprintf(buff + e, buff_sz - e, "%s, ", name);
+            lua_pop(L, 1);
+        }
+        if (e > 0) e -= 2;
+        buff[e] = '\0';
+        if (isvararg) {
+            e += snprintf(buff + e, buff_sz - e, ", ...");
+        }
+        return e;
+    };
+
+#define XX(buf, sz, e, fmt, ...)                                            \
+    do {                                                                    \
+        if (sz - e > 0) e += snprintf(buf + e, sz - e, fmt, ##__VA_ARGS__); \
+    } while (0)
+
+    while (lua_getstack(L, level++, &ar)) {
+        if (level > top_max && firstpart) {
+            if (!lua_getstack(L, level + bottom_max, &ar))
+                level--;
+            else {
+                XX(buf, sz, e, "%s", "\n...");
+                while (lua_getstack(L, level + bottom_max, &ar)) level++;
+            }
+            firstpart = 0;
+            continue;
+        }
+
+        if (level > 2) XX(buf, sz, e, "\n");
+
+        lua_getinfo(L, "Snl", &ar);
+        XX(buf, sz, e, "[%d]%s:", level - 2, ar.short_src);
+        if (ar.currentline > 0) XX(buf, sz, e, "%d:", ar.currentline);
+        if (*ar.namewhat != '\0') {
+            char parambuf[256] = {0};
+            get_params(L, ar.nparams, ar.isvararg, &ar, parambuf, sizeof(parambuf));
+            XX(buf, sz, e, " in function %s(%s)", ar.name, parambuf);
+        } else {
+            if (*ar.what == 'm')
+                XX(buf, sz, e, " in main chunk");
+            else if (*ar.what == 'C' || *ar.what == 't')
+                XX(buf, sz, e, " ?");
+            else
+                XX(buf, sz, e, " in function <%s:%d>", ar.short_src, ar.linedefined);
+        }
+
+        if (!lua_checkstack(L, 1))  // 用于 lua_getlocal
+            continue;
+
+        i = 1;
+        while (is_show_var) {
+            const void *pointer;
+            int type;
+            lua_Debug arf;
+            const char *name = lua_getlocal(L, &ar, i++);
+            const char *type_name;
+            if (name == NULL) break;
+            if (!is_show_tmp_var && name[0] == '(') continue;
+            type = lua_type(L, -1);
+            type_name = lua_typename(L, type);
+            XX(buf, sz, e, "\n\t%s(%s) : ", name, type_name);
+            switch (type) {
+                case LUA_TFUNCTION:
+                    pointer = lua_topointer(L, -1);
+                    lua_getinfo(L, ">Snl", &arf);
+                    if (*arf.what == 'C' || *arf.what == 't')
+                        XX(buf, sz, e, "%p %s@C", pointer, (arf.name != NULL ? arf.name : "defined"));
+                    else
+                        XX(buf, sz, e, "%p %s@%s:%d", pointer, (arf.name != NULL ? arf.name : "defined"), arf.short_src, arf.linedefined);
+                    break;
+                case LUA_TBOOLEAN:
+                    XX(buf, sz, e, "%s", lua_toboolean(L, 1) ? "true" : "false");
+                    lua_pop(L, 1);
+                    break;
+                case LUA_TNIL:
+                    XX(buf, sz, e, "nil");
+                    lua_pop(L, 1);
+                    break;
+                case LUA_TNUMBER:
+                    XX(buf, sz, e, "%s", lua_tostring(L, -1));
+                    lua_pop(L, 1);
+                    break;
+                case LUA_TSTRING:
+                    XX(buf, sz, e, "\"%s\"", lua_tostring(L, -1));
+                    lua_pop(L, 1);
+                    break;
+                default:
+                    XX(buf, sz, e, "%p", lua_topointer(L, -1));
+                    lua_pop(L, 1);
+                    break;
+            }
+        }
+    }
+
+#undef XX
+
+    return e;
 }
 
 }  // namespace Neko

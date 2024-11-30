@@ -810,9 +810,7 @@ class Any {
 
 public:
     Any() : type(nullptr), data(nullptr), flag(0) {}
-
     Any(Type *type, void *data) : type(type), data(data), flag(0B00000001) {}
-
     Any(const Any &other);
     Any(Any &&other);
     ~Any();
