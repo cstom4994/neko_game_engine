@@ -266,6 +266,8 @@ class FMODAudio {
 
     FMODBank *bank_load(const char *path);
 
+    static std::map<int, std::string> err_values;
+
 public:
     void init_fmod_system();
     FMOD::Studio::System *get_fmod_system();
@@ -370,7 +372,12 @@ FMOD::System *FMODAudio::get_fmod_core_system() {
     return lowLevelSystem;
 }
 
-void FMODAudio::Init() { init_fmod_system(); }
+void FMODAudio::Init() {
+
+    Neko::reflection::guess_enum_range<FMOD_RESULT, 0>(err_values, std::make_integer_sequence<int, 81>());
+
+    init_fmod_system();
+}
 
 void FMODAudio::Update() {
     Array<u64> pStoppedChannels;
@@ -601,11 +608,11 @@ FMOD_VECTOR FMODAudio::VectorToFmod(const vec3 &vPosition) {
     return fVec;
 }
 
+std::map<int, std::string> FMODAudio::err_values;
+
 int FMODAudio::ErrorCheck(FMOD_RESULT result) {
     if (result != FMOD_OK) {
-        std::map<int, std::string> values;
-        Neko::reflection::guess_enum_range<FMOD_RESULT, 0>(values, std::make_integer_sequence<int, 81>());
-        console_log("FMOD Error: %d %s", result, values[result].c_str());
+        console_log("FMOD Error: %d %s", result, err_values[result].c_str());
         return -1;
     }
     return 0;

@@ -25,7 +25,6 @@
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
 #include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/nativescript.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/console.hpp"
@@ -95,8 +94,6 @@ static inline void perf() {
 // ECS_COMPONENT_DECL(pos_t);
 // ECS_COMPONENT_DECL(vel_t);
 // ECS_COMPONENT_DECL(rect_t);
-
-native_script_context_t *sc;
 
 unsigned int fbo;
 unsigned int rbo;
@@ -481,8 +478,6 @@ static void _game_fini() {
         neko_deinit_ui_renderer();
     }
 
-    native_free_scripts(sc);
-
     // fini systems
     system_fini();
 
@@ -679,12 +674,6 @@ void Game::init() {
     for (auto evt : evt_list) {
         eh.event_register(gApp, evt.evt, evt.cb, NULL);
     }
-
-    sc = native_new_script_context(gApp, "game_debug_x64.dll");
-
-    native_new_script(sc, {1}, "get_test_script_instance_size", "on_test_script_init", "on_test_script_update", "on_physics_update_name", "on_test_script_free", false);
-
-    native_init_scripts(sc);
 
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);

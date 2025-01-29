@@ -1628,10 +1628,14 @@ inline void LuaStructCreate(lua_State *L, const char *fieldName, const char *typ
 
                     lua_pushnil(L);
                     while (lua_next(L, mt2_idx) != 0) {
-                        std::string_view key = luaL_checkstring(L, -2);
-                        if (key == "__index" || key == "__newindex" || key == "__gc" || key == "__metatable") {
+                        const char *key = luaL_checkstring(L, -2);
+                        u64 keyhash = fnv1a(key);
+                        if (keyhash == "__index"_hash ||     //
+                            keyhash == "__newindex"_hash ||  //
+                            keyhash == "__gc"_hash ||        //
+                            keyhash == "__metatable"_hash) {
                             lua_pop(L, 1);
-                            // printf("metatype with %s is not allow\n", key.data());
+                            printf("metatype with %s is not allow\n", key);
                             continue;
                         } else {
                             lua_pushvalue(L, -2);      // 复制 key
