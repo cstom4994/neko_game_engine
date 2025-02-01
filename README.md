@@ -39,7 +39,7 @@ Dependencies & Code used
 ---
 
 [GLFW](http://www.glfw.org/),
-[GLAD](http://glew.sourceforge.net/),
+[GLAD](https://github.com/Dav1dde/glad/),
 [Box2d](https://github.com/erincatto/box2d/),
 [FMOD](https://www.fmod.com/),
 [stb](https://github.com/nothings/stb/),
