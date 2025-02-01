@@ -34,7 +34,6 @@
 #include "base/scripting/lua_wrapper.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
-#include "engine/console.hpp"
 
 // deps
 #include "extern/stb_image.h"
@@ -281,7 +280,7 @@ static void _print(const char *s) {
     printf("%s", s);
     fflush(stdout);
 
-    gameconsole_print(s);
+    // gameconsole_print(s);
 }
 
 void console_puts(const char *s) {
@@ -292,7 +291,7 @@ void console_puts(const char *s) {
 void console_init() {
     PROFILE_FUNC();
 
-    gameconsole_init();
+    // gameconsole_init();
 }
 
 void console_fini() {}

@@ -636,8 +636,6 @@ void FMODAudio::Shutdown() {
 
 static Neko::FMODAudio audio_fmod;
 
-#endif
-
 void audio_load_bank(int mode, String name, unsigned int type) {
     if (mode == 1) {
         audio_fmod.LoadBankVfs(name, type);
@@ -651,6 +649,8 @@ FMOD::Studio::Bank *audio_load_event(String event) {
     return audio_fmod.GetBank(event);
 }
 void audio_play_event(String event) { audio_fmod.PlayEvent(event); }
+
+#endif
 
 void sound_init() {
     PROFILE_FUNC();
@@ -674,6 +674,7 @@ void sound_init() {
 #endif
     }
 
+#if NEKO_AUDIO == 2
     audio_load_bank(1, "assets/fmod/Build/Desktop/Master.bank", 0);
     audio_load_bank(1, "assets/fmod/Build/Desktop/Master.strings.bank", 0);
 
@@ -692,9 +693,11 @@ void sound_init() {
     // audio_play_event("event:/World/WaterFlow");
 
     audio_play_event("event:/Music/Title");
+#endif
 
     auto L = ENGINE_LUA();
 
+#if NEKO_AUDIO == 2
     lua_register(
             L, "audio_load_bank", +[](lua_State *L) {
                 const_str name = lua_tostring(L, 1);
@@ -714,6 +717,27 @@ void sound_init() {
                 audio_load_event(name);
                 return 0;
             });
+#else
+    lua_register(
+            L, "audio_load_bank", +[](lua_State *L) {
+                const_str name = lua_tostring(L, 1);
+                int type = lua_tointeger(L, 2);
+                // audio_load_bank(0, name, type);
+                return 0;
+            });
+    lua_register(
+            L, "audio_play_event", +[](lua_State *L) {
+                const_str name = lua_tostring(L, 1);
+                // audio_play_event(name);
+                return 0;
+            });
+    lua_register(
+            L, "audio_load_event", +[](lua_State *L) {
+                const_str name = lua_tostring(L, 1);
+                // audio_load_event(name);
+                return 0;
+            });
+#endif
 }
 
 void sound_fini() {

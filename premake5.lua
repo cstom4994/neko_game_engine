@@ -1,8 +1,7 @@
 -- premake5.lua
-require "scripts/export-compile-commands"
-require "scripts/ecc/ecc"
+-- require "scripts/export-compile-commands"
+-- require "scripts/ecc/ecc"
 -- require "scripts/cmake/_cmake"
-
 workspace "neko"
 configurations {"Debug", "Release"}
 
@@ -14,7 +13,8 @@ cppdialect "C++20"
 cdialect "C17"
 
 local FMOD_LIB_DIR = "C:/Program Files (x86)/FMOD SoundSystem/FMOD Studio API Windows"
--- local arch = "x86"
+local ENABLE_FMOD = false
+
 local arch = "x86_64"
 
 characterset("Unicode")
@@ -28,18 +28,21 @@ defines {"WIN32", "_WIN32", "_WINDOWS", "NOMINMAX", "_CRT_SECURE_NO_DEPRECATE", 
          "_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING", "WIN32_LEAN_AND_MEAN", "_SCL_SECURE_NO_WARNINGS",
          "_CRT_NONSTDC_NO_DEPRECATE"}
 
-defines {"LUA_USE_LONGJMP", "NEKO_CFFI", "NEKO_BOX2D", "NEKO_AUDIO=2"}
+defines {"LUA_USE_LONGJMP", "NEKO_CFFI", "NEKO_BOX2D"}
 
 defines {"UNICODE", "_UNICODE"}
 
 defines {"GLFW_INCLUDE_NONE"}
 
-includedirs {"source", "source/extern", "source/extern/luaot"}
+includedirs {"source", "source/extern", "source/extern/luaot", "source/extern/glfw/include"}
 
-includedirs {FMOD_LIB_DIR .. "/api/core/inc", FMOD_LIB_DIR .. "/api/studio/inc", "source/extern/glfw/include"}
+libdirs {"source/extern/glfw/lib-vc2022"}
 
-libdirs {"source/extern/libffi/lib", FMOD_LIB_DIR .. "/api/core/lib/x64", FMOD_LIB_DIR .. "/api/studio/lib/x64",
-         "source/extern/glfw/lib-vc2022"}
+if ENABLE_FMOD then
+    includedirs {FMOD_LIB_DIR .. "/api/core/inc", FMOD_LIB_DIR .. "/api/studio/inc"}
+    libdirs {"source/extern/libffi/lib", FMOD_LIB_DIR .. "/api/core/lib/x64", FMOD_LIB_DIR .. "/api/studio/lib/x64"}
+    defines {"NEKO_AUDIO=2"}
+end
 
 local function runlua(name)
     return function(config)
@@ -235,9 +238,13 @@ do
     files {"source/gen/*_embedded.cpp"}
     -- files {"source/gen/*_luaot.c"}
 
-    links {"fmod_vc", "fmodstudio_vc", "ws2_32", "wininet", "glfw3"}
+    links {"ws2_32", "wininet", "glfw3"}
 
     links {"base"}
+
+    if ENABLE_FMOD then
+        links {"fmod_vc", "fmodstudio_vc"}
+    end
 
     files {"premake5.lua"}
 

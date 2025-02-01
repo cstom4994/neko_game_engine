@@ -10,17 +10,12 @@ makefile
 cmake-*/
 vsbuild/
 
-gamedir/assets/
 gamedir/test/
 gamedir/lite/
-gamedir/code/libs
-gamedir/*.pack
-gamedir/*.zip
 bin/
 
 neko_cache/
 source/gen
-source/game/*/libs
 source/tests
 source/vendor
 source/engine2
@@ -33,7 +28,6 @@ imgui.ini
 *.exe
 *.dll
 *.exp
-*.lib
 *.pdb
 *.ilk
 *.obj

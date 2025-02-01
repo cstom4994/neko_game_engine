@@ -10,8 +10,8 @@ NOTE: This is a "learn by doing" side project that I developed in my free time. 
 Building
 ---
 
-premake + msvc should make it easy to set up neko. 
-Dependencies are builtin in source/extern/. Just run premake from the repository root,
+Premake + msvc should make it easy to set up neko. 
+Dependencies are builtin in source/extern/. Just run premake from the repository root:
 
     premake5 embed (optional, for embeding builtin lua code)
     premake5 luaot (optional, for embeding builtin lua code with Lua AOT)

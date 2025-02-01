@@ -27,10 +27,8 @@
 #include "base/scripting/lua_wrapper.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
-#include "engine/console.hpp"
 #include "engine/renderer/renderer.h"
 #include "editor/editor.hpp"
-#include "editor/fgd.h"
 #include "base/common/math.hpp"
 #include "engine/input.h"
 
@@ -309,6 +307,7 @@ int _game_draw(App *app, event_t evt) {
 
             ImGui::InputFloat("posteffect_intensity", &posteffect_intensity);
 
+#if 0
             if (ImGui::Button("fgd")) {
                 Fgd fgd("neko_base.fgd");
                 bool ok = fgd.parse();
@@ -330,11 +329,12 @@ int _game_draw(App *app, event_t evt) {
                     console_log("%s: %s", keydef.name.c_str(), keydef.description.c_str());
                 }
             }
+#endif
 
             ImGui::End();
         }
 
-        gameconsole_draw();
+        // gameconsole_draw();
 
         neko_update_ui(ui);
 
