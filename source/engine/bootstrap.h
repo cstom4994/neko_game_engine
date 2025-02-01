@@ -7,6 +7,8 @@
 #include "engine/base.hpp"
 #include "base/common/singleton.hpp"
 #include "base/cbase.hpp"
+#include "base/common/array.hpp"
+#include "base/common/string.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
@@ -164,5 +166,24 @@ inline void query_window(int idx, i32 *width, i32 *height) {
     *width = w;
     *height = h;
 }
+
+struct dll_export_t {
+    dll_export_t() : functionptr(nullptr) {}
+
+    CString functionname;
+    void *functionptr;
+};
+
+extern void Sys_Shutdown(void);
+extern bool EngineInit(int argc, const char *argv[]);
+extern Int32 Main(int argc, const char *argv[]);
+
+extern bool Sys_GetDLLExports(const Char *pstrDLLName, void *pDLLHandle);
+
+extern bool CL_Init();
+extern bool CL_Think();
+extern bool CL_Shutdown();
+extern bool CL_IsHostClient(void);
+extern void CL_Disconnect(void);
 
 #endif

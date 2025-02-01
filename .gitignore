@@ -16,7 +16,6 @@ gamedir/lite/
 gamedir/code/libs
 gamedir/*.pack
 gamedir/*.zip
-docs/
 bin/
 
 neko_cache/

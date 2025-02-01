@@ -31,6 +31,8 @@
 #include "engine/renderer/renderer.h"
 #include "editor/editor.hpp"
 #include "editor/fgd.h"
+#include "base/common/math.hpp"
+#include "engine/input.h"
 
 // deps
 #include "extern/sokol_time.h"
@@ -959,3 +961,151 @@ void timing_load_all(Store *s) {
 }
 
 #endif
+
+// 处理引擎状态变量和功能
+
+namespace Neko {
+Allocator *g_allocator = []() -> Allocator * {
+#ifndef NDEBUG
+    static DebugAllocator alloc;
+#else
+    static HeapAllocator alloc;
+#endif
+    return &alloc;
+}();
+}  // namespace Neko
+
+// 导出函数数组
+std::vector<dll_export_t> g_pExportsTargetArray{};
+
+extern Neko::CBase gBase;
+
+static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
+
+bool EngineInit(int argc, const char *argv[]) {
+
+    gBase.Init();
+
+    gBase.SetArgs(argc, argv);
+
+    gBase.LoadVFS("../gamedir");
+
+    auto argsArray = BaseGetCommandLine(argc);
+
+    glfwSetErrorCallback(_glfw_error_callback);
+
+    if (!glfwInit()) {
+        // Sys_ErrorPopup("SDL_Init returned an error");
+        return false;
+    }
+
+    for (auto &s : argsArray) mem_free(s.data);
+    argsArray.trash();
+
+    // if (!SV_Init()) return false;
+    if (!CL_Init()) return false;
+
+    return true;
+}
+
+void Sys_Shutdown(void) {
+    CL_Shutdown();
+    gBase.UnLoadVFS();
+    gBase.Fini();
+    glfwTerminate();
+}
+
+#ifdef _WIN64
+static BOOL CALLBACK ExportCallback(LPCSTR szSymbol, PVOID pFuncAddr) {
+    dll_export_t newExport;
+    newExport.functionname = szSymbol;
+    g_pExportsTargetArray.push_back(newExport);
+
+    return TRUE;
+}
+#else
+static void ExportCallback(Char *pstrSymbolName) {
+    dll_export_t newExport;
+    newExport.functionname = pstrSymbolName;
+    g_pExportsTargetArray.push_back(newExport);
+}
+#endif
+
+bool Sys_GetDLLExports(const Char *pstrDLLName, void *pDLLHandle) {
+#ifdef _WIN64
+    HMODULE hDLL = GetModuleHandleA(pstrDLLName);
+    if (!hDLL) {
+        console_log("The specified library '%s' does not exist.\n", pstrDLLName);
+        return false;
+    }
+
+    BOOL validFlag = FALSE;
+    if (!Neko::win::EnumerateExports(hDLL, ExportCallback)) {
+        console_log("Couldn't get exports for '%s'.\n", pstrDLLName);
+        return false;
+    }
+#else
+
+    if (!EnumExportedFunctions(pstrDLLName, ExportCallback)) {
+        console_log("Couldn't get exports for '%s'.\n", pstrDLLName);
+        return false;
+    }
+#endif
+    // Set the function pointers
+    for (Uint32 i = 0; i < g_pExportsTargetArray.size(); i++) {
+        g_pExportsTargetArray[i].functionptr = neko_os_library_proc_address(pDLLHandle, g_pExportsTargetArray[i].functionname.c_str());
+        if (g_pExportsTargetArray[i].functionptr == nullptr) {
+            console_log("Failed to find function '%s' in '%s'.\n", g_pExportsTargetArray[i].functionname.c_str(), pstrDLLName);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Sys_Frame() { CL_Think(); }
+
+Int32 Main(int argc, const char *argv[]) {
+
+    HANDLE hMutex = CreateMutexA(nullptr, FALSE, "NekoEngineInstanceMutex");
+
+    if (nullptr != hMutex) GetLastError();
+
+    DWORD mutexResult = WaitForSingleObject(hMutex, 0);
+    if (mutexResult != WAIT_OBJECT_0 && mutexResult != WAIT_ABANDONED) {
+        console_log("Error during system initialization.\n");
+        ReleaseMutex(hMutex);
+        CloseHandle(hMutex);
+        return -1;
+    }
+
+    if (!EngineInit(argc, argv)) {
+        console_log("Error during system initialization.\n");
+        ReleaseMutex(hMutex);
+        CloseHandle(hMutex);
+        return -1;
+    }
+
+    if (!Sys_GetDLLExports("engine.exe", GetModuleHandle(NULL))) {
+        console_log("Error during Sys_GetDLLExports\n");
+    }
+
+    GLFWwindow *window = gApp->game_window;
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        Sys_Frame();
+    }
+
+    Sys_Shutdown();
+
+    ReleaseMutex(hMutex);
+    CloseHandle(hMutex);
+
+    return 0;
+}
+
+int main(int argc, const char *argv[]) {
+    Main(argc, argv);
+    return 0;
+}

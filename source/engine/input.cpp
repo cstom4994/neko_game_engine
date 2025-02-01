@@ -11,7 +11,6 @@
 #include "engine/input.h"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
-#include "system.h"
 
 using namespace Neko::luabind;
 
