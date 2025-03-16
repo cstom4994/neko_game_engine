@@ -18,6 +18,7 @@
 #include "engine/test.h"
 #include "engine/ui.h"
 #include "engine/imgui.hpp"
+#include "base/common/logger.hpp"
 
 // deps
 #include "extern/luaalloc.h"
@@ -31,8 +32,6 @@
 #define usr_path(path) (USR_DIR path)
 
 #define default_font_size 22.f
-
-struct Store;
 
 using namespace Neko;
 using namespace Neko::ecs;
@@ -157,8 +156,8 @@ int window_has_focus();
 double window_scale();
 
 int timing_update(App *app, event_t evt);
-void timing_save_all(Store *s);
-void timing_load_all(Store *s);
+void timing_save_all(App* app);
+void timing_load_all(App* app);
 
 inline void query_window(int idx, i32 *width, i32 *height) {
     int w, h;

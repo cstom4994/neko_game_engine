@@ -173,7 +173,7 @@ void sprite_draw_all() {
     glDrawArrays(GL_POINTS, 0, nsprites);
 }
 
-void sprite_save_all(Store *s) {
+void sprite_save_all(App* app) {
     // Store *t, *sprite_s;
     // Sprite *sprite;
 
@@ -188,7 +188,7 @@ void sprite_save_all(Store *s) {
     //     }
     // }
 }
-void sprite_load_all(Store *s) {
+void sprite_load_all(App* app) {
     // Store *t, *sprite_s;
     // Sprite *sprite;
     // char *tatlas;

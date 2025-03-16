@@ -171,13 +171,13 @@ static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severi
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
         case GL_DEBUG_SEVERITY_MEDIUM:
-            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
         case GL_DEBUG_SEVERITY_LOW:
-            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
         case GL_DEBUG_SEVERITY_NOTIFICATION:
-            console_log("OpenGL (source: %s; type: %s): %s", s, t, message);
+            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
     }
 }
@@ -311,22 +311,22 @@ int _game_draw(App *app, event_t evt) {
             if (ImGui::Button("fgd")) {
                 Fgd fgd("neko_base.fgd");
                 bool ok = fgd.parse();
-                console_log("%d", ok);
+                LOG_INFO("{}", ok);
 
                 FgdClass *game_lua = nullptr;
 
                 for (auto &[n, c] : fgd.classMap) {
-                    console_log("%s %p", n.c_str(), c);
+                    LOG_INFO("{} {}", n.c_str(), c);
 
                     if (n == "game_lua") game_lua = c;
                 }
 
                 neko_assert(game_lua);
 
-                console_log("game_lua: %d %s", game_lua->classType, game_lua->name.c_str());
+                LOG_INFO("game_lua: {} {}", game_lua->classType, game_lua->name.c_str());
 
                 for (auto &keydef : game_lua->keyvalues) {
-                    console_log("%s: %s", keydef.name.c_str(), keydef.description.c_str());
+                    LOG_INFO("{}: {}", keydef.name.c_str(), keydef.description.c_str());
                 }
             }
 #endif
@@ -579,9 +579,9 @@ void Game::init() {
     LockGuard<Mutex> lock(gApp->g_init_mtx);
 
 #if defined(NDEBUG)
-    console_log("neko %d", neko_buildnum());
+    LOG_INFO("neko {}", neko_buildnum());
 #else
-    console_log("neko %d (debug build) (Lua %s.%s.%s, %s)", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
+    LOG_INFO("neko {} (debug build) (Lua {}.{}.{}, {})", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
 #endif
 
     // create glfw window
@@ -599,7 +599,7 @@ void Game::init() {
 
     // initialize GLEW
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        console_log("Failed to initialize GLAD");
+        LOG_INFO("Failed to initialize GLAD");
     }
 
 #if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
@@ -681,7 +681,7 @@ void Game::init() {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-        console_log("framebuffer good");
+        LOG_INFO("framebuffer good");
     }
 
     glGenTextures(1, &fbo_tex);
@@ -949,12 +949,12 @@ int timing_update(App *app, event_t evt) {
     return 0;
 }
 
-void timing_save_all(Store *s) {
+void timing_save_all(App* app) {
     // Store *t;
 
     // if (store_child_save(&t, "timing", s)) float_save(&g_app->scale, "scale", t);
 }
-void timing_load_all(Store *s) {
+void timing_load_all(App* app) {
     // Store *t;
 
     // if (store_child_load(&t, "timing", s)) float_load(&g_app->scale, "scale", 1, t);
@@ -1035,19 +1035,19 @@ bool Sys_GetDLLExports(const Char *pstrDLLName, void *pDLLHandle) {
 #ifdef _WIN64
     HMODULE hDLL = GetModuleHandleA(pstrDLLName);
     if (!hDLL) {
-        console_log("The specified library '%s' does not exist.\n", pstrDLLName);
+        LOG_INFO("The specified library '{}' does not exist.\n", pstrDLLName);
         return false;
     }
 
     BOOL validFlag = FALSE;
     if (!Neko::win::EnumerateExports(hDLL, ExportCallback)) {
-        console_log("Couldn't get exports for '%s'.\n", pstrDLLName);
+        LOG_INFO("Couldn't get exports for '{}'.\n", pstrDLLName);
         return false;
     }
 #else
 
     if (!EnumExportedFunctions(pstrDLLName, ExportCallback)) {
-        console_log("Couldn't get exports for '%s'.\n", pstrDLLName);
+        LOG_INFO("Couldn't get exports for '{}'.\n", pstrDLLName);
         return false;
     }
 #endif
@@ -1055,7 +1055,7 @@ bool Sys_GetDLLExports(const Char *pstrDLLName, void *pDLLHandle) {
     for (Uint32 i = 0; i < g_pExportsTargetArray.size(); i++) {
         g_pExportsTargetArray[i].functionptr = neko_os_library_proc_address(pDLLHandle, g_pExportsTargetArray[i].functionname.c_str());
         if (g_pExportsTargetArray[i].functionptr == nullptr) {
-            console_log("Failed to find function '%s' in '%s'.\n", g_pExportsTargetArray[i].functionname.c_str(), pstrDLLName);
+            LOG_INFO("Failed to find function '{}' in '{}'.\n", g_pExportsTargetArray[i].functionname.c_str(), pstrDLLName);
             return false;
         }
     }
@@ -1073,21 +1073,21 @@ Int32 Main(int argc, const char *argv[]) {
 
     DWORD mutexResult = WaitForSingleObject(hMutex, 0);
     if (mutexResult != WAIT_OBJECT_0 && mutexResult != WAIT_ABANDONED) {
-        console_log("Error during system initialization.\n");
+        LOG_INFO("Error during system initialization.\n");
         ReleaseMutex(hMutex);
         CloseHandle(hMutex);
         return -1;
     }
 
     if (!EngineInit(argc, argv)) {
-        console_log("Error during system initialization.\n");
+        LOG_INFO("Error during system initialization.\n");
         ReleaseMutex(hMutex);
         CloseHandle(hMutex);
         return -1;
     }
 
     if (!Sys_GetDLLExports("engine.exe", GetModuleHandle(NULL))) {
-        console_log("Error during Sys_GetDLLExports\n");
+        LOG_INFO("Error during Sys_GetDLLExports\n");
     }
 
     GLFWwindow *window = gApp->game_window;

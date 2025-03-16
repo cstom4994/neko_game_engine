@@ -22,6 +22,11 @@ using namespace Neko::imgui;
 
 Neko::LuaInspector* g_inspector;
 
+template <>
+struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
+    auto format(Neko::LuaInspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
+};
+
 static int __luainspector_echo(lua_State* L) {
     Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
     if (m) m->print_line(luaL_checkstring(L, 1), Neko::LUACON_LOG_TYPE_MESSAGE);
@@ -42,7 +47,7 @@ static int __luainspector_gc(lua_State* L) {
 
     g_inspector = NULL;
 
-    console_log("luainspector __gc %p", m);
+    LOG_INFO("luainspector __gc {}", m);
     return 0;
 }
 
@@ -387,18 +392,18 @@ int Neko::LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* 
         std::string complete = this->try_complete(cmd);
         if (!complete.empty()) {
             paste_buffer(complete.data(), complete.data() + complete.size(), command_beg - cmd.data());
-            console_log("%s", complete.c_str());
+            LOG_INFO("{}", complete.c_str());
         }
     }
     if (data->EventKey == ImGuiKey_UpArrow) {
         cmd2 = this->read_history(-1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        console_log("h:%s", cmd2.c_str());
+        LOG_INFO("h:{}", cmd2.c_str());
     }
     if (data->EventKey == ImGuiKey_DownArrow) {
         cmd2 = this->read_history(1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        console_log("h:%s", cmd2.c_str());
+        LOG_INFO("h:{}", cmd2.c_str());
     }
 
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
@@ -539,7 +544,7 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
     const float TEXT_BASE_HIGHT = ImGui::CalcTextSize("A").y;
 
     ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 80 - TEXT_BASE_HIGHT * 2);
-    if (ImGui::BeginChild("##console_log", size)) {
+    if (ImGui::BeginChild("##LOG_INFO", size)) {
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
 
         neko_assert(&messageLog);
@@ -695,7 +700,7 @@ void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
                     lua_pop(L, 1);                 // # -1 pop value
                     lua_pushstring(L, v.c_str());  // # -1 push new value
                     lua_setfield(L, -3, name);     // -3 table
-                    console_log("改 %s = %s", name, v.c_str());
+                    LOG_INFO("改 {} = {}", name, v.c_str());
                 }
 
                 ImGui::TreePop();
@@ -815,8 +820,6 @@ void Neko::LuaInspector::print(const std::string& msg, luainspector_logtype type
     g_inspector->print_line(msg, type);
 }
 
-void gameconsole_print(const char* s) { Neko::LuaInspector::print(s, LUACON_LOG_TYPE_MESSAGE); }
-
 Neko::CCharacter cJohn;
 
 extern Assets g_assets;
@@ -862,6 +865,8 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
     }
 
     g_inspector = inspector;
+
+    Logger::getInstance()->setConsolePrintf([](const std::string& msg) { Neko::LuaInspector::print(msg, LUACON_LOG_TYPE_MESSAGE); });
 
     return 1;
 }

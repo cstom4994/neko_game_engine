@@ -335,7 +335,7 @@ void edit_draw_all() {
     _line_draw_all();
 }
 
-void edit_save_all(Store* s) {
+void edit_save_all(App* app) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 
@@ -344,7 +344,7 @@ void edit_save_all(Store* s) {
     //     entitypool_save_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
     // }
 }
-void edit_load_all(Store* s) {
+void edit_load_all(App* app) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 

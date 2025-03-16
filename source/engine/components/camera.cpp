@@ -116,7 +116,7 @@ int camera_update_all(App *app, event_t evt) {
     return 0;
 }
 
-void camera_save_all(Store *s) {
+void camera_save_all(App* app) {
     // Store *t, *camera_s;
     // Camera *camera;
 
@@ -128,7 +128,7 @@ void camera_save_all(Store *s) {
     //     entitypool_save_foreach(camera, camera_s, Camera::pool, "pool", t) float_save(&camera->viewport_height, "viewport_height", camera_s);
     // }
 }
-void camera_load_all(Store *s) {
+void camera_load_all(App* app) {
     // Store *t, *camera_s;
     // Camera *camera;
 

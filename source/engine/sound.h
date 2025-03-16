@@ -48,7 +48,7 @@ NEKO_API() void sound_init();
 NEKO_API() void sound_fini();
 NEKO_API() int sound_update_all(App *app, event_t evt);
 int sound_postupdate(App *app, event_t evt);
-NEKO_API() void sound_save_all(Store *s);
-NEKO_API() void sound_load_all(Store *s);
+NEKO_API() void sound_save_all(App* app);
+NEKO_API() void sound_load_all(App* app);
 
 void audio_play_event(String event);

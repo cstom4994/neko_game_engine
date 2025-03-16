@@ -5,6 +5,7 @@
 #include "base/common/util.hpp"
 #include "base/common/profiler.hpp"
 #include "base/scripting/lua_wrapper.hpp"
+#include "base/common/logger.hpp"
 
 // miniz
 #include "extern/miniz.h"
@@ -124,7 +125,7 @@ bool BinDataLoad(BinData *bindata, const_str file_path, u32 data_buffer_capacity
     bindata->data_buffer = _data_buffer;
     bindata->data_buffer_size = data_buffer_capacity;
 
-    console_log("load bindata %s buildnum: %d (engine %d)", file_path, buildnum, neko_buildnum());
+    LOG_INFO("load bindata {} buildnum: {} (engine {})", file_path, buildnum, neko_buildnum());
 
     return true;
 }
@@ -132,7 +133,7 @@ void BinDataUnload(BinData *bindata) {
     PROFILE_FUNC();
 
     if (bindata->file_ref_count != 0) {
-        console_log("assets loader leaks detected %d refs", bindata->file_ref_count);
+        LOG_INFO("assets loader leaks detected {} refs", bindata->file_ref_count);
     }
 
     BinDataFreeBuffer(bindata);
@@ -207,7 +208,7 @@ bool BinDataGetItem(BinData *bindata, u64 index, String *out, u64 *size) {
         unsigned long decompress_buf_len = info.data_size;
         int decompress_status = uncompress(_data_buffer, &decompress_buf_len, _zip_buffer, info.zip_size);
         result = decompress_buf_len;
-        console_log("uncompress %u %u", info.zip_size, info.data_size);
+        LOG_INFO("uncompress {} {}", info.zip_size, info.data_size);
         if (result < 0 || result != info.data_size || decompress_status != MZ_OK) {
             return false;
         }
@@ -265,7 +266,7 @@ bool BinDataUnpack(const_str file_path, bool print_progress) {
     for (u64 i = 0; i < item_count; i++) {
         BinDataItem *item = &bindata.items[i];
 
-        if (print_progress) console_log("Unpacking %s", item->path);
+        if (print_progress) LOG_INFO("Unpacking {}", item->path);
 
         String data;
         u64 data_size;
@@ -338,7 +339,7 @@ bool BinDataWriteItem(FILE *binfile, u64 item_count, char **item_paths, bool pri
         char *item_path = item_paths[i];
 
         if (print_progress) {
-            console_log("Packing \"%s\" file. ", item_path);
+            LOG_INFO("Packing \"{}\" file. ", item_path);
         }
 
         size_t path_size = neko_strlen(item_path);
@@ -422,7 +423,7 @@ bool BinDataWriteItem(FILE *binfile, u64 item_count, char **item_paths, bool pri
 
             int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
 
-            console_log("(%u/%u bytes) [%d%%]", zip_file_size, raw_file_size, progress);
+            LOG_INFO("({}/{} bytes) [{}%]", zip_file_size, raw_file_size, progress);
         }
     }
 
@@ -430,8 +431,7 @@ bool BinDataWriteItem(FILE *binfile, u64 item_count, char **item_paths, bool pri
 
     if (print_progress) {
         int compression = (int)((1.0 - (f64)(total_zip_size) / (f64)total_raw_size) * 100.0);
-        console_log("Packed %llu files. (%llu/%llu bytes, %d%% saved)", (long long unsigned int)item_count, (long long unsigned int)total_zip_size, (long long unsigned int)total_raw_size,
-                    compression);
+        LOG_INFO("Packed {} files. ({}/{} bytes, {}% saved)", (long long unsigned int)item_count, (long long unsigned int)total_zip_size, (long long unsigned int)total_raw_size, compression);
     }
 
     return true;
@@ -561,7 +561,7 @@ static int mt_bindata_gc(lua_State *L) {
     lua_getiuservalue(L, 1, 1);
     const_str name = lua_tostring(L, -1);
     BinDataUnload(&bindata);
-    console_log("bindata __gc %s", name);
+    LOG_INFO("bindata __gc {}", name);
     return 0;
 }
 
@@ -609,7 +609,7 @@ static int mt_bindata_assets_unload(lua_State *L) {
     if (assets_user_handle && assets_user_handle->data.len)
         BinDataFreeItem(&bindata, assets_user_handle->data);
     else
-        console_log("unknown assets unload %p", assets_user_handle);
+        LOG_INFO("unknown assets unload {}", assets_user_handle->name);
 
     // asset_write(asset);
 

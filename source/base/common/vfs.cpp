@@ -5,6 +5,7 @@
 #include "base/common/hashmap.hpp"
 #include "base/common/profiler.hpp"
 #include "base/common/util.hpp"
+#include "base/common/logger.hpp"
 
 // miniz
 #include "extern/miniz.h"
@@ -27,7 +28,7 @@ bool read_entire_file_raw(String *out, String filepath) {
 
     FILE *file = neko_fopen(path.data, "rb");
     if (file == nullptr) {
-        console_log("failed to load file %s", path.data);
+        LOG_INFO("failed to load file {}", path.data);
         return false;
     }
 
@@ -162,13 +163,13 @@ struct ZipFileSystem : FileSystem {
         constexpr i32 eocd_size = 22;
         char *eocd = end - eocd_size;
         if (read4(eocd) != 0x06054b50) {
-            console_log("zip_fs failed to find EOCD record");
+            LOG_INFO("zip_fs failed to find EOCD record");
             return false;
         }
 
         u32 central_size = read4(&eocd[12]);
         if (read4(eocd - central_size) != 0x02014b50) {
-            console_log("zip_fs failed to find central directory");
+            LOG_INFO("zip_fs failed to find central directory");
             return false;
         }
 
@@ -176,14 +177,14 @@ struct ZipFileSystem : FileSystem {
         char *begin = eocd - central_size - central_offset;
         u64 zip_len = end - begin;
         if (read4(begin) != 0x04034b50) {
-            console_log("zip_fs failed to read local file header");
+            LOG_INFO("zip_fs failed to read local file header");
             return false;
         }
 
         mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
         if (!zip_ok) {
             mz_zip_error err = mz_zip_get_last_error(&zip);
-            console_log("zip_fs failed to read zip: %s", mz_zip_get_error_string(err));
+            LOG_INFO("zip_fs failed to read zip: {}", mz_zip_get_error_string(err));
             return false;
         }
 
@@ -369,13 +370,13 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
     if (filepath == nullptr) {
 
         String path = os_program_path();
-        console_log("program path: %s", path.data);
+        LOG_INFO("program path: {}", path.data);
 
         res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
         if (!res.ok) {
             res.ok = vfs_mount_type<ZipFileSystem>(fsname, "./gamedata.zip");
             res.is_fused = true;
-            console_log("zip_fs load with gamedata.zip");
+            LOG_INFO("zip_fs load with gamedata.zip");
         }
     } else {
         String mount_dir = filepath;
@@ -399,7 +400,7 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
 
 void vfs_fini() {
     for (auto vfs : g_vfs) {
-        console_log("vfs_fini(%llu)", vfs.key);
+        LOG_INFO("vfs_fini({})", vfs.key);
         (*vfs.value)->trash();
         mem_free((*vfs.value));
     }

@@ -47,8 +47,8 @@ NEKO_API() void entity_init();
 NEKO_API() void entity_fini();
 NEKO_API() int entity_update_all(App* app, event_t evt);
 
-NEKO_API() void entity_save_all(Store* s);
-NEKO_API() void entity_load_all(Store* s);
+NEKO_API() void entity_save_all(App* app);
+NEKO_API() void entity_load_all(App* app);
 NEKO_API() void entity_load_all_begin();
 NEKO_API() void entity_load_all_end();
 
@@ -213,7 +213,7 @@ void entitypool_sort(NativeEntityPool<T>* pool, int (*compar)(const void*, const
 
 // elem must be /pointer to/ pointer to element
 template <typename T>
-void entitypool_elem_save(NativeEntityPool<T>* pool, void* elem, Store* s) {
+void entitypool_elem_save(NativeEntityPool<T>* pool, void* elem, App* app) {
     // EntityPoolElem** p;
 
     // // save NativeEntity id
@@ -221,7 +221,7 @@ void entitypool_elem_save(NativeEntityPool<T>* pool, void* elem, Store* s) {
     // entity_save(&(*p)->ent, "pool_elem", s);
 }
 template <typename T>
-void entitypool_elem_load(NativeEntityPool<T>* pool, void* elem, Store* s) {
+void entitypool_elem_load(NativeEntityPool<T>* pool, void* elem, App* app) {
     // NativeEntity ent;
     // EntityPoolElem** p;
 
@@ -263,7 +263,7 @@ auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
 void system_init();
 void system_fini();
 
-void prefab_save_all(Store* s);
-void prefab_load_all(Store* s);
+void prefab_save_all(App* app);
+void prefab_load_all(App* app);
 
 #endif

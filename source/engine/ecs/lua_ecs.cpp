@@ -1,5 +1,7 @@
 #include "lua_ecs.hpp"
 
+#include "base/common/logger.hpp"
+
 namespace Neko {
 namespace ecs {
 
@@ -31,11 +33,11 @@ void EcsComponentClear(Entity* e, int tid) {
 
 int EcsComponentAdd(EcsWorld* world, Entity* e, int tid) {
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {
-        console_log("NativeEntity(%lld) already exist component(%d)", e - world->entity_buf, tid);
+        LOG_INFO("NativeEntity({}) already exist component({})", e - world->entity_buf, tid);
         return -1;
     }
     if (e->components_count >= ENTITY_MAX_COMPONENTS) {
-        console_log("NativeEntity(%lld) add to many components", e - world->entity_buf);
+        LOG_INFO("NativeEntity({}) add to many components", e - world->entity_buf);
         return -1;
     }
 
@@ -229,7 +231,7 @@ void EcsWorldInit_i(EcsWorld* world) {
 }
 
 void EcsWorldFini_i(EcsWorld* w) {
-    int type, tid;
+    int tid;
     ComponentPool* cp;
     tid = w->type_idx;  // 总数-1(索引)
     for (int i = 0; i <= tid; i++) {
@@ -420,7 +422,7 @@ struct EcsLuaWrap {
     static int l_ecs_end(lua_State* L) {
         EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_OLD_UDATA_NAME);
         EcsWorldFini_i(w);
-        console_log("ecs_lua_gc");
+        LOG_INFO("ecs_lua_gc");
         return 0;
     }
 
@@ -484,7 +486,6 @@ struct EcsLuaWrap {
     }
 
     static int l_ecs_del_entity(lua_State* L) {
-        int i;
         struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_OLD_UDATA_NAME);
         Entity* e = EcsGetEnt_i(L, w, 2);
         EcsEntityDead(w, e);
@@ -597,7 +598,6 @@ struct EcsLuaWrap {
         }
 
         static int match_all(lua_State* L) {
-            int i;
             int* keys;
             Entity* e = NULL;
             ComponentPool* cp;

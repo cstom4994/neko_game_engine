@@ -223,7 +223,7 @@ bool MapLdtk::load(String filepath) {
     tilemap.levels = levels;
     tilemap.images = images;
 
-    console_log("loaded tilemap with %llu levels", (unsigned long long)tilemap.levels.len);
+    LOG_INFO("loaded tilemap with {} levels", (unsigned long long)tilemap.levels.len);
     *this = tilemap;
     created = true;
     return true;
@@ -699,7 +699,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
-            console_log("objectgroup: %s", object_group.name.cstr());
+            LOG_INFO("objectgroup: %s", object_group.name.cstr());
 
         } else {
             object_group.name = "unknown";
@@ -763,7 +763,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
                 object.class_name = S_UNKNOWN;
             }
 
-            console_log("%s %s %s", object_group.name.cstr(), object.name.cstr(), object.class_name.cstr());
+            LOG_INFO("{} {} {}", object_group.name.cstr(), object.name.cstr(), object.class_name.cstr());
 
             XMLNode *properties = object_node->FindChild("properties");
             if (properties) {
@@ -787,7 +787,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
                         object.defs[fnv1a(property_name)] = std::get<String>(value_attr->value);
 
-                        console_log("%s=%s", property_name.cstr(), object.defs[fnv1a(property_name)].cstr());
+                        LOG_INFO("{}={}", property_name.cstr(), object.defs[fnv1a(property_name)].cstr());
                     }
                 }
             }

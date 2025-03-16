@@ -112,7 +112,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
         }
     }
 
-    console_log("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
+    LOG_INFO("created atlas with image id: {} and {} entries", img.id, (unsigned long long)by_name.load);
 
     Atlas a;
     a.by_name = by_name;
@@ -184,7 +184,7 @@ static void hot_reload_thread(void *) {
         }
     }
 
-    console_log("hot_reload_thread end");
+    LOG_INFO("hot_reload_thread end");
 }
 
 int assets_perform_hot_reload_changes(App *app, event_t evt) {
@@ -245,7 +245,7 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
         }
 
         asset_write(a);
-        console_log("reloaded: %s", a.name.data);
+        LOG_INFO("reloaded: {}", a.name.data);
     }
 
     g_assets.changes.len = 0;
@@ -363,7 +363,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             //     ok = asset.pak.load(filepath.data, 0, false);
             //     break;
             default:
-                console_log("asset_load %d undefined", desc.kind);
+                LOG_INFO("asset_load {} undefined", (int)desc.kind);
                 break;
         }
 
@@ -510,7 +510,7 @@ bool AseSpriteData::load(String filepath) {
         by_tag[fnv1a(tag.name)] = loop;
     }
 
-    console_log("created sprite with image id: %d and %llu frames", new_tex.id, (unsigned long long)frames.len);
+    LOG_INFO("created sprite with image id: {} and {} frames", new_tex.id, (unsigned long long)frames.len);
 
     AseSpriteData s = {};
     s.arena = arena;

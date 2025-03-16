@@ -5,6 +5,7 @@
 #include "base/scripting/scripting.h"
 #include "base/scripting/lua_wrapper.hpp"
 #include "base/cbase.hpp"
+#include "base/common/logger.hpp"
 
 using namespace Neko::luabind;
 
@@ -160,7 +161,7 @@ i32 luax_require_script(lua_State *L, String filepath) {
         return LUA_REFNIL;
     }
 
-    console_log("%s", filepath.cstr());
+    LOG_INFO("{}", filepath.cstr());
 
     String contents;
     bool ok = vfs_read_entire_file(&contents, filepath);

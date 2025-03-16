@@ -90,7 +90,7 @@ MountResult CBase::LoadVFS(const_str path) {
 
     mount.ok &= mount_luacode.ok;
 
-    console_log("CBase::LoadVFS() => %s", NEKO_BOOL_STR(mount.ok));
+    LOG_INFO("CBase::LoadVFS() => {}", NEKO_BOOL_STR(mount.ok));
 
     return mount;
 }
@@ -350,8 +350,6 @@ i32 keyboard_lookup(String str) {
 
 }  // namespace Neko
 
-void gameconsole_print(const char* s);
-
 i32 neko_buildnum(void) {
     static const char* __build_date = __DATE__;
     static const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -369,41 +367,4 @@ i32 neko_buildnum(void) {
     if (((y % 4) == 0) && m > 1) b += 1;
     b -= 211;
     return b;
-}
-
-void neko_log(const char* file, int line, const char* fmt, ...) {
-
-    Neko::LockGuard<Neko::Mutex> lock(gBase.log_mtx);
-
-    typedef struct {
-        va_list ap;
-        const char* fmt;
-        const char* file;
-        u32 time;
-        int line;
-    } neko_log_event;
-
-    static auto init_event = [](neko_log_event* ev) {
-        static u32 t = 0;
-        if (!ev->time) {
-            ev->time = ++t;
-        }
-    };
-
-    neko_log_event ev = {
-            .fmt = fmt,
-            .file = file,
-            .line = line,
-    };
-
-    static char cMsg[4096];
-
-    init_event(&ev);
-    va_start(ev.ap, fmt);
-    vsprintf_s(cMsg, fmt, ev.ap);
-    va_end(ev.ap);
-
-    LOG_INFO("{}", cMsg);
-
-    gameconsole_print(cMsg);
 }

@@ -135,15 +135,15 @@ int entity_update_all(App* app, event_t evt) {
 }
 
 // save/load 仅适用于 ID
-void entity_save(NativeEntity* ent, const char* n, Store* s) {
-    Store* t;
+void entity_save(NativeEntity* ent, const char* n, App* app) {
+    // Store* t;
 
     if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
 
     // if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
 }
 
-bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, Store* s) {
+bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, App* app) {
     // Store* t;
     // ecs_id_t id;
 
@@ -165,7 +165,7 @@ void entity_load_all_end() {
     // entity_clear_save_filters();
 }
 
-void entity_save_all(Store* s) {
+void entity_save_all(App* app) {
     // DestroyEntry* entry;
     // ExistsPoolElem* exists;
     // Store *entity_s, *exists_s, *destroyed_s, *entry_s;
@@ -180,7 +180,7 @@ void entity_save_all(Store* s) {
     // }
 }
 
-void entity_load_all(Store* s) {
+void entity_load_all(App* app) {
     // DestroyEntry* entry;
     // ExistsPoolElem* exists;
     // Store *entity_s, *exists_s, *destroyed_s, *entry_s;
@@ -385,7 +385,7 @@ end
     checktable_refl(ENGINE_LUA(), "app", v);
     gApp->cfg = v.cast<engine_cfg_t>();
 
-    console_log("load game: %s %f %f", gApp->cfg.title.cstr(), gApp->cfg.width, gApp->cfg.height);
+    LOG_INFO("load game: {} {} {}", gApp->cfg.title.cstr(), gApp->cfg.width, gApp->cfg.height);
 
     lua_pop(L, 1);  // conf table
 
@@ -398,7 +398,7 @@ end
     if (fnv1a(gApp->cfg.game_proxy) == "default"_hash) {
         // Neko::neko_lua_run_string(L, R"lua(
         // )lua");
-        console_log("using default game proxy");
+        LOG_INFO("using default game proxy");
     }
 
     g_render = gfx_create();
@@ -525,11 +525,11 @@ void system_fini() {
 
 // 以相同的顺序 保存/加载
 static void _saveload_all(void* s, bool save) {
-#define saveload(sys)              \
-    if (save)                      \
-        sys##_save_all((Store*)s); \
-    else                           \
-        sys##_load_all((Store*)s)
+#define saveload(sys)            \
+    if (save)                    \
+        sys##_save_all((App*)s); \
+    else                         \
+        sys##_load_all((App*)s)
 
     entity_load_all_begin();
 
@@ -548,14 +548,14 @@ static void _saveload_all(void* s, bool save) {
     entity_load_all_end();
 }
 
-void system_save_all(Store* s) { _saveload_all(s, true); }
+void system_save_all(App* app) { _saveload_all(app, true); }
 
-void system_load_all(Store* s) { _saveload_all(s, false); }
+void system_load_all(App* app) { _saveload_all(app, false); }
 
 static NativeEntity saved_root;
 
 void prefab_save(const char* filename, NativeEntity root) {
-    Store* s;
+    // App* app;
 
     saved_root = root;
     // s = store_open();
@@ -565,7 +565,7 @@ void prefab_save(const char* filename, NativeEntity root) {
     saved_root = entity_nil;
 }
 NativeEntity prefab_load(const char* filename) {
-    Store* s;
+    // App* app;
     NativeEntity root;
 
     // s = store_open_file(filename);
@@ -577,13 +577,13 @@ NativeEntity prefab_load(const char* filename) {
     return root;
 }
 
-void prefab_save_all(Store* s) {
-    Store* t;
+void prefab_save_all(App* app) {
+    // Store* t;
 
     // if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
 }
-void prefab_load_all(Store* s) {
-    Store* t;
+void prefab_load_all(App* app) {
+    // Store* t;
 
     // if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
 }

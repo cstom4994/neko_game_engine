@@ -42,6 +42,22 @@ void Logger::processLogs(std::stop_token st) {
     std::vector<char> consoleBuffer;
     consoleBuffer.reserve(1024 * 1024);
 
+    auto processMessageBatch = [this](std::vector<LogMessage> &batchBuffer, std::vector<char> &consoleBuffer) {
+        for (const auto &msg : batchBuffer) {
+            formatLogMessage(msg, consoleBuffer);
+            std::back_inserter(consoleBuffer)++ = '\n';
+        }
+
+        if (!consoleBuffer.empty()) {
+            std::cout.write(consoleBuffer.data(), consoleBuffer.size());
+            std::cout.flush();
+
+            if (console_printf) {
+                console_printf(std::string(consoleBuffer.data(), consoleBuffer.size()));
+            }
+        }
+    };
+
     while (!st.stop_requested()) {
         bool messagesProcessed = false;
         LogMessage msg;
@@ -52,19 +68,26 @@ void Logger::processLogs(std::stop_token st) {
         }
 
         if (!batchBuffer.empty()) {
-            for (const auto &msg : batchBuffer) {
-                formatLogMessage(msg, consoleBuffer);
-                std::back_inserter(consoleBuffer)++ = '\n';
-            }
-
-            if (!consoleBuffer.empty()) {
-                std::cout.write(consoleBuffer.data(), consoleBuffer.size());
-                std::cout.flush();
-            }
+            processMessageBatch(batchBuffer, consoleBuffer);
 
             batchBuffer.clear();
             consoleBuffer.clear();
         }
+    }
+
+    // 处理剩余消息
+    LogMessage msg;
+    while (buffer.pop(msg)) {
+        batchBuffer.push_back(std::move(msg));
+        if (batchBuffer.size() >= 4096) {
+            processMessageBatch(batchBuffer, consoleBuffer);
+            batchBuffer.clear();
+            consoleBuffer.clear();
+        }
+    }
+
+    if (!batchBuffer.empty()) {
+        processMessageBatch(batchBuffer, consoleBuffer);
     }
 }
 

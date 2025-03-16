@@ -6,6 +6,7 @@
 #include "engine/input.h"
 #include "base/scripting/luax.h"
 #include "base/scripting/lua_wrapper.hpp"
+#include "base/common/logger.hpp"
 
 struct App;
 
@@ -28,8 +29,8 @@ NEKO_API() void script_mouse_down(MouseCode mouse);
 NEKO_API() void script_mouse_up(MouseCode mouse);
 NEKO_API() void script_mouse_move(vec2 pos);
 NEKO_API() void script_scroll(vec2 scroll);
-NEKO_API() void script_save_all(Store *s);
-NEKO_API() void script_load_all(Store *s);
+NEKO_API() void script_save_all(App* app);
+NEKO_API() void script_load_all(App* app);
 
 void luax_run_bootstrap(lua_State *L);
 void luax_run_nekogame(lua_State *L);
@@ -40,7 +41,7 @@ NEKO_API() void script_push_event(const char *event);
 #define errcheck(...)                                      \
     do                                                     \
         if (__VA_ARGS__) {                                 \
-            console_log("lua: %s\n", lua_tostring(L, -1)); \
+            LOG_INFO("lua: {}\n", lua_tostring(L, -1)); \
             lua_pop(L, 1);                                 \
             if (LockGuard<Mutex> lock{gBase.error_mtx}) {  \
                 gBase.error_mode.store(true);              \
@@ -67,7 +68,7 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
 #define FUCK_TYPES() i32, u32, bool, f32, bool, const_str, String
 
     if (lua_getfield(L, -1, tname) == LUA_TNIL) {
-        console_log("[exception] no %s table", tname);
+        LOG_INFO("[exception] no {} table", tname);
     }
     if (lua_istable(L, -1)) {
         auto f = [&L](std::string_view name, Neko::reflection::Any &value) {
@@ -86,7 +87,7 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
         };
         v.foreach (f);
     } else {
-        console_log("[exception] no %s table", tname);
+        LOG_INFO("[exception] no {} table", tname);
     }
     lua_pop(L, 1);
 }

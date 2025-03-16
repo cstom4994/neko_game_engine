@@ -7,6 +7,7 @@
 #include "engine/base.hpp"
 #include "base/common/profiler.hpp"
 #include "base/cbase.hpp"
+#include "base/common/logger.hpp"
 
 // deps
 #include "extern/stb_image.h"
@@ -91,7 +92,7 @@ bool neko_init_shader(AssetShader* shader, char* source) {
     if (!success) {
         char info_log[1024];
         glGetShaderInfoLog(v, 1024, 0x0, info_log);
-        console_log("error %s", info_log);
+        LOG_INFO("error {}", info_log);
         shader->panic_mode = true;
     }
 
@@ -103,7 +104,7 @@ bool neko_init_shader(AssetShader* shader, char* source) {
     if (!success) {
         char info_log[1024];
         glGetShaderInfoLog(f, 1024, 0x0, info_log);
-        console_log("error %s", info_log);
+        LOG_INFO("error {}", info_log);
         shader->panic_mode = true;
     }
 
@@ -116,7 +117,7 @@ bool neko_init_shader(AssetShader* shader, char* source) {
         if (!success) {
             char info_log[1024];
             glGetShaderInfoLog(g, 1024, 0x0, info_log);
-            console_log("error %s", info_log);
+            LOG_INFO("error {}", info_log);
             shader->panic_mode = true;
         }
     }
@@ -239,7 +240,7 @@ void neko_gl_pipeline_state() {
     glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(gfx_info_t* info = gfx_info(); if (info->compute.available) {
-        NEKO_INVOKE_ONCE(console_log("compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
+        NEKO_INVOKE_ONCE(LOG_INFO("compute shader available: {}", NEKO_BOOL_STR(info->compute.available)););
         glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     });
 }
@@ -293,7 +294,7 @@ void gfx_texture_read_impl(AssetTexture hndl, gfx_texture_desc_t* desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!desc) return;
     if (!ogl->textures.valid(hndl.id)) {
-        console_log("AssetTexture handle invalid: %zu", hndl.id);
+        LOG_INFO("AssetTexture handle invalid: {}", hndl.id);
     }
 
     neko_gl_texture_t* tex = &ogl->textures[hndl.id];
@@ -322,14 +323,14 @@ void gfx_init(gfx_t* render) {
     info->version = (const_str)glGetString(GL_VERSION);
     info->vendor = (const_str)glGetString(GL_RENDERER);
 
-    // console_log("OpenGL vendor:   %s", glGetString(GL_VENDOR));
-    // console_log("OpenGL renderer: %s", glGetString(GL_RENDERER));
-    // console_log("OpenGL version:  %s", glGetString(GL_VERSION));
+    // LOG_INFO("OpenGL vendor:   {}", glGetString(GL_VENDOR));
+    // LOG_INFO("OpenGL renderer: {}", glGetString(GL_RENDERER));
+    // LOG_INFO("OpenGL version:  {}", glGetString(GL_VERSION));
 
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, (GLint*)&info->max_texture_size);
     glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&info->max_texture_units);
 
-    if (info->max_texture_size < 2048) console_log("OpenGL maximum texture too small");
+    if (info->max_texture_size < 2048) LOG_INFO("OpenGL maximum texture too small");
 
     info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
     if (info->compute.available) {
@@ -343,7 +344,7 @@ void gfx_init(gfx_t* render) {
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (i32*)&info->compute.max_work_group_invocations);
         });
     } else {
-        console_log("OpenGL compute shaders not available");
+        LOG_INFO("OpenGL compute shaders not available");
     }
 
 #if defined(_DEBUG) && 0
@@ -568,7 +569,7 @@ AssetTexture* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u
 
 void neko_init_texture(AssetTexture* texture, neko_resource_t* resource, neko_texture_flags_t flags) {
     if (resource->payload == NULL || resource->type != NEKO_RESOURCE_BINARY) {
-        console_log("Resource insufficient for texture creation.");
+        LOG_INFO("Resource insufficient for texture creation.");
         return;
     }
 
@@ -577,7 +578,7 @@ void neko_init_texture(AssetTexture* texture, neko_resource_t* resource, neko_te
 
 void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, neko_texture_flags_t flags) {
     if (data == NULL || size == 0) {
-        console_log("Data insufficient for texture creation.");
+        LOG_INFO("Data insufficient for texture creation.");
         return;
     }
 
@@ -588,7 +589,7 @@ void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, 
     u8* pixels = stbi_load_from_memory((u8*)data, size, &width, &height, &component_count, 0);
 
     if (pixels == NULL) {
-        console_log("Failed to load texture: %s", stbi_failure_reason());
+        LOG_INFO("Failed to load texture: {}", stbi_failure_reason());
         return;
     }
 
@@ -599,7 +600,7 @@ void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, 
 
 void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned char* pixels, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags) {
     if (pixels == NULL) {
-        console_log("Data insufficient for texture creation.");
+        LOG_INFO("Data insufficient for texture creation.");
         return;
     }
 
@@ -792,7 +793,7 @@ static void ase_default_blend_bind(ase_t* ase) {
         memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
         ase_color_t* dst = frame->pixels;
 
-        console_log("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
+        LOG_INFO("neko_aseprite_default_blend_bind: frame: {} cel_count: {}", i, frame->cel_count);
 
         for (int j = 0; j < frame->cel_count; ++j) {  //
 
@@ -892,7 +893,7 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
 
     u8* data = nullptr;
 
-    console_log("texture: loading texture '%s' ...", filename.cstr());
+    LOG_INFO("texture: loading texture '{}' ...", filename.cstr());
 
     String contents = {};
     bool ok = vfs_read_entire_file(&contents, filename);
@@ -930,7 +931,7 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     // 读入纹理数据
     if (!data) {
         // tex->last_modified = modtime;
-        console_log(" unsuccessful");
+        LOG_INFO(" unsuccessful");
         return false;  // 保持旧的GL纹理
     }
 
@@ -967,7 +968,7 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     }
 
     // tex->last_modified = modtime;
-    console_log(" successful");
+    LOG_INFO(" successful");
     return true;
 }
 
@@ -1013,7 +1014,7 @@ bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i3
 
     if (!*data) {
         // neko_image_free(&img);
-        console_log("could not load image %p", memory);
+        LOG_INFO("could not load image {}", memory);
         return false;
     }
     return true;
@@ -1025,7 +1026,7 @@ bool load_texture_data_from_file(const char* file_path, i32* width, i32* height,
     neko_assert(file_data);
     bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
-        console_log("could not load texture: %s", file_path);
+        LOG_INFO("could not load texture: {}", file_path);
     }
     mem_free(file_data);
     return ret;

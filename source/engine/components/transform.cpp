@@ -310,7 +310,7 @@ int transform_update_all(App *app, event_t evt) {
 }
 
 // save/load for just the children array
-static void _children_save(Transform *t, Store *s) {
+static void _children_save(Transform *t, App* app) {
     // Store *u;
 
     // if (store_child_save(&u, "children", s))
@@ -318,7 +318,7 @@ static void _children_save(Transform *t, Store *s) {
     //         for (auto &child : t->children)
     //             if (entity_get_save_filter(child)) entity_save(&child, NULL, u);
 }
-static void _children_load(Transform *t, Store *s) {
+static void _children_load(Transform *t, App* app) {
     // Store *u;
     // NativeEntity child;
 
@@ -335,7 +335,7 @@ static void _children_load(Transform *t, Store *s) {
     //     }
 }
 
-void transform_save_all(Store *s) {
+void transform_save_all(App* app) {
     // Store *t, *transform_s;
     // Transform *transform;
 
@@ -356,7 +356,7 @@ void transform_save_all(Store *s) {
     //         uint_save(&transform->dirty_count, "dirty_count", transform_s);
     //     }
 }
-void transform_load_all(Store *s) {
+void transform_load_all(App* app) {
     // Store *t, *transform_s;
     // Transform *transform;
 

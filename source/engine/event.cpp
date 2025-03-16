@@ -1,6 +1,7 @@
 #include "event.h"
 
 #include "base/scripting/luax.h"
+#include "base/common/logger.hpp"
 
 void EventHandler::init() {
 
@@ -49,7 +50,7 @@ void EventHandler::event_register(void* receiver, int evt, EventCallback cb, lua
 void EventHandler::event_dispatch(event_t evt) {
     DelegateArray* list = event_getdelegates(this, evt.type);
     if (list == nullptr) {
-        console_log("event_dispatch: no event cb called %s", event_string(evt.type));
+        LOG_INFO("event_dispatch: no event cb called {}", event_string(evt.type));
         return;
     }
     for (auto l : *list) {

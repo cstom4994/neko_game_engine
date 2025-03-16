@@ -2,6 +2,7 @@
 
 #include "base/common/util.hpp"
 #include "base/common/array.hpp"
+#include "base/common/logger.hpp"
 
 #if defined(NEKO_IS_WIN32)
 #include <direct.h>
@@ -37,7 +38,7 @@ Array<String> BaseGetCommandLine(int argc) {
     Array<String> argsArray{};
     wchar_t **argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (argv_w == nullptr) {
-        console_log("Failed to parse command line arguments");
+        LOG_INFO("Failed to parse command line arguments");
         return {};
     }
     for (int i = 0; i < argc; i++) argsArray.push(to_cstr(win::w2u(argv_w[i])));

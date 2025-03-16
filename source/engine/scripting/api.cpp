@@ -864,7 +864,7 @@ LUA_FUNCTION(__neko_bind_aseprite_render_create) {
 
 LUA_FUNCTION(__neko_bind_aseprite_render_gc) {
     neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
-    // console_log("aseprite_render __gc %p", user_handle);
+    // LOG_INFO("aseprite_render __gc %p", user_handle);
     return 0;
 }
 
@@ -939,7 +939,7 @@ LUA_FUNCTION(__neko_bind_aseprite_create) {
 LUA_FUNCTION(__neko_bind_aseprite_gc) {
     neko_aseprite* user_handle = (neko_aseprite*)luaL_checkudata(L, 1, "mt_aseprite");
     if (user_handle->frames != NULL) neko_aseprite_end(user_handle);
-    // console_log("aseprite __gc %p", user_handle);
+    // LOG_INFO("aseprite __gc %p", user_handle);
     return 0;
 }
 
@@ -975,7 +975,7 @@ static void fontbatch_metatable(lua_State* L) {
                              +[](lua_State* L) {
                                  neko_fontbatch_t* fontbatch = Neko::luabind::toudata_ptr<neko_fontbatch_t>(L, 1);
                                  neko_fontbatch_end(fontbatch);
-                                 console_log("fontbatch __gc %p", fontbatch);
+                                 LOG_INFO("fontbatch __gc {}", fontbatch);
                                  return 0;
                              }},
                             {NULL, NULL}};
@@ -2012,7 +2012,7 @@ LUA_FUNCTION(__neko_bind_print) {
         str.append(std::string(s, strlen(s)));
         lua_pop(L, 1);
     }
-    console_log("LUA: %s", str.c_str());
+    LOG_INFO("LUA: {}", str.c_str());
     return 0;
 }
 
@@ -2084,12 +2084,12 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
 // 返回包含路径和 isDirectory 对的表
 int __neko_ls(lua_State *L) {
     if (!lua_isstring(L, 1)) {
-        console_log("invalid lua argument");
+        LOG_INFO("invalid lua argument");
         return 0;
     }
     auto string = lua_tostring(L, 1);
     if (!std::filesystem::is_directory(string)) {
-        console_log(std::format("{0} is not directory", string).c_str());
+        LOG_INFO("{0} is not directory", string);
         return 0;
     }
 
@@ -2167,10 +2167,15 @@ static int __neko_w_lua_get_com(lua_State *L) {
     return 2;
 }
 
+template <>
+struct std::formatter<App *> : std::formatter<void *> {
+    auto format(App *ptr, std::format_context &ctx) const { return std::formatter<void *>::format(static_cast<void *>(ptr), ctx); }
+};
+
 static int __neko_w_lua_gc(lua_State *L) {
     App *w = (App *)luaL_checkudata(L, W_LUA_REGISTRY_CONST::W_CORE_IDX, W_LUA_REGISTRY_CONST::ENG_UDATA_NAME);
     // ecs_fini_i(w);
-    console_log("App __gc %p", w);
+    LOG_INFO("App __gc {}", w);
     return 0;
 }
 

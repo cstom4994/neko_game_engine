@@ -14,9 +14,9 @@
 namespace Neko {
 class Logger {
 public:
-    enum class Level { TRACE, INFO, WARNING, ERR, FATAL };
+    enum class Level { TRACE, INFO, WARNING, ERR };
 
-    static constexpr std::array<std::string_view, 5> LEVEL_STRINGS = {"TRACE", "INFO", "WARN", "ERROR", "FATAL"};
+    static constexpr std::array<std::string_view, 4> LEVEL_STRINGS = {"TRACE", "INFO", "WARN", "ERROR"};
 
     Logger();
     ~Logger();
@@ -60,17 +60,16 @@ private:
         ~LogMessage() = default;
     };
 
-    static constexpr size_t FULL_THRESHOLD = 0.75f;
+    static constexpr size_t RING_SIZE = 1 << 18;  // 256kb
 
     struct alignas(64) RingBuffer {
-        static constexpr size_t SHARD_SIZE = 1 << 18;  // 256kb
-        alignas(64) std::array<LogMessage, SHARD_SIZE> messages;
+        alignas(64) std::array<LogMessage, RING_SIZE> messages;
         alignas(64) std::atomic<size_t> head{0};
         alignas(64) std::atomic<size_t> tail{0};
 
         bool push(LogMessage &&msg) noexcept {
             auto current_tail = tail.load(std::memory_order_relaxed);
-            auto next_tail = (current_tail + 1) & (SHARD_SIZE - 1);
+            auto next_tail = (current_tail + 1) & (RING_SIZE - 1);
 
             if (next_tail == head.load(std::memory_order_relaxed) && next_tail == head.load(std::memory_order_acquire)) {
                 return false;
@@ -89,7 +88,7 @@ private:
             }
 
             msg = std::move(messages[current_head]);
-            head.store((current_head + 1) & (SHARD_SIZE - 1), std::memory_order_release);
+            head.store((current_head + 1) & (RING_SIZE - 1), std::memory_order_release);
             return true;
         }
 
@@ -101,10 +100,10 @@ private:
             if (current_tail >= current_head) {
                 used = current_tail - current_head;
             } else {
-                used = SHARD_SIZE - (current_head - current_tail);
+                used = RING_SIZE - (current_head - current_tail);
             }
 
-            return (static_cast<float>(used) / SHARD_SIZE) >= FULL_THRESHOLD;
+            return (static_cast<float>(used) / RING_SIZE) >= 0.95f;
         }
     };
 
@@ -118,6 +117,8 @@ private:
 
     std::atomic<bool> running{true};
 
+    std::function<void(const std::string &msg)> console_printf{};
+
 public:
     static Logger *getInstance();
     static void init();
@@ -128,6 +129,8 @@ private:
     void formatLogMessage(const LogMessage &msg, std::vector<char> &buffer) noexcept;
 
 public:
+    void setConsolePrintf(std::function<void(const std::string &msg)> func) noexcept { console_printf = func; }
+
     template <typename... Args>
     void log(const std::source_location &loc, Level level, std::format_string<Args...> fmt, Args &&...args) {
         try {
@@ -151,8 +154,26 @@ public:
     void info(const std::source_location &loc, std::format_string<Args...> fmt, Args &&...args) {
         log(loc, Level::INFO, fmt, std::forward<Args>(args)...);
     }
+
+    template <typename... Args>
+    void err(const std::source_location &loc, std::format_string<Args...> fmt, Args &&...args) {
+        log(loc, Level::ERR, fmt, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void warn(const std::source_location &loc, std::format_string<Args...> fmt, Args &&...args) {
+        log(loc, Level::WARNING, fmt, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    void trace(const std::source_location &loc, std::format_string<Args...> fmt, Args &&...args) {
+        log(loc, Level::TRACE, fmt, std::forward<Args>(args)...);
+    }
 };
 
 #define LOG_INFO(...) ::Neko::Logger::getInstance()->info(std::source_location::current(), __VA_ARGS__)
+#define LOG_ERROR(...) ::Neko::Logger::getInstance()->err(std::source_location::current(), __VA_ARGS__)
+#define LOG_WARN(...) ::Neko::Logger::getInstance()->warn(std::source_location::current(), __VA_ARGS__)
+#define LOG_TRACE(...) ::Neko::Logger::getInstance()->trace(std::source_location::current(), __VA_ARGS__)
 
 }  // namespace Neko

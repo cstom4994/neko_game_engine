@@ -12,7 +12,6 @@ class CBase {
     Slice<String> args;
 
 public:
-    Mutex log_mtx;
     Mutex gpu_mtx;
 
     std::atomic<bool> error_mode;

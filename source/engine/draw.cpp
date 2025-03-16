@@ -548,7 +548,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         out->tex.height = height;
     }
 
-    console_log("created font range with id %d", out->tex.id);
+    LOG_INFO("created font range with id {}", out->tex.id);
 }
 
 static FontRange *get_range(FontFamily *font, FontKey key) {

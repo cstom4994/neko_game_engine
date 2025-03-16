@@ -119,7 +119,7 @@ struct color24_t {
 #if !defined(USE_PROFILER) && !defined(__EMSCRIPTEN__)
 // #define USE_PROFILER
 #endif
-//#define HACK_MEM_CHECK
+// #define HACK_MEM_CHECK
 #endif
 
 #if (defined _WIN32 || defined _WIN64)
@@ -135,8 +135,7 @@ struct color24_t {
     {}
 #define NEKO_API() extern "C"
 #else
-#define NEKO_DEFAULT_VAL() \
-    { 0 }
+#define NEKO_DEFAULT_VAL() {0}
 #define NEKO_API() extern
 #endif
 
@@ -231,12 +230,12 @@ struct color24_t {
 
 #define NEKO_INT2VOIDP(I) (void *)(uintptr_t)(I)
 
-#define NEKO_EXPECT(x)                                                \
-    do {                                                              \
-        if (!(x)) {                                                   \
-            console_log("Unexpect error: assertion '%s' failed", #x); \
-            abort();                                                  \
-        }                                                             \
+#define NEKO_EXPECT(x)                                             \
+    do {                                                           \
+        if (!(x)) {                                                \
+            LOG_INFO("Unexpect error: assertion '{}' failed", #x); \
+            abort();                                               \
+        }                                                          \
     } while (0)
 
 #define NEKO_CHOOSE(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
@@ -276,10 +275,6 @@ inline void neko_printf(const char *fmt, ...) {
 #define JOIN_1(x, y) x##y
 #define JOIN_2(x, y) JOIN_1(x, y)
 
-NEKO_API() void neko_log(const char *file, int line, const char *fmt, ...);
-
-#define console_log(...) neko_log(__FILE__, __LINE__, __VA_ARGS__)
-
 NEKO_API() void errorf(const char *fmt, ...);
 
 #define line_str__(line) __FILE__ ":" #line ": "
@@ -314,5 +309,3 @@ inline void neko_snprintf(char *buffer, size_t buffer_size, const char *fmt, ...
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
 namespace Neko {}  // namespace Neko
-
-struct Store {};

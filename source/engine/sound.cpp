@@ -612,7 +612,7 @@ std::map<int, std::string> FMODAudio::err_values;
 
 int FMODAudio::ErrorCheck(FMOD_RESULT result) {
     if (result != FMOD_OK) {
-        console_log("FMOD Error: %d %s", result, err_values[result].c_str());
+        LOG_INFO("FMOD Error: {} {}", (int)result, err_values[result].c_str());
         return -1;
     }
     return 0;
@@ -784,5 +784,5 @@ int sound_postupdate(App *app, event_t evt) {
     return 0;
 }
 
-void sound_save_all(Store *s) {}
-void sound_load_all(Store *s) {}
+void sound_save_all(App* app) {}
+void sound_load_all(App* app) {}

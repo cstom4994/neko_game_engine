@@ -275,17 +275,11 @@ bool console_get_visible() {
     return false;
 }
 
-static void _print(const char *s) {
-    // copy to stdout
-    printf("%s", s);
-    fflush(stdout);
+void console_puts(const char *s) {
+
+    LOG_INFO("{}", s);
 
     // gameconsole_print(s);
-}
-
-void console_puts(const char *s) {
-    _print(s);
-    _print("\n");
 }
 
 void console_init() {

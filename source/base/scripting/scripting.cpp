@@ -75,7 +75,7 @@ void luax_run_bootstrap(lua_State *L) {
         lua_pop(L, 1);
         neko_panic("failed to run bootstrap");
     }
-    console_log("loaded bootstrap");
+    LOG_INFO("loaded bootstrap");
 }
 
 int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
@@ -88,7 +88,7 @@ int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
         lua_pop(L, 1);
         neko_panic("failed to load luaot %s", name);
     }
-    console_log("loaded luaot %s", name);
+    LOG_INFO("loaded luaot {}", name);
     return 0;
 }
 
@@ -106,7 +106,7 @@ void luax_run_nekogame(lua_State *L) {
         lua_pop(L, 1);
         neko_panic("failed to run nekogame");
     }
-    console_log("loaded nekogame");
+    LOG_INFO("loaded nekogame");
 
     if (luaL_loadbuffer(L, (const_str)get_nekoeditor_lua(), neko_strlen((const_str)get_nekoeditor_lua()), "<nekoeditor>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
@@ -118,7 +118,7 @@ void luax_run_nekogame(lua_State *L) {
         lua_pop(L, 1);
         neko_panic("failed to run nekoeditor");
     }
-    console_log("loaded nekoeditor");
+    LOG_INFO("loaded nekoeditor");
 
 #else
 
@@ -328,7 +328,7 @@ static void _load_nekogame_ffi() {
 }
 
 int app_stop(App *app, event_t evt) {
-    console_log("app_stop %p %s %f", app, event_string(evt.type), std::get<f64>(evt.p0.v));
+    LOG_INFO("app_stop {} {}", event_string(evt.type), std::get<f64>(evt.p0.v));
     return 0;
 }
 
@@ -390,7 +390,7 @@ void script_init() {
     lua_pop(L, 1);
 
     timer.stop();
-    console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
+    LOG_INFO("lua init done in {0:.3f} ms", timer.get());
 }
 
 void script_fini() {
@@ -508,7 +508,7 @@ void script_scroll(vec2 scroll) {
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
-void script_save_all(Store *s) {
+void script_save_all(App *app) {
     // lua_State *L = ENGINE_LUA();
 
     // Store *t;
@@ -530,7 +530,7 @@ void script_save_all(Store *s) {
     //}
 }
 
-void script_load_all(Store *s) {
+void script_load_all(App *app) {
     // lua_State *L = ENGINE_LUA();
 
     // Store *t;
