@@ -5,6 +5,7 @@
 #include "base/common/vfs.hpp"
 #include "base/common/profiler.hpp"
 #include "base/common/string.hpp"
+#include "base/common/logger.hpp"
 
 #include <cstdlib>
 
@@ -50,6 +51,8 @@ void CBase::Init() {
     os_high_timer_resolution();
     stm_setup();
 
+    Logger::init();
+
     profile_setup();
     PROFILE_FUNC();
 }
@@ -67,6 +70,8 @@ void CBase::Fini() {
         allocator->dump_allocs(true);
     }
 #endif
+
+    Logger::shutdown();
 
     neko_println("see ya");
 }
@@ -395,11 +400,10 @@ void neko_log(const char* file, int line, const char* fmt, ...) {
 
     init_event(&ev);
     va_start(ev.ap, fmt);
-    // fprintf(ev.udata, "%s:%d: ", neko_util_get_filename(ev.file), ev.line);
     vsprintf_s(cMsg, fmt, ev.ap);
-    vprintf(ev.fmt, ev.ap);
-    printf("\n");
     va_end(ev.ap);
+
+    LOG_INFO("{}", cMsg);
 
     gameconsole_print(cMsg);
 }
