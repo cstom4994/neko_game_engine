@@ -40,6 +40,15 @@ void package_preload_embed(lua_State *L);
 extern int open_tools_spritepack(lua_State *L);
 extern int open_filesys(lua_State *L);
 
+void l_registerFunctions(lua_State *L, int idx, const luaL_Reg *r) {
+    if (idx < 0) idx += lua_gettop(L) + 1;
+    for (; r && r->name && r->func; ++r) {
+        lua_pushstring(L, r->name);
+        lua_pushcfunction(L, r->func);
+        lua_rawset(L, idx);
+    }
+}
+
 #if 0
 template <>
 vec2 LuaGet<vec2>(lua_State *L, int idx) {
@@ -598,7 +607,7 @@ static int neko_key_press(lua_State *L) {
 
 static int neko_mouse_down(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(gApp->mouse_state)) {
+    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
         lua_pushboolean(L, input_mouse_down((MouseCode)n));
     } else {
         lua_pushboolean(L, false);
@@ -609,7 +618,7 @@ static int neko_mouse_down(lua_State *L) {
 
 static int neko_mouse_release(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(gApp->mouse_state)) {
+    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
         bool is_release = !gApp->mouse_state[n] && gApp->prev_mouse_state[n];
         lua_pushboolean(L, is_release);
     } else {
@@ -621,7 +630,7 @@ static int neko_mouse_release(lua_State *L) {
 
 static int neko_mouse_click(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < array_size(gApp->mouse_state)) {
+    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
         bool is_click = gApp->mouse_state[n] && !gApp->prev_mouse_state[n];
         lua_pushboolean(L, is_click);
     } else {
@@ -2012,7 +2021,19 @@ LUA_FUNCTION(__neko_bind_print) {
         str.append(std::string(s, strlen(s)));
         lua_pop(L, 1);
     }
-    LOG_INFO("LUA: {}", str.c_str());
+
+#ifdef DEBUG
+    lua_Debug ar;
+    if (lua_getstack(L, 2, &ar)) {  // 获取调用栈信息
+        lua_getinfo(L, "Sl", &ar);  // 获取文件名(S)和行号(l)
+        Logger::getInstance()->log("", ar.short_src, ar.currentline, Logger::Level::INFO, "{}", str);
+    } else {
+        Logger::getInstance()->log("", "lua", n, Logger::Level::INFO, "{}", str);
+    }
+#else
+    Logger::getInstance()->log("", "lua", n, Logger::Level::INFO, "{}", str);
+#endif
+
     return 0;
 }
 
@@ -2355,7 +2376,7 @@ static void typeclosure(lua_State *L) {
             "cdata",     // 10
     };
     size_t i;
-    const size_t n = array_size(typenames);
+    const size_t n = NEKO_ARR_SIZE(typenames);
     for (i = 0; i < n; i++) {
         lua_pushstring(L, typenames[i]);
     }
@@ -3288,7 +3309,7 @@ void open_neko_api(lua_State *L) {
             open_enum,
     };
 
-    for (u32 i = 0; i < array_size(funcs); i++) {
+    for (u32 i = 0; i < NEKO_ARR_SIZE(funcs); i++) {
         funcs[i](L);
     }
 

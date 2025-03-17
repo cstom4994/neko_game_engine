@@ -133,7 +133,6 @@ public:
 };
 
 #define DECL_ENT(T, ...)                  \
-    class T;                              \
     class T : public GameEntityBase {     \
     public:                               \
         static NativeEntityPool<T>* pool; \

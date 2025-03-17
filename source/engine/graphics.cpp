@@ -902,7 +902,7 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     }
     neko_defer(mem_free(contents.data));
 
-    ase_t* ase;
+    ase_t* ase = nullptr;
 
     if (filename.ends_with(".ase")) {
 
@@ -962,9 +962,9 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     }
 
     if (filename.ends_with(".ase")) {
-        cute_aseprite_free(ase);
+        if (ase) cute_aseprite_free(ase);
     } else {
-        stbi_image_free(data);
+        if (data) stbi_image_free(data);
     }
 
     // tex->last_modified = modtime;

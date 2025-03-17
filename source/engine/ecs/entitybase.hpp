@@ -23,9 +23,9 @@ DECL_ENT(Sprite, mat3 wmat;  // 要发送到着色器的世界变换矩阵
          int depth;);
 
 DECL_ENT(Transform, vec2 position; f32 rotation; vec2 scale; NativeEntity parent;  // 如果entity_nil 则为 root
-         Array<NativeEntity> children;                                                 // 如果为 NULL 则为空
-         mat3 mat_cache;                                                               // 更新此内容
-         mat3 worldmat_cache;                                                          // 在父子更新时缓存
+         Array<NativeEntity> children;                                             // 如果为 NULL 则为空
+         mat3 mat_cache;                                                           // 更新此内容
+         mat3 worldmat_cache;                                                      // 在父子更新时缓存
          ecs_id_t dirty_count;);
 
 // bbox pool

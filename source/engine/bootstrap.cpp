@@ -949,12 +949,12 @@ int timing_update(App *app, event_t evt) {
     return 0;
 }
 
-void timing_save_all(App* app) {
+void timing_save_all(App *app) {
     // Store *t;
 
     // if (store_child_save(&t, "timing", s)) float_save(&g_app->scale, "scale", t);
 }
-void timing_load_all(App* app) {
+void timing_load_all(App *app) {
     // Store *t;
 
     // if (store_child_load(&t, "timing", s)) float_load(&g_app->scale, "scale", 1, t);
@@ -974,9 +974,6 @@ Allocator *g_allocator = []() -> Allocator * {
     return &alloc;
 }();
 }  // namespace Neko
-
-// 导出函数数组
-std::vector<dll_export_t> g_pExportsTargetArray{};
 
 extern Neko::CBase gBase;
 
@@ -1015,79 +1012,13 @@ void Sys_Shutdown(void) {
     glfwTerminate();
 }
 
-#ifdef _WIN64
-static BOOL CALLBACK ExportCallback(LPCSTR szSymbol, PVOID pFuncAddr) {
-    dll_export_t newExport;
-    newExport.functionname = szSymbol;
-    g_pExportsTargetArray.push_back(newExport);
-
-    return TRUE;
-}
-#else
-static void ExportCallback(Char *pstrSymbolName) {
-    dll_export_t newExport;
-    newExport.functionname = pstrSymbolName;
-    g_pExportsTargetArray.push_back(newExport);
-}
-#endif
-
-bool Sys_GetDLLExports(const Char *pstrDLLName, void *pDLLHandle) {
-#ifdef _WIN64
-    HMODULE hDLL = GetModuleHandleA(pstrDLLName);
-    if (!hDLL) {
-        LOG_INFO("The specified library '{}' does not exist.\n", pstrDLLName);
-        return false;
-    }
-
-    BOOL validFlag = FALSE;
-    if (!Neko::win::EnumerateExports(hDLL, ExportCallback)) {
-        LOG_INFO("Couldn't get exports for '{}'.\n", pstrDLLName);
-        return false;
-    }
-#else
-
-    if (!EnumExportedFunctions(pstrDLLName, ExportCallback)) {
-        LOG_INFO("Couldn't get exports for '{}'.\n", pstrDLLName);
-        return false;
-    }
-#endif
-    // Set the function pointers
-    for (Uint32 i = 0; i < g_pExportsTargetArray.size(); i++) {
-        g_pExportsTargetArray[i].functionptr = neko_os_library_proc_address(pDLLHandle, g_pExportsTargetArray[i].functionname.c_str());
-        if (g_pExportsTargetArray[i].functionptr == nullptr) {
-            LOG_INFO("Failed to find function '{}' in '{}'.\n", g_pExportsTargetArray[i].functionname.c_str(), pstrDLLName);
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void Sys_Frame() { CL_Think(); }
 
 Int32 Main(int argc, const char *argv[]) {
 
-    HANDLE hMutex = CreateMutexA(nullptr, FALSE, "NekoEngineInstanceMutex");
-
-    if (nullptr != hMutex) GetLastError();
-
-    DWORD mutexResult = WaitForSingleObject(hMutex, 0);
-    if (mutexResult != WAIT_OBJECT_0 && mutexResult != WAIT_ABANDONED) {
-        LOG_INFO("Error during system initialization.\n");
-        ReleaseMutex(hMutex);
-        CloseHandle(hMutex);
-        return -1;
-    }
-
     if (!EngineInit(argc, argv)) {
         LOG_INFO("Error during system initialization.\n");
-        ReleaseMutex(hMutex);
-        CloseHandle(hMutex);
         return -1;
-    }
-
-    if (!Sys_GetDLLExports("engine.exe", GetModuleHandle(NULL))) {
-        LOG_INFO("Error during Sys_GetDLLExports\n");
     }
 
     GLFWwindow *window = gApp->game_window;
@@ -1098,9 +1029,6 @@ Int32 Main(int argc, const char *argv[]) {
     }
 
     Sys_Shutdown();
-
-    ReleaseMutex(hMutex);
-    CloseHandle(hMutex);
 
     return 0;
 }

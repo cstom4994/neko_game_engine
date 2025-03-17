@@ -165,7 +165,7 @@ struct color24_t {
 
 #endif
 
-#define NEKO_ARR_SIZE(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
+#define NEKO_ARR_SIZE(__ARR) (sizeof(__ARR) / sizeof(__ARR[0]))
 
 #if defined(_MSC_VER)
 #define NEKO_UNUSED(x) (void)x
@@ -263,7 +263,6 @@ inline void neko_printf(const char *fmt, ...) {
         neko_printf("\n");                 \
     } while (0)
 
-#define array_size(a) (sizeof(a) / sizeof(a[0]))
 #define MATH_PI 3.1415926535897f
 
 #ifdef __clang__

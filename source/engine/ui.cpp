@@ -782,8 +782,8 @@ void lua_ui_set_ref(lua_State *L, MUIRef *ref, i32 arg) {
         case LUA_TSTRING: {
             ref->kind = MUIRefKind_String;
             String s = luax_check_string(L, arg);
-            if (s.len > array_size(ref->string) - 1) {
-                s.len = array_size(ref->string) - 1;
+            if (s.len > NEKO_ARR_SIZE(ref->string) - 1) {
+                s.len = NEKO_ARR_SIZE(ref->string) - 1;
             }
             memcpy(ref->string, s.data, s.len);
             ref->string[s.len] = '\0';
@@ -1038,7 +1038,7 @@ static int l_ui_textbox_raw(lua_State *L) {
     rect_t rect = lua_ui_check_rect(L, 3);
     i32 opt = luaL_optinteger(L, 4, 0);
 
-    i32 res = ui_textbox_raw(ui_ctx(), ref->string, array_size(ref->string), id, rect, opt);
+    i32 res = ui_textbox_raw(ui_ctx(), ref->string, NEKO_ARR_SIZE(ref->string), id, rect, opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -1047,7 +1047,7 @@ static int l_ui_textbox(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_String);
     i32 opt = luaL_optinteger(L, 2, 0);
 
-    i32 res = ui_textbox_ex(ui_ctx(), ref->string, array_size(ref->string), opt);
+    i32 res = ui_textbox_ex(ui_ctx(), ref->string, NEKO_ARR_SIZE(ref->string), opt);
     lua_pushinteger(L, res);
     return 1;
 }

@@ -320,6 +320,7 @@ typedef struct AssetTexture {
     int height;
     int components;
     bool flip_image_vertical;
+    int unit;
 
     neko_texture_flags_t flags;
 

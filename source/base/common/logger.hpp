@@ -32,6 +32,9 @@ private:
         Context(const std::source_location &loc = std::source_location::current())
             : moduleName(getThreadLocalModuleName()), functionName(loc.function_name()), fileName(loc.file_name()), line(loc.line()), threadId(std::this_thread::get_id()) {}
 
+        Context(const std::string &function_name, const std::string &file_name, int line)
+            : moduleName(getThreadLocalModuleName()), functionName(function_name), fileName(file_name), line(line), threadId(std::this_thread::get_id()) {}
+
     private:
         static std::string &getThreadLocalModuleName() {
             static thread_local std::string currentModule = "Neko Default Module";
@@ -135,6 +138,25 @@ public:
     void log(const std::source_location &loc, Level level, std::format_string<Args...> fmt, Args &&...args) {
         try {
             LogMessage msg{std::format(fmt, std::forward<Args>(args)...), level, Context(loc)};
+            bool messageLogged = false;
+            while (!messageLogged) {
+                if (buffer.push(std::move(msg))) {
+                    messageLogged = true;
+                    break;
+                }
+                if (!messageLogged) {
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+                }
+            }
+        } catch (const std::exception &e) {
+            std::cerr << "Logging error: " << e.what() << std::endl;
+        }
+    }
+
+    template <typename... Args>
+    void log(const std::string &function_name, const std::string &file_name, int line, Level level, std::format_string<Args...> fmt, Args &&...args) {
+        try {
+            LogMessage msg{std::format(fmt, std::forward<Args>(args)...), level, Context(function_name, file_name, line)};
             bool messageLogged = false;
             while (!messageLogged) {
                 if (buffer.push(std::move(msg))) {

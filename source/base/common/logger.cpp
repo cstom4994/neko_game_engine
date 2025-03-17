@@ -143,7 +143,7 @@ void Logger::formatLogMessage(const LogMessage &msg, std::vector<char> &buffer) 
 
     if (showSourceLocation) [[likely]] {
         std::string_view file(msg.context.fileName);
-        if (true) [[likely]] {
+        if (!file.ends_with(".lua\"]")) [[likely]] {
             if (auto pos = file.find_last_of("/\\"); pos != std::string_view::npos) file = file.substr(pos + 1);
         }
 

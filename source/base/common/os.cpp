@@ -85,7 +85,7 @@ String os_program_dir() {
 String os_program_path() {
     static char s_buf[2048];
 
-    DWORD len = GetModuleFileNameA(NULL, s_buf, array_size(s_buf));
+    DWORD len = GetModuleFileNameA(NULL, s_buf, NEKO_ARR_SIZE(s_buf));
 
     for (i32 i = 0; s_buf[i]; i++) {
         if (s_buf[i] == '\\') {
@@ -130,7 +130,7 @@ void os_yield() { YieldProcessor(); }
 
 String os_program_path() {
     static char s_buf[2048];
-    i32 len = (i32)readlink("/proc/self/exe", s_buf, array_size(s_buf));
+    i32 len = (i32)readlink("/proc/self/exe", s_buf, NEKO_ARR_SIZE(s_buf));
     return {s_buf, (u64)len};
 }
 
@@ -546,35 +546,6 @@ std::string w2a(std::wstring_view wstr) noexcept {
 std::string a2u(std::string_view str) noexcept { return w2u(a2w(str)); }
 
 std::string u2a(std::string_view str) noexcept { return w2a(u2w(str)); }
-
-// 遍历指定模块的导出表
-BOOL EnumerateExports(HMODULE hModule, BOOL (*Callback)(LPCSTR pszFuncName, PVOID pFuncAddr)) {
-    if (!hModule) return FALSE;
-
-    BYTE *baseAddress = reinterpret_cast<BYTE *>(hModule);  // 模块基址
-
-    auto dosHeader = reinterpret_cast<IMAGE_DOS_HEADER *>(baseAddress);  // 模块 DOS 头
-    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE) return FALSE;
-
-    auto ntHeaders = reinterpret_cast<IMAGE_NT_HEADERS *>(baseAddress + dosHeader->e_lfanew);  // NT 头
-    if (ntHeaders->Signature != IMAGE_NT_SIGNATURE) return FALSE;
-
-    auto exportDirRVA = ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;  // 导出表地址
-    if (!exportDirRVA) return FALSE;
-
-    // 获取导出表数据
-    auto exportDir = reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(baseAddress + exportDirRVA);
-    auto nameRVAs = reinterpret_cast<DWORD *>(baseAddress + exportDir->AddressOfNames);
-    auto funcRVAs = reinterpret_cast<DWORD *>(baseAddress + exportDir->AddressOfFunctions);
-    auto nameOrdinals = reinterpret_cast<WORD *>(baseAddress + exportDir->AddressOfNameOrdinals);
-    for (DWORD i = 0; i < exportDir->NumberOfNames; ++i) {
-        auto funcName = reinterpret_cast<LPCSTR>(baseAddress + nameRVAs[i]);
-        auto ordinal = nameOrdinals[i];
-        auto funcAddr = reinterpret_cast<PVOID>(baseAddress + funcRVAs[ordinal]);
-        if (!Callback(funcName, funcAddr)) return TRUE;
-    }
-    return TRUE;
-}
 
 }  // namespace Neko::win
 

@@ -64,6 +64,7 @@ void package_preload_embed(lua_State *L) {
         luax_package_preload(L, preloads[i].name, preloads[i].func);
     }
 }
+
 void luax_run_bootstrap(lua_State *L) {
     if (luaL_loadbuffer(L, (const_str)get_bootstrap_lua(), neko_strlen((const_str)get_bootstrap_lua()), "<bootstrap>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
