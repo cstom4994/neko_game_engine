@@ -31,6 +31,7 @@
 #include "editor/editor.hpp"
 #include "base/common/math.hpp"
 #include "engine/input.h"
+#include "engine/window.h"
 
 // deps
 #include "extern/sokol_time.h"
@@ -171,13 +172,13 @@ static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severi
     switch (severity) {
         case GL_DEBUG_SEVERITY_HIGH:
         case GL_DEBUG_SEVERITY_MEDIUM:
-            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
         case GL_DEBUG_SEVERITY_LOW:
-            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
         case GL_DEBUG_SEVERITY_NOTIFICATION:
-            LOG_INFO("OpenGL (source: {}; type: {}): {}", s, t, message);
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
             break;
     }
 }
@@ -810,36 +811,8 @@ int Game::set_window_title(const char *title) {
     return 0;
 }
 
-int game_set_window_vsync(bool vsync) {
-    if (vsync) {
-        glfwSwapInterval(1);
-    } else {
-        glfwSwapInterval(0);
-    }
-    return 0;
-}
-
-const char *window_clipboard() { return glfwGetClipboardString(gApp->game_window); }
-
-int window_prompt(const char *msg, const char *title) { return (MessageBoxA(0, msg, title, MB_YESNO | MB_ICONWARNING) == IDYES); }
-
-void window_setclipboard(const char *text) { glfwSetClipboardString(gApp->game_window, text); }
-
-void window_focus() { glfwFocusWindow(gApp->game_window); }
-
-int window_has_focus() { return !!glfwGetWindowAttrib(gApp->game_window, GLFW_FOCUSED); }
-
-double window_scale() {
-    float xscale = 1, yscale = 1;
-#ifndef NEKO_IS_APPLE  // @todo: remove silicon mac M1 hack
-    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
-    glfwGetMonitorContentScale(monitor, &xscale, &yscale);
-#endif
-    return NEKO_MAX(xscale, yscale);
-}
-
 void test_native_script() {
-    NativeEntity camera, block, player;
+    CEntity camera, block, player;
     unsigned int i, n_blocks;
 
     // add camera

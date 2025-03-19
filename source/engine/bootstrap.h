@@ -23,8 +23,6 @@
 // deps
 #include "extern/luaalloc.h"
 
-#define NEKO_C_EXTERN extern "C"
-
 #define DATA_DIR "../gamedir/assets/data/"
 #define USR_DIR "../gamedir/usr/"
 
@@ -115,9 +113,6 @@ inline EcsWorld *&ENGINE_ECS() { return gApp->ECS; }
 // ECS_COMPONENT_EXTERN(vel_t);
 // ECS_COMPONENT_EXTERN(rect_t);
 
-// 入口点
-void GameMain(int argc, const char **argv);
-
 class Game : public Neko::SingletonClass<Game> {
 public:
     Game();
@@ -148,16 +143,10 @@ public:
     void SplashScreen();
 };
 
-const char *window_clipboard();
-int window_prompt(const char *msg, const char *title);
-void window_setclipboard(const char *text);
-void window_focus();
-int window_has_focus();
-double window_scale();
 
 int timing_update(App *app, event_t evt);
-void timing_save_all(App* app);
-void timing_load_all(App* app);
+void timing_save_all(App *app);
+void timing_load_all(App *app);
 
 inline void query_window(int idx, i32 *width, i32 *height) {
     int w, h;

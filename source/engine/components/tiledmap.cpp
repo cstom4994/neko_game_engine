@@ -1048,7 +1048,7 @@ static void tiled_map_edit_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) 
     asset_write(asset);
 }
 
-void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
+void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
 
@@ -1135,7 +1135,7 @@ int tiled_render(Tiled *tiled) {
     return 0;
 }
 
-void tiled_add(NativeEntity ent) {
+void tiled_add(CEntity ent) {
 
     if (Tiled::pool->Get(ent)) return;
 
@@ -1149,9 +1149,9 @@ void tiled_add(NativeEntity ent) {
     tiled_render_init(tiled->render);
 }
 
-void tiled_remove(NativeEntity ent) { Tiled::pool->Remove(ent); }
+void tiled_remove(CEntity ent) { Tiled::pool->Remove(ent); }
 
-bool tiled_has(NativeEntity ent) { return Tiled::pool->Get(ent) != NULL; }
+bool tiled_has(CEntity ent) { return Tiled::pool->Get(ent) != NULL; }
 
 void tiled_init() {
     PROFILE_FUNC();
@@ -1188,7 +1188,7 @@ void tiled_draw_all() {
     Tiled::pool->ForEach([](Tiled *tiled) { tiled_render(tiled); });
 }
 
-void tiled_set_map(NativeEntity ent, const char *str) {
+void tiled_set_map(CEntity ent, const char *str) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
     tiled->map_name = to_cstr(String(str));
@@ -1200,13 +1200,13 @@ void tiled_set_map(NativeEntity ent, const char *str) {
     tiled->render->map_asset = asset.hash;
 }
 
-const char *tiled_get_map(NativeEntity ent) {
+const char *tiled_get_map(CEntity ent) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
 }
 
-void tiled_loadlua(NativeEntity ent) {
+void tiled_loadlua(CEntity ent) {
     Tiled *tiled = Tiled::pool->Get(ent);
     error_assert(tiled);
 

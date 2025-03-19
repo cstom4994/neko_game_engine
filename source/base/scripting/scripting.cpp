@@ -182,21 +182,6 @@ int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
 
 #endif
 
-void createStructTables(lua_State *L) {
-
-    LuaEnum<KeyCode, -1, 350>(L);
-    LuaEnum<MouseCode>(L);
-    LuaEnum<neko_texture_flags_t>(L);
-
-    LuaStruct<vec2>(L);
-    LuaStruct<vec4>(L);
-    LuaStruct<mat3>(L);
-    LuaStruct<AssetTexture>(L);
-    LuaStruct<Color>(L);
-    LuaStruct<NativeEntity>(L);
-    LuaStruct<BBox>(L);
-}
-
 static int _traceback(lua_State *L) {
     if (!lua_isstring(L, 1)) {
         if (lua_isnoneornil(L, 1) || !luaL_callmeta(L, 1, "__tostring") || !lua_isstring(L, -1)) return 1;

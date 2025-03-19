@@ -120,17 +120,17 @@ function ng.c_save_load(ctype, c_save, c_load)
     end
 end
 
---- NativeEntity ---------------------------------------------------------------------
+--- CEntity ---------------------------------------------------------------------
 
 -- compress entity save format
 _cge = function(id)
     return ng._entity_resolve_saved_id(id)
 end
 
--- ng.NativeEntity = ffi.metatype('NativeEntity', {
+-- ng.CEntity = ffi.metatype('CEntity', {
 --     __eq = function(a, b)
---         return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
---                    ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
+--         return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('CEntity', a) and
+--                    ffi.istype('CEntity', b) and ng.native_entity_eq(a, b)
 --     end,
 --     __index = {
 --         __serialize = function(e)
@@ -139,13 +139,13 @@ end
 --     }
 -- })
 
-ng.NativeEntity = function(id)
-    local ent = neko.NativeEntity.new()
+ng.CEntity = function(id)
+    local ent = neko.CEntity.new()
     ent.id = id
     return ent
 end
 
-neko.NativeEntity.metatype({
+neko.CEntity.metatype({
     __eq = function(a, b)
         return a.id == b.id
     end
@@ -248,13 +248,13 @@ ng.is_nil_entity = function(ent)
     return ent.id == 0
 end
 
-local entity_table_mt__regname = ng.NativeEntity(0x114514)
-local defaults_table_mt__regname = ng.NativeEntity(0x114514 + 1)
+local entity_table_mt__regname = ng.CEntity(0x114514)
+local defaults_table_mt__regname = ng.CEntity(0x114514 + 1)
 
 --
--- NativeEntity -> data map
+-- CEntity -> data map
 --
--- can't use normal Lua tables because NativeEntity is cdata, which isn't
+-- can't use normal Lua tables because CEntity is cdata, which isn't
 -- hashed right
 --
 local function bind_defaults(t, v)
@@ -432,7 +432,7 @@ end
 -- hot_require 'nekogame.system'
 
 ng.cent = function(ent)
-    local ent_c = neko.NativeEntity.new()
+    local ent_c = neko.CEntity.new()
     ent_c.id = ent.id
     return ent_c
 end
@@ -773,7 +773,7 @@ function ns.name.get_name(ent, name)
 end
 
 function ns.name.find(name)
-    return name_entity[name] and name_entity[name] or ng.NativeEntity(ng.entity_nil)
+    return name_entity[name] and name_entity[name] or ng.CEntity(ng.entity_nil)
 end
 
 function ns.name.update_all()

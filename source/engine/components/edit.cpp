@@ -9,17 +9,17 @@ void edit_set_enabled(bool e) { enabled = e; }
 bool edit_get_enabled() { return enabled; }
 
 // 无法选择不可编辑的实体
-void edit_set_editable(NativeEntity ent, bool editable) {
+void edit_set_editable(CEntity ent, bool editable) {
     if (editable)
         uneditable::pool->Remove(ent);
     else
         uneditable::pool->Remove(ent);
 }
-bool edit_get_editable(NativeEntity ent) { return !uneditable::pool->Get(ent); }
+bool edit_get_editable(CEntity ent) { return !uneditable::pool->Get(ent); }
 
 // --- bboxes --------------------------------------------------------------
 
-void edit_bboxes_update(NativeEntity ent, BBox bbox) {
+void edit_bboxes_update(CEntity ent, BBox bbox) {
     BBoxPoolElem* elem;
 
     // editable?
@@ -36,8 +36,8 @@ void edit_bboxes_update(NativeEntity ent, BBox bbox) {
     }
 }
 
-bool edit_bboxes_has(NativeEntity ent) { return BBoxPoolElem::pool->Get(ent) != NULL; }
-BBox edit_bboxes_get(NativeEntity ent) {
+bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem::pool->Get(ent) != NULL; }
+BBox edit_bboxes_get(CEntity ent) {
     BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     return elem->bbox;
@@ -45,7 +45,7 @@ BBox edit_bboxes_get(NativeEntity ent) {
 
 int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
 
-NativeEntity edit_bboxes_get_nth_ent(int n) {
+CEntity edit_bboxes_get_nth_ent(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
     BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
     return elem->pool_elem.ent;
@@ -57,7 +57,7 @@ BBox edit_bboxes_get_nth_bbox(int n) {
     return elem->bbox;
 }
 
-void edit_bboxes_set_selected(NativeEntity ent, bool selected) {
+void edit_bboxes_set_selected(CEntity ent, bool selected) {
     BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
     error_assert(elem);
     elem->selected = selected;
@@ -100,7 +100,7 @@ static void _bboxes_fini() {
 }
 
 static void _bboxes_update_all() {
-    NativeEntity ent;
+    CEntity ent;
     BBoxPoolElem* elem;
     static BBox defaultbb = {{-0.25, -0.25}, {0.25, 0.25}};
 
@@ -155,7 +155,7 @@ static Array<BBoxPoolElem> grid_cells;  // 用于绘制网格的bbox
 
 static void _grid_create_cells() {
     BBox cbox, cellbox;
-    NativeEntity camera;
+    CEntity camera;
     vec2 cur, csize;
 
     // find camera bounds in world space
@@ -317,7 +317,7 @@ void edit_fini() {
     entitypool_free(uneditable::pool);
 }
 
-static void _uneditable_remove(NativeEntity ent) { uneditable::pool->Remove(ent); }
+static void _uneditable_remove(CEntity ent) { uneditable::pool->Remove(ent); }
 
 int edit_update_all(App* app, event_t evt) {
     entitypool_remove_destroyed(uneditable::pool, _uneditable_remove);

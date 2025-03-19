@@ -56,8 +56,6 @@ NEKO_API() void script_push_event(const char *event);
 
 #include "base/scripting/lua_wrapper.hpp"
 
-NEKO_API() void createStructTables(lua_State *L);
-
 NEKO_API() void open_neko_api(lua_State *L);
 
 namespace Neko::luabind {

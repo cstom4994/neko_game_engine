@@ -33,11 +33,11 @@ void EcsComponentClear(Entity* e, int tid) {
 
 int EcsComponentAdd(EcsWorld* world, Entity* e, int tid) {
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {
-        LOG_INFO("NativeEntity({}) already exist component({})", e - world->entity_buf, tid);
+        LOG_INFO("CEntity({}) already exist component({})", e - world->entity_buf, tid);
         return -1;
     }
     if (e->components_count >= ENTITY_MAX_COMPONENTS) {
-        LOG_INFO("NativeEntity({}) add to many components", e - world->entity_buf);
+        LOG_INFO("CEntity({}) add to many components", e - world->entity_buf);
         return -1;
     }
 

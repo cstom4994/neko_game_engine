@@ -6,14 +6,14 @@
 #include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
 
-static NativeEntity curr_camera;
-static NativeEntity edit_camera;
+static CEntity curr_camera;
+static CEntity edit_camera;
 
 static mat3 inverse_view_matrix;  // 缓存逆视图矩阵
 
 // -------------------------------------------------------------------------
 
-void camera_add(NativeEntity ent) {
+void camera_add(CEntity ent) {
     Camera *camera;
 
     if (Camera::pool->Get(ent)) return;
@@ -25,34 +25,34 @@ void camera_add(NativeEntity ent) {
 
     if (native_entity_eq(curr_camera, entity_nil)) curr_camera = ent;
 }
-void camera_remove(NativeEntity ent) {
+void camera_remove(CEntity ent) {
     Camera::pool->Remove(ent);
 
     if (native_entity_eq(curr_camera, ent)) curr_camera = entity_nil;
 }
-bool camera_has(NativeEntity ent) { return Camera::pool->Get(ent) != NULL; }
+bool camera_has(CEntity ent) { return Camera::pool->Get(ent) != NULL; }
 
-void camera_set_edit_camera(NativeEntity ent) { edit_camera = ent; }
+void camera_set_edit_camera(CEntity ent) { edit_camera = ent; }
 
-void camera_set_current(NativeEntity ent, bool current) {
+void camera_set_current(CEntity ent, bool current) {
     if (current)
         curr_camera = ent;
     else if (native_entity_eq(curr_camera, ent))
         curr_camera = entity_nil;
 }
-bool camera_get_current(NativeEntity ent) { return native_entity_eq(curr_camera, ent); }
-void camera_set_current_camera(NativeEntity ent) { curr_camera = ent; }
-NativeEntity camera_get_current_camera() {
+bool camera_get_current(CEntity ent) { return native_entity_eq(curr_camera, ent); }
+void camera_set_current_camera(CEntity ent) { curr_camera = ent; }
+CEntity camera_get_current_camera() {
     if (edit_get_enabled()) return edit_camera;
     return curr_camera;
 }
 
-void camera_set_viewport_height(NativeEntity ent, f32 height) {
+void camera_set_viewport_height(CEntity ent, f32 height) {
     Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
-f32 camera_get_viewport_height(NativeEntity ent) {
+f32 camera_get_viewport_height(CEntity ent) {
     Camera *camera = (Camera *)Camera::pool->Get(ent);
     error_assert(camera);
     return camera->viewport_height;
@@ -69,7 +69,7 @@ vec2 camera_world_to_unit(vec2 p) {
 }
 vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<Game>().pixels_to_unit(p)); }
 vec2 camera_unit_to_world(vec2 p) {
-    NativeEntity cam = camera_get_current_camera();
+    CEntity cam = camera_get_current_camera();
     if (!native_entity_eq(cam, entity_nil)) return transform_local_to_world(cam, p);
     return p;
 }
@@ -91,7 +91,7 @@ int camera_update_all(App *app, event_t evt) {
     vec2 win_size;
     f32 aspect;
     Camera *camera;
-    NativeEntity cam;
+    CEntity cam;
     vec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 

@@ -4,7 +4,6 @@
 #include <forward_list>
 
 #include "engine/base.hpp"
-#include "engine/base.hpp"
 #include "engine/draw.h"
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"

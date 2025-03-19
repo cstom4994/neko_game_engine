@@ -784,5 +784,5 @@ int sound_postupdate(App *app, event_t evt) {
     return 0;
 }
 
-void sound_save_all(App* app) {}
-void sound_load_all(App* app) {}
+void sound_save_all(App *app) {}
+void sound_load_all(App *app) {}

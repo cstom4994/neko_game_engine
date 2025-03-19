@@ -888,10 +888,87 @@ bool texture_update_data(AssetTexture* tex, u8* data) {
     return true;
 }
 
+template <size_t>
+struct texture_create;
+
+template <>
+struct texture_create<1> {
+
+    bool run(AssetTexture& tex, u8* data) {
+        if (!data) return false;
+
+        {
+            LockGuard<Mutex> lock(gBase.gpu_mtx);
+
+            // 如果存在 则释放旧的 GL 纹理
+            if (tex.id != 0) glDeleteTextures(1, &tex.id);
+
+            // 生成 GL 纹理
+            glGenTextures(1, &tex.id);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, tex.id);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            if (tex.flip_image_vertical) {
+                _flip_image_vertical(data, tex.width, tex.height);
+            }
+
+            // 将纹理数据复制到 GL
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex.width, tex.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+            glBindTexture(GL_TEXTURE_2D, 0);
+        }
+
+        return true;
+    }
+};
+
+template <>
+struct texture_create<2> {
+    ase_t* ase = nullptr;
+    AssetTexture run(const String& contents) {
+        AssetTexture tex;
+        u8* data = nullptr;
+        {
+            PROFILE_BLOCK("ase_image load");
+            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+            // neko_aseprite_default_blend_bind(ase);
+
+            tex.width = ase->w;
+            tex.height = ase->h;
+        }
+        data = reinterpret_cast<u8*>(ase->frames->pixels);
+        texture_create<1> tc;
+        tc.run(tex, data);
+        cute_aseprite_free(ase);
+        return tex;
+    }
+};
+
+template <>
+struct texture_create<3> {
+    AssetTexture run(const String& contents) {
+        AssetTexture tex;
+        u8* data = nullptr;
+        {
+            PROFILE_BLOCK("stb_image load");
+            stbi_set_flip_vertically_on_load(false);
+            data = stbi_load_from_memory((u8*)contents.data, (i32)contents.len, &tex.width, &tex.height, &tex.components, 0);
+        }
+        texture_create<1> tc;
+        tc.run(tex, data);
+        stbi_image_free(data);
+        return tex;
+    }
+};
+
 static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     neko_assert(tex);
-
-    u8* data = nullptr;
 
     LOG_INFO("texture: loading texture '{}' ...", filename.cstr());
 
@@ -902,73 +979,15 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     }
     neko_defer(mem_free(contents.data));
 
-    ase_t* ase = nullptr;
-
     if (filename.ends_with(".ase")) {
-
-        {
-            PROFILE_BLOCK("ase_image load");
-            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
-
-            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
-            // neko_aseprite_default_blend_bind(ase);
-
-            tex->width = ase->w;
-            tex->height = ase->h;
-        }
-
-        data = reinterpret_cast<u8*>(ase->frames->pixels);
-
+        texture_create<2> tc;
+        *tex = tc.run(contents);
     } else {
-
-        {
-            PROFILE_BLOCK("stb_image load");
-            stbi_set_flip_vertically_on_load(false);
-            data = stbi_load_from_memory((u8*)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
-        }
+        texture_create<3> tc;
+        *tex = tc.run(contents);
     }
 
-    // 读入纹理数据
-    if (!data) {
-        // tex->last_modified = modtime;
-        LOG_INFO(" unsuccessful");
-        return false;  // 保持旧的GL纹理
-    }
-
-    {
-        LockGuard<Mutex> lock(gBase.gpu_mtx);
-
-        // 如果存在 则释放旧的 GL 纹理
-        if (tex->id != 0) glDeleteTextures(1, &tex->id);
-
-        // 生成 GL 纹理
-        glGenTextures(1, &tex->id);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex->id);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        if (tex->flip_image_vertical) {
-            _flip_image_vertical(data, tex->width, tex->height);
-        }
-
-        // 将纹理数据复制到 GL
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        glBindTexture(GL_TEXTURE_2D, 0);
-    }
-
-    if (filename.ends_with(".ase")) {
-        if (ase) cute_aseprite_free(ase);
-    } else {
-        if (data) stbi_image_free(data);
-    }
-
-    // tex->last_modified = modtime;
-    LOG_INFO(" successful");
+    LOG_INFO("texture: loading texture '{}' successful", filename.cstr());
     return true;
 }
 

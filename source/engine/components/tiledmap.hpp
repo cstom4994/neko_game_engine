@@ -139,21 +139,21 @@ struct Tiled;
 
 int tiled_render(Tiled* tiled);
 
-void tiled_add(NativeEntity ent);
-void tiled_remove(NativeEntity ent);
-bool tiled_has(NativeEntity ent);
-void tiled_set_map(NativeEntity ent, const char* str);
-const char* tiled_get_map(NativeEntity ent);
-void tiled_map_edit(NativeEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
+void tiled_add(CEntity ent);
+void tiled_remove(CEntity ent);
+bool tiled_has(CEntity ent);
+void tiled_set_map(CEntity ent, const char* str);
+const char* tiled_get_map(CEntity ent);
+void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
 
 void tiled_init();
 void tiled_fini();
 int tiled_update_all(App* app, event_t evt);
 void tiled_draw_all();
 
-class Tiled : public GameEntityBase {
+class Tiled : public CEntityBase {
 public:
-    static NativeEntityPool<Tiled>* pool;
+    static CEntityPool<Tiled>* pool;
 
 public:
     tiled_renderer* render;

@@ -21,6 +21,7 @@
 
 #include "base/common/vfs.hpp"
 #include "engine/input.h"
+#include "engine/window.h"
 
 // deps
 #include <stb_truetype.h>

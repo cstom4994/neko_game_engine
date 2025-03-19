@@ -23,22 +23,22 @@ enum ComponentTypeE {
     COMPONENT_COUNT
 };
 
-typedef struct NativeEntity NativeEntity;
+typedef struct CEntity CEntity;
 
-typedef uint32_t ecs_id_t;
+typedef uint32_t EcsId;
 
-struct NativeEntity {
-    ecs_id_t id;
+struct CEntity {
+    EcsId id;
 };
 
-NEKO_EXPORT NativeEntity entity_nil;
+NEKO_EXPORT CEntity entity_nil;
 
-NativeEntity entity_create();
-void entity_destroy(NativeEntity ent);
+CEntity entity_create();
+void entity_destroy(CEntity ent);
 void entity_destroy_all();
-bool entity_destroyed(NativeEntity ent);
-void entity_set_save_filter(NativeEntity ent, bool filter);
-bool entity_get_save_filter(NativeEntity ent);
+bool entity_destroyed(CEntity ent);
+void entity_set_save_filter(CEntity ent, bool filter);
+bool entity_get_save_filter(CEntity ent);
 void entity_clear_save_filters();
 
 struct App;
@@ -52,29 +52,29 @@ NEKO_API() void entity_load_all(App* app);
 NEKO_API() void entity_load_all_begin();
 NEKO_API() void entity_load_all_end();
 
-inline bool native_entity_eq(NativeEntity e, NativeEntity f) { return e.id == f.id; }
+inline bool native_entity_eq(CEntity e, CEntity f) { return e.id == f.id; }
 
-class NativeEntityMap {
+class CEntityMap {
 public:
     int* arr;
-    ecs_id_t bound;     // 数组中的第一个空闲位置的索引 = 1 + 最大键
-    ecs_id_t capacity;  // 拥有堆空间的元素数量
+    EcsId bound;     // 数组中的第一个空闲位置的索引 = 1 + 最大键
+    EcsId capacity;  // 拥有堆空间的元素数量
     int def;            // 未设置键的值
 };
 
-NEKO_API() NativeEntityMap* entitymap_new(int def);  // def 为默认值
-NEKO_API() void entitymap_clear(NativeEntityMap* emap);
-NEKO_API() void entitymap_free(NativeEntityMap* emap);
-NEKO_API() void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val);
-NEKO_API() int entitymap_get(NativeEntityMap* emap, NativeEntity ent);
+NEKO_API() CEntityMap* entitymap_new(int def);  // def 为默认值
+NEKO_API() void entitymap_clear(CEntityMap* emap);
+NEKO_API() void entitymap_free(CEntityMap* emap);
+NEKO_API() void entitymap_set(CEntityMap* emap, CEntity ent, int val);
+NEKO_API() int entitymap_get(CEntityMap* emap, CEntity ent);
 
 // 在内存中连续 可能会被重新定位/打乱 所以要小心
 template <typename T>
-struct NativeEntityPool {
-    NativeEntityMap* emap;  // 只是数组索引的映射 如果不存在则为 -1
+struct CEntityPool {
+    CEntityMap* emap;  // 只是数组索引的映射 如果不存在则为 -1
     Array<T> array;
 
-    T* Add(NativeEntity ent) {
+    T* Add(CEntity ent) {
         T* elem = nullptr;
 
         if ((elem = this->Get(ent)) != nullptr) return elem;
@@ -87,13 +87,13 @@ struct NativeEntityPool {
         return elem;
     }
 
-    void Remove(NativeEntity ent) {
+    void Remove(CEntity ent) {
         int i = entitymap_get(this->emap, ent);
         if (i >= 0) {
             // 删除可能会与最后一个元素交换 在这里修复映射
             this->array.quick_remove(i);
             {
-                GameEntityBase* elem = dynamic_cast<GameEntityBase*>(&this->array[i]);
+                CEntityBase* elem = dynamic_cast<CEntityBase*>(&this->array[i]);
                 entitymap_set(this->emap, elem->pool_elem.ent, i);
             }
             // 删除映射
@@ -102,7 +102,7 @@ struct NativeEntityPool {
     }
 
     // 如果未映射则为 NULL
-    T* Get(NativeEntity ent) {
+    T* Get(CEntity ent) {
         int i = entitymap_get(this->emap, ent);
         if (i >= 0) return &this->array[i];
         return NULL;
@@ -125,24 +125,26 @@ struct NativeEntityPool {
 // }
 // 其中的值是EntityPool管理的元数据
 
-class GameEntityBase {
+class CEntityBase {
 public:
     struct EntityPoolElem {
-        NativeEntity ent;
+        CEntity ent;
     } pool_elem;
 };
 
-#define DECL_ENT(T, ...)                  \
-    class T : public GameEntityBase {     \
-    public:                               \
-        static NativeEntityPool<T>* pool; \
-        __VA_ARGS__                       \
+#define DECL_ENT(T, ...)             \
+    class T : public CEntityBase {   \
+    public:                          \
+        static CEntityPool<T>* pool; \
+                                     \
+    public:                          \
+        __VA_ARGS__                  \
     };
 
 // object_size 是每个元素的大小
 template <typename T>
-NativeEntityPool<T>* entitypool_new_(size_t object_size) {
-    NativeEntityPool<T>* pool = (NativeEntityPool<T>*)mem_alloc(sizeof(NativeEntityPool<T>));
+CEntityPool<T>* entitypool_new_(size_t object_size) {
+    CEntityPool<T>* pool = (CEntityPool<T>*)mem_alloc(sizeof(CEntityPool<T>));
     memset(&pool->array, 0, sizeof(Array<T>));
 
     pool->emap = entitymap_new(-1);
@@ -152,12 +154,12 @@ NativeEntityPool<T>* entitypool_new_(size_t object_size) {
 }
 
 template <typename T>
-auto entitypool_new() -> NativeEntityPool<T>* {
+auto entitypool_new() -> CEntityPool<T>* {
     return entitypool_new_<T>(sizeof(T));
 }
 
 template <typename T>
-void entitypool_free(NativeEntityPool<T>* pool) {
+void entitypool_free(CEntityPool<T>* pool) {
     pool->array.trash();
     entitymap_free(pool->emap);
     mem_free(pool);
@@ -169,62 +171,62 @@ void entitypool_free(NativeEntityPool<T>* pool) {
 //         ... use ptr ...
 // 如果在迭代期间添加/删除指针将无效
 template <typename T>
-T* entitypool_begin(NativeEntityPool<T>* pool) {
+T* entitypool_begin(CEntityPool<T>* pool) {
     return pool->array.begin();
 }
 template <typename T>
-T* entitypool_end(NativeEntityPool<T>* pool) {
+T* entitypool_end(CEntityPool<T>* pool) {
     return pool->array.end();
 }  // one-past-end
 
 // 0 索引
 template <typename T>
-T* entitypool_nth(NativeEntityPool<T>* pool, ecs_id_t n) {
+T* entitypool_nth(CEntityPool<T>* pool, EcsId n) {
     return &pool->array[n];
 }
 
 template <typename T>
-ecs_id_t entitypool_size(NativeEntityPool<T>* pool) {
+EcsId entitypool_size(CEntityPool<T>* pool) {
     return pool->array.len;
 }
 
 template <typename T>
-void entitypool_clear(NativeEntityPool<T>* pool) {
+void entitypool_clear(CEntityPool<T>* pool) {
     entitymap_clear(pool->emap);
     // array_clear(pool->array);
     pool->array.len = 0;
 }
 
 template <typename T>
-void entitypool_sort(NativeEntityPool<T>* pool, int (*compar)(const void*, const void*)) {
-    ecs_id_t i, n;
-    GameEntityBase* elem;
+void entitypool_sort(CEntityPool<T>* pool, int (*compar)(const void*, const void*)) {
+    EcsId i, n;
+    CEntityBase* elem;
 
     pool->array.sort(compar);  // 对内部数组排序
 
-    // 重新映射 NativeEntity -> index
+    // 重新映射 CEntity -> index
     n = pool->array.len;
     for (i = 0; i < n; ++i) {
-        elem = dynamic_cast<GameEntityBase*>(&pool->array.data[i]);
+        elem = dynamic_cast<CEntityBase*>(&pool->array.data[i]);
         entitymap_set(pool->emap, elem->pool_elem.ent, i);
     }
 }
 
 // elem must be /pointer to/ pointer to element
 template <typename T>
-void entitypool_elem_save(NativeEntityPool<T>* pool, void* elem, App* app) {
+void entitypool_elem_save(CEntityPool<T>* pool, void* elem, App* app) {
     // EntityPoolElem** p;
 
-    // // save NativeEntity id
+    // // save CEntity id
     // p = (EntityPoolElem**)elem;
     // entity_save(&(*p)->ent, "pool_elem", s);
 }
 template <typename T>
-void entitypool_elem_load(NativeEntityPool<T>* pool, void* elem, App* app) {
-    // NativeEntity ent;
+void entitypool_elem_load(CEntityPool<T>* pool, void* elem, App* app) {
+    // CEntity ent;
     // EntityPoolElem** p;
 
-    // // load NativeEntity id, add element with that key
+    // // load CEntity id, add element with that key
     // error_assert(entity_load(&ent, "pool_elem", entity_nil, s), "saved EntityPoolElem entry must exist");
     // p = (EntityPoolElem**)elem;
     // *p = (EntityPoolElem*)entitypool_add(pool, ent);
@@ -232,12 +234,12 @@ void entitypool_elem_load(NativeEntityPool<T>* pool, void* elem, App* app) {
 }
 
 template <typename T, class F>
-auto entitypool_remove_destroyed(NativeEntityPool<T>* pool, F func) {
+auto entitypool_remove_destroyed(CEntityPool<T>* pool, F func) {
     do {
-        ecs_id_t i;
-        GameEntityBase* e;
+        EcsId i;
+        CEntityBase* e;
         for (i = 0; i < entitypool_size(pool);) {
-            e = dynamic_cast<GameEntityBase*>(entitypool_nth(pool, i));
+            e = dynamic_cast<CEntityBase*>(entitypool_nth(pool, i));
             if (entity_destroyed(e->pool_elem.ent))
                 func(e->pool_elem.ent);
             else

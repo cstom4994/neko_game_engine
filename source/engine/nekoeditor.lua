@@ -864,7 +864,7 @@ local field_types = {}
 
 -- 'args' may contain:
 --      field_type: the field type (boolean, string, f32, enum, Vec2,
---                                  Color, NativeEntity)
+--                                  Color, CEntity)
 --      ctype: the name of the underlying C type, if any
 --      parent: the parent GUI entity
 --      label: descriptive label (optional)
@@ -1062,7 +1062,7 @@ field_types['Color'] = {
     end
 }
 
-field_types['NativeEntity'] = {
+field_types['CEntity'] = {
     create = function(args)
         local field = field_create_common(args)
         field.enumtype = args.ctype
@@ -1130,7 +1130,7 @@ ns.edit_inspector = {
 
 ns.edit_inspector.custom = {} -- custom inspectors -- eg. for physics
 
-local inspectors = ng.entity_table() -- NativeEntity (sys --> inspector) map
+local inspectors = ng.entity_table() -- CEntity (sys --> inspector) map
 
 -- forward event to custom event handler
 local function custom_event(inspector, evt)
@@ -1247,7 +1247,7 @@ local function make_inspector(ent, sys)
     return inspector
 end
 
--- 为 NativeEntity ent 添加系统检查器
+-- 为 CEntity ent 添加系统检查器
 function ns.edit_inspector.add(ent, sys)
     local adder = ns[sys].add
     if not adder then
@@ -1267,7 +1267,7 @@ function ns.edit_inspector.add(ent, sys)
     inspectors[ent][sys] = make_inspector(ent, sys)
 end
 
--- remove sys inspector for NativeEntity ent -- sys is optional, removes all
+-- remove sys inspector for CEntity ent -- sys is optional, removes all
 -- inspectors on ent if not specified
 function ns.edit_inspector.remove(ent, sys)
     if not inspectors[ent] then

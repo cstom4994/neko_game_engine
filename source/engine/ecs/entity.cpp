@@ -25,16 +25,16 @@
 using namespace Neko::luabind;
 using namespace Neko::ecs;
 
-NativeEntity entity_nil = {0};  // 没有有效的实体具有此值
-static ecs_id_t counter = 1;
+CEntity entity_nil = {0};  // 没有有效的实体具有此值
+static EcsId counter = 1;
 
 // typedef struct ExistsPoolElem {
 //     EntityPoolElem pool_elem;
 // } ExistsPoolElem;
 
 // 声明未使用的实体 ID
-NativeEntity entity_create() {
-    NativeEntity ent;
+CEntity entity_create() {
+    CEntity ent;
 
     auto L = ENGINE_LUA();
 
@@ -48,24 +48,24 @@ NativeEntity entity_create() {
     return ent;
 }
 
-static void entity_remove(NativeEntity ent) { EcsEntityDel(ENGINE_LUA(), ent.id); }
+static void entity_remove(CEntity ent) { EcsEntityDel(ENGINE_LUA(), ent.id); }
 
 // 释放实体 ID
-void entity_destroy(NativeEntity ent) { entity_remove(ent); }
+void entity_destroy(CEntity ent) { entity_remove(ent); }
 
 void entity_destroy_all() {
     // ExistsPoolElem* exists;
     // entitypool_foreach(exists, exists_pool) entity_destroy(exists->pool_elem.ent);
 }
 
-bool entity_destroyed(NativeEntity ent) {
+bool entity_destroyed(CEntity ent) {
     // return entitymap_get(destroyed_map, ent);
     return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id);
 }
 
 //  如果为任何实体设置为 TRUE 则仅保存设置为 TRUE 的那些实体
 //  如果设置为 False 则不会保存此项的实体
-void entity_set_save_filter(NativeEntity ent, bool filter) {
+void entity_set_save_filter(CEntity ent, bool filter) {
     // if (filter) {
     //     entitymap_set(save_filter_map, ent, SF_SAVE);
     //     save_filter_default = SF_NO_SAVE;
@@ -73,7 +73,7 @@ void entity_set_save_filter(NativeEntity ent, bool filter) {
     //     entitymap_set(save_filter_map, ent, SF_NO_SAVE);
 }
 
-bool entity_get_save_filter(NativeEntity ent) {
+bool entity_get_save_filter(CEntity ent) {
     // SaveFilter filter = (SaveFilter)entitymap_get(save_filter_map, ent);
     // if (filter == SF_UNSET) filter = save_filter_default;
     // return filter == SF_SAVE;
@@ -103,7 +103,7 @@ void entity_init() {
     // destroyed_map = entitymap_new(false);
     // destroyed = array_new(DestroyEntry);
     // unused_map = entitymap_new(false);
-    // unused = array_new(NativeEntity);
+    // unused = array_new(CEntity);
     // save_filter_map = entitymap_new(SF_UNSET);
 }
 
@@ -117,7 +117,7 @@ void entity_fini() {
 }
 
 int entity_update_all(App* app, event_t evt) {
-    // ecs_id_t i;
+    // EcsId i;
     // DestroyEntry* entry;
 
     // for (i = 0; i < array_length(destroyed);) {
@@ -135,7 +135,7 @@ int entity_update_all(App* app, event_t evt) {
 }
 
 // save/load 仅适用于 ID
-void entity_save(NativeEntity* ent, const char* n, App* app) {
+void entity_save(CEntity* ent, const char* n, App* app) {
     // Store* t;
 
     if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
@@ -143,9 +143,9 @@ void entity_save(NativeEntity* ent, const char* n, App* app) {
     // if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
 }
 
-bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, App* app) {
+bool entity_load(CEntity* ent, const char* n, CEntity d, App* app) {
     // Store* t;
-    // ecs_id_t id;
+    // EcsId id;
 
     // if (!store_child_load(&t, n, s)) {
     //     *ent = d;
@@ -199,8 +199,8 @@ void entity_load_all(App* app) {
 
 #define MIN_CAPACITY 2
 
-static void entitymap_init_w(NativeEntityMap* emap) {
-    ecs_id_t i;
+static void entitymap_init_w(CEntityMap* emap) {
+    EcsId i;
 
     emap->bound = 0;                // bound <= capacity (so that maximum key < capacity)
     emap->capacity = MIN_CAPACITY;  // MIN_CAPACITY <= capacity
@@ -209,27 +209,27 @@ static void entitymap_init_w(NativeEntityMap* emap) {
     for (i = 0; i < emap->capacity; ++i) emap->arr[i] = emap->def;
 }
 
-NativeEntityMap* entitymap_new(int def) {
-    NativeEntityMap* emap;
+CEntityMap* entitymap_new(int def) {
+    CEntityMap* emap;
 
-    emap = (NativeEntityMap*)mem_alloc(sizeof(NativeEntityMap));
+    emap = (CEntityMap*)mem_alloc(sizeof(CEntityMap));
     emap->def = def;
 
     entitymap_init_w(emap);
 
     return emap;
 }
-void entitymap_clear(NativeEntityMap* emap) {
+void entitymap_clear(CEntityMap* emap) {
     mem_free(emap->arr);
     entitymap_init_w(emap);
 }
-void entitymap_free(NativeEntityMap* emap) {
+void entitymap_free(CEntityMap* emap) {
     mem_free(emap->arr);
     mem_free(emap);
 }
 
-static void _grow(NativeEntityMap* emap) {
-    ecs_id_t new_capacity, i, bound;
+static void _grow(CEntityMap* emap) {
+    EcsId new_capacity, i, bound;
 
     // find next power of 2 (TODO: use log?)
     bound = emap->bound;
@@ -240,8 +240,8 @@ static void _grow(NativeEntityMap* emap) {
     for (i = emap->capacity; i < new_capacity; ++i) emap->arr[i] = emap->def;
     emap->capacity = new_capacity;
 }
-static void _shrink(NativeEntityMap* emap) {
-    ecs_id_t new_capacity, bound_times_4;
+static void _shrink(CEntityMap* emap) {
+    EcsId new_capacity, bound_times_4;
 
     if (emap->capacity <= MIN_CAPACITY) return;
 
@@ -255,7 +255,7 @@ static void _shrink(NativeEntityMap* emap) {
     emap->capacity = new_capacity;
 }
 
-void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val) {
+void entitymap_set(CEntityMap* emap, CEntity ent, int val) {
     if (val == emap->def)  // 判断删除操作
     {
         emap->arr[ent.id] = val;
@@ -273,7 +273,7 @@ void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val) {
         emap->arr[ent.id] = val;
     }
 }
-int entitymap_get(NativeEntityMap* emap, NativeEntity ent) {
+int entitymap_get(CEntityMap* emap, CEntity ent) {
     if (ent.id >= emap->capacity) return emap->def;
     return emap->arr[ent.id];
 }
@@ -552,9 +552,9 @@ void system_save_all(App* app) { _saveload_all(app, true); }
 
 void system_load_all(App* app) { _saveload_all(app, false); }
 
-static NativeEntity saved_root;
+static CEntity saved_root;
 
-void prefab_save(const char* filename, NativeEntity root) {
+void prefab_save(const char* filename, CEntity root) {
     // App* app;
 
     saved_root = root;
@@ -564,9 +564,9 @@ void prefab_save(const char* filename, NativeEntity root) {
     // store_close(s);
     saved_root = entity_nil;
 }
-NativeEntity prefab_load(const char* filename) {
+CEntity prefab_load(const char* filename) {
     // App* app;
-    NativeEntity root;
+    CEntity root;
 
     // s = store_open_file(filename);
     // system_load_all(s);

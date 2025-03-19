@@ -17,6 +17,7 @@
 #include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
+#include "engine/window.h"
 
 using namespace Neko::imgui;
 

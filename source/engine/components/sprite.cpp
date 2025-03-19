@@ -36,7 +36,7 @@ void sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
 
 const char *sprite_get_atlas() { return atlas; }
 
-void sprite_add(NativeEntity ent) {
+void sprite_add(CEntity ent) {
     Sprite *sprite;
 
     if (Sprite::pool->Get(ent)) return;
@@ -49,47 +49,47 @@ void sprite_add(NativeEntity ent) {
     sprite->texsize = luavec2(32.0f, 32.0f);
     sprite->depth = 0;
 }
-void sprite_remove(NativeEntity ent) { Sprite::pool->Remove(ent); }
-bool sprite_has(NativeEntity ent) { return Sprite::pool->Get(ent) != NULL; }
+void sprite_remove(CEntity ent) { Sprite::pool->Remove(ent); }
+bool sprite_has(CEntity ent) { return Sprite::pool->Get(ent) != NULL; }
 
-void sprite_set_size(NativeEntity ent, vec2 size) {
+void sprite_set_size(CEntity ent, vec2 size) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->size = size;
 }
-vec2 sprite_get_size(NativeEntity ent) {
+vec2 sprite_get_size(CEntity ent) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->size;
 }
 
-void sprite_set_texcell(NativeEntity ent, vec2 texcell) {
+void sprite_set_texcell(CEntity ent, vec2 texcell) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
-vec2 sprite_get_texcell(NativeEntity ent) {
+vec2 sprite_get_texcell(CEntity ent) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->texcell;
 }
-void sprite_set_texsize(NativeEntity ent, vec2 texsize) {
+void sprite_set_texsize(CEntity ent, vec2 texsize) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
-vec2 sprite_get_texsize(NativeEntity ent) {
+vec2 sprite_get_texsize(CEntity ent) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->texsize;
 }
 
-void sprite_set_depth(NativeEntity ent, int depth) {
+void sprite_set_depth(CEntity ent, int depth) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     sprite->depth = depth;
 }
-int sprite_get_depth(NativeEntity ent) {
+int sprite_get_depth(CEntity ent) {
     Sprite *sprite = Sprite::pool->Get(ent);
     error_assert(sprite);
     return sprite->depth;

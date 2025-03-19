@@ -19,6 +19,7 @@
 #include "engine/test.h"
 #include "engine/ui.h"
 #include "engine/bindata.h"
+#include "engine/window.h"
 
 // deps
 #include "extern/sokol_time.h"
@@ -2343,7 +2344,7 @@ static int l_edit_get_enabled(lua_State *L) {
 }
 
 static int l_transform_get_world_matrix(lua_State *L) {
-    NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+    CEntity *ent = LuaGet<CEntity>(L, 1);
     mat3 v = transform_get_world_matrix(*ent);
     LuaPush<mat3>(L, v);
     return 1;
@@ -2498,36 +2499,36 @@ static int open_neko(lua_State *L) {
     lua_setfield(L, -2, n);
 
     X("tiled_add", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         tiled_add(*ent);
         return 0;
     });
 
     X("tiled_remove", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         tiled_remove(*ent);
         return 0;
     });
     X("tiled_has", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool has = tiled_has(*ent);
         lua_pushboolean(L, has);
         return 1;
     });
     X("tiled_set_map", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         const_str name = lua_tostring(L, 2);
         tiled_set_map(*ent, name);
         return 0;
     });
     X("tiled_get_map", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         const_str name = tiled_get_map(*ent);
         lua_pushstring(L, name);
         return 1;
     });
     X("tiled_map_edit", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         u32 layer = lua_tointeger(L, 2);
         u32 x = lua_tointeger(L, 3);
         u32 y = lua_tointeger(L, 4);
@@ -2537,12 +2538,12 @@ static int open_neko(lua_State *L) {
     });
 
     X("entity_create", [](lua_State *L) -> int {
-        NativeEntity ent = entity_create();
-        LuaPush<NativeEntity>(L, ent);
+        CEntity ent = entity_create();
+        LuaPush<CEntity>(L, ent);
         return 1;
     });
     X("entity_destroy", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         entity_destroy(*ent);
         return 0;
     });
@@ -2551,26 +2552,26 @@ static int open_neko(lua_State *L) {
         return 0;
     });
     X("entity_destroyed", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = entity_destroyed(*ent);
         lua_pushboolean(L, v);
         return 1;
     });
     X("native_entity_eq", [](lua_State *L) -> int {
-        ecs_id_t a = lua_tointeger(L, 1);
-        ecs_id_t b = lua_tointeger(L, 2);
+        EcsId a = lua_tointeger(L, 1);
+        EcsId b = lua_tointeger(L, 2);
         bool v = (a == b);
         lua_pushboolean(L, v);
         return 1;
     });
     X("entity_set_save_filter", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool filter = lua_toboolean(L, 2);
         entity_set_save_filter(*ent, filter);
         return 0;
     });
     X("entity_get_save_filter", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = entity_get_save_filter(*ent);
         lua_pushboolean(L, v);
         return 1;
@@ -2666,52 +2667,52 @@ static int open_neko(lua_State *L) {
     });
 
     X("transform_add", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         transform_add(*ent);
         return 0;
     });
     X("transform_remove", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         transform_remove(*ent);
         return 0;
     });
     X("transform_has", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = transform_has(*ent);
         lua_pushboolean(L, v);
         return 1;
     });
     X("transform_set_parent", [](lua_State *L) -> int {
-        NativeEntity *a = LuaGet<NativeEntity>(L, 1);
-        NativeEntity *b = LuaGet<NativeEntity>(L, 2);
+        CEntity *a = LuaGet<CEntity>(L, 1);
+        CEntity *b = LuaGet<CEntity>(L, 2);
         transform_set_parent(*a, *b);
         return 0;
     });
     X("transform_get_parent", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
-        NativeEntity ret = transform_get_parent(*ent);
-        LuaPush<NativeEntity>(L, ret);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
+        CEntity ret = transform_get_parent(*ent);
+        LuaPush<CEntity>(L, ret);
         return 1;
     });
     X("transform_get_num_children", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
-        ecs_id_t v = transform_get_num_children(*ent);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
+        EcsId v = transform_get_num_children(*ent);
         lua_pushinteger(L, v);
         return 1;
     });
     X("transform_get_children", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
-        NativeEntity *v = transform_get_children(*ent);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
+        CEntity *v = transform_get_children(*ent);
         lua_pushinteger(L, v->id);
         return 1;
     });
     X("transform_detach_all", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         transform_detach_all(*ent);
         return 0;
     });
     X("transform_destroy_rec", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         transform_destroy_rec(*ent);
         return 0;
     });
@@ -2782,13 +2783,13 @@ static int open_neko(lua_State *L) {
     });
 
     X("edit_set_editable", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = LuaGet<bool>(L, 1);
         edit_set_editable(*ent, v);
         return 0;
     });
     X("edit_get_editable", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = edit_get_editable(*ent);
         LuaPush(L, v);
         return 1;
@@ -2804,7 +2805,7 @@ static int open_neko(lua_State *L) {
         return 1;
     });
     X("edit_bboxes_has", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = edit_bboxes_has(*ent);
         LuaPush(L, v);
         return 1;
@@ -2816,12 +2817,12 @@ static int open_neko(lua_State *L) {
     });
     X("edit_bboxes_get_nth_ent", [](lua_State *L) -> int {
         int n = LuaGet<int>(L, 1);
-        NativeEntity ent = edit_bboxes_get_nth_ent(n);
-        LuaPush<NativeEntity>(L, ent);
+        CEntity ent = edit_bboxes_get_nth_ent(n);
+        LuaPush<CEntity>(L, ent);
         return 1;
     });
     X("edit_bboxes_set_selected", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = LuaGet<bool>(L, 1);
         edit_bboxes_set_selected(*ent, v);
         return 0;
@@ -2838,121 +2839,121 @@ static int open_neko(lua_State *L) {
         return 1;
     });
     X("sprite_add", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         sprite_add(*ent);
         return 0;
     });
     X("sprite_remove", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         sprite_remove(*ent);
         return 0;
     });
     X("sprite_has", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = sprite_has(*ent);
         LuaPush(L, v);
         return 1;
     });
     X("sprite_set_size", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         sprite_set_size(*ent, *v);
         return 0;
     });
     X("sprite_get_size", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = sprite_get_size(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("sprite_set_texcell", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         sprite_set_texcell(*ent, *v);
         return 0;
     });
     X("sprite_get_texcell", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = sprite_get_texcell(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("sprite_set_texsize", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         sprite_set_texsize(*ent, *v);
         return 0;
     });
     X("sprite_get_texsize", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = sprite_get_texsize(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("sprite_set_depth", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         int v = LuaGet<int>(L, 2);
         sprite_set_depth(*ent, v);
         return 0;
     });
     X("sprite_get_depth", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         int v = sprite_get_depth(*ent);
         LuaPush(L, v);
         return 1;
     });
 
     X("camera_add", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         camera_add(*ent);
         return 0;
     });
     X("camera_remove", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         camera_remove(*ent);
         return 0;
     });
     X("camera_has", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = camera_has(*ent);
         LuaPush(L, v);
         return 1;
     });
     X("camera_set_edit_camera", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         camera_set_edit_camera(*ent);
         return 0;
     });
     X("camera_set_current", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = LuaGet<bool>(L, 1);
         camera_set_current(*ent, v);
         return 0;
     });
     X("camera_get_current", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = camera_get_current(*ent);
         LuaPush(L, v);
         return 1;
     });
     X("camera_set_current_camera", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         camera_set_current_camera(*ent);
         return 0;
     });
     X("camera_get_current_camera", [](lua_State *L) -> int {
-        NativeEntity ent = camera_get_current_camera();
-        LuaPush<NativeEntity>(L, ent);
+        CEntity ent = camera_get_current_camera();
+        LuaPush<CEntity>(L, ent);
         return 1;
     });
     X("camera_set_viewport_height", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = LuaGet<f32>(L, 2);
         camera_set_viewport_height(*ent, v);
         return 0;
     });
     X("camera_get_viewport_height", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = camera_get_viewport_height(*ent);
         LuaPush(L, v);
         return 1;
@@ -2964,105 +2965,105 @@ static int open_neko(lua_State *L) {
     });
 
     X("transform_set_position", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         transform_set_position(*ent, *v);
         return 0;
     });
     X("transform_get_position", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = transform_get_position(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("transform_translate", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         transform_translate(*ent, *v);
         return 0;
     });
     X("transform_set_rotation", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = LuaGet<f32>(L, 2);
         transform_set_rotation(*ent, v);
         return 0;
     });
     X("transform_get_rotation", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = transform_get_rotation(*ent);
         LuaPush(L, v);
         return 1;
     });
     X("transform_rotate", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = LuaGet<f32>(L, 2);
         transform_rotate(*ent, v);
         return 0;
     });
     X("transform_set_scale", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         transform_set_scale(*ent, *v);
         return 0;
     });
     X("transform_get_scale", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = transform_get_scale(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("transform_get_world_position", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = transform_get_world_position(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     X("transform_get_world_rotation", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         f32 v = transform_get_world_rotation(*ent);
         LuaPush(L, v);
         return 1;
     });
     X("transform_get_world_scale", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 v = transform_get_world_scale(*ent);
         LuaPush<vec2>(L, v);
         return 1;
     });
     // X( "transform_get_world_matrix", [](lua_State *L) -> int {
-    //     NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+    //     CEntity *ent = LuaGet<CEntity>(L, 1);
     //     mat3 m = transform_get_world_matrix(*ent);
     //     LuaPush<mat3>(L, m);
     //     return 1;
     // });
     X("transform_get_matrix", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         mat3 m = transform_get_matrix(*ent);
         LuaPush<mat3>(L, m);
         return 1;
     });
     X("transform_local_to_world", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         vec2 ret = transform_local_to_world(*ent, *v);
         LuaPush<vec2>(L, ret);
         return 1;
     });
     X("transform_world_to_local", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         vec2 *v = LuaGet<vec2>(L, 2);
         vec2 ret = transform_world_to_local(*ent, *v);
         LuaPush<vec2>(L, ret);
         return 1;
     });
     X("transform_get_dirty_count", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
-        ecs_id_t ret = transform_get_dirty_count(*ent);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
+        EcsId ret = transform_get_dirty_count(*ent);
         LuaPush(L, ret);
         return 1;
     });
     X("transform_set_save_filter_rec", [](lua_State *L) -> int {
-        NativeEntity *ent = LuaGet<NativeEntity>(L, 1);
+        CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = LuaGet<bool>(L, 1);
         transform_set_save_filter_rec(*ent, v);
         return 0;
@@ -3277,6 +3278,21 @@ static int open_neko(lua_State *L) {
 #undef X
 
     return 1;
+}
+
+void createStructTables(lua_State *L) {
+
+    LuaEnum<KeyCode, -1, 350>(L);
+    LuaEnum<MouseCode>(L);
+    LuaEnum<neko_texture_flags_t>(L);
+
+    LuaStruct<vec2>(L);
+    LuaStruct<vec4>(L);
+    LuaStruct<mat3>(L);
+    LuaStruct<AssetTexture>(L);
+    LuaStruct<Color>(L);
+    LuaStruct<CEntity>(L);
+    LuaStruct<BBox>(L);
 }
 
 void open_neko_api(lua_State *L) {

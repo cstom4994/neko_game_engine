@@ -34,9 +34,9 @@ namespace Neko::luabind::__unittest {
 #if 0
 
 // System IDs
-ecs_id_t System1;
-ecs_id_t System2;
-ecs_id_t System3;
+EcsId System1;
+EcsId System2;
+EcsId System3;
 
 // Register components
 void register_components(ecs_t* ecs) {
@@ -46,7 +46,7 @@ void register_components(ecs_t* ecs) {
 }
 
 // System that prints the entity IDs of entities associated with this system
-ecs_ret_t system_update(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata) {
+ecs_ret_t system_update(ecs_t* ecs, EcsId* entities, int entity_count, ecs_dt_t dt, void* udata) {
     (void)ecs;
     (void)dt;
     (void)udata;
@@ -85,9 +85,9 @@ int TestEcs(lua_State* L) {
     register_systems(ecs);
 
     // Create three entities
-    ecs_id_t e1 = ecs_create(ecs);
-    ecs_id_t e2 = ecs_create(ecs);
-    ecs_id_t e3 = ecs_create(ecs);
+    EcsId e1 = ecs_create(ecs);
+    EcsId e2 = ecs_create(ecs);
+    EcsId e3 = ecs_create(ecs);
 
     // Add components to entities
     printf("---------------------------------------------------------------\n");

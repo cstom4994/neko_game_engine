@@ -106,14 +106,14 @@ struct EcsWorld {
 
 int l_ecs_create_world(lua_State* L);
 
-// ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
+// EcsId ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
 
 // #define ECS_COMPONENT(type, ctor, dtor) ecs_component_w(ENGINE_ECS(), #type, sizeof(type), ctor, dtor)
 // #define ECS_COMPONENT_DEFINE(type, ctor, dtor) ECS_COMPONENT_ID(type) = ECS_COMPONENT(type, ctor, dtor)
 
 // #define ECS_COMPONENT_ID(type) __NEKO_GEN_COMPONENT_##type
-// #define ECS_COMPONENT_DECL(type) ecs_id_t ECS_COMPONENT_ID(type)
-// #define ECS_COMPONENT_EXTERN(type) extern ecs_id_t ECS_COMPONENT_ID(type)
+// #define ECS_COMPONENT_DECL(type) EcsId ECS_COMPONENT_ID(type)
+// #define ECS_COMPONENT_EXTERN(type) extern EcsId ECS_COMPONENT_ID(type)
 
 // ecs_t* ecs_init(lua_State* L);
 

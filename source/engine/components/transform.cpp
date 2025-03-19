@@ -8,7 +8,7 @@
 
 // -------------------------------------------------------------------------
 
-static void _update_child(Transform *parent, NativeEntity ent) {
+static void _update_child(Transform *parent, CEntity ent) {
     Transform *transform;
 
     transform = Transform::pool->Get(ent);
@@ -47,7 +47,7 @@ static void _detach(Transform *p, Transform *c) {
     // search for parent -> child link and remove it
     for (auto &child : p->children)
         if (native_entity_eq(child, c->pool_elem.ent)) {
-            // array_quick_remove(p->children, child - (NativeEntity *)array_begin(p->children));
+            // array_quick_remove(p->children, child - (CEntity *)array_begin(p->children));
             p->children.quick_remove(&child - p->children.begin());
             return;
         }
@@ -80,7 +80,7 @@ static void _detach_all(Transform *t) {
     _modified(t);
 }
 
-void transform_add(NativeEntity ent) {
+void transform_add(CEntity ent) {
     Transform *transform;
 
     if (Transform::pool->Get(ent)) return;
@@ -97,15 +97,15 @@ void transform_add(NativeEntity ent) {
 
     _modified(transform);
 }
-void transform_remove(NativeEntity ent) {
+void transform_remove(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     if (transform) _detach_all(transform);
     Transform::pool->Remove(ent);
 }
-bool transform_has(NativeEntity ent) { return Transform::pool->Get(ent) != NULL; }
+bool transform_has(CEntity ent) { return Transform::pool->Get(ent) != NULL; }
 
 // 根转换具有父级 = entity_nil
-void transform_set_parent(NativeEntity ent, NativeEntity parent) {
+void transform_set_parent(CEntity ent, CEntity parent) {
     Transform *t, *oldp, *newp;
 
     if (native_entity_eq(ent, parent)) return;  // can't be child of self
@@ -135,28 +135,28 @@ void transform_set_parent(NativeEntity ent, NativeEntity parent) {
 
     _modified(t);
 }
-NativeEntity transform_get_parent(NativeEntity ent) {
+CEntity transform_get_parent(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->parent;
 }
-ecs_id_t transform_get_num_children(NativeEntity ent) {
+EcsId transform_get_num_children(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->children.len;
 }
-NativeEntity *transform_get_children(NativeEntity ent) {
+CEntity *transform_get_children(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->children.len ? transform->children.begin() : NULL;
 }
 // 脱离父项和所有子项
-void transform_detach_all(NativeEntity ent) {
+void transform_detach_all(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     _detach_all(transform);
 }
-void transform_destroy_rec(NativeEntity ent) {
+void transform_destroy_rec(CEntity ent) {
     Transform *transform;
 
     transform = Transform::pool->Get(ent);
@@ -166,71 +166,71 @@ void transform_destroy_rec(NativeEntity ent) {
     entity_destroy(ent);
 }
 
-void transform_set_position(NativeEntity ent, vec2 pos) {
+void transform_set_position(CEntity ent, vec2 pos) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->position = pos;
     _modified(transform);
 }
-vec2 transform_get_position(NativeEntity ent) {
+vec2 transform_get_position(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->position;
 }
-void transform_translate(NativeEntity ent, vec2 trans) {
+void transform_translate(CEntity ent, vec2 trans) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->position = vec2_add(transform->position, trans);
     _modified(transform);
 }
 
-void transform_set_rotation(NativeEntity ent, f32 rot) {
+void transform_set_rotation(CEntity ent, f32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation = rot;
     _modified(transform);
 }
-f32 transform_get_rotation(NativeEntity ent) {
+f32 transform_get_rotation(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->rotation;
 }
-void transform_rotate(NativeEntity ent, f32 rot) {
+void transform_rotate(CEntity ent, f32 rot) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->rotation += rot;
     _modified(transform);
 }
 
-void transform_set_scale(NativeEntity ent, vec2 scale) {
+void transform_set_scale(CEntity ent, vec2 scale) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     transform->scale = scale;
     _modified(transform);
 }
-vec2 transform_get_scale(NativeEntity ent) {
+vec2 transform_get_scale(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->scale;
 }
 
-vec2 transform_get_world_position(NativeEntity ent) {
+vec2 transform_get_world_position(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
 }
-f32 transform_get_world_rotation(NativeEntity ent) {
+f32 transform_get_world_rotation(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);
 }
-vec2 transform_get_world_scale(NativeEntity ent) {
+vec2 transform_get_world_scale(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_get_scale(transform->worldmat_cache);
 }
 
-mat3 transform_get_world_matrix(NativeEntity ent) {
+mat3 transform_get_world_matrix(CEntity ent) {
     Transform *transform;
 
     if (native_entity_eq(ent, entity_nil)) return mat3_identity();
@@ -240,7 +240,7 @@ mat3 transform_get_world_matrix(NativeEntity ent) {
     return transform->worldmat_cache;
 }
 
-mat3 transform_get_matrix(NativeEntity ent) {
+mat3 transform_get_matrix(CEntity ent) {
     Transform *transform;
 
     if (native_entity_eq(ent, entity_nil)) return mat3_identity();
@@ -250,24 +250,24 @@ mat3 transform_get_matrix(NativeEntity ent) {
     return transform->mat_cache;
 }
 
-vec2 transform_local_to_world(NativeEntity ent, vec2 v) {
+vec2 transform_local_to_world(CEntity ent, vec2 v) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_transform(transform->worldmat_cache, v);
 }
-vec2 transform_world_to_local(NativeEntity ent, vec2 v) {
+vec2 transform_world_to_local(CEntity ent, vec2 v) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return mat3_transform(mat3_inverse(transform->worldmat_cache), v);
 }
 
-ecs_id_t transform_get_dirty_count(NativeEntity ent) {
+EcsId transform_get_dirty_count(CEntity ent) {
     Transform *transform = Transform::pool->Get(ent);
     error_assert(transform);
     return transform->dirty_count;
 }
 
-void transform_set_save_filter_rec(NativeEntity ent, bool filter) {
+void transform_set_save_filter_rec(CEntity ent, bool filter) {
     Transform *transform;
 
     entity_set_save_filter(ent, filter);
@@ -310,7 +310,7 @@ int transform_update_all(App *app, event_t evt) {
 }
 
 // save/load for just the children array
-static void _children_save(Transform *t, App* app) {
+static void _children_save(Transform *t, App *app) {
     // Store *u;
 
     // if (store_child_save(&u, "children", s))
@@ -318,16 +318,16 @@ static void _children_save(Transform *t, App* app) {
     //         for (auto &child : t->children)
     //             if (entity_get_save_filter(child)) entity_save(&child, NULL, u);
 }
-static void _children_load(Transform *t, App* app) {
+static void _children_load(Transform *t, App *app) {
     // Store *u;
-    // NativeEntity child;
+    // CEntity child;
 
     // t->children = {};
 
     //// this is a little weird because we want NULL array when no children
     // if (store_child_load(&u, "children", s))
     //     if (entity_load(&child, NULL, entity_nil, u)) {
-    //         // t->children = (Array<NativeEntity> *)mem_alloc(sizeof(Array<NativeEntity>));
+    //         // t->children = (Array<CEntity> *)mem_alloc(sizeof(Array<CEntity>));
     //         // *t->children = {};
     //         do {
     //             t->children.push(child);
@@ -335,7 +335,7 @@ static void _children_load(Transform *t, App* app) {
     //     }
 }
 
-void transform_save_all(App* app) {
+void transform_save_all(App *app) {
     // Store *t, *transform_s;
     // Transform *transform;
 
@@ -356,7 +356,7 @@ void transform_save_all(App* app) {
     //         uint_save(&transform->dirty_count, "dirty_count", transform_s);
     //     }
 }
-void transform_load_all(App* app) {
+void transform_load_all(App *app) {
     // Store *t, *transform_s;
     // Transform *transform;
 
