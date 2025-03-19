@@ -23,12 +23,12 @@ void camera_add(CEntity ent) {
     camera = Camera::pool->Add(ent);
     camera->viewport_height = 1.0;
 
-    if (native_entity_eq(curr_camera, entity_nil)) curr_camera = ent;
+    if (CEntityEq(curr_camera, entity_nil)) curr_camera = ent;
 }
 void camera_remove(CEntity ent) {
     Camera::pool->Remove(ent);
 
-    if (native_entity_eq(curr_camera, ent)) curr_camera = entity_nil;
+    if (CEntityEq(curr_camera, ent)) curr_camera = entity_nil;
 }
 bool camera_has(CEntity ent) { return Camera::pool->Get(ent) != NULL; }
 
@@ -37,10 +37,10 @@ void camera_set_edit_camera(CEntity ent) { edit_camera = ent; }
 void camera_set_current(CEntity ent, bool current) {
     if (current)
         curr_camera = ent;
-    else if (native_entity_eq(curr_camera, ent))
+    else if (CEntityEq(curr_camera, ent))
         curr_camera = entity_nil;
 }
-bool camera_get_current(CEntity ent) { return native_entity_eq(curr_camera, ent); }
+bool camera_get_current(CEntity ent) { return CEntityEq(curr_camera, ent); }
 void camera_set_current_camera(CEntity ent) { curr_camera = ent; }
 CEntity camera_get_current_camera() {
     if (edit_get_enabled()) return edit_camera;
@@ -70,7 +70,7 @@ vec2 camera_world_to_unit(vec2 p) {
 vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<Game>().pixels_to_unit(p)); }
 vec2 camera_unit_to_world(vec2 p) {
     CEntity cam = camera_get_current_camera();
-    if (!native_entity_eq(cam, entity_nil)) return transform_local_to_world(cam, p);
+    if (!CEntityEq(cam, entity_nil)) return transform_local_to_world(cam, p);
     return p;
 }
 
@@ -102,13 +102,13 @@ int camera_update_all(App *app, event_t evt) {
 
     entitypool_foreach(camera, Camera::pool) {
         scale = luavec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
-        transform_set_scale(camera->pool_elem.ent, scale);
+        transform_set_scale(camera->ent, scale);
 
-        edit_bboxes_update(camera->pool_elem.ent, bbox);
+        edit_bboxes_update(camera->ent, bbox);
     }
 
     cam = camera_get_current_camera();
-    if (native_entity_eq(cam, entity_nil))
+    if (CEntityEq(cam, entity_nil))
         inverse_view_matrix = mat3_identity();
     else
         inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));

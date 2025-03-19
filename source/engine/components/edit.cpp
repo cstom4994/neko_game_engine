@@ -48,7 +48,7 @@ int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
 CEntity edit_bboxes_get_nth_ent(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem::pool));
     BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
-    return elem->pool_elem.ent;
+    return elem->ent;
 }
 
 BBox edit_bboxes_get_nth_bbox(int n) {
@@ -107,7 +107,7 @@ static void _bboxes_update_all() {
     if (!enabled) return;
 
     entitypool_foreach(elem, BBoxPoolElem::pool) {
-        ent = elem->pool_elem.ent;
+        ent = elem->ent;
         if (!transform_has(ent)) continue;
 
         // update world matrix
@@ -160,7 +160,7 @@ static void _grid_create_cells() {
 
     // find camera bounds in world space
     camera = camera_get_current_camera();
-    if (native_entity_eq(camera, entity_nil))
+    if (CEntityEq(camera, entity_nil))
         cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
         cbox = bbox_transform(transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));

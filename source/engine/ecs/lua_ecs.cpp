@@ -14,7 +14,7 @@ enum MatchMode {
 };
 
 struct MatchCtx {
-    struct EcsWorld* w;
+    EcsWorld* world;
     int i;
     int kn;
     int keys[ENTITY_MAX_COMPONENTS];
@@ -24,41 +24,42 @@ int EcsComponentHas(Entity* e, int tid) { return e->components[tid] < ENTITY_MAX
 
 void EcsComponentClear(Entity* e, int tid) {
     int i = e->components[tid];
-    if (i < ENTITY_MAX_COMPONENTS) {
-        e->components[tid] = ENTITY_MAX_COMPONENTS;
-        e->components_index[i] = -1;
-        --e->components_count;
+    if (i < ENTITY_MAX_COMPONENTS) {                 // 组件存在
+        e->components[tid] = ENTITY_MAX_COMPONENTS;  // 移除组件
+        e->components_index[i] = -1;                 // 清除索引
+        --e->components_count;                       // 组件计数减少
     }
 }
 
 int EcsComponentAdd(EcsWorld* world, Entity* e, int tid) {
-    if (e->components[tid] < ENTITY_MAX_COMPONENTS) {
+    if (e->components[tid] < ENTITY_MAX_COMPONENTS) {  // 组件已存在
         LOG_INFO("CEntity({}) already exist component({})", e - world->entity_buf, tid);
         return -1;
     }
-    if (e->components_count >= ENTITY_MAX_COMPONENTS) {
+    if (e->components_count >= ENTITY_MAX_COMPONENTS) {  // 超过组件上限
         LOG_INFO("CEntity({}) add to many components", e - world->entity_buf);
         return -1;
     }
 
-    // 新组件
+    // 获取组件池
     ComponentPool* cp = &world->component_pool[tid];
     if (cp->free_idx >= cp->cap) {
-        cp->cap *= 2;
+        cp->cap *= 2;  // 扩容
         cp->buf = (Component*)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
     }
 
+    // 获取新组件
     Component* c = &cp->buf[cp->free_idx++];
-    c->eid = e - world->entity_buf;
+    c->eid = e - world->entity_buf;  // 记录组件附着的实体ID
     c->dirty_next = LINK_NONE;
     c->dead_next = LINK_NONE;
-    int cid = c - cp->buf;
+    int cid = c - cp->buf;  // 计算组件在组件池的索引
 
     // 将组件添加到实体中
     for (int i = 0; i < ENTITY_MAX_COMPONENTS; i++) {
-        if (e->components_index[i] < 0) {
-            e->components[tid] = i;
-            e->components_index[i] = cid;
+        if (e->components_index[i] < 0) {  // 找到空位
+            e->components[tid] = i;        // 编号为tid的组件在components_index中的位置为i
+            e->components_index[i] = cid;  // components_index[i]存储该组件在组件池中的位置
             break;
         }
     }
@@ -74,12 +75,11 @@ void EcsComponentDead(EcsWorld* world, int tid, int cid) {
 
     // 更新组件池
     if (cp->dead_tail == LINK_NIL) {  // 如果死亡链为空
-        cp->dead_tail = cid;
         cp->dead_head = cid;
-    } else {  // 否则
+    } else {  // 否则修改dead_next
         cp->buf[cp->dead_tail].dead_next = cid;
-        cp->dead_tail = cid;
     }
+    cp->dead_tail = cid;
     return;
 }
 
@@ -87,18 +87,16 @@ void EcsComponentDirty(EcsWorld* world, int tid, int cid) {
     ComponentPool* cp = &world->component_pool[tid];  // 获取索引为tid的组件标记数据
     Component* c = &cp->buf[cid];                     // 获取索引为cid的组件
 
-    if (c->dirty_next != LINK_NONE)  // 判断是否已经标记
-        return;
-    c->dirty_next = LINK_NIL;  // 标记
+    if (c->dirty_next != LINK_NONE) return;  // 判断是否已经标记
+    c->dirty_next = LINK_NIL;                // 标记
 
     // 更新组件池
     if (cp->dirty_tail == LINK_NIL) {
-        cp->dirty_tail = cid;
         cp->dirty_head = cid;
     } else {
         cp->buf[cp->dirty_tail].dirty_next = cid;
-        cp->dirty_tail = cid;
     }
+    cp->dirty_tail = cid;
     return;
 }
 
@@ -134,7 +132,7 @@ Entity* EcsEntityAlloc(EcsWorld* world) {
 }
 
 void EcsEntityDead(EcsWorld* world, Entity* e) {
-    if (e->components_count < 0) {  // 检查实体组件数量cn是否小于0 如果是则表示该实体已经被标记为死亡或无效
+    if (e->components_count < 0) {  // 检查实体组件数量components_count是否小于0 如果是则表示该实体已经被标记为死亡或无效
         assert(e->next != LINK_NONE);
         return;
     }
@@ -299,7 +297,7 @@ Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
     // lua_getiuservalue(L, ecs_ud, WORLD_PROTO_ID);
     // int proto_id = components + 1;
 
-    int tid = EcsGetTid(L, "C");
+    int tid = EcsGetTid(L, "CTag");
 
     if (ref.IsTable()) {
 
@@ -602,7 +600,7 @@ struct EcsLuaWrap {
             Entity* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
-            EcsWorld* w = mctx->w;
+            EcsWorld* w = mctx->world;
             Entity* entity_buf = w->entity_buf;
             int kn = mctx->kn;
             keys = mctx->keys;
@@ -627,7 +625,7 @@ struct EcsLuaWrap {
             Entity* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
-            EcsWorld* w = mctx->w;
+            EcsWorld* w = mctx->world;
             Entity* entity_buf = w->entity_buf;
             keys = mctx->keys;
             kn = mctx->kn;
@@ -652,7 +650,7 @@ struct EcsLuaWrap {
             Entity* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
-            EcsWorld* w = mctx->w;
+            EcsWorld* w = mctx->world;
             Entity* entity_buf = w->entity_buf;
             keys = mctx->keys;
             kn = mctx->kn;
@@ -711,7 +709,7 @@ struct EcsLuaWrap {
         lua_pushcfunction(L, iter);                        // iter
         lua_getiuservalue(L, ECS_WORLD, WORLD_MATCH_CTX);  // iter + 1
         MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, -1);
-        mctx->w = world;
+        mctx->world = world;
         mctx->kn = 0;
         for (int i = 3; i <= top; i++) mctx->keys[mctx->kn++] = EcsGetTid_w(L, i, top + 1);
         switch (mode) {

@@ -28,23 +28,16 @@ using namespace Neko::ecs;
 CEntity entity_nil = {0};  // 没有有效的实体具有此值
 static EcsId counter = 1;
 
-// typedef struct ExistsPoolElem {
-//     EntityPoolElem pool_elem;
-// } ExistsPoolElem;
-
 // 声明未使用的实体 ID
-CEntity entity_create() {
+CEntity entity_create(const String& name) {
     CEntity ent;
-
     auto L = ENGINE_LUA();
 
     LuaRef table = LuaRef::NewTable(L);
-    table["testing"] = "Hello C";
+    table["name"] = name.cstr();
 
     Entity* e = EcsEntityNew(L, table, NULL);
-
     ent.id = e - ENGINE_ECS()->entity_buf;
-
     return ent;
 }
 
@@ -53,68 +46,29 @@ static void entity_remove(CEntity ent) { EcsEntityDel(ENGINE_LUA(), ent.id); }
 // 释放实体 ID
 void entity_destroy(CEntity ent) { entity_remove(ent); }
 
-void entity_destroy_all() {
-    // ExistsPoolElem* exists;
-    // entitypool_foreach(exists, exists_pool) entity_destroy(exists->pool_elem.ent);
-}
+void entity_destroy_all() {}
 
-bool entity_destroyed(CEntity ent) {
-    // return entitymap_get(destroyed_map, ent);
-    return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id);
-}
-
-//  如果为任何实体设置为 TRUE 则仅保存设置为 TRUE 的那些实体
-//  如果设置为 False 则不会保存此项的实体
-void entity_set_save_filter(CEntity ent, bool filter) {
-    // if (filter) {
-    //     entitymap_set(save_filter_map, ent, SF_SAVE);
-    //     save_filter_default = SF_NO_SAVE;
-    // } else
-    //     entitymap_set(save_filter_map, ent, SF_NO_SAVE);
-}
-
-bool entity_get_save_filter(CEntity ent) {
-    // SaveFilter filter = (SaveFilter)entitymap_get(save_filter_map, ent);
-    // if (filter == SF_UNSET) filter = save_filter_default;
-    // return filter == SF_SAVE;
-    return true;
-}
-
-void entity_clear_save_filters() {
-    // entitymap_clear(save_filter_map);
-    // save_filter_default = SF_SAVE;
-}
+bool entity_destroyed(CEntity ent) { return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id); }
 
 void entity_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
 
-    EcsRegister(L, "C");
+    EcsRegister(L, "CTag");
 
     {
+        int* a = new int(7);
+
         LuaRef table = LuaRef::NewTable(L);
         table["testing"] = "iNIT C";
+        table["afucking_ptr"] = a;
 
         EcsEntityNew(L, table, NULL);
     }
-
-    // exists_pool = entitypool_new(ExistsPoolElem);
-    // destroyed_map = entitymap_new(false);
-    // destroyed = array_new(DestroyEntry);
-    // unused_map = entitymap_new(false);
-    // unused = array_new(CEntity);
-    // save_filter_map = entitymap_new(SF_UNSET);
 }
 
-void entity_fini() {
-    // entitymap_free(save_filter_map);
-    // array_free(unused);
-    // entitymap_free(unused_map);
-    // array_free(destroyed);
-    // entitymap_free(destroyed_map);
-    // entitypool_free(exists_pool);
-}
+void entity_fini() {}
 
 int entity_update_all(App* app, event_t evt) {
     // EcsId i;
@@ -130,71 +84,7 @@ int entity_update_all(App* app, event_t evt) {
     //         array_quick_remove(destroyed, i);
     //     }
     // }
-
     return 0;
-}
-
-// save/load 仅适用于 ID
-void entity_save(CEntity* ent, const char* n, App* app) {
-    // Store* t;
-
-    if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
-
-    // if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
-}
-
-bool entity_load(CEntity* ent, const char* n, CEntity d, App* app) {
-    // Store* t;
-    // EcsId id;
-
-    // if (!store_child_load(&t, n, s)) {
-    //     *ent = d;
-    //     return false;
-    // }
-
-    // uint_load(&id, "id", entity_nil.id, t);
-    // *ent = _entity_resolve_saved_id(id);
-    return true;
-}
-
-void entity_load_all_begin() {
-    // load_map = entitymap_new(entity_nil.id);
-}
-void entity_load_all_end() {
-    // entitymap_free(load_map);
-    // entity_clear_save_filters();
-}
-
-void entity_save_all(App* app) {
-    // DestroyEntry* entry;
-    // ExistsPoolElem* exists;
-    // Store *entity_s, *exists_s, *destroyed_s, *entry_s;
-
-    // if (store_child_save(&entity_s, "entity", s)) {
-    //     entitypool_save_foreach(exists, exists_s, exists_pool, "exists_pool", entity_s);
-
-    //     if (store_child_save(&destroyed_s, "destroyed", entity_s)) array_foreach(entry, destroyed) if (entity_get_save_filter(entry->ent)) if (store_child_save(&entry_s, NULL, destroyed_s)) {
-    //             entity_save(&entry->ent, "ent", entry_s);
-    //             uint_save(&entry->pass, "pass", entry_s);
-    //         }
-    // }
-}
-
-void entity_load_all(App* app) {
-    // DestroyEntry* entry;
-    // ExistsPoolElem* exists;
-    // Store *entity_s, *exists_s, *destroyed_s, *entry_s;
-
-    // if (store_child_load(&entity_s, "entity", s)) {
-    //     entitypool_load_foreach(exists, exists_s, exists_pool, "exists_pool", entity_s);
-
-    //     if (store_child_load(&destroyed_s, "destroyed", entity_s))
-    //         while (store_child_load(&entry_s, NULL, destroyed_s)) {
-    //             entry = (DestroyEntry*)array_add(destroyed);
-    //             error_assert(entity_load(&entry->ent, "ent", entity_nil, entry_s));
-    //             uint_load(&entry->pass, "pass", 0, entry_s);
-    //         }
-    // }
 }
 
 #define MIN_CAPACITY 2
@@ -276,314 +166,4 @@ void entitymap_set(CEntityMap* emap, CEntity ent, int val) {
 int entitymap_get(CEntityMap* emap, CEntity ent) {
     if (ent.id >= emap->capacity) return emap->def;
     return emap->arr[ent.id];
-}
-
-static void load_all_lua_scripts(lua_State* L) {
-    PROFILE_FUNC();
-
-    Array<String> files = {};
-    neko_defer({
-        for (String str : files) {
-            mem_free(str.data);
-        }
-        files.trash();
-    });
-
-    bool ok = false;
-
-#if defined(_DEBUG) || 1
-    ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
-#else
-    ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
-#endif
-
-    if (!ok) {
-        neko_panic("failed to list all files");
-    }
-    std::qsort(files.data, files.len, sizeof(String), [](const void* a, const void* b) -> int {
-        String* lhs = (String*)a;
-        String* rhs = (String*)b;
-        return std::strcmp(lhs->data, rhs->data);
-    });
-
-    for (String file : files) {
-        if (file.starts_with("script/") && !file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
-            asset_load_kind(AssetKind_LuaRef, file, nullptr);
-        }
-    }
-}
-
-static void _key_down(KeyCode key, int scancode, int mode) {
-    // gui_key_down(key);
-    script_key_down(key);
-}
-static void _key_up(KeyCode key, int scancode, int mode) {
-    // gui_key_up(key);
-    script_key_up(key);
-}
-static void _char_down(unsigned int c) { /*gui_char_down(c);*/ }
-static void _mouse_down(MouseCode mouse) {
-    // gui_mouse_down(mouse);
-    script_mouse_down(mouse);
-}
-static void _mouse_up(MouseCode mouse) {
-    // gui_mouse_up(mouse);
-    script_mouse_up(mouse);
-}
-static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
-static void _scroll(vec2 scroll) { script_scroll(scroll); }
-
-void system_init() {
-    PROFILE_FUNC();
-
-    MountResult mount = {true, true, false};
-
-    script_init();
-
-    lua_State* L = ENGINE_LUA();
-
-    gBase.is_fused.store(mount.is_fused);
-
-    if (!gBase.error_mode.load() && mount.ok) {
-        bool ok = asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
-        if (!ok) {
-            String conf = R"(
-function neko.conf(t)
-
-    t.app = {
-        title = "ahaha",
-        width = 1280.0,
-        height = 720.0,
-        game_proxy = "default",
-        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
-        -- lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
-        dump_allocs_detailed = true,
-        swap_interval = 1,
-        target_fps = 120,
-        reload_interval = 1,
-        debug_on = false,
-        batch_vertex_capacity = 2048
-    }
-end
-)";
-            luax_require_script_buffer(L, conf, "<builtin_conf>");
-        }
-    }
-
-    lua_newtable(L);
-    i32 conf_table = lua_gettop(L);
-
-    if (!gBase.error_mode.load()) {
-        luax_neko_get(L, "conf");
-        lua_pushvalue(L, conf_table);
-        luax_pcall(L, 1, 0);
-    }
-
-    gApp->win_console = gApp->win_console || luax_boolean_field(L, -1, "win_console", true);
-
-    Neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
-    checktable_refl(ENGINE_LUA(), "app", v);
-    gApp->cfg = v.cast<engine_cfg_t>();
-
-    LOG_INFO("load game: {} {} {}", gApp->cfg.title.cstr(), gApp->cfg.width, gApp->cfg.height);
-
-    lua_pop(L, 1);  // conf table
-
-    auto& game = Neko::the<Game>();
-
-    // 刷新状态
-    game.set_window_size(luavec2(gApp->cfg.width, gApp->cfg.height));
-    game.set_window_title(gApp->cfg.title.cstr());
-
-    if (fnv1a(gApp->cfg.game_proxy) == "default"_hash) {
-        // Neko::neko_lua_run_string(L, R"lua(
-        // )lua");
-        LOG_INFO("using default game proxy");
-    }
-
-    g_render = gfx_create();
-    gfx_init(g_render);
-
-    game.SplashScreen();
-
-    neko_default_font();
-
-    auto& input = Neko::the<Input>();
-    input.init();
-
-    entity_init();
-    transform_init();
-    camera_init();
-    gApp->batch = batch_init(gApp->cfg.batch_vertex_capacity);
-    sprite_init();
-    tiled_init();
-    font_init();
-    imgui_init(gApp->game_window);
-    console_init();
-    sound_init();
-    physics_init();
-    edit_init();
-
-    gBase.hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
-    gBase.reload_interval.store(gApp->cfg.reload_interval);
-
-    luax_run_nekogame(L);
-
-    Neko::LuaInspector::luainspector_init(ENGINE_LUA());
-    lua_setglobal(L, "__neko_inspector");
-
-    if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
-        load_all_lua_scripts(L);
-    }
-
-    // run main.lua
-    asset_load_kind(AssetKind_LuaRef, "script/nekomain.lua", nullptr);
-
-    luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-
-    {
-        PROFILE_BLOCK("neko.args");
-
-        lua_State* L = ENGINE_LUA();
-
-        if (!gBase.error_mode.load()) {
-            luax_neko_get(L, "args");
-
-            Slice<String> args = gBase.GetArgs();
-            lua_createtable(L, args.len - 1, 0);
-            for (u64 i = 1; i < args.len; i++) {
-                lua_pushlstring(L, args[i].data, args[i].len);
-                lua_rawseti(L, -2, i);
-            }
-
-            luax_pcall(L, 1, 0);
-        }
-    }
-
-    // fire init event
-    script_push_event("init");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-
-    input_add_key_down_callback(_key_down);
-    input_add_key_up_callback(_key_up);
-    input_add_char_down_callback(_char_down);
-    input_add_mouse_down_callback(_mouse_down);
-    input_add_mouse_up_callback(_mouse_up);
-    input_add_mouse_move_callback(_mouse_move);
-    input_add_scroll_callback(_scroll);
-
-    if (gApp->cfg.target_fps != 0) {
-        gApp->timing_instance.target_ticks = 1000000000 / gApp->cfg.target_fps;
-    }
-
-#ifdef NEKO_IS_WIN32
-    if (!gApp->win_console) {
-        FreeConsole();
-    }
-#endif
-}
-
-void system_fini() {
-    PROFILE_FUNC();
-
-    edit_fini();
-    script_fini();
-    physics_fini();
-    sound_fini();
-    console_fini();
-    tiled_fini();
-    sprite_fini();
-    batch_fini(gApp->batch);
-    camera_fini();
-    transform_fini();
-    entity_fini();
-    imgui_fini();
-    auto& input = Neko::the<Input>();
-    input.fini();
-
-    if (gApp->default_font != nullptr) {
-        gApp->default_font->trash();
-        mem_free(gApp->default_font);
-    }
-
-    gfx_fini(g_render);
-
-    {
-        PROFILE_BLOCK("destroy assets");
-
-        lua_channels_shutdown();
-
-        // if (g_app->default_font != nullptr) {
-        //     g_app->default_font->trash();
-        //     mem_free(g_app->default_font);
-        // }
-
-        assets_shutdown();
-    }
-}
-
-// 以相同的顺序 保存/加载
-static void _saveload_all(void* s, bool save) {
-#define saveload(sys)            \
-    if (save)                    \
-        sys##_save_all((App*)s); \
-    else                         \
-        sys##_load_all((App*)s)
-
-    entity_load_all_begin();
-
-    saveload(entity);
-    saveload(prefab);
-    saveload(timing);
-    saveload(transform);
-    saveload(camera);
-    saveload(sprite);
-    saveload(physics);
-    saveload(edit);
-    saveload(sound);
-
-    saveload(script);
-
-    entity_load_all_end();
-}
-
-void system_save_all(App* app) { _saveload_all(app, true); }
-
-void system_load_all(App* app) { _saveload_all(app, false); }
-
-static CEntity saved_root;
-
-void prefab_save(const char* filename, CEntity root) {
-    // App* app;
-
-    saved_root = root;
-    // s = store_open();
-    // system_save_all(s);
-    // store_write_file(s, filename);
-    // store_close(s);
-    saved_root = entity_nil;
-}
-CEntity prefab_load(const char* filename) {
-    // App* app;
-    CEntity root;
-
-    // s = store_open_file(filename);
-    // system_load_all(s);
-    // store_close(s);
-    root = saved_root;
-    saved_root = entity_nil;
-
-    return root;
-}
-
-void prefab_save_all(App* app) {
-    // Store* t;
-
-    // if (store_child_save(&t, "prefab", s)) entity_save(&saved_root, "saved_root", t);
-}
-void prefab_load_all(App* app) {
-    // Store* t;
-
-    // if (store_child_load(&t, "prefab", s)) entity_load(&saved_root, "saved_root", entity_nil, t);
 }

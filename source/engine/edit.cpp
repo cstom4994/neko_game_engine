@@ -268,10 +268,10 @@ int open_tools_spritepack(lua_State *L) {
 }
 
 void console_set_visible(bool visible) {
-    // if (!native_entity_eq(text, entity_nil)) gui_set_visible(transform_get_parent(text), visible);
+    // if (!CEntityEq(text, entity_nil)) gui_set_visible(transform_get_parent(text), visible);
 }
 bool console_get_visible() {
-    // if (!native_entity_eq(text, entity_nil)) return gui_get_visible(transform_get_parent(text));
+    // if (!CEntityEq(text, entity_nil)) return gui_get_visible(transform_get_parent(text));
     return false;
 }
 

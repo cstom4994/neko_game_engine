@@ -5,6 +5,8 @@
 #include "engine/base.hpp"
 #include "engine/event.h"
 
+struct App;
+
 // 测试 ECS 用
 typedef struct CGameObjectTest {
     char name[64];
@@ -12,16 +14,6 @@ typedef struct CGameObjectTest {
     bool visible;
     bool selected;
 } CGameObjectTest;
-
-enum ComponentTypeE {
-    COMPONENT_GAMEOBJECT,
-    COMPONENT_TRANSFORM,
-    COMPONENT_VELOCITY,
-    COMPONENT_BOUNDS,
-    COMPONENT_COLOR,
-
-    COMPONENT_COUNT
-};
 
 typedef struct CEntity CEntity;
 
@@ -33,33 +25,23 @@ struct CEntity {
 
 NEKO_EXPORT CEntity entity_nil;
 
-CEntity entity_create();
+CEntity entity_create(const String& name);
 void entity_destroy(CEntity ent);
 void entity_destroy_all();
 bool entity_destroyed(CEntity ent);
-void entity_set_save_filter(CEntity ent, bool filter);
-bool entity_get_save_filter(CEntity ent);
-void entity_clear_save_filters();
-
-struct App;
 
 NEKO_API() void entity_init();
 NEKO_API() void entity_fini();
 NEKO_API() int entity_update_all(App* app, event_t evt);
 
-NEKO_API() void entity_save_all(App* app);
-NEKO_API() void entity_load_all(App* app);
-NEKO_API() void entity_load_all_begin();
-NEKO_API() void entity_load_all_end();
-
-inline bool native_entity_eq(CEntity e, CEntity f) { return e.id == f.id; }
+inline bool CEntityEq(CEntity e, CEntity f) { return e.id == f.id; }
 
 class CEntityMap {
 public:
     int* arr;
     EcsId bound;     // 数组中的第一个空闲位置的索引 = 1 + 最大键
     EcsId capacity;  // 拥有堆空间的元素数量
-    int def;            // 未设置键的值
+    int def;         // 未设置键的值
 };
 
 NEKO_API() CEntityMap* entitymap_new(int def);  // def 为默认值
@@ -82,7 +64,7 @@ struct CEntityPool {
         // 将元素添加到pool->array并在pool->emap中设置id
         u64 i = this->array.push(T{});
         elem = dynamic_cast<T*>(&this->array[i]);
-        elem->pool_elem.ent = ent;
+        elem->ent = ent;
         entitymap_set(this->emap, ent, this->array.len - 1);
         return elem;
     }
@@ -94,7 +76,7 @@ struct CEntityPool {
             this->array.quick_remove(i);
             {
                 CEntityBase* elem = dynamic_cast<CEntityBase*>(&this->array[i]);
-                entitymap_set(this->emap, elem->pool_elem.ent, i);
+                entitymap_set(this->emap, elem->ent, i);
             }
             // 删除映射
             entitymap_set(this->emap, ent, -1);
@@ -127,9 +109,7 @@ struct CEntityPool {
 
 class CEntityBase {
 public:
-    struct EntityPoolElem {
-        CEntity ent;
-    } pool_elem;
+    CEntity ent;
 };
 
 #define DECL_ENT(T, ...)             \
@@ -208,7 +188,7 @@ void entitypool_sort(CEntityPool<T>* pool, int (*compar)(const void*, const void
     n = pool->array.len;
     for (i = 0; i < n; ++i) {
         elem = dynamic_cast<CEntityBase*>(&pool->array.data[i]);
-        entitymap_set(pool->emap, elem->pool_elem.ent, i);
+        entitymap_set(pool->emap, elem->ent, i);
     }
 }
 
@@ -240,8 +220,8 @@ auto entitypool_remove_destroyed(CEntityPool<T>* pool, F func) {
         CEntityBase* e;
         for (i = 0; i < entitypool_size(pool);) {
             e = dynamic_cast<CEntityBase*>(entitypool_nth(pool, i));
-            if (entity_destroyed(e->pool_elem.ent))
-                func(e->pool_elem.ent);
+            if (entity_destroyed(e->ent))
+                func(e->ent);
             else
                 ++i;
         }
@@ -260,11 +240,5 @@ auto entitypool_remove_destroyed(CEntityPool<T>* pool, F func) {
 
 #define entitypool_save_foreach(var, var_s, pool, n, s) if (0)
 #define entitypool_load_foreach(var, var_s, pool, n, s) if (0)
-
-void system_init();
-void system_fini();
-
-void prefab_save_all(App* app);
-void prefab_load_all(App* app);
 
 #endif

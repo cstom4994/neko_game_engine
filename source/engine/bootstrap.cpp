@@ -817,7 +817,7 @@ void test_native_script() {
 
     // add camera
 
-    camera = entity_create();
+    camera = entity_create("camera_test");
 
     transform_add(camera);
 
@@ -827,7 +827,7 @@ void test_native_script() {
 
     n_blocks = rand() % 50;
     for (i = 0; i < n_blocks; ++i) {
-        block = entity_create();
+        block = entity_create("block_test");
 
         transform_add(block);
         transform_set_position(block, luavec2((rand() % 25) - 12, (rand() % 9) - 4));
@@ -839,7 +839,7 @@ void test_native_script() {
 
     // add player
 
-    player = entity_create();
+    player = entity_create("player_test");
 
     transform_add(player);
     transform_set_position(player, luavec2(0.0f, 0.0f));
@@ -847,6 +847,251 @@ void test_native_script() {
     sprite_add(player);
     sprite_set_texcell(player, luavec2(0.0f, 32.0f));
     sprite_set_texsize(player, luavec2(32.0f, 32.0f));
+}
+
+static void load_all_lua_scripts(lua_State *L) {
+    PROFILE_FUNC();
+
+    Array<String> files = {};
+    neko_defer({
+        for (String str : files) {
+            mem_free(str.data);
+        }
+        files.trash();
+    });
+
+    bool ok = false;
+
+#if defined(_DEBUG) || 1
+    ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
+#else
+    ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
+#endif
+
+    if (!ok) {
+        neko_panic("failed to list all files");
+    }
+    std::qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
+        String *lhs = (String *)a;
+        String *rhs = (String *)b;
+        return std::strcmp(lhs->data, rhs->data);
+    });
+
+    for (String file : files) {
+        if (file.starts_with("script/") && !file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
+            asset_load_kind(AssetKind_LuaRef, file, nullptr);
+        }
+    }
+}
+
+static void _key_down(KeyCode key, int scancode, int mode) {
+    // gui_key_down(key);
+    script_key_down(key);
+}
+static void _key_up(KeyCode key, int scancode, int mode) {
+    // gui_key_up(key);
+    script_key_up(key);
+}
+static void _char_down(unsigned int c) { /*gui_char_down(c);*/ }
+static void _mouse_down(MouseCode mouse) {
+    // gui_mouse_down(mouse);
+    script_mouse_down(mouse);
+}
+static void _mouse_up(MouseCode mouse) {
+    // gui_mouse_up(mouse);
+    script_mouse_up(mouse);
+}
+static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
+static void _scroll(vec2 scroll) { script_scroll(scroll); }
+
+void system_init() {
+    PROFILE_FUNC();
+
+    MountResult mount = {true, true, false};
+
+    script_init();
+
+    lua_State *L = ENGINE_LUA();
+
+    gBase.is_fused.store(mount.is_fused);
+
+    if (!gBase.error_mode.load() && mount.ok) {
+        bool ok = asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
+        if (!ok) {
+            String conf = R"(
+function neko.conf(t)
+
+    t.app = {
+        title = "ahaha",
+        width = 1280.0,
+        height = 720.0,
+        game_proxy = "default",
+        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        -- lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
+        dump_allocs_detailed = true,
+        swap_interval = 1,
+        target_fps = 120,
+        reload_interval = 1,
+        debug_on = false,
+        batch_vertex_capacity = 2048
+    }
+end
+)";
+            luax_require_script_buffer(L, conf, "<builtin_conf>");
+        }
+    }
+
+    lua_newtable(L);
+    i32 conf_table = lua_gettop(L);
+
+    if (!gBase.error_mode.load()) {
+        luax_neko_get(L, "conf");
+        lua_pushvalue(L, conf_table);
+        luax_pcall(L, 1, 0);
+    }
+
+    gApp->win_console = gApp->win_console || luax_boolean_field(L, -1, "win_console", true);
+
+    Neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
+    checktable_refl(ENGINE_LUA(), "app", v);
+    gApp->cfg = v.cast<engine_cfg_t>();
+
+    LOG_INFO("load game: {} {} {}", gApp->cfg.title.cstr(), gApp->cfg.width, gApp->cfg.height);
+
+    lua_pop(L, 1);  // conf table
+
+    auto &game = Neko::the<Game>();
+
+    // 刷新状态
+    game.set_window_size(luavec2(gApp->cfg.width, gApp->cfg.height));
+    game.set_window_title(gApp->cfg.title.cstr());
+
+    if (fnv1a(gApp->cfg.game_proxy) == "default"_hash) {
+        // Neko::neko_lua_run_string(L, R"lua(
+        // )lua");
+        LOG_INFO("using default game proxy");
+    }
+
+    g_render = gfx_create();
+    gfx_init(g_render);
+
+    game.SplashScreen();
+
+    neko_default_font();
+
+    auto &input = Neko::the<Input>();
+    input.init();
+
+    entity_init();
+    transform_init();
+    camera_init();
+    gApp->batch = batch_init(gApp->cfg.batch_vertex_capacity);
+    sprite_init();
+    tiled_init();
+    font_init();
+    imgui_init(gApp->game_window);
+    console_init();
+    sound_init();
+    physics_init();
+    edit_init();
+
+    gBase.hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
+    gBase.reload_interval.store(gApp->cfg.reload_interval);
+
+    luax_run_nekogame(L);
+
+    Neko::LuaInspector::luainspector_init(ENGINE_LUA());
+    lua_setglobal(L, "__neko_inspector");
+
+    if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
+        load_all_lua_scripts(L);
+    }
+
+    // run main.lua
+    asset_load_kind(AssetKind_LuaRef, "script/nekomain.lua", nullptr);
+
+    luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
+    {
+        PROFILE_BLOCK("neko.args");
+
+        lua_State *L = ENGINE_LUA();
+
+        if (!gBase.error_mode.load()) {
+            luax_neko_get(L, "args");
+
+            Slice<String> args = gBase.GetArgs();
+            lua_createtable(L, args.len - 1, 0);
+            for (u64 i = 1; i < args.len; i++) {
+                lua_pushlstring(L, args[i].data, args[i].len);
+                lua_rawseti(L, -2, i);
+            }
+
+            luax_pcall(L, 1, 0);
+        }
+    }
+
+    // fire init event
+    script_push_event("init");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    input_add_key_down_callback(_key_down);
+    input_add_key_up_callback(_key_up);
+    input_add_char_down_callback(_char_down);
+    input_add_mouse_down_callback(_mouse_down);
+    input_add_mouse_up_callback(_mouse_up);
+    input_add_mouse_move_callback(_mouse_move);
+    input_add_scroll_callback(_scroll);
+
+    if (gApp->cfg.target_fps != 0) {
+        gApp->timing_instance.target_ticks = 1000000000 / gApp->cfg.target_fps;
+    }
+
+#ifdef NEKO_IS_WIN32
+    if (!gApp->win_console) {
+        FreeConsole();
+    }
+#endif
+}
+
+void system_fini() {
+    PROFILE_FUNC();
+
+    edit_fini();
+    script_fini();
+    physics_fini();
+    sound_fini();
+    console_fini();
+    tiled_fini();
+    sprite_fini();
+    batch_fini(gApp->batch);
+    camera_fini();
+    transform_fini();
+    entity_fini();
+    imgui_fini();
+    auto &input = Neko::the<Input>();
+    input.fini();
+
+    if (gApp->default_font != nullptr) {
+        gApp->default_font->trash();
+        mem_free(gApp->default_font);
+    }
+
+    gfx_fini(g_render);
+
+    {
+        PROFILE_BLOCK("destroy assets");
+
+        lua_channels_shutdown();
+
+        // if (g_app->default_font != nullptr) {
+        //     g_app->default_font->trash();
+        //     mem_free(g_app->default_font);
+        // }
+
+        assets_shutdown();
+    }
 }
 
 AppTime get_timing_instance() { return gApp->timing_instance; }
@@ -920,17 +1165,6 @@ int timing_update(App *app, event_t evt) {
     }
 
     return 0;
-}
-
-void timing_save_all(App *app) {
-    // Store *t;
-
-    // if (store_child_save(&t, "timing", s)) float_save(&g_app->scale, "scale", t);
-}
-void timing_load_all(App *app) {
-    // Store *t;
-
-    // if (store_child_load(&t, "timing", s)) float_load(&g_app->scale, "scale", 1, t);
 }
 
 #endif

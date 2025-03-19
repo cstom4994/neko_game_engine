@@ -1178,7 +1178,7 @@ int tiled_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Tiled::pool, tiled_remove);
 
-    Tiled::pool->ForEach([](Tiled *tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); });
+    Tiled::pool->ForEach([](Tiled *tiled) { tiled->pos = transform_get_position(tiled->ent); });
 
     return 0;
 }

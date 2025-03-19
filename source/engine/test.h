@@ -11,7 +11,5 @@ NEKO_API() void physics_fini();
 NEKO_API() int physics_update_all(App *app, event_t evt);
 NEKO_API() int physics_post_update_all(App *app, event_t evt);
 NEKO_API() void physics_draw_all();
-NEKO_API() void physics_save_all(App* app);
-NEKO_API() void physics_load_all(App* app);
 
 #endif

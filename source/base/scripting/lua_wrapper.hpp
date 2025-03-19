@@ -487,8 +487,28 @@ auto Get(lua_State *L, int N, T &x)
     x = lua_tostring(L, N);
 }
 
+template <typename>
+struct is_pointer_to_array : std::false_type {};
+
 template <typename T, std::size_t N>
-auto Push(lua_State *L, T (&arr)[N]) {
+struct is_pointer_to_array<T (*)[N]> : std::true_type {};
+
+template <typename T>
+auto Push(lua_State *L, T *x)
+    requires(!std::is_same_v<std::decay_t<T>, char> && !std::is_array_v<T> && !is_pointer_to_array<T *>::value)
+{
+    lua_pushlightuserdata(L, static_cast<void *>(x));
+}
+
+template <typename T>
+auto Get(lua_State *L, int index, T *&x) {
+    x = static_cast<T *>(lua_touserdata(L, index));
+}
+
+template <typename T, std::size_t N>
+auto Push(lua_State *L, T (&arr)[N])
+    requires(std::is_array_v<T>)
+{
     lua_newtable(L);  // 创建 Lua 表
     int i = 0;
     for (auto &x : arr) {

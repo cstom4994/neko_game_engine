@@ -2538,7 +2538,7 @@ static int open_neko(lua_State *L) {
     });
 
     X("entity_create", [](lua_State *L) -> int {
-        CEntity ent = entity_create();
+        CEntity ent = entity_create("any_shit_from_lua");
         LuaPush<CEntity>(L, ent);
         return 1;
     });
@@ -2557,7 +2557,7 @@ static int open_neko(lua_State *L) {
         lua_pushboolean(L, v);
         return 1;
     });
-    X("native_entity_eq", [](lua_State *L) -> int {
+    X("CEntityEq", [](lua_State *L) -> int {
         EcsId a = lua_tointeger(L, 1);
         EcsId b = lua_tointeger(L, 2);
         bool v = (a == b);
@@ -2567,18 +2567,15 @@ static int open_neko(lua_State *L) {
     X("entity_set_save_filter", [](lua_State *L) -> int {
         CEntity *ent = LuaGet<CEntity>(L, 1);
         bool filter = lua_toboolean(L, 2);
-        entity_set_save_filter(*ent, filter);
+        // entity_set_save_filter(*ent, filter);
         return 0;
     });
     X("entity_get_save_filter", [](lua_State *L) -> int {
         CEntity *ent = LuaGet<CEntity>(L, 1);
-        bool v = entity_get_save_filter(*ent);
+        // bool v = entity_get_save_filter(*ent);
+        bool v = true;
         lua_pushboolean(L, v);
         return 1;
-    });
-    X("entity_clear_save_filters", [](lua_State *L) -> int {
-        entity_clear_save_filters();
-        return 0;
     });
 
     X("console_set_visible", [](lua_State *L) -> int {

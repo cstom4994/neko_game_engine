@@ -10,6 +10,7 @@
 #include <source_location>
 #include <array>
 #include <format>
+#include <chrono>
 
 namespace Neko {
 class Logger {

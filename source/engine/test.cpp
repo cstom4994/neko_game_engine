@@ -1396,5 +1396,3 @@ void physics_fini() {}
 int physics_update_all(App *app, event_t evt) { return 0; }
 int physics_post_update_all(App *app, event_t evt) { return 0; }
 void physics_draw_all() {}
-void physics_save_all(App* app) {}
-void physics_load_all(App* app) {}

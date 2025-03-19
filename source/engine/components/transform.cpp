@@ -46,7 +46,7 @@ static void _detach(Transform *p, Transform *c) {
 
     // search for parent -> child link and remove it
     for (auto &child : p->children)
-        if (native_entity_eq(child, c->pool_elem.ent)) {
+        if (CEntityEq(child, c->ent)) {
             // array_quick_remove(p->children, child - (CEntity *)array_begin(p->children));
             p->children.quick_remove(&child - p->children.begin());
             return;
@@ -60,7 +60,7 @@ static void _detach_all(Transform *t) {
     error_assert(t);
 
     // our parent
-    if (!native_entity_eq(t->parent, entity_nil)) {
+    if (!CEntityEq(t->parent, entity_nil)) {
         p = Transform::pool->Get(t->parent);
         error_assert(p);
         _detach(p, t);
@@ -108,15 +108,15 @@ bool transform_has(CEntity ent) { return Transform::pool->Get(ent) != NULL; }
 void transform_set_parent(CEntity ent, CEntity parent) {
     Transform *t, *oldp, *newp;
 
-    if (native_entity_eq(ent, parent)) return;  // can't be child of self
+    if (CEntityEq(ent, parent)) return;  // can't be child of self
 
     t = Transform::pool->Get(ent);
     error_assert(t);
 
-    if (native_entity_eq(t->parent, parent)) return;  // already set
+    if (CEntityEq(t->parent, parent)) return;  // already set
 
     // detach from old
-    if (!native_entity_eq(t->parent, entity_nil)) {
+    if (!CEntityEq(t->parent, entity_nil)) {
         oldp = Transform::pool->Get(t->parent);
         error_assert(oldp);
         _detach(oldp, t);
@@ -124,7 +124,7 @@ void transform_set_parent(CEntity ent, CEntity parent) {
 
     // attach to new
     t->parent = parent;
-    if (!native_entity_eq(parent, entity_nil)) {
+    if (!CEntityEq(parent, entity_nil)) {
         newp = Transform::pool->Get(parent);
         error_assert(newp);
         if (!newp->children.len) {
@@ -233,7 +233,7 @@ vec2 transform_get_world_scale(CEntity ent) {
 mat3 transform_get_world_matrix(CEntity ent) {
     Transform *transform;
 
-    if (native_entity_eq(ent, entity_nil)) return mat3_identity();
+    if (CEntityEq(ent, entity_nil)) return mat3_identity();
 
     transform = Transform::pool->Get(ent);
     error_assert(transform);
@@ -243,7 +243,7 @@ mat3 transform_get_world_matrix(CEntity ent) {
 mat3 transform_get_matrix(CEntity ent) {
     Transform *transform;
 
-    if (native_entity_eq(ent, entity_nil)) return mat3_identity();
+    if (CEntityEq(ent, entity_nil)) return mat3_identity();
 
     transform = Transform::pool->Get(ent);
     error_assert(transform);
@@ -270,7 +270,7 @@ EcsId transform_get_dirty_count(CEntity ent) {
 void transform_set_save_filter_rec(CEntity ent, bool filter) {
     Transform *transform;
 
-    entity_set_save_filter(ent, filter);
+    // entity_set_save_filter(ent, filter);
 
     transform = Transform::pool->Get(ent);
     error_assert(transform);
@@ -304,7 +304,7 @@ int transform_update_all(App *app, event_t evt) {
     entitypool_remove_destroyed(Transform::pool, transform_remove);
 
     // update edit bbox
-    if (edit_get_enabled()) entitypool_foreach(transform, Transform::pool) edit_bboxes_update(transform->pool_elem.ent, bbox);
+    if (edit_get_enabled()) entitypool_foreach(transform, Transform::pool) edit_bboxes_update(transform->ent, bbox);
 
     return 0;
 }

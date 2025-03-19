@@ -143,10 +143,10 @@ public:
     void SplashScreen();
 };
 
+void system_init();
+void system_fini();
 
 int timing_update(App *app, event_t evt);
-void timing_save_all(App *app);
-void timing_load_all(App *app);
 
 inline void query_window(int idx, i32 *width, i32 *height) {
     int w, h;

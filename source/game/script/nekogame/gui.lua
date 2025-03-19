@@ -333,6 +333,11 @@ draw_imgui = function(dt)
         foo("s", {}, 234)
     end
 
+    if ImGui.Button("test_ecs") then
+        
+        print(table.show({gw:detail()}))
+    end
+
     if ImGui.Button("test_callback") then
 
         local f = function(f1, f2)

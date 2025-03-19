@@ -41,8 +41,6 @@ void transform_destroy_rec(CEntity ent);  // destroy ent and all children
 void transform_init();
 void transform_fini();
 int transform_update_all(App* app, event_t evt);
-void transform_save_all(App* app);
-void transform_load_all(App* app);
 
 #include "engine/components/tiledmap.hpp"
 
@@ -87,8 +85,6 @@ const mat3* camera_get_inverse_view_matrix_ptr();  // for quick GLSL binding
 void camera_init();
 void camera_fini();
 int camera_update_all(App* app, event_t evt);
-void camera_save_all(App* app);
-void camera_load_all(App* app);
 
 NEKO_EXPORT void sprite_set_atlas(const char* filename);
 
@@ -124,8 +120,6 @@ void sprite_init();
 void sprite_fini();
 int sprite_update_all(App* app, event_t evt);
 void sprite_draw_all();
-void sprite_save_all(App* app);
-void sprite_load_all(App* app);
 
 void edit_set_editable(CEntity ent, bool editable);
 bool edit_get_editable(CEntity ent);
@@ -155,8 +149,6 @@ void edit_init();
 void edit_fini();
 int edit_update_all(App* app, event_t evt);
 void edit_draw_all();
-void edit_save_all(App* app);
-void edit_load_all(App* app);
 
 bool gui_has_focus();
 bool gui_captured_event();

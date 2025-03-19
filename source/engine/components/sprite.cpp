@@ -137,10 +137,10 @@ int sprite_update_all(App *app, event_t evt) {
 
     entitypool_remove_destroyed(Sprite::pool, sprite_remove);
 
-    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); });
+    Sprite::pool->ForEach([](Sprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->ent); });
 
     if (edit_get_enabled()) {
-        Sprite::pool->ForEach([](Sprite *sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
+        Sprite::pool->ForEach([](Sprite *sprite) { edit_bboxes_update(sprite->ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
     }
 
     return 0;
@@ -149,7 +149,7 @@ int sprite_update_all(App *app, event_t evt) {
 static int _depth_compare(const void *a, const void *b) {
     const Sprite *sa = (Sprite *)a, *sb = (Sprite *)b;
 
-    if (sb->depth == sa->depth) return ((int)sa->pool_elem.ent.id) - ((int)sb->pool_elem.ent.id);
+    if (sb->depth == sa->depth) return ((int)sa->ent.id) - ((int)sb->ent.id);
     return sb->depth - sa->depth;
 }
 
