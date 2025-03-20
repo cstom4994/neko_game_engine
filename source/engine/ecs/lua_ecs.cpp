@@ -31,13 +31,13 @@ void EcsComponentClear(Entity* e, int tid) {
     }
 }
 
-int EcsComponentAdd(EcsWorld* world, Entity* e, int tid) {
+int EcsComponentAlloc(EcsWorld* world, Entity* e, int tid) {
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {  // 组件已存在
-        LOG_INFO("CEntity({}) already exist component({})", e - world->entity_buf, tid);
+        LOG_WARN("CEntity({}) already exist component({})", e - world->entity_buf, tid);
         return -1;
     }
     if (e->components_count >= ENTITY_MAX_COMPONENTS) {  // 超过组件上限
-        LOG_INFO("CEntity({}) add to many components", e - world->entity_buf);
+        LOG_WARN("CEntity({}) add to many components", e - world->entity_buf);
         return -1;
     }
 
@@ -310,7 +310,7 @@ Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
         lua_pushinteger(L, tid);
         lua_settable(L, -3);  // 组件内容表
 
-        int cid = EcsComponentAdd(w, e, tid);
+        int cid = EcsComponentAlloc(w, e, tid);
         luaL_argcheck(L, cid >= 0, 2, "entity has duplicated component");
 
         lua_rawgeti(L, components, tid);  // WORLD_COMPONENTS[tid]
@@ -344,7 +344,7 @@ Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
         lua_pushvalue(L, -1);
         lua_setmetatable(L, -1);
 
-        int cid = EcsComponentAdd(w, e, tid);
+        int cid = EcsComponentAlloc(w, e, tid);
         luaL_argcheck(L, cid >= 0, 2, "entity has duplicated component");
 
         lua_rawgeti(L, components, tid);  // WORLD_COMPONENTS[tid]
@@ -372,7 +372,57 @@ void EcsEntityDel(lua_State* L, int eid) {
     lua_pop(L, 1);
 }
 
+int EcsComponentSet(lua_State* L, Entity* e, const char* name, const LuaRef& ref) {
+    int tid = EcsGetTid(L, name);
+    neko_assert(tid >= TYPE_MIN_ID);
+    return EcsComponentSet(L, e, tid, ref);
+}
+
+int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+    int ecs_ud = lua_gettop(L);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_OLD_UDATA_NAME);
+
+    int eid = e - w->entity_buf;
+    lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
+    int components = lua_gettop(L);
+
+    int cid = -1;
+
+    if (ref.IsTable()) {
+
+        ref.Push();  // {...}
+
+        lua_getiuservalue(L, ecs_ud, WORLD_KEY_EID);
+        lua_pushinteger(L, eid);
+        lua_settable(L, -3);  // 组件内容表
+        lua_getiuservalue(L, ecs_ud, WORLD_KEY_TID);
+        lua_pushinteger(L, tid);
+        lua_settable(L, -3);  // 组件内容表
+
+        cid = EcsComponentAlloc(w, e, tid);
+        luaL_argcheck(L, cid >= 0, 2, "entity has duplicated component");
+
+        lua_rawgeti(L, components, tid);  // WORLD_COMPONENTS[tid]
+        lua_pushvalue(L, -2);             // 复制 {...}
+        lua_rawseti(L, -2, cid);          // WORLD_COMPONENTS[tid][cid] = {...}
+
+        lua_pop(L, 2);  // # pop WORLD_COMPONENTS[tid] | {...}
+    } else {
+        neko_assert(0 && "bug");
+    }
+
+    lua_pop(L, 2);  // # pop WORLD_COMPONENTS | __NEKO_ECS_CORE
+
+    return cid;
+}
+
 LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name) {
+    int tid = EcsGetTid(L, name);
+    return EcsComponentGet(L, e, tid);
+}
+
+LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid) {
 
     lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
     int ecs_ud = lua_gettop(L);
@@ -382,7 +432,6 @@ LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name) {
     lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
     int components = ecs_ud + 1;
 
-    int tid = EcsGetTid(L, name);
     int cid = EcsEntityGetCid(e, tid);
     if (cid >= 0) {
         lua_rawgeti(L, components, tid);
@@ -469,7 +518,7 @@ struct EcsLuaWrap {
             //     lua_settable(L, -3);  // 组件内容表
             // }
 
-            int cid = EcsComponentAdd(w, e, tid);
+            int cid = EcsComponentAlloc(w, e, tid);
             luaL_argcheck(L, cid >= 0, 2, "entity has duplicated component");
 
             lua_rawgeti(L, components, tid);  // WORLD_COMPONENTS[tid]
@@ -519,7 +568,7 @@ struct EcsLuaWrap {
         Entity* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         tid = EcsGetTid_w(L, 3, lua_gettop(L));
-        cid = EcsComponentAdd(w, e, tid);
+        cid = EcsComponentAlloc(w, e, tid);
         lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
         lua_geti(L, -1, tid);
         lua_pushvalue(L, 4);

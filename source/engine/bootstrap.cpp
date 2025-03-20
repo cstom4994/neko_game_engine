@@ -346,7 +346,7 @@ int _game_draw(App *app, event_t evt) {
 
         neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
 
-        Neko::LuaInspector::luainspector_draw(ENGINE_LUA());
+        gApp->inspector->luainspector_draw(ENGINE_LUA());
 
     } else {
 
@@ -373,10 +373,14 @@ int _game_draw(App *app, event_t evt) {
                 y = draw_font(font, false, font_size, x, y, gBase.traceback, NEKO_COLOR_WHITE);
                 y += (font_size * 2);
 
-                draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
+                draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息\n按下 Ctrl+R 忽视本次问题", NEKO_COLOR_WHITE);
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
                     window_setclipboard(gBase.traceback.cstr());
+                }
+
+                if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_R)) {
+                    gBase.error_mode.store(false);
                 }
             }
         }
@@ -1000,7 +1004,7 @@ end
 
     luax_run_nekogame(L);
 
-    Neko::LuaInspector::luainspector_init(ENGINE_LUA());
+    gApp->inspector = new (lua_newuserdata(L, sizeof(Neko::LuaInspector))) Neko::LuaInspector();
     lua_setglobal(L, "__neko_inspector");
 
     if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {

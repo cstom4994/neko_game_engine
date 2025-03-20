@@ -754,7 +754,7 @@ size_t luax_dump_traceback(lua_State *L, char *buf, size_t sz, int is_show_var, 
     lua_Debug ar;
     int i = 0;
 
-    auto get_params = [](lua_State *L, char nparams, char isvararg, lua_Debug *ar, char *buff, size_t buff_sz) -> int {
+    auto get_params = [](lua_State *L, char nparams, char isvararg, lua_Debug *ar, char *buff, size_t buff_sz) -> size_t {
         int i = 0;
         const char *name;
         size_t e = 0;

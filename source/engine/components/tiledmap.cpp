@@ -699,7 +699,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
-            LOG_INFO("objectgroup: %s", object_group.name.cstr());
+            LOG_INFO("objectgroup: {}", object_group.name.cstr());
 
         } else {
             object_group.name = "unknown";

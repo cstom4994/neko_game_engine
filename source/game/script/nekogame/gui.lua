@@ -279,6 +279,13 @@ end
 draw_imgui = function(dt)
     local ImGui = imgui
     ImGui.Begin("Demo")
+
+    local ImGuiEnd<close> = setmetatable({}, {
+        __close = function()
+            ImGui.End()
+        end
+    })
+
     ImGui.Text("TestDemo")
 
     if ImGui.Button("test_http") then
@@ -334,7 +341,7 @@ draw_imgui = function(dt)
     end
 
     if ImGui.Button("test_ecs") then
-        
+
         print(table.show({gw:detail()}))
     end
 
@@ -382,5 +389,5 @@ draw_imgui = function(dt)
 
     -- ImGui.Image(test_tex, 100.0, 100.0)
     -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
-    ImGui.End()
+
 end

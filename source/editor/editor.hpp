@@ -61,15 +61,6 @@ struct luainspector_property {
 
 inline bool incomplete_chunk_error(const char* err, std::size_t len) { return err && (std::strlen(err) >= 5u) && (0 == std::strcmp(err + len - 5u, "<eof>")); }
 
-struct luainspector_hints {
-    static std::string clean_table_list(const std::string& str);
-    static bool try_replace_with_metaindex(lua_State* L);
-    static bool collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left);
-    static void prepare_hints(lua_State* L, std::string str, std::string& last);
-    static bool collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden);
-    static std::string common_prefix(const std::vector<std::string>& possible);
-};
-
 class LuaInspector;
 
 struct command_line_input_callback_UserData {
@@ -87,6 +78,16 @@ struct inspect_table_config {
 enum luainspector_logtype { LUACON_LOG_TYPE_WARNING = 1, LUACON_LOG_TYPE_ERROR = 2, LUACON_LOG_TYPE_NOTE = 4, LUACON_LOG_TYPE_SUCCESS = 0, LUACON_LOG_TYPE_MESSAGE = 3 };
 
 class LuaInspector {
+public:
+    struct Hints {
+        static std::string clean_table_list(const std::string& str);
+        static bool try_replace_with_metaindex(lua_State* L);
+        static bool collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left);
+        static void prepare_hints(lua_State* L, std::string str, std::string& last);
+        static bool collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden);
+        static std::string common_prefix(const std::vector<std::string>& possible);
+    };
+
 private:
     std::vector<std::pair<std::string, luainspector_logtype>> messageLog;
 
@@ -106,7 +107,7 @@ private:
     std::vector<void*> m_variable_pool;
 
 private:
-    static int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
+    inline int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
         if (color) {
             ImGui::PushStyleColor(col, *color);
             return 1;
@@ -118,14 +119,12 @@ public:
     void console_draw(bool& textbox_react) noexcept;
     void print_line(const std::string& msg, luainspector_logtype type) noexcept;
 
-    static bool visible;
+    bool visible{false};
 
-    static LuaInspector* get_from_registry(lua_State* L);
-    static void inspect_table(lua_State* L, inspect_table_config& cfg);
-    static void print(const std::string& msg, luainspector_logtype type);
-    static int luainspector_init(lua_State* L);
-    static int luainspector_draw(lua_State* L);
-    static int command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept;
+    void inspect_table(lua_State* L, inspect_table_config& cfg);
+    void print(const std::string& msg, luainspector_logtype type);
+    int luainspector_init(lua_State* L);
+    int luainspector_draw(lua_State* L);
 
     void setL(lua_State* L);
     int command_line_input_callback(ImGuiInputTextCallbackData* data);
@@ -218,6 +217,3 @@ public:
     }
 };
 }  // namespace Neko
-
-void inspector_set_visible(bool visible);
-bool inspector_get_visible();

@@ -2362,6 +2362,9 @@ static int l_gui_captured_event(lua_State *L) {
     return 1;
 }
 
+void inspector_set_visible(bool visible) { gApp->inspector->visible = visible; }
+bool inspector_get_visible() { return gApp->inspector->visible; }
+
 static void typeclosure(lua_State *L) {
     static const char *typenames[] = {
             "nil",       // 0

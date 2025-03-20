@@ -36,6 +36,10 @@ using namespace Neko::ecs;
 
 extern CBase gBase;
 
+namespace Neko {
+struct LuaInspector;
+}
+
 typedef struct AppTime {
     u64 startup;
     u64 last;
@@ -74,6 +78,8 @@ struct App {
     bool win_console;
 
     engine_cfg_t cfg;
+
+    LuaInspector *inspector;
 
     ImGuiID devui_vp;
 

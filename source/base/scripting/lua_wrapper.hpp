@@ -497,12 +497,14 @@ template <typename T>
 auto Push(lua_State *L, T *x)
     requires(!std::is_same_v<std::decay_t<T>, char> && !std::is_array_v<T> && !is_pointer_to_array<T *>::value)
 {
-    lua_pushlightuserdata(L, static_cast<void *>(x));
+    lua_pushlightuserdata(L, reinterpret_cast<void *>(x));
 }
 
 template <typename T>
-auto Get(lua_State *L, int index, T *&x) {
-    x = static_cast<T *>(lua_touserdata(L, index));
+auto Get(lua_State *L, int index, T &x)
+    requires(std::is_pointer_v<T> && !std::is_same_v<std::remove_cv_t<T>, const char *>)
+{
+    x = reinterpret_cast<T>(lua_touserdata(L, index));
 }
 
 template <typename T, std::size_t N>
@@ -556,7 +558,7 @@ struct LuaStack {
     }
     template <typename T>
     static inline auto Get(lua_State *L, int index, T &value) {
-        return detail::Get<T>(L, index, value);
+        return detail::Get<std::remove_reference_t<T>>(L, index, value);
     }
 };
 
@@ -702,6 +704,7 @@ auto Push(lua_State *L, LuaTableElement<T> const &e) {
 
 class LuaRef : public LuaRefBase {
     friend LuaRefBase;
+    friend void DumpLuaRef(const LuaRef &ref);
 
 private:
     explicit LuaRef(lua_State *L, FromStackIndex fs) : LuaRefBase(L, fs) {}
@@ -1213,6 +1216,15 @@ struct LuaVM {
         }
     }
 };
+
+inline void DumpLuaRef(const LuaRef &ref) {
+    ref.Push();  // 把 LuaRef 存的值推到 Lua 栈顶
+    LuaVM::Tools::ForEachStack(ref.L, []<typename T>(int i, T v) -> int {
+        std::cout << i << ':' << v << std::endl;
+        return 0;
+    });
+    lua_pop(ref.L, 1);  // 清理 Lua 栈
+}
 
 namespace LuaValue {
 template <class>

@@ -24,7 +24,7 @@ enum ECS_WORLD_UPVALUES {
     WORLD_MATCH_CTX,     // ud存储当前matchctx
     WORLD_KEY_EID,       // eid元表键名字面量
     WORLD_KEY_TID,       // tid元表键名字面量
-    WORLD_KEY_UD,        // tid元表键名字面量
+    WORLD_KEY_UD,        // ud元表键名字面量
     WORLD_UPVAL_N
 };
 
@@ -121,12 +121,20 @@ int EcsRegister(lua_State* L, const_str name);
 int EcsGetTid(lua_State* L, const char* name);
 
 Entity* EcsEntityAlloc(EcsWorld* world);
-int EcsComponentAdd(EcsWorld* world, Entity* e, int tid);
+int EcsComponentAlloc(EcsWorld* world, Entity* e, int tid);
 Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc);
 void EcsEntityDel(lua_State* L, int eid);
+int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref);
+int EcsComponentSet(lua_State* L, Entity* e, const char* name, const LuaRef& ref);
 LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name);
+LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid);
 
 Entity* EcsGetEnt(lua_State* L, EcsWorld* w, int eid);
+
+template <typename T>
+int EcsRegisterCType(lua_State* L) {
+    return EcsRegister(L, reflection::GetTypeName<T>());
+}
 
 }  // namespace ecs
 }  // namespace Neko

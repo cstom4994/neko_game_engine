@@ -21,8 +21,6 @@
 
 using namespace Neko::imgui;
 
-Neko::LuaInspector* g_inspector;
-
 template <>
 struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
     auto format(Neko::LuaInspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
@@ -46,15 +44,13 @@ static int __luainspector_gc(lua_State* L) {
         lua_close(gApp->LiteLua);
     }
 
-    g_inspector = NULL;
-
     LOG_INFO("luainspector __gc {}", m);
     return 0;
 }
 
 namespace Neko {
 
-std::string luainspector_hints::clean_table_list(const std::string& str) {
+std::string LuaInspector::Hints::clean_table_list(const std::string& str) {
     std::string ret;
     bool got_dot = false, got_white = false;
     std::size_t whitespace_start = 0u;
@@ -80,11 +76,11 @@ std::string luainspector_hints::clean_table_list(const std::string& str) {
     return ret;
 }
 
-void luainspector_hints::prepare_hints(lua_State* L, std::string str, std::string& last) {
+void LuaInspector::Hints::prepare_hints(lua_State* L, std::string str, std::string& last) {
     str = clean_table_list(str);
 
     std::vector<std::string> tables;
-    int begin = 0;
+    std::size_t begin = 0;
     for (std::size_t i = 0u; i < str.size(); ++i) {
         if (str[i] == '.') {
             tables.push_back(str.substr(begin, i - begin));
@@ -106,7 +102,7 @@ void luainspector_hints::prepare_hints(lua_State* L, std::string str, std::strin
     }
 }
 
-bool luainspector_hints::collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left) {
+bool LuaInspector::Hints::collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left) {
     if (left == 0u) return true;
 
     const bool skip_under_score = last.empty() && !usehidden;
@@ -139,7 +135,7 @@ bool luainspector_hints::collect_hints_recurse(lua_State* L, std::vector<std::st
 }
 
 // Replace the value at the top of the stack with the __index TABLE from the metatable
-bool luainspector_hints::try_replace_with_metaindex(lua_State* L) {
+bool LuaInspector::Hints::try_replace_with_metaindex(lua_State* L) {
     if (!luaL_getmetafield(L, -1, "__index")) return false;
 
     if (lua_type(L, -1) != LUA_TTABLE) {
@@ -152,13 +148,13 @@ bool luainspector_hints::try_replace_with_metaindex(lua_State* L) {
     return true;
 }
 
-bool luainspector_hints::collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden) {
-    if (lua_type(L, -1) != LUA_TTABLE && !luainspector_hints::try_replace_with_metaindex(L)) return false;
+bool LuaInspector::Hints::collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden) {
+    if (lua_type(L, -1) != LUA_TTABLE && !Hints::try_replace_with_metaindex(L)) return false;
     // table so just collect on it
     return collect_hints_recurse(L, possible, last, usehidden, 10u);
 }
 
-std::string luainspector_hints::common_prefix(const std::vector<std::string>& possible) {
+std::string LuaInspector::Hints::common_prefix(const std::vector<std::string>& possible) {
     std::string ret;
     std::size_t maxindex = 1000000000u;
     for (std::size_t i = 0u; i < possible.size(); ++i) maxindex = std::min(maxindex, possible[i].size());
@@ -175,42 +171,6 @@ std::string luainspector_hints::common_prefix(const std::vector<std::string>& po
 }
 
 }  // namespace Neko
-
-const char* const kMetaname = "__neko_lua_inspector_meta";
-
-static void* __neko_lua_inspector_lightkey() {
-    static char KEY;
-    return &KEY;
-}
-
-static void* __neko_lua_inspector_print_func_lightkey() {
-    static char KEY;
-    return &KEY;
-}
-
-Neko::LuaInspector* Neko::LuaInspector::get_from_registry(lua_State* L) {
-    lua_pushlightuserdata(L, __neko_lua_inspector_lightkey());  // # -1
-    lua_gettable(L, LUA_REGISTRYINDEX);
-
-    Neko::LuaInspector* ret = nullptr;
-
-    if (lua_type(L, -1) == LUA_TUSERDATA && lua_getmetatable(L, -1)) {
-        // # -1 = metatable
-        // # -2 = userdata
-        lua_getfield(L, LUA_REGISTRYINDEX, kMetaname);  // get inspector metatable from registry
-        // # -1 = metatable
-        // # -2 = metatable
-        // # -3 = userdata
-        if (neko_lua_equal(L, -1, -2)) {                                      // determine is two metatable equal
-            ret = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, -3));  // inspector userdata
-        }
-
-        lua_pop(L, 2);  // pop two
-    }
-
-    lua_pop(L, 1);  // pop inspector userdata
-    return ret;
-}
 
 void Neko::LuaInspector::print_luastack(int first, int last, luainspector_logtype logtype) {
     std::stringstream ss;
@@ -263,21 +223,21 @@ void Neko::LuaInspector::setL(lua_State* L) {
 
     if (!L) return;
 
-    Neko::LuaInspector** ptr = static_cast<Neko::LuaInspector**>(lua_newuserdata(L, sizeof(Neko::LuaInspector*)));
-    (*ptr) = this;
+    // Neko::LuaInspector** ptr = static_cast<Neko::LuaInspector**>(lua_newuserdata(L, sizeof(Neko::LuaInspector*)));
+    //(*ptr) = this;
 
-    luaL_newmetatable(L, kMetaname);  // table
-    lua_pushliteral(L, "__gc");
-    lua_pushcfunction(L, &__luainspector_gc);
-    lua_settable(L, -3);  // table[gc]=ConsoleModel_gc
-    lua_setmetatable(L, -2);
+    // luaL_newmetatable(L, kMetaname);  // table
+    // lua_pushliteral(L, "__gc");
+    // lua_pushcfunction(L, &__luainspector_gc);
+    // lua_settable(L, -3);  // table[gc]=ConsoleModel_gc
+    // lua_setmetatable(L, -2);
 
-    lua_pushlightuserdata(L, __neko_lua_inspector_lightkey());
-    lua_pushvalue(L, -2);
-    lua_settable(L, LUA_REGISTRYINDEX);
+    // lua_pushlightuserdata(L, __neko_lua_inspector_lightkey());
+    // lua_pushvalue(L, -2);
+    // lua_settable(L, LUA_REGISTRYINDEX);
 
-    lua_pushcclosure(L, &__luainspector_echo, 1);
-    lua_setglobal(L, "echo");
+    // lua_pushcclosure(L, &__luainspector_echo, 1);
+    // lua_setglobal(L, "echo");
 }
 
 std::string Neko::LuaInspector::read_history(int change) {
@@ -304,16 +264,16 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     std::string last;
 
     const std::string lastbeg = inputbuffer;
-    luainspector_hints::prepare_hints(L, lastbeg, last);
-    if (!luainspector_hints::collect_hints(L, possible, last, false)) {
+    Hints::prepare_hints(L, lastbeg, last);
+    if (!Hints::collect_hints(L, possible, last, false)) {
         lua_pushglobaltable(L);
-        luainspector_hints::collect_hints(L, possible, last, false);
+        Hints::collect_hints(L, possible, last, false);
     }
 
     lua_settop(L, 0);  // Pop all
 
     if (possible.size() > 1u) {
-        const std::string common_prefix = luainspector_hints::common_prefix(possible);
+        const std::string common_prefix = Hints::common_prefix(possible);
         if (common_prefix.empty() || common_prefix.size() <= last.size()) {
             std::string msg = possible[0];
             for (std::size_t i = 1u; i < possible.size(); ++i) msg += " " + possible[i];
@@ -369,7 +329,7 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
 //     return true;
 // }
 
-int Neko::LuaInspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
+int command_line_callback_st(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
     return reinterpret_cast<Neko::LuaInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
 }
@@ -816,10 +776,7 @@ void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
-void Neko::LuaInspector::print(const std::string& msg, luainspector_logtype type) {
-    if (!g_inspector) return;
-    g_inspector->print_line(msg, type);
-}
+void Neko::LuaInspector::print(const std::string& msg, luainspector_logtype type) { this->print_line(msg, type); }
 
 Neko::CCharacter cJohn;
 
@@ -827,22 +784,18 @@ extern Assets g_assets;
 
 int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
-    void* model_mem = lua_newuserdata(L, sizeof(Neko::LuaInspector));
+    this->setL(L);
+    this->m_history.resize(8);
 
-    Neko::LuaInspector* inspector = new (model_mem) Neko::LuaInspector();
+    this->register_function<float>(std::bind(&luainspector_property_st::Render_TypeFloat, std::placeholders::_1, std::placeholders::_2));
+    this->register_function<bool>(std::bind(&luainspector_property_st::Render_TypeBool, std::placeholders::_1, std::placeholders::_2));
+    this->register_function<char>(std::bind(&luainspector_property_st::Render_TypeConstChar, std::placeholders::_1, std::placeholders::_2));
+    this->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
+    this->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
 
-    inspector->setL(L);
-    inspector->m_history.resize(8);
+    this->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
 
-    inspector->register_function<float>(std::bind(&luainspector_property_st::Render_TypeFloat, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<bool>(std::bind(&luainspector_property_st::Render_TypeBool, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<char>(std::bind(&luainspector_property_st::Render_TypeConstChar, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
-
-    inspector->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
-
-    inspector->property_register<CCharacter>("John", &cJohn, "John");
+    this->property_register<CCharacter>("John", &cJohn, "John");
 
     if (gApp->cfg.lite_init_path.len) {
         PROFILE_BLOCK("lite init");
@@ -865,18 +818,12 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
         lt_init(gApp->LiteLua, gApp->game_window, gApp->cfg.lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
     }
 
-    g_inspector = inspector;
-
-    Logger::getInstance()->setConsolePrintf([](const std::string& msg) { Neko::LuaInspector::print(msg, LUACON_LOG_TYPE_MESSAGE); });
+    Logger::getInstance()->setConsolePrintf([this](const std::string& msg) { Neko::LuaInspector::print(msg, LUACON_LOG_TYPE_MESSAGE); });
 
     return 1;
 }
 
-bool Neko::LuaInspector::visible = false;
-
 int Neko::LuaInspector::luainspector_draw(lua_State* L) {
-
-    Neko::LuaInspector* model = Neko::LuaInspector::get_from_registry(L);
 
     if (!visible) {
         return 0;
@@ -919,7 +866,7 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
             if (ImGui::BeginTabItem("LuaConsole")) {
                 bool textbox_react;
-                model->console_draw(textbox_react);
+                this->console_draw(textbox_react);
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Registry")) {
@@ -966,14 +913,14 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
             if (ImGui::BeginTabItem("Property")) {
 
-                auto& properties = model->m_property_map;
+                auto& properties = this->m_property_map;
 
-                ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), model->m_type_render_functions.size());
+                ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), this->m_type_render_functions.size());
 
                 for (auto& property_it : properties) {
 
-                    auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
-                    neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
+                    auto prop_render_func_it = this->m_type_render_functions.find(property_it.param_type);
+                    neko_assert(prop_render_func_it != this->m_type_render_functions.end());  // unsupported type, render function not found
                     const_str label = property_it.label.c_str();
                     void* value = property_it.param;
                     if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
@@ -1423,6 +1370,3 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 }
 
 #endif
-
-void inspector_set_visible(bool visible) { Neko::LuaInspector::visible = visible; }
-bool inspector_get_visible() { return Neko::LuaInspector::visible; }
