@@ -326,7 +326,7 @@ void script_init() {
 
     LuaVM vm;
 
-    ENGINE_LUA() = vm.Create();
+    ENGINE_LUA() = vm.Create(true);
 
     auto L = ENGINE_LUA();
 
@@ -371,8 +371,8 @@ void script_init() {
         gw = fetch_world("Admin")
     )");
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
-    ENGINE_ECS() = (EcsWorld *)luaL_checkudata(L, -1, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
+    ENGINE_ECS() = (EcsWorld *)luaL_checkudata(L, -1, ECS_WORLD_METATABLE);
     lua_pop(L, 1);
 
     timer.stop();

@@ -165,10 +165,10 @@ int EcsGetTid_w(lua_State* L, int stk, int proto_id) {
 
 int EcsGetTid(lua_State* L, const char* name) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
-    // EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    // EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
     lua_getiuservalue(L, ecs_ud, WORLD_PROTO_ID);
 
@@ -241,10 +241,10 @@ void EcsWorldFini_i(EcsWorld* w) {
 
 int EcsRegister(lua_State* L, const_str name) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
-    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
     lua_getiuservalue(L, ecs_ud, WORLD_PROTO_ID);
 
@@ -285,10 +285,10 @@ int EcsRegister(lua_State* L, const_str name) {
 
 Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
-    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
     Entity* e = EcsEntityAlloc(w);
     int eid = e - w->entity_buf;
@@ -362,10 +362,10 @@ Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
 }
 
 void EcsEntityDel(lua_State* L, int eid) {
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
-    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
     Entity* e = EcsGetEnt(L, w, eid);
     EcsEntityDead(w, e);
 
@@ -379,9 +379,9 @@ int EcsComponentSet(lua_State* L, Entity* e, const char* name, const LuaRef& ref
 }
 
 int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref) {
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
-    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
     int eid = e - w->entity_buf;
     lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
@@ -424,10 +424,10 @@ LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name) {
 
 LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
-    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_UDATA_NAME);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
     lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
     int components = ecs_ud + 1;
@@ -453,7 +453,7 @@ LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid) {
 struct EcsLuaWrap {
 
     static int l_ecs_get_detail(lua_State* L) {
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         lua_getiuservalue(L, 1, WORLD_PROTO_ID);
         lua_getiuservalue(L, 1, WORLD_PROTO_DEFINE);
         lua_getiuservalue(L, 1, WORLD_COMPONENTS);
@@ -467,7 +467,7 @@ struct EcsLuaWrap {
     }
 
     static int l_ecs_end(lua_State* L) {
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         EcsWorldFini_i(w);
         LOG_INFO("ecs_lua_gc");
         return 0;
@@ -475,7 +475,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_register(lua_State* L) {
 
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         const char* name = lua_tostring(L, 2);
 
         EcsRegister(L, name);
@@ -492,7 +492,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_new_entity(lua_State* L) {
         int components, proto_id;
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         Entity* e = EcsEntityAlloc(w);
         int eid = e - w->entity_buf;
         lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
@@ -533,7 +533,7 @@ struct EcsLuaWrap {
     }
 
     static int l_ecs_del_entity(lua_State* L) {
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         Entity* e = EcsGetEnt_i(L, w, 2);
         EcsEntityDead(w, e);
         return 0;
@@ -541,7 +541,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_get_component(lua_State* L) {
         int i, top, proto_id, components;
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         Entity* e = EcsGetEnt_i(L, w, 2);
         top = lua_gettop(L);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
@@ -564,7 +564,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_add_component(lua_State* L) {
         int tid, cid;
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         Entity* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         tid = EcsGetTid_w(L, 3, lua_gettop(L));
@@ -580,7 +580,7 @@ struct EcsLuaWrap {
     static int l_ecs_remove_component(lua_State* L) {
         int i, proto_id;
         int tid, cid;
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         Entity* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         proto_id = lua_gettop(L);
@@ -595,7 +595,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_touch_component(lua_State* L) {
         int eid, tid, cid;
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
         lua_getiuservalue(L, ECS_WORLD, WORLD_KEY_EID);
         lua_gettable(L, 2);
@@ -723,7 +723,7 @@ struct EcsLuaWrap {
         const char* match_mode_name = luaL_checklstring(L, ECS_WORLD + 1, &match_mode_name_sz);
 
         int top = lua_gettop(L);
-        EcsWorld* world = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* world = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
         lua_CFunction iter = NULL;
         MatchMode mode = MATCH_ALL;
@@ -778,7 +778,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_update(lua_State* L) {
 
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
         // 清除死亡实体
         Entity* entity_buf = w->entity_buf;
@@ -894,7 +894,7 @@ int l_ecs_create_world(lua_State* L) {
 
     EcsWorldInit_i(world);
 
-    if (luaL_getmetatable(L, ECS_WORLD_UDATA_NAME) == LUA_TNIL) {
+    if (luaL_getmetatable(L, ECS_WORLD_METATABLE) == LUA_TNIL) {
         luaL_Reg world_mt[] = {
                 {"__index", NULL},
                 {"__name", NULL},
@@ -917,10 +917,10 @@ int l_ecs_create_world(lua_State* L) {
         luaL_setfuncs(L, world_mt, 0);
         lua_pushvalue(L, -1);
         lua_setfield(L, -2, "__index");
-        lua_pushliteral(L, ECS_WORLD_UDATA_NAME);
+        lua_pushliteral(L, ECS_WORLD_METATABLE);
         lua_setfield(L, -2, "__name");
         lua_pushvalue(L, -1);
-        lua_setfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+        lua_setfield(L, LUA_REGISTRYINDEX, ECS_WORLD_METATABLE);
     }
     lua_setmetatable(L, -2);
 
@@ -954,8 +954,8 @@ int l_ecs_create_world(lua_State* L) {
     lua_pushstring(L, s);
     lua_setiuservalue(L, 1, WORLD_UPVAL_N);
 
-    // lua_pushvalue(L, 1);
-    // lua_setfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_pushvalue(L, 1);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
 
     return 1;
 }

@@ -53,7 +53,6 @@ REFL_FIELDS(engine_cfg_t, height);
 REFL_FIELDS(engine_cfg_t, width); 
 REFL_FIELDS(engine_cfg_t, game_proxy); 
 REFL_FIELDS(engine_cfg_t, default_font); 
-REFL_FIELDS(engine_cfg_t, lite_init_path); 
 REFL_FIELDS(engine_cfg_t, dump_allocs_detailed);
 REFL_FIELDS(engine_cfg_t, hot_reload);
 REFL_FIELDS(engine_cfg_t, startup_load_scripts);
@@ -931,7 +930,6 @@ function neko.conf(t)
         height = 720.0,
         game_proxy = "default",
         default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
-        -- lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
         dump_allocs_detailed = true,
         swap_interval = 1,
         target_fps = 120,
@@ -1006,6 +1004,7 @@ end
 
     gApp->inspector = new (lua_newuserdata(L, sizeof(Neko::LuaInspector))) Neko::LuaInspector();
     lua_setglobal(L, "__neko_inspector");
+    gApp->inspector->luainspector_init(L);
 
     if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
         load_all_lua_scripts(L);

@@ -11,7 +11,6 @@
 #include <typeindex>
 #include <vector>
 
-#include "editor/lite.h"
 #include "engine/asset.h"
 #include "base/common/base.hpp"
 #include "base/common/profiler.hpp"
@@ -37,11 +36,6 @@ static int __luainspector_gc(lua_State* L) {
     if (m) {
         m->variable_pool_free();
         m->setL(0x0);
-    }
-
-    if (gApp->cfg.lite_init_path.len) {
-        lt_fini();
-        lua_close(gApp->LiteLua);
     }
 
     LOG_INFO("luainspector __gc {}", m);
@@ -244,8 +238,8 @@ std::string Neko::LuaInspector::read_history(int change) {
     const bool was_promp = static_cast<std::size_t>(m_hindex) == m_history.size();
 
     m_hindex += change;
-    m_hindex = std::max<int>(m_hindex, 0);
-    m_hindex = std::min<int>(m_hindex, m_history.size());
+    m_hindex = std::max<std::size_t>(m_hindex, 0);
+    m_hindex = std::min<std::size_t>(m_hindex, m_history.size());
 
     if (static_cast<std::size_t>(m_hindex) == m_history.size()) {
         return m_history[m_hindex - 1];
@@ -797,27 +791,6 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
     this->property_register<CCharacter>("John", &cJohn, "John");
 
-    if (gApp->cfg.lite_init_path.len) {
-        PROFILE_BLOCK("lite init");
-        LuaVM vm;
-        gApp->LiteLua = vm.Create();
-
-        luaL_openlibs(gApp->LiteLua);
-
-        lua_atpanic(
-                gApp->LiteLua, +[](lua_State* L) {
-                    auto msg = lua_tostring(L, -1);
-                    printf("LUA: neko_panic error: %s", msg);
-                    return 0;
-                });
-
-        // lua_register(g_app->lite_L, "__neko_loader", Neko::vfs_lua_loader);
-        // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
-        // luaL_dostring(g_app->lite_L, str);
-
-        lt_init(gApp->LiteLua, gApp->game_window, gApp->cfg.lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
-    }
-
     Logger::getInstance()->setConsolePrintf([this](const std::string& msg) { Neko::LuaInspector::print(msg, LUACON_LOG_TYPE_MESSAGE); });
 
     return 1;
@@ -827,38 +800,6 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
     if (!visible) {
         return 0;
-    }
-
-    {
-
-        if (gApp->cfg.lite_init_path.len && gApp->LiteLua) {
-            if (ImGui::Begin("Lite")) {
-                ImGuiWindow* window = ImGui::GetCurrentWindow();
-                ImVec2 bounds = ImGui::GetContentRegionAvail();
-                vec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
-                neko_assert(window);
-                ImVec2 pos = window->Pos;
-                ImVec2 size = window->Size;
-                lt_mx = mouse_pos.x - pos.x;
-                lt_my = mouse_pos.y - pos.y;
-                lt_wx = pos.x;
-                lt_wy = pos.y;
-                lt_ww = size.x;
-                lt_wh = size.y;
-                if (lt_resizesurface(lt_getsurface(), lt_ww, lt_wh)) {
-                    // glfw_wrap__window_refresh_callback(g_app->game_window);
-                }
-                // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
-                // ui_texture_fit(lt_getsurface(0)->t, bounds);
-                ImGui::Image((ImTextureID)lt_getsurface()->t.id, bounds);
-                // if (!!nk_input_is_mouse_hovering_rect(&g_app->ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
-                //     lt_events &= ~(1 << 31);
-                // }
-            }
-            ImGui::End();
-        }
-
-        if (gApp->cfg.lite_init_path.len && gApp->LiteLua) lt_tick(gApp->LiteLua);
     }
 
     if (ImGui::Begin("LuaInspector")) {

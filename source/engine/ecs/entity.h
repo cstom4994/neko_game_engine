@@ -237,7 +237,7 @@ CEntityPool<T>* EcsProtoGetCType(lua_State* L) {
 
     const char* type_name = reflection::GetTypeName<T>();
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
     lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);

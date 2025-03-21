@@ -93,7 +93,7 @@ private:
 
     lua_State* L;
     std::vector<std::string> m_history;
-    int m_hindex;
+    std::size_t m_hindex;
 
     std::string cmd, cmd2;
     bool m_should_take_focus{false};

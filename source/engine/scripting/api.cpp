@@ -2173,7 +2173,7 @@ int register_mt_aseprite(lua_State* L) {
 #endif
 
 LUA_FUNCTION(__neko_bind_ecs_f) {
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     return 1;
 }
 

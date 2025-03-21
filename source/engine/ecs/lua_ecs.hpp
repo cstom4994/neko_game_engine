@@ -33,16 +33,9 @@ enum ECS_WORLD_UPVALUES {
 
 #define ENTITY_MAX_COMPONENTS (64)  // 单个实体最大组件数量
 
-#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
+#define NEKO_ECS_CORE "__NEKO_ECS_CORE"
+#define ECS_WORLD_METATABLE "__NEKO_ECS_WORLD_METATABLE"
 #define ECS_WORLD (1)
-
-// 测试 ECS 用
-typedef struct CGameObjectTest {
-    char name[64];
-    bool active;
-    bool visible;
-    bool selected;
-} CGameObjectTest;
 
 struct Component {
     int eid;  // 该组件附着的实体id
@@ -121,7 +114,7 @@ int EcsRegisterCType(lua_State* L) {
 
     const char* type_name = reflection::GetTypeName<T>();
 
-    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
     lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);

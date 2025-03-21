@@ -247,7 +247,7 @@ static void lua_thread_proc(void *udata) {
     // neko_defer(lua_close(L));
 
     LuaVM vm;
-    vm.Create();
+    vm.Create(true);
 
     lua_State *L = vm;
     neko_defer(vm.Fini(L));

@@ -1097,12 +1097,18 @@ struct LuaVM {
     LuaVM() = default;
     LuaVM(lua_State *l) : L(l) {}
 
-    inline lua_State *Create() {
+    inline lua_State *Create(bool selfallloc) {
+
+        lua_State *L{};
 
 #ifdef _DEBUG
-        lua_State *L = ::lua_newstate(Allocf, NULL);
+        if (selfallloc) {
+            L = ::lua_newstate(Allocf, NULL);
+        } else {
+            L = ::luaL_newstate();
+        }
 #else
-        lua_State *L = ::luaL_newstate();
+        L = ::luaL_newstate();
 #endif
 
         ::luaL_openlibs(L);
