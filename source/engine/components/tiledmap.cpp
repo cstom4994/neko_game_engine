@@ -7,6 +7,7 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
+#include "engine/renderer/shader.h"
 
 // deps
 #include <box2d/box2d.h>

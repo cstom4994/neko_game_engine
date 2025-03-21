@@ -15,6 +15,80 @@
 #include "engine/graphics.h"
 #include "renderer.h"
 
+static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char* message, const void* up) {
+
+    if (id == 131169 || id == 131185 || id == 131218 || id == 131204) {
+        return;
+    }
+
+    const char* s;
+    const char* t;
+
+    switch (source) {
+        case GL_DEBUG_SOURCE_API:
+            s = "API";
+            break;
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+            s = "window system";
+            break;
+        case GL_DEBUG_SOURCE_SHADER_COMPILER:
+            s = "shader compiler";
+            break;
+        case GL_DEBUG_SOURCE_THIRD_PARTY:
+            s = "third party";
+            break;
+        case GL_DEBUG_SOURCE_APPLICATION:
+            s = "application";
+            break;
+        case GL_DEBUG_SOURCE_OTHER:
+            s = "other";
+            break;
+    }
+
+    switch (type) {
+        case GL_DEBUG_TYPE_ERROR:
+            t = "type error";
+            break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+            t = "deprecated behaviour";
+            break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+            t = "undefined behaviour";
+            break;
+        case GL_DEBUG_TYPE_PORTABILITY:
+            t = "portability";
+            break;
+        case GL_DEBUG_TYPE_PERFORMANCE:
+            t = "performance";
+            break;
+        case GL_DEBUG_TYPE_MARKER:
+            t = "marker";
+            break;
+        case GL_DEBUG_TYPE_PUSH_GROUP:
+            t = "push group";
+            break;
+        case GL_DEBUG_TYPE_POP_GROUP:
+            t = "pop group";
+            break;
+        case GL_DEBUG_TYPE_OTHER:
+            t = "other";
+            break;
+    }
+
+    switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+        case GL_DEBUG_SEVERITY_MEDIUM:
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
+            break;
+        case GL_DEBUG_SEVERITY_LOW:
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
+            break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
+            break;
+    }
+}
+
 static u32 get_gl_thing(u32 thing) {
     switch (thing) {
         case vt_clip:
@@ -392,8 +466,8 @@ void bind_render_target_output(RenderTarget* target, u32 unit) {
 
 Color256 make_color(u32 rgb, u8 alpha) { return Color256{(u8)((rgb >> 16) & 0xFF), (u8)((rgb >> 8) & 0xFF), (u8)(rgb & 0xff), alpha}; }
 
-Renderer* new_renderer(AssetShader shader, vec2 dimentions) {
-    Renderer* renderer = (Renderer*)mem_calloc(1, sizeof(Renderer));
+QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions) {
+    QuadRenderer* renderer = (QuadRenderer*)mem_calloc(1, sizeof(QuadRenderer));
 
     renderer->quad_count = 0;
     renderer->texture_count = 0;
@@ -427,13 +501,13 @@ Renderer* new_renderer(AssetShader shader, vec2 dimentions) {
     return renderer;
 }
 
-void free_renderer(Renderer* renderer) {
+void free_renderer(QuadRenderer* renderer) {
     deinit_vb(&renderer->vb);
 
     mem_free(renderer);
 }
 
-void renderer_flush(Renderer* renderer) {
+void renderer_flush(QuadRenderer* renderer) {
     if (renderer->quad_count == 0) {
         return;
     }
@@ -498,12 +572,12 @@ void renderer_flush(Renderer* renderer) {
     draw_disable(vt_clip);
 }
 
-void renderer_end_frame(Renderer* renderer) {
+void renderer_end_frame(QuadRenderer* renderer) {
     renderer_flush(renderer);
     renderer->light_count = 0;
 }
 
-void renderer_push_light(Renderer* renderer, struct light light) {
+void renderer_push_light(QuadRenderer* renderer, struct light light) {
     if (renderer->light_count > max_lights) {
         fprintf(stderr, "Too many lights! Max: %d\n", max_lights);
         return;
@@ -512,7 +586,7 @@ void renderer_push_light(Renderer* renderer, struct light light) {
     renderer->lights[renderer->light_count++] = light;
 }
 
-void renderer_push(Renderer* renderer, TexturedQuad* quad) {
+void renderer_push(QuadRenderer* renderer, TexturedQuad* quad) {
     f32 tx = 0, ty = 0, tw = 0, th = 0;
 
     i32 tidx = -1;
@@ -589,21 +663,21 @@ void renderer_push(Renderer* renderer, TexturedQuad* quad) {
     }
 }
 
-void renderer_clip(Renderer* renderer, rect_t clip) {
+void renderer_clip(QuadRenderer* renderer, rect_t clip) {
     if (renderer->clip.x != clip.x || renderer->clip.y != clip.y || renderer->clip.w != clip.w || renderer->clip.h != clip.h) {
         renderer_flush(renderer);
         renderer->clip = clip;
     }
 }
 
-void renderer_resize(Renderer* renderer, vec2 size) {
+void renderer_resize(QuadRenderer* renderer, vec2 size) {
     renderer->dimentions = size;
     renderer->camera = mat4_ortho(0.0f, (f32)size.x, (f32)size.y, 0.0f, -1.0f, 1.0f);
 }
 
-void renderer_fit_to_main_window(Renderer* renderer) {
+void renderer_fit_to_main_window(QuadRenderer* renderer) {
     i32 win_w, win_h;
-    query_window(0, &win_w, &win_h);
+    the<Window>().Query(0, &win_w, &win_h);
 
     renderer_resize(renderer, neko_v2(win_w, win_h));
 }
@@ -612,7 +686,7 @@ PostProcessor* new_post_processor(AssetShader shader) {
     PostProcessor* p = (PostProcessor*)mem_calloc(1, sizeof(PostProcessor));
 
     i32 win_w, win_h;
-    query_window(0, &win_w, &win_h);
+    the<Window>().Query(0, &win_w, &win_h);
 
     init_render_target(&p->target, win_w, win_h);
 
@@ -657,7 +731,7 @@ void resize_post_processor(PostProcessor* p, vec2 dimentions) {
 
 void post_processor_fit_to_main_window(PostProcessor* p) {
     i32 win_w, win_h;
-    query_window(0, &win_w, &win_h);
+    the<Window>().Query(0, &win_w, &win_h);
 
     resize_post_processor(p, neko_v2(win_w, win_h));
 }
@@ -932,7 +1006,7 @@ i32 text_height_n(struct font* font, const char* text, u32 n) {
     return height;
 }
 
-i32 render_text(Renderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color) {
+i32 render_text(QuadRenderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color) {
     const char* p;
     u32 codepoint;
     struct glyph_set* set;
@@ -966,7 +1040,7 @@ i32 render_text(Renderer* renderer, struct font* font, const char* text, f32 x, 
     return x;
 }
 
-i32 render_text_n(Renderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color) {
+i32 render_text_n(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color) {
     const char* p;
     u32 codepoint;
     struct glyph_set* set;
@@ -1000,7 +1074,7 @@ i32 render_text_n(Renderer* renderer, struct font* font, const char* text, u32 n
     return x;
 }
 
-i32 render_text_fancy(Renderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin) {
+i32 render_text_fancy(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin) {
     const char* p;
     u32 codepoint;
     struct glyph_set* set;
@@ -1082,4 +1156,32 @@ char* word_wrap(struct font* font, char* buffer, const char* string, i32 width) 
     buffer[i] = '\0';
 
     return buffer;
+}
+
+void Renderer::init() {}
+
+void Renderer::fini() {}
+
+void Renderer::update() {}
+
+void Renderer::InitOpenGL() {
+
+    // initialize GLEW
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        LOG_INFO("Failed to initialize GLAD");
+    }
+
+#if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(gl_debug_callback, NULL);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+#endif
+
+    // some GL settings
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
 }

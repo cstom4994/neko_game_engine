@@ -75,8 +75,6 @@ struct inspect_table_config {
     bool is_non_function = false;
 };
 
-enum luainspector_logtype { LUACON_LOG_TYPE_WARNING = 1, LUACON_LOG_TYPE_ERROR = 2, LUACON_LOG_TYPE_NOTE = 4, LUACON_LOG_TYPE_SUCCESS = 0, LUACON_LOG_TYPE_MESSAGE = 3 };
-
 class LuaInspector {
 public:
     struct Hints {
@@ -89,8 +87,6 @@ public:
     };
 
 private:
-    std::vector<std::pair<std::string, luainspector_logtype>> messageLog;
-
     lua_State* L;
     std::vector<std::string> m_history;
     std::size_t m_hindex;
@@ -106,6 +102,10 @@ private:
     std::vector<luainspector_property> m_property_map;
     std::vector<void*> m_variable_pool;
 
+    std::deque<std::pair<std::string, Logger::Level>> messageLog;
+    std::mutex logMutex;
+    int callbackId;
+
 private:
     inline int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
         if (color) {
@@ -116,13 +116,14 @@ private:
     }
 
 public:
+    LuaInspector();
+    ~LuaInspector();
+
     void console_draw(bool& textbox_react) noexcept;
-    void print_line(const std::string& msg, luainspector_logtype type) noexcept;
 
     bool visible{false};
 
     void inspect_table(lua_State* L, inspect_table_config& cfg);
-    void print(const std::string& msg, luainspector_logtype type);
     int luainspector_init(lua_State* L);
     int luainspector_draw(lua_State* L);
 
@@ -132,8 +133,25 @@ public:
     void show_autocomplete() noexcept;
     std::string read_history(int change);
     std::string try_complete(std::string inputbuffer);
-    void print_luastack(int first, int last, luainspector_logtype logtype);
+    void print(std::string msg, Logger::Level logtype = Logger::Level::INFO);
+    void print_luastack(int first, int last, Logger::Level logtype);
     bool try_eval(std::string m_buffcmd, bool addreturn);
+
+    void appendMessage(const std::string& message, const Logger::Level& logtype) {
+        std::lock_guard<std::mutex> lock(logMutex);
+        if (messageLog.size() >= 64) {
+            messageLog.pop_front();
+        }
+        messageLog.push_back(std::make_pair(message, logtype));
+    }
+
+    template <class F>
+    void forEachMessages(F f) {
+        std::lock_guard<std::mutex> lock(logMutex);
+        for (const auto& message : messageLog) {
+            f(message);
+        }
+    }
 
     inline void variable_pool_free() {
         for (const auto& var : this->m_variable_pool) {

@@ -1,6 +1,6 @@
 -- hot_require 'nekogame.edit'
 
-local ImGui = neko.imgui
+local ImGui = neko.imgui_obsolete
 
 ns.edit = {
     inspect = false,

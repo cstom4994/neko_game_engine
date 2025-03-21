@@ -4,6 +4,7 @@
 #include "engine/graphics.h"
 #include "base/common/color.hpp"
 #include "base/common/math.hpp"
+#include "engine/renderer/shader.h"
 
 #define max_lights 100
 
@@ -96,7 +97,7 @@ struct light {
     f32 intensity;
 };
 
-struct Renderer {
+struct QuadRenderer {
     AssetShader shader;
     VertexBuffer vb;
 
@@ -125,15 +126,15 @@ struct Renderer {
     u32 indices[100 * 6];
 };
 
-NEKO_API() Renderer* new_renderer(AssetShader shader, vec2 dimentions);
-NEKO_API() void free_renderer(Renderer* renderer);
-NEKO_API() void renderer_flush(Renderer* renderer);
-NEKO_API() void renderer_end_frame(Renderer* renderer);
-NEKO_API() void renderer_push(Renderer* renderer, TexturedQuad* quad);
-NEKO_API() void renderer_push_light(Renderer* renderer, struct light light);
-NEKO_API() void renderer_clip(Renderer* renderer, rect_t clip);
-NEKO_API() void renderer_resize(Renderer* renderer, vec2 size);
-NEKO_API() void renderer_fit_to_main_window(Renderer* renderer);
+NEKO_API() QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions);
+NEKO_API() void free_renderer(QuadRenderer* renderer);
+NEKO_API() void renderer_flush(QuadRenderer* renderer);
+NEKO_API() void renderer_end_frame(QuadRenderer* renderer);
+NEKO_API() void renderer_push(QuadRenderer* renderer, TexturedQuad* quad);
+NEKO_API() void renderer_push_light(QuadRenderer* renderer, struct light light);
+NEKO_API() void renderer_clip(QuadRenderer* renderer, rect_t clip);
+NEKO_API() void renderer_resize(QuadRenderer* renderer, vec2 size);
+NEKO_API() void renderer_fit_to_main_window(QuadRenderer* renderer);
 
 struct PostProcessor {
     RenderTarget target;
@@ -153,11 +154,11 @@ NEKO_API() void flush_post_processor(PostProcessor* p, bool default_rt);
 
 struct font;
 
-NEKO_API() i32 render_text(Renderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color);
+NEKO_API() i32 render_text(QuadRenderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color);
 
-NEKO_API() i32 render_text_n(Renderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color);
+NEKO_API() i32 render_text_n(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color);
 
-NEKO_API() i32 render_text_fancy(Renderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin);
+NEKO_API() i32 render_text_fancy(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin);
 
 NEKO_API() struct font* load_font_from_memory(void* data, u64 filesize, f32 size);
 NEKO_API() void free_font(struct font* font);
@@ -176,3 +177,12 @@ NEKO_API() i32 text_width_n(struct font* font, const char* text, u32 n);
 NEKO_API() i32 text_height_n(struct font* font, const char* text, u32 n);
 
 NEKO_API() char* word_wrap(struct font* font, char* buffer, const char* string, i32 width);
+
+class Renderer : public Neko::SingletonClass<Renderer> {
+public:
+    void init() override;
+    void fini() override;
+    void update() override;
+
+    void InitOpenGL();
+};

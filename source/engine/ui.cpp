@@ -15,6 +15,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/edit.h"
 #include "engine/graphics.h"
+#include "engine/renderer/shader.h"
 #include "engine/input.h"
 #include "base/scripting/lua_wrapper.hpp"
 #include "extern/atlas.h"

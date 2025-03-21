@@ -19,6 +19,7 @@
 #include "engine/ui.h"
 #include "engine/imgui.hpp"
 #include "base/common/logger.hpp"
+#include "engine/window.h"
 
 // deps
 #include "extern/luaalloc.h"
@@ -105,7 +106,7 @@ struct App {
     Array<Sound *> garbage_sounds;
 #endif
 
-    GLFWwindow *game_window;
+    Window *window;
 };
 
 extern App *gApp;
@@ -145,7 +146,6 @@ public:
 
     void quit();
 
-    void WindowSwapBuffer();
     void SplashScreen();
 };
 
@@ -153,13 +153,6 @@ void system_init();
 void system_fini();
 
 int timing_update(App *app, event_t evt);
-
-inline void query_window(int idx, i32 *width, i32 *height) {
-    int w, h;
-    glfwGetWindowSize(gApp->game_window, &w, &h);
-    *width = w;
-    *height = h;
-}
 
 extern void Sys_Shutdown(void);
 extern bool EngineInit(int argc, const char *argv[]);

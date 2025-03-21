@@ -18,7 +18,6 @@ namespace Neko {
 struct NEKO_PACKS {
     static inline const_str GAMEDATA = "default_pack";
     static inline const_str LUACODE = "luacode";
-    static inline const_str DEFAULT_FONT = "assets/fonts/VonwaonBitmap-16px.ttf";
 };
 
 struct MountResult {

@@ -52,8 +52,8 @@ void Logger::processLogs(std::stop_token st) {
             std::cout.write(consoleBuffer.data(), consoleBuffer.size());
             std::cout.flush();
 
-            if (console_printf) {
-                console_printf(std::string(consoleBuffer.data(), consoleBuffer.size()));
+            for (auto &f : callbackList) {
+                f.second(std::string(consoleBuffer.data(), consoleBuffer.size()), Logger::Level::INFO);
             }
         }
     };

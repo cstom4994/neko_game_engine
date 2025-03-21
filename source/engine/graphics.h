@@ -177,15 +177,6 @@ static const char* opengl_string(GLenum e) {
 
 #include "engine/base.hpp"
 
-typedef struct AssetShader {
-    GLuint id;
-    const char* name;
-    bool panic_mode;
-} AssetShader;
-
-bool neko_load_shader(AssetShader* shader, String path);
-void neko_unload_shader(AssetShader* shader);
-
 // get pointer offset of 'field' in struct 'type'
 #define poffsetof(type, field) ((void*)(&((type*)0)->field))
 
@@ -346,17 +337,6 @@ struct neko_resource_t;
 
 NEKO_API() neko_color_t neko_color_from_rgb_color(neko_rgb_color_t rgb);
 NEKO_API() neko_rgb_color_t neko_rgb_color_from_color(neko_color_t color);
-
-NEKO_API() void neko_bind_shader(u32 shader);
-NEKO_API() void neko_shader_set_int(u32 shader, const char* name, i32 v);
-NEKO_API() void neko_shader_set_uint(u32 shader, const char* name, u32 v);
-NEKO_API() void neko_shader_set_float(u32 shader, const char* name, float v);
-NEKO_API() void neko_shader_set_color(u32 shader, const char* name, neko_color_t color);
-NEKO_API() void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color);
-NEKO_API() void neko_shader_set_v2f(u32 shader, const char* name, vec2 v);
-NEKO_API() void neko_shader_set_v3f(u32 shader, const char* name, vec3 v);
-NEKO_API() void neko_shader_set_v4f(u32 shader, const char* name, vec4 v);
-NEKO_API() void neko_shader_set_m4f(u32 shader, const char* name, mat4 v);
 
 typedef enum neko_vertex_buffer_flags_t {
     NEKO_VERTEXBUFFER_STATIC_DRAW = 1 << 0,

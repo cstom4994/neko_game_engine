@@ -134,10 +134,10 @@ AtlasImage *Atlas::get(String name) {
 
 #endif
 
-Assets g_assets = {};
-
 static void hot_reload_thread(void *) {
     u32 reload_interval = gBase.reload_interval.load() * 1000;
+
+    Assets &g_assets = the<Assets>();
 
     while (true) {
         PROFILE_BLOCK("hot reload");
@@ -148,7 +148,7 @@ static void hot_reload_thread(void *) {
                 break;
             }
 
-            bool signaled = g_assets.shutdown_notify.wait_for(lock, std::chrono::milliseconds(reload_interval), [] { return g_assets.shutdown; });
+            bool signaled = g_assets.shutdown_notify.wait_for(lock, std::chrono::milliseconds(reload_interval), [&] { return g_assets.shutdown; });
             if (signaled) {
                 break;
             }
@@ -188,6 +188,8 @@ static void hot_reload_thread(void *) {
 }
 
 int assets_perform_hot_reload_changes(App *app, event_t evt) {
+    Assets &g_assets = the<Assets>();
+
     LockGuard<Mutex> lock{g_assets.changes_mtx};
 
     if (g_assets.changes.len == 0) {
@@ -254,6 +256,8 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
 }
 
 void assets_shutdown() {
+    Assets &g_assets = the<Assets>();
+
     if (gBase.hot_reload_enabled.load()) {
         {
             LockGuard<Mutex> lock{g_assets.shutdown_mtx};
@@ -292,6 +296,7 @@ void assets_shutdown() {
 }
 
 void assets_start_hot_reload() {
+    Assets &g_assets = the<Assets>();
 
     g_assets.rw_lock.make();
 
@@ -382,6 +387,8 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
 }
 
 bool asset_read(u64 key, Asset *out) {
+    Assets &g_assets = the<Assets>();
+
     g_assets.rw_lock.shared_lock();
     neko_defer(g_assets.rw_lock.shared_unlock());
 
@@ -395,6 +402,8 @@ bool asset_read(u64 key, Asset *out) {
 }
 
 void asset_write(Asset asset) {
+    Assets &g_assets = the<Assets>();
+
     g_assets.rw_lock.unique_lock();
     neko_defer(g_assets.rw_lock.unique_unlock());
 

@@ -2,7 +2,7 @@
 -- hot_require 'nekogame'
 mu = neko.ui
 db = neko.db
-imgui = neko.imgui
+imgui = neko.imgui_obsolete
 
 function neko.__define_default_callbacks()
     neko.before_quit = function()

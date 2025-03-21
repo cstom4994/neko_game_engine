@@ -17,6 +17,8 @@ class Logger {
 public:
     enum class Level { TRACE, INFO, WARNING, ERR };
 
+    using LogCallback = std::function<void(const std::string &, const Level &)>;
+
     static constexpr std::array<std::string_view, 4> LEVEL_STRINGS = {"TRACE", "INFO", "WARN", "ERROR"};
 
     Logger();
@@ -121,20 +123,33 @@ private:
 
     std::atomic<bool> running{true};
 
-    std::function<void(const std::string &msg)> console_printf{};
+    std::vector<std::pair<int, LogCallback>> callbackList{};
+
+    std::mutex callbackMutex;
+    int nextCallbackId = 0;
 
 public:
     static Logger *getInstance();
     static void init();
     static void shutdown();
 
+    int registerCallback(const LogCallback &callback) {
+        std::lock_guard<std::mutex> lock(callbackMutex);
+        int id = nextCallbackId++;
+        callbackList.emplace_back(id, callback);
+        return id;
+    }
+
+    void unregisterCallback(int callbackId) {
+        std::lock_guard<std::mutex> lock(callbackMutex);
+        callbackList.erase(std::remove_if(callbackList.begin(), callbackList.end(), [callbackId](const auto &item) { return item.first == callbackId; }), callbackList.end());
+    }
+
 private:
     void processLogs(std::stop_token st);
     void formatLogMessage(const LogMessage &msg, std::vector<char> &buffer) noexcept;
 
 public:
-    void setConsolePrintf(std::function<void(const std::string &msg)> func) noexcept { console_printf = func; }
-
     template <typename... Args>
     void log(const std::source_location &loc, Level level, std::format_string<Args...> fmt, Args &&...args) {
         try {

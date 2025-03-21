@@ -11,6 +11,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
+#include "engine/renderer/shader.h"
 
 using namespace Neko;
 using namespace Neko::luabind;
@@ -170,7 +171,8 @@ struct FileChange {
     u64 modtime;
 };
 
-struct Assets {
+class Assets : public SingletonClass<Assets> {
+public:
     HashMap<Asset> table;
     RWLock rw_lock;
 

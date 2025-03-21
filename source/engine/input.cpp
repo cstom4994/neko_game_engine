@@ -21,30 +21,30 @@ static MouseCode _glfw_to_mousecode(int mouse) { return (MouseCode)mouse; }
 
 bool input_key_down(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(gApp->game_window, glfwkey) == GLFW_PRESS;
+    return glfwGetKey(gApp->window->glfwWindow(), glfwkey) == GLFW_PRESS;
 }
 
 bool input_key_release(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(gApp->game_window, glfwkey) == GLFW_RELEASE;
+    return glfwGetKey(gApp->window->glfwWindow(), glfwkey) == GLFW_RELEASE;
 }
 
 vec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
-    glfwGetCursorPos(gApp->game_window, &x, &y);
+    glfwGetCursorPos(gApp->window->glfwWindow(), &x, &y);
     return luavec2(x, y);
 }
 
 vec2 input_get_mouse_pos_pixels() {
     double x, y;
-    glfwGetCursorPos(gApp->game_window, &x, &y);
+    glfwGetCursorPos(gApp->window->glfwWindow(), &x, &y);
     return luavec2(x, -y);
 }
 vec2 input_get_mouse_pos_unit() { return Neko::the<Game>().pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
-    return glfwGetMouseButton(gApp->game_window, glfwmouse) == GLFW_PRESS;
+    return glfwGetMouseButton(gApp->window->glfwWindow(), glfwmouse) == GLFW_PRESS;
 }
 
 void input_add_key_down_callback(KeyCallback f) { Neko::the<Input>().key_down_cbs.push(f); }
@@ -104,11 +104,13 @@ static void _scroll_callback(GLFWwindow* window, double x, double y) {
 void Input::init() {
     PROFILE_FUNC();
 
-    glfwSetKeyCallback(gApp->game_window, _key_callback);
-    glfwSetCharCallback(gApp->game_window, _char_callback);
-    glfwSetMouseButtonCallback(gApp->game_window, _mouse_callback);
-    glfwSetCursorPosCallback(gApp->game_window, _cursor_pos_callback);
-    glfwSetScrollCallback(gApp->game_window, _scroll_callback);
+    auto& w = Neko::the<Window>();
+
+    glfwSetKeyCallback(w.glfwWindow(), _key_callback);
+    glfwSetCharCallback(w.glfwWindow(), _char_callback);
+    glfwSetMouseButtonCallback(w.glfwWindow(), _mouse_callback);
+    glfwSetCursorPosCallback(w.glfwWindow(), _cursor_pos_callback);
+    glfwSetScrollCallback(w.glfwWindow(), _scroll_callback);
 }
 
 void Input::fini() {

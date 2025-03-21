@@ -32,6 +32,7 @@
 #include "base/common/math.hpp"
 #include "engine/input.h"
 #include "engine/window.h"
+#include "engine/renderer/shader.h"
 
 // deps
 #include "extern/sokol_time.h"
@@ -102,85 +103,11 @@ unsigned int quadVAO, quadVBO;
 Asset posteffect_shader = {};
 Asset sprite_shader = {};
 
-Renderer *renderer;
+QuadRenderer *renderer;
 
 extern void draw_gui();
 
 // -------------------------------------------------------------------------
-
-static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char *message, const void *up) {
-
-    if (id == 131169 || id == 131185 || id == 131218 || id == 131204) {
-        return;
-    }
-
-    const char *s;
-    const char *t;
-
-    switch (source) {
-        case GL_DEBUG_SOURCE_API:
-            s = "API";
-            break;
-        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
-            s = "window system";
-            break;
-        case GL_DEBUG_SOURCE_SHADER_COMPILER:
-            s = "shader compiler";
-            break;
-        case GL_DEBUG_SOURCE_THIRD_PARTY:
-            s = "third party";
-            break;
-        case GL_DEBUG_SOURCE_APPLICATION:
-            s = "application";
-            break;
-        case GL_DEBUG_SOURCE_OTHER:
-            s = "other";
-            break;
-    }
-
-    switch (type) {
-        case GL_DEBUG_TYPE_ERROR:
-            t = "type error";
-            break;
-        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-            t = "deprecated behaviour";
-            break;
-        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-            t = "undefined behaviour";
-            break;
-        case GL_DEBUG_TYPE_PORTABILITY:
-            t = "portability";
-            break;
-        case GL_DEBUG_TYPE_PERFORMANCE:
-            t = "performance";
-            break;
-        case GL_DEBUG_TYPE_MARKER:
-            t = "marker";
-            break;
-        case GL_DEBUG_TYPE_PUSH_GROUP:
-            t = "push group";
-            break;
-        case GL_DEBUG_TYPE_POP_GROUP:
-            t = "pop group";
-            break;
-        case GL_DEBUG_TYPE_OTHER:
-            t = "other";
-            break;
-    }
-
-    switch (severity) {
-        case GL_DEBUG_SEVERITY_HIGH:
-        case GL_DEBUG_SEVERITY_MEDIUM:
-            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
-            break;
-        case GL_DEBUG_SEVERITY_LOW:
-            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
-            break;
-        case GL_DEBUG_SEVERITY_NOTIFICATION:
-            LOG_ERROR("OpenGL (source: {}; type: {}): {}", s, t, message);
-            break;
-    }
-}
 
 void rescale_framebuffer(float width, float height) {
     if (fbo_tex == 0 || rbo == 0) return;
@@ -375,7 +302,7 @@ int _game_draw(App *app, event_t evt) {
                 draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息\n按下 Ctrl+R 忽视本次问题", NEKO_COLOR_WHITE);
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
-                    window_setclipboard(gBase.traceback.cstr());
+                    gApp->window->SetClipboard(gBase.traceback.cstr());
                 }
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_R)) {
@@ -403,7 +330,7 @@ int _game_draw(App *app, event_t evt) {
 
     neko_check_gl_error();
 
-    game.WindowSwapBuffer();
+    gApp->window->SwapBuffer();
 
     return 0;
 }
@@ -457,7 +384,7 @@ void Game::SplashScreen() {
         neko_bind_vertex_buffer_for_draw(quad);
         neko_draw_vertex_buffer(quad);
 
-        WindowSwapBuffer();
+        gApp->window->SwapBuffer();
 
         neko_free_vertex_buffer(quad);
 
@@ -488,7 +415,7 @@ static void _game_fini() {
     system_fini();
 
     // fini glfw
-    glfwDestroyWindow(gApp->game_window);
+    glfwDestroyWindow(gApp->window->glfwWindow());
     glfwTerminate();
 
 #ifdef USE_PROFILER
@@ -524,7 +451,7 @@ bool CL_Init() {
 bool CL_Think() {
     App *app = gApp;
     auto &eh = Neko::the<EventHandler>();
-    // if (glfwWindowShouldClose(gApp->game_window)) {
+    // if (glfwWindowShouldClose(gApp->window)) {
     //     game.quit();
     // }
     eh.event_pump();
@@ -547,11 +474,11 @@ bool CL_Shutdown() {
 
 void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
-void Game::set_window_size(vec2 s) { glfwSetWindowSize(gApp->game_window, s.x, s.y); }
+void Game::set_window_size(vec2 s) { glfwSetWindowSize(gApp->window->glfwWindow(), s.x, s.y); }
 
 vec2 Game::get_window_size() {
     int w, h;
-    glfwGetWindowSize(gApp->game_window, &w, &h);
+    glfwGetWindowSize(gApp->window->glfwWindow(), &w, &h);
     return luavec2(w, h);
 }
 vec2 Game::unit_to_pixels(vec2 p) {
@@ -569,18 +496,21 @@ vec2 Game::pixels_to_unit(vec2 p) {
 
 void Game::quit() { gApp->g_quit = true; }
 
-void Game::WindowSwapBuffer() { glfwSwapBuffers(gApp->game_window); }
-
 Game::Game() {}
 
 void Game::init() {
 
+    Neko::modules::initialize<Window>();
     Neko::modules::initialize<EventHandler>();
     Neko::modules::initialize<Input>();
+    Neko::modules::initialize<Assets>();
+    Neko::modules::initialize<Renderer>();
 
     gApp = new (mem_alloc(sizeof(App))) App();
 
     LockGuard<Mutex> lock(gApp->g_init_mtx);
+
+    gApp->window = &Neko::the<Window>();
 
 #if defined(NDEBUG)
     LOG_INFO("neko {}", neko_buildnum());
@@ -588,37 +518,10 @@ void Game::init() {
     LOG_INFO("neko {} (debug build) (Lua {}.{}.{}, {})", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
 #endif
 
-    // create glfw window
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    gApp->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
+    gApp->window->create();
+    gApp->window->SetFramebufferSizeCallback(framebuffer_size_callback);
 
-    // activate OpenGL context
-    glfwMakeContextCurrent(gApp->game_window);
-
-    // 注册窗口大小改变的回调函数
-    glfwSetFramebufferSizeCallback(gApp->game_window, framebuffer_size_callback);
-
-    // initialize GLEW
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        LOG_INFO("Failed to initialize GLAD");
-    }
-
-#if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(gl_debug_callback, NULL);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-#endif
-
-    // some GL settings
-    glEnable(GL_PROGRAM_POINT_SIZE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
+    the<Renderer>().InitOpenGL();
 
     // random seed
     srand(time(NULL));
@@ -741,75 +644,11 @@ void Game::init() {
 void Game::fini() {}
 void Game::update() {}
 
-int game_set_window_minsize(int width, int height) {
-    glfwSetWindowSizeLimits(gApp->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
-    return 0;
-}
-
-int game_get_window_width(int *val) {
-    int w = 0;
-    int h = 0;
-#if defined(__EMSCRIPTEN__)
-    w = emsc_width();
-    h = emsc_height();
-#else
-    if (gApp->game_window) {
-        glfwGetWindowSize(gApp->game_window, &w, &h);
-    }
-#endif
-    *val = w;
-    return 0;
-}
-
-int game_get_window_height(int *val) {
-    int w = 0;
-    int h = 0;
-#if defined(__EMSCRIPTEN__)
-    w = emsc_width();
-    h = emsc_height();
-#else
-    if (gApp->game_window) {
-        glfwGetWindowSize(gApp->game_window, &w, &h);
-    }
-#endif
-    *val = h;
-    return 0;
-}
-
-int game_set_window_position(int x, int y) {
-#if !defined(__EMSCRIPTEN__)
-    if (gApp->game_window) {
-        glfwSetWindowPos(gApp->game_window, x, y);
-    }
-#endif
-    return 0;
-}
-
-static int get_current_monitor(GLFWmonitor **monitor, GLFWwindow *window) {
-    int winpos[2] = {0};
-    glfwGetWindowPos(window, &winpos[0], &winpos[1]);
-
-    int monitors_size = 0;
-    GLFWmonitor **monitors = glfwGetMonitors(&monitors_size);
-
-    for (int i = 0; i < monitors_size; ++i) {
-        int monitorpos[2] = {0};
-        glfwGetMonitorPos(monitors[i], &monitorpos[0], &monitorpos[1]);
-        const GLFWvidmode *vidmode = glfwGetVideoMode(monitors[i]);
-        if (winpos[0] >= monitorpos[0] && winpos[0] < (monitorpos[0] + vidmode->width) && winpos[1] >= monitorpos[1] && winpos[1] < (monitorpos[1] + vidmode->height)) {
-            *monitor = monitors[i];
-            return 0;
-        }
-    }
-
-    return 1;
-}
-
 int Game::set_window_title(const char *title) {
 #if defined(__EMSCRIPTEN__)
     emscripten_set_window_title(title);
 #else
-    glfwSetWindowTitle(gApp->game_window, title);
+    glfwSetWindowTitle(gApp->window->glfwWindow(), title);
 #endif
     return 0;
 }
@@ -991,7 +830,7 @@ end
     sprite_init();
     tiled_init();
     font_init();
-    imgui_init(gApp->game_window);
+    imgui_init(gApp->window->glfwWindow());
     console_init();
     sound_init();
     physics_init();
@@ -1002,8 +841,7 @@ end
 
     luax_run_nekogame(L);
 
-    gApp->inspector = new (lua_newuserdata(L, sizeof(Neko::LuaInspector))) Neko::LuaInspector();
-    lua_setglobal(L, "__neko_inspector");
+    gApp->inspector = new Neko::LuaInspector();
     gApp->inspector->luainspector_init(L);
 
     if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
@@ -1060,6 +898,9 @@ end
 
 void system_fini() {
     PROFILE_FUNC();
+
+    delete gApp->inspector;
+    gApp->inspector = nullptr;
 
     edit_fini();
     script_fini();
@@ -1231,7 +1072,7 @@ Int32 Main(int argc, const char *argv[]) {
         return -1;
     }
 
-    GLFWwindow *window = gApp->game_window;
+    GLFWwindow *window = gApp->window->glfwWindow();
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

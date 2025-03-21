@@ -27,7 +27,7 @@ struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
 
 static int __luainspector_echo(lua_State* L) {
     Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
-    if (m) m->print_line(luaL_checkstring(L, 1), Neko::LUACON_LOG_TYPE_MESSAGE);
+    if (m) m->print(luaL_checkstring(L, 1), Logger::Level::INFO);
     return 0;
 }
 
@@ -166,7 +166,7 @@ std::string LuaInspector::Hints::common_prefix(const std::vector<std::string>& p
 
 }  // namespace Neko
 
-void Neko::LuaInspector::print_luastack(int first, int last, luainspector_logtype logtype) {
+void Neko::LuaInspector::print_luastack(int first, int last, Logger::Level logtype) {
     std::stringstream ss;
     for (int i = first; i <= last; ++i) {
         switch (lua_type(L, i)) {
@@ -188,7 +188,7 @@ void Neko::LuaInspector::print_luastack(int first, int last, luainspector_logtyp
         }
         ss << ' ';
     }
-    print_line(ss.str(), logtype);
+    print(ss.str(), logtype);
 }
 
 bool Neko::LuaInspector::try_eval(std::string m_buffcmd, bool addreturn) {
@@ -250,7 +250,7 @@ std::string Neko::LuaInspector::read_history(int change) {
 
 std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     if (!L) {
-        print_line("Lua state pointer is NULL, no completion available", LUACON_LOG_TYPE_ERROR);
+        print("Lua state pointer is NULL, no completion available", Logger::Level::ERR);
         return inputbuffer;
     }
 
@@ -271,7 +271,7 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
         if (common_prefix.empty() || common_prefix.size() <= last.size()) {
             std::string msg = possible[0];
             for (std::size_t i = 1u; i < possible.size(); ++i) msg += " " + possible[i];
-            print_line(msg, LUACON_LOG_TYPE_NOTE);
+            print(msg, Logger::Level::INFO);
             m_current_autocomplete_strings = possible;
         } else {
             const std::string added = common_prefix.substr(last.size());
@@ -285,6 +285,8 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     }
     return inputbuffer;
 }
+
+void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) { appendMessage(msg, logtype); }
 
 // void Neko::luainspector::set_print_eval_prettifier(lua_State* L) {
 //     if (lua_gettop(L) == 0) return;
@@ -492,6 +494,12 @@ void Neko::LuaInspector::show_autocomplete() noexcept {
     }
 }
 
+Neko::LuaInspector::LuaInspector() {
+    callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { this->print(msg, level); });
+}
+
+Neko::LuaInspector::~LuaInspector() { Logger::getInstance()->unregisterCallback(callbackId); }
+
 void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
@@ -502,29 +510,25 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
     if (ImGui::BeginChild("##LOG_INFO", size)) {
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
 
-        neko_assert(&messageLog);
-
-        for (auto& a : messageLog) {
+        forEachMessages([](const std::pair<std::string, Logger::Level>& msg) {
             ImVec4 colour;
-            switch (a.second) {
-                case LUACON_LOG_TYPE_WARNING:
+            switch (msg.second) {
+                case Logger::Level::WARNING:
                     colour = {1.0f, 1.0f, 0.0f, 1.0f};
                     break;
-                case LUACON_LOG_TYPE_ERROR:
+                case Logger::Level::ERR:
                     colour = {1.0f, 0.0f, 0.0f, 1.0f};
                     break;
-                case LUACON_LOG_TYPE_NOTE:
+                case Logger::Level::INFO:
                     colour = {0.13f, 0.44f, 0.61f, 1.0f};
                     break;
-                case LUACON_LOG_TYPE_SUCCESS:
-                    colour = {0.0f, 1.0f, 0.0f, 1.0f};
-                    break;
-                case LUACON_LOG_TYPE_MESSAGE:
+                case Logger::Level::TRACE:
                     colour = {1.0f, 1.0f, 1.0f, 1.0f};
                     break;
             }
-            ImGui::TextColored(colour, "%s", a.first.c_str());
-        }
+            ImGui::TextColored(colour, "%s", msg.first.c_str());
+        });
+
         ImGui::PopTextWrapPos();
 
         if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
@@ -561,18 +565,18 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
             bool evalok = try_eval(cmd, true) || try_eval(cmd, false);
 
             if (evalok && LUA_OK == lua_pcall(L, 0, LUA_MULTRET, 0)) {
-                if (oldtop != lua_gettop(L)) print_luastack(oldtop + 1, lua_gettop(L), LUACON_LOG_TYPE_MESSAGE);
+                if (oldtop != lua_gettop(L)) print_luastack(oldtop + 1, lua_gettop(L), Logger::Level::TRACE);
 
                 lua_settop(L, oldtop);
             } else {
                 const std::string err = adjust_error_msg(L, -1);
                 if (evalok || !Neko::incomplete_chunk_error(err.c_str(), err.length())) {
-                    print_line(err, LUACON_LOG_TYPE_ERROR);
+                    print(err, Logger::Level::ERR);
                 }
                 lua_pop(L, 1);
             }
         } else {
-            print_line("Lua state pointer is NULL, commands have no effect", LUACON_LOG_TYPE_ERROR);
+            print("Lua state pointer is NULL, commands have no effect", Logger::Level::ERR);
         }
         cmd.clear();
     };
@@ -591,8 +595,6 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
 
     show_autocomplete();
 }
-
-void Neko::LuaInspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
 
 void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
@@ -770,11 +772,7 @@ void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
-void Neko::LuaInspector::print(const std::string& msg, luainspector_logtype type) { this->print_line(msg, type); }
-
 Neko::CCharacter cJohn;
-
-extern Assets g_assets;
 
 int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
@@ -791,8 +789,6 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
     this->property_register<CCharacter>("John", &cJohn, "John");
 
-    Logger::getInstance()->setConsolePrintf([this](const std::string& msg) { Neko::LuaInspector::print(msg, LUACON_LOG_TYPE_MESSAGE); });
-
     return 1;
 }
 
@@ -801,6 +797,8 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
     if (!visible) {
         return 0;
     }
+
+    Assets& g_assets = the<Assets>();
 
     if (ImGui::Begin("LuaInspector")) {
 
@@ -878,17 +876,43 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
                 lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
                 lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
-                // if (!arr.empty() && arr.back() != ((f64)bytes)) {
-                //     arr.push_back(((f64)bytes));
-                //     arr.erase(arr.begin());
-                // }
+                auto UpdateLuaMemPlot = [](float bytes) {
+                    static std::deque<float> frameTimes;
+                    static std::mutex frameTimesMutex;
+                    {
+                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+
+                        // 如果 deque 为空或最后一个值不等于当前 bytes，则添加新数据
+                        if (frameTimes.empty() || frameTimes.back() != bytes) {
+                            frameTimes.push_back(bytes);
+
+                            // 限制 deque 的最大大小为 100，超过时移除头部数据
+                            if (frameTimes.size() > 100) {
+                                frameTimes.pop_front();
+                            }
+                        }
+                    }
+                    float minVal = 0.0f, maxVal = 4000.0f;  // 默认范围
+                    {
+                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+                        if (!frameTimes.empty()) {
+                            minVal = *std::min_element(frameTimes.begin(), frameTimes.end());
+                            maxVal = *std::max_element(frameTimes.begin(), frameTimes.end());
+                        }
+                    }
+                    std::vector<float> dataCopy;
+                    {
+                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+                        dataCopy.assign(frameTimes.begin(), frameTimes.end());
+                    }
+                    ImGui::PlotLines("LuaVM Memory", dataCopy.data(), static_cast<int>(dataCopy.size()), 0, nullptr, minVal, maxVal, ImVec2(0, 80.0f));
+                };
+                UpdateLuaMemPlot(bytes);
 
                 ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
                 ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
                 if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
-
-                // ImGui::PlotLines("Frame Times", arr.data(), arr.size(), 0, NULL, 0, 4000, ImVec2(0, 80.0f));
 
                 for (auto kv : g_assets.table) {
                     ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());

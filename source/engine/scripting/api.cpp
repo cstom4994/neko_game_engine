@@ -658,7 +658,7 @@ static int neko_mouse_delta(lua_State *L) {
 
 static int neko_show_mouse(lua_State *L) {
     bool show = lua_toboolean(L, 1);
-    glfwSetInputMode(gApp->game_window, GLFW_CURSOR, show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+    the<Window>().ShowMouse(show);
     return 0;
 }
 
@@ -2624,33 +2624,33 @@ static int open_neko(lua_State *L) {
     });
 
     X("window_clipboard", [](lua_State *L) -> int {
-        const_str v = window_clipboard();
+        const_str v = the<Window>().GetClipboard();
         lua_pushstring(L, v);
         return 1;
     });
     X("window_prompt", [](lua_State *L) -> int {
         const_str msg = lua_tostring(L, 1);
         const_str title = lua_tostring(L, 2);
-        int v = window_prompt(msg, title);
+        int v = the<Window>().ShowMsgBox(msg, title);
         lua_pushinteger(L, v);
         return 1;
     });
     X("window_setclipboard", [](lua_State *L) -> int {
         const_str str = lua_tostring(L, 1);
-        window_setclipboard(str);
+        the<Window>().SetClipboard(str);
         return 0;
     });
     X("window_focus", [](lua_State *L) -> int {
-        window_focus();
+        the<Window>().Focus();
         return 0;
     });
     X("window_has_focus", [](lua_State *L) -> int {
-        int v = window_has_focus();
+        int v = the<Window>().HasFocus();
         lua_pushinteger(L, v);
         return 1;
     });
     X("window_scale", [](lua_State *L) -> int {
-        f64 v = window_scale();
+        f64 v = the<Window>().Scale();
         lua_pushnumber(L, v);
         return 1;
     });
@@ -3360,7 +3360,7 @@ void open_neko_api(lua_State *L) {
     lua_setfield(L, -2, "db");
 
     open_imgui(L);
-    lua_setfield(L, -2, "imgui");
+    lua_setfield(L, -2, "imgui_obsolete");
 
     lua_pop(L, 1);
 
