@@ -12,10 +12,6 @@ using namespace luabind;
 #define __neko_ecs_ent_index(id) ((u32)id)
 #define __neko_ecs_ent_ver(id) ((u32)(id >> 32))
 
-#define MAX_ENTITY_COUNT 100
-
-enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
-
 enum ECS_WORLD_UPVALUES {
     WORLD_PROTO_ID = 1,  // 表映射name到tid
     WORLD_PROTO_DEFINE,  // 表存储name到组件注册原型
@@ -37,6 +33,9 @@ enum ECS_WORLD_UPVALUES {
 
 #define ENTITY_MAX_COMPONENTS (64)  // 单个实体最大组件数量
 
+#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
+#define ECS_WORLD (1)
+
 // 测试 ECS 用
 typedef struct CGameObjectTest {
     char name[64];
@@ -44,16 +43,6 @@ typedef struct CGameObjectTest {
     bool visible;
     bool selected;
 } CGameObjectTest;
-
-enum ComponentType {
-    COMPONENT_GAMEOBJECT,
-    COMPONENT_TRANSFORM,
-    COMPONENT_VELOCITY,
-    COMPONENT_BOUNDS,
-    COMPONENT_COLOR,
-
-    COMPONENT_COUNT
-};
 
 struct Component {
     int eid;  // 该组件附着的实体id
@@ -100,10 +89,6 @@ struct EcsWorld {
     ComponentPool component_pool[TYPE_COUNT];  // 存储所有组件的标记数据
 };
 
-#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
-#define ECS_WORLD_OLD_UDATA_NAME "__NEKO_ECS_WORLD_OLD"
-#define ECS_WORLD (1)
-
 int l_ecs_create_world(lua_State* L);
 
 // EcsId ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
@@ -133,7 +118,26 @@ Entity* EcsGetEnt(lua_State* L, EcsWorld* w, int eid);
 
 template <typename T>
 int EcsRegisterCType(lua_State* L) {
-    return EcsRegister(L, reflection::GetTypeName<T>());
+
+    const char* type_name = reflection::GetTypeName<T>();
+
+    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    int ecs_ud = lua_gettop(L);
+
+    lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);
+    lua_pushstring(L, type_name);                   // 复制组件key
+    lua_pushlightuserdata(L, entitypool_new<T>());  // 复制原型
+    lua_rawset(L, -3);                              // WORLD_PROTO_DEFINE[key] = {...}
+    lua_pop(L, 1);                                  // # pop WORLD_PROTO_DEFINE
+
+    lua_pop(L, 1);  // # pop __NEKO_ECS_CORE
+
+    return EcsRegister(L, type_name);
+}
+
+template <typename T>
+int EcsGetTidCType(lua_State* L) {
+    return EcsGetTid(L, reflection::GetTypeName<T>());
 }
 
 }  // namespace ecs

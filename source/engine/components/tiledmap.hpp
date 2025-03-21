@@ -84,7 +84,7 @@ struct MapLdtk {
 #define SPRITE_SCALE 1.0
 
 /*==========================
-// Tiled draw
+// CTiledMap draw
 ==========================*/
 
 bool tiled_load(TiledMap* map, const_str tmx_path, const_str res_path);
@@ -135,9 +135,9 @@ void tiled_render_flush(tiled_renderer* renderer);
 void tiled_render_push(tiled_renderer* renderer, tiled_quad_t quad);
 void tiled_render_draw(tiled_renderer* renderer);
 
-struct Tiled;
+struct CTiledMap;
 
-int tiled_render(Tiled* tiled);
+int tiled_render(CTiledMap* tiled);
 
 void tiled_add(CEntity ent);
 void tiled_remove(CEntity ent);
@@ -151,10 +151,7 @@ void tiled_fini();
 int tiled_update_all(App* app, event_t evt);
 void tiled_draw_all();
 
-class Tiled : public CEntityBase {
-public:
-    static CEntityPool<Tiled>* pool;
-
+class CTiledMap : public CEntityBase {
 public:
     tiled_renderer* render;
     vec2 pos;

@@ -5,17 +5,25 @@
 
 static bool enabled;
 
+CEntityPool<CUnEditable>* uneditable__pool;
+
+int type_uneditable;
+
+CEntityPool<BBoxPoolElem>* BBoxPoolElem__pool;
+
+int type_bbox;
+
 void edit_set_enabled(bool e) { enabled = e; }
 bool edit_get_enabled() { return enabled; }
 
 // 无法选择不可编辑的实体
 void edit_set_editable(CEntity ent, bool editable) {
     if (editable)
-        uneditable::pool->Remove(ent);
+        uneditable__pool->Remove(ent);
     else
-        uneditable::pool->Remove(ent);
+        uneditable__pool->Remove(ent);
 }
-bool edit_get_editable(CEntity ent) { return !uneditable::pool->Get(ent); }
+bool edit_get_editable(CEntity ent) { return !uneditable__pool->Get(ent); }
 
 // --- bboxes --------------------------------------------------------------
 
@@ -25,40 +33,40 @@ void edit_bboxes_update(CEntity ent, BBox bbox) {
     // editable?
     if (!edit_get_editable(ent)) return;
 
-    elem = BBoxPoolElem::pool->Get(ent);
+    elem = BBoxPoolElem__pool->Get(ent);
 
     // merge if already exists, else set
     if (elem)
         elem->bbox = bbox_merge(elem->bbox, bbox);
     else {
-        elem = (BBoxPoolElem*)BBoxPoolElem::pool->Add(ent);
+        elem = (BBoxPoolElem*)BBoxPoolElem__pool->Add(ent);
         elem->bbox = bbox;
     }
 }
 
-bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem::pool->Get(ent) != NULL; }
+bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem__pool->Get(ent) != NULL; }
 BBox edit_bboxes_get(CEntity ent) {
-    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
+    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
     error_assert(elem);
     return elem->bbox;
 }
 
-int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem::pool); }
+int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem__pool); }
 
 CEntity edit_bboxes_get_nth_ent(int n) {
-    error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem::pool, n);
+    error_assert(n < entitypool_size(BBoxPoolElem__pool));
+    BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem__pool, n);
     return elem->ent;
 }
 
 BBox edit_bboxes_get_nth_bbox(int n) {
-    error_assert(n < entitypool_size(BBoxPoolElem::pool));
-    BBoxPoolElem* elem = entitypool_nth(BBoxPoolElem::pool, n);
+    error_assert(n < entitypool_size(BBoxPoolElem__pool));
+    BBoxPoolElem* elem = entitypool_nth(BBoxPoolElem__pool, n);
     return elem->bbox;
 }
 
 void edit_bboxes_set_selected(CEntity ent, bool selected) {
-    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem::pool->Get(ent);
+    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
     error_assert(elem);
     elem->selected = selected;
 }
@@ -68,7 +76,12 @@ static GLuint bboxes_vao;
 static GLuint bboxes_vbo;
 
 static void _bboxes_init() {
-    BBoxPoolElem::pool = entitypool_new<BBoxPoolElem>();
+
+    auto L = ENGINE_LUA();
+
+    type_bbox = EcsRegisterCType<BBoxPoolElem>(L);
+
+    BBoxPoolElem__pool = EcsProtoGetCType<BBoxPoolElem>(L);
 
     // 创建着色器程序 加载图集 绑定参数
     bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
@@ -96,7 +109,7 @@ static void _bboxes_fini() {
     glDeleteBuffers(1, &bboxes_vbo);
     glDeleteVertexArrays(1, &bboxes_vao);
 
-    entitypool_free(BBoxPoolElem::pool);
+    entitypool_free(BBoxPoolElem__pool);
 }
 
 static void _bboxes_update_all() {
@@ -106,7 +119,7 @@ static void _bboxes_update_all() {
 
     if (!enabled) return;
 
-    entitypool_foreach(elem, BBoxPoolElem::pool) {
+    entitypool_foreach(elem, BBoxPoolElem__pool) {
         ent = elem->ent;
         if (!transform_has(ent)) continue;
 
@@ -133,8 +146,8 @@ static void _bboxes_draw_all() {
 
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    nbboxes = entitypool_size(BBoxPoolElem::pool);
-    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(BBoxPoolElem), entitypool_begin(BBoxPoolElem::pool), GL_STREAM_DRAW);
+    nbboxes = entitypool_size(BBoxPoolElem__pool);
+    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(BBoxPoolElem), entitypool_begin(BBoxPoolElem__pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nbboxes);
 }
 
@@ -294,7 +307,7 @@ static void _line_draw_all() {
 // -------------------------------------------------------------------------
 
 int edit_clear(App* app, event_t evt) {
-    entitypool_clear(BBoxPoolElem::pool);
+    entitypool_clear(BBoxPoolElem__pool);
     line_points.resize(0);
     return 0;
 }
@@ -302,7 +315,11 @@ int edit_clear(App* app, event_t evt) {
 void edit_init() {
     PROFILE_FUNC();
 
-    uneditable::pool = entitypool_new<uneditable>();
+    auto L = ENGINE_LUA();
+
+    type_uneditable = EcsRegisterCType<CUnEditable>(L);
+
+    uneditable__pool = EcsProtoGetCType<CUnEditable>(L);
 
     _bboxes_init();
     _grid_init();
@@ -314,13 +331,13 @@ void edit_fini() {
     _grid_fini();
     _bboxes_fini();
 
-    entitypool_free(uneditable::pool);
+    entitypool_free(uneditable__pool);
 }
 
-static void _uneditable_remove(CEntity ent) { uneditable::pool->Remove(ent); }
+static void _uneditable_remove(CEntity ent) { uneditable__pool->Remove(ent); }
 
 int edit_update_all(App* app, event_t evt) {
-    entitypool_remove_destroyed(uneditable::pool, _uneditable_remove);
+    entitypool_remove_destroyed(uneditable__pool, _uneditable_remove);
 
     _bboxes_update_all();
 
@@ -341,7 +358,7 @@ void edit_save_all(App* app) {
 
     // if (store_child_save(&t, "edit", s)) {
     //     vec2_save(&grid_size, "grid_size", t);
-    //     entitypool_save_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
+    //     entitypool_save_foreach(elem, elem_s, uneditable__pool, "uneditable_pool", t);
     // }
 }
 void edit_load_all(App* app) {
@@ -350,6 +367,6 @@ void edit_load_all(App* app) {
 
     // if (store_child_load(&t, "edit", s)) {
     //     vec2_load(&grid_size, "grid_size", grid_size, t);
-    //     entitypool_load_foreach(elem, elem_s, uneditable::pool, "uneditable_pool", t);
+    //     entitypool_load_foreach(elem, elem_s, uneditable__pool, "uneditable_pool", t);
     // }
 }

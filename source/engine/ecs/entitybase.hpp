@@ -4,33 +4,25 @@
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
 
-class Camera : public CEntityBase {
-public:
-    static CEntityPool<Camera>* pool;
-
-public:
+struct CCamera : CEntityBase {
     f32 viewport_height;
 };
 
-class uneditable : public CEntityBase {
-public:
-    static CEntityPool<uneditable>* pool;
-
-public:
+struct CUnEditable : CEntityBase {
     int what;
 };
 
-DECL_ENT(Sprite, mat3 wmat;  // 要发送到着色器的世界变换矩阵
+struct CSprite : CEntityBase {
+    mat3 wmat;  // 要发送到着色器的世界变换矩阵
 
-         vec2 size; vec2 texcell; vec2 texsize;
+    vec2 size;
+    vec2 texcell;
+    vec2 texsize;
 
-         int depth;);
+    int depth;
+};
 
-class Transform : public CEntityBase {
-public:
-    static CEntityPool<Transform>* pool;
-
-public:
+struct CTransform : CEntityBase {
     vec2 position;
     f32 rotation;
     vec2 scale;
@@ -42,5 +34,8 @@ public:
 };
 
 // bbox pool
-DECL_ENT(BBoxPoolElem, mat3 wmat; BBox bbox; f32 selected;  // > 0.5 if and only if selected
-);
+struct BBoxPoolElem : CEntityBase {
+    mat3 wmat;
+    BBox bbox;
+    f32 selected;  // > 0.5 if and only if selected
+};

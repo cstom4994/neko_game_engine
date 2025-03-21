@@ -67,27 +67,27 @@ void entity_init() {
         EcsEntityNew(L, table, NULL);
     }
 
-    struct CTransform {};
+    //struct CTransform {};
 
-    int type_transform = EcsRegisterCType<CTransform>(L);
+    //int type_transform = EcsRegisterCType<CTransform>(L);
 
-    {
-        LuaRef table = LuaRef::NewTable(L);
-        table["testing"] = "Test fucking CTransform";
+    //{
+    //    LuaRef table = LuaRef::NewTable(L);
+    //    table["testing"] = "Test fucking CTransform";
 
-        Entity* e = EcsEntityNew(L, table, NULL);
+    //    Entity* e = EcsEntityNew(L, table, NULL);
 
-        LuaRef tb = LuaRef::NewTable(L);
-        tb["testing"] = "i'm CTransform haha";
-        tb["__my_ud"] = new int(114514);
+    //    LuaRef tb = LuaRef::NewTable(L);
+    //    tb["testing"] = "i'm CTransform haha";
+    //    tb["__my_ud"] = new int(114514);
 
-        int cid1 = EcsComponentSet(L, e, type_transform, tb);
+    //    int cid1 = EcsComponentSet(L, e, type_transform, tb);
 
-        LuaRef tb_read = EcsComponentGet(L, e, type_transform);
-        int* test_ptr = tb_read["__my_ud"];
-        LOG_TRACE("__my_ud {}", *test_ptr);
-        // DumpLuaRef(tb_read);
-    }
+    //    LuaRef tb_read = EcsComponentGet(L, e, type_transform);
+    //    int* test_ptr = tb_read["__my_ud"];
+    //    LOG_TRACE("__my_ud {}", *test_ptr);
+    //    // DumpLuaRef(tb_read);
+    //}
 }
 
 void entity_fini() {}

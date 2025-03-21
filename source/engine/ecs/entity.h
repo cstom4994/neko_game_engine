@@ -4,6 +4,7 @@
 
 #include "engine/base.hpp"
 #include "engine/event.h"
+#include "engine/ecs/lua_ecs.hpp"
 
 struct App;
 
@@ -107,19 +108,9 @@ struct CEntityPool {
 // }
 // 其中的值是EntityPool管理的元数据
 
-class CEntityBase {
-public:
+struct CEntityBase {
     CEntity ent;
 };
-
-#define DECL_ENT(T, ...)             \
-    class T : public CEntityBase {   \
-    public:                          \
-        static CEntityPool<T>* pool; \
-                                     \
-    public:                          \
-        __VA_ARGS__                  \
-    };
 
 // object_size 是每个元素的大小
 template <typename T>
@@ -240,5 +231,26 @@ auto entitypool_remove_destroyed(CEntityPool<T>* pool, F func) {
 
 #define entitypool_save_foreach(var, var_s, pool, n, s) if (0)
 #define entitypool_load_foreach(var, var_s, pool, n, s) if (0)
+
+template <typename T>
+CEntityPool<T>* EcsProtoGetCType(lua_State* L) {
+
+    const char* type_name = reflection::GetTypeName<T>();
+
+    lua_getfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);
+    int ecs_ud = lua_gettop(L);
+
+    lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);
+    lua_pushstring(L, type_name);
+    lua_rawget(L, -2);
+
+    CEntityPool<T>* pool = reinterpret_cast<CEntityPool<T>*>(lua_touserdata(L, -1));
+
+    lua_pop(L, 1);  // pop WORLD_PROTO_DEFINE[type_name]
+    lua_pop(L, 1);  // pop WORLD_PROTO_DEFINE
+    lua_pop(L, 1);  // pop __NEKO_ECS_CORE
+
+    return pool;
+}
 
 #endif

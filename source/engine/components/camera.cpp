@@ -11,26 +11,30 @@ static CEntity edit_camera;
 
 static mat3 inverse_view_matrix;  // 缓存逆视图矩阵
 
+CEntityPool<CCamera> *CCamera__pool;
+
+int type_camera;
+
 // -------------------------------------------------------------------------
 
 void camera_add(CEntity ent) {
-    Camera *camera;
+    CCamera *camera;
 
-    if (Camera::pool->Get(ent)) return;
+    if (CCamera__pool->Get(ent)) return;
 
     transform_add(ent);
 
-    camera = Camera::pool->Add(ent);
+    camera = CCamera__pool->Add(ent);
     camera->viewport_height = 1.0;
 
     if (CEntityEq(curr_camera, entity_nil)) curr_camera = ent;
 }
 void camera_remove(CEntity ent) {
-    Camera::pool->Remove(ent);
+    CCamera__pool->Remove(ent);
 
     if (CEntityEq(curr_camera, ent)) curr_camera = entity_nil;
 }
-bool camera_has(CEntity ent) { return Camera::pool->Get(ent) != NULL; }
+bool camera_has(CEntity ent) { return CCamera__pool->Get(ent) != NULL; }
 
 void camera_set_edit_camera(CEntity ent) { edit_camera = ent; }
 
@@ -48,12 +52,12 @@ CEntity camera_get_current_camera() {
 }
 
 void camera_set_viewport_height(CEntity ent, f32 height) {
-    Camera *camera = (Camera *)Camera::pool->Get(ent);
+    CCamera *camera = (CCamera *)CCamera__pool->Get(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
 f32 camera_get_viewport_height(CEntity ent) {
-    Camera *camera = (Camera *)Camera::pool->Get(ent);
+    CCamera *camera = (CCamera *)CCamera__pool->Get(ent);
     error_assert(camera);
     return camera->viewport_height;
 }
@@ -79,28 +83,33 @@ vec2 camera_unit_to_world(vec2 p) {
 void camera_init() {
     PROFILE_FUNC();
 
-    Camera::pool = entitypool_new<Camera>();
+    auto L = ENGINE_LUA();
+
+    type_camera = EcsRegisterCType<CCamera>(L);
+
+    CCamera__pool = EcsProtoGetCType<CCamera>(L);
+
     curr_camera = entity_nil;
     edit_camera = entity_nil;
     inverse_view_matrix = mat3_identity();
 }
 
-void camera_fini() { entitypool_free(Camera::pool); }
+void camera_fini() { entitypool_free(CCamera__pool); }
 
 int camera_update_all(App *app, event_t evt) {
     vec2 win_size;
     f32 aspect;
-    Camera *camera;
+    CCamera *camera;
     CEntity cam;
     vec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 
-    entitypool_remove_destroyed(Camera::pool, camera_remove);
+    entitypool_remove_destroyed(CCamera__pool, camera_remove);
 
     win_size = Neko::the<Game>().get_window_size();
     aspect = win_size.x / win_size.y;
 
-    entitypool_foreach(camera, Camera::pool) {
+    entitypool_foreach(camera, CCamera__pool) {
         scale = luavec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
         transform_set_scale(camera->ent, scale);
 
@@ -116,27 +125,27 @@ int camera_update_all(App *app, event_t evt) {
     return 0;
 }
 
-void camera_save_all(App* app) {
+void camera_save_all(App *app) {
     // Store *t, *camera_s;
-    // Camera *camera;
+    // CCamera *camera;
 
     // if (store_child_save(&t, "camera", s)) {
     //     if (entity_get_save_filter(curr_camera)) entity_save(&curr_camera, "curr_camera", t);
 
     //     mat3_save(&inverse_view_matrix, "inverse_view_matrix", t);
 
-    //     entitypool_save_foreach(camera, camera_s, Camera::pool, "pool", t) float_save(&camera->viewport_height, "viewport_height", camera_s);
+    //     entitypool_save_foreach(camera, camera_s, CCamera__pool, "pool", t) float_save(&camera->viewport_height, "viewport_height", camera_s);
     // }
 }
-void camera_load_all(App* app) {
+void camera_load_all(App *app) {
     // Store *t, *camera_s;
-    // Camera *camera;
+    // CCamera *camera;
 
     // if (store_child_load(&t, "camera", s)) {
     //     entity_load(&curr_camera, "curr_camera", curr_camera, t);
 
     //     mat3_load(&inverse_view_matrix, "inverse_view_matrix", mat3_identity(), t);
 
-    //     entitypool_load_foreach(camera, camera_s, Camera::pool, "pool", t) float_load(&camera->viewport_height, "viewport_height", 1, camera_s);
+    //     entitypool_load_foreach(camera, camera_s, CCamera__pool, "pool", t) float_load(&camera->viewport_height, "viewport_height", 1, camera_s);
     // }
 }

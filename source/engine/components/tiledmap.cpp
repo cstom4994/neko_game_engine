@@ -13,6 +13,10 @@
 
 static const_str S_UNKNOWN = "unknown";
 
+CEntityPool<CTiledMap> *Tiled__pool;
+
+int type_tiled;
+
 static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<AssetTexture> *images) {
     PROFILE_FUNC();
 
@@ -554,9 +558,9 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
-// DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
+// DECL_ENT(CTiledMap, tiled_renderer *render; vec2 pos; String map_name;);
 
-Asset Tiled::tiled_shader = {};
+Asset CTiledMap::tiled_shader = {};
 
 bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
@@ -834,7 +838,7 @@ void tiled_render_init(tiled_renderer *renderer) {
 
     // hashmap_init(&renderer->quad_table);
 
-    GLuint sid = Tiled::tiled_shader.shader.id;
+    GLuint sid = CTiledMap::tiled_shader.shader.id;
 
     PROFILE_FUNC();
 
@@ -888,7 +892,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    GLuint sid = Tiled::tiled_shader.shader.id;
+    GLuint sid = CTiledMap::tiled_shader.shader.id;
 
     glUseProgram(sid);
 
@@ -1027,7 +1031,7 @@ void tiled_render_draw(tiled_renderer *renderer) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-static void tiled_map_edit_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
+static void tiled_map_edit_w(CTiledMap *tiled, u32 layer_idx, u32 x, u32 y, u32 id) {
 
     Asset asset = {};
     bool ok = asset_read(tiled->render->map_asset, &asset);
@@ -1049,13 +1053,13 @@ static void tiled_map_edit_w(Tiled *tiled, u32 layer_idx, u32 x, u32 y, u32 id) 
 }
 
 void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
-    Tiled *tiled = Tiled::pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->Get(ent);
     error_assert(tiled);
 
     tiled_map_edit_w(tiled, layer_idx, x, y, id);
 }
 
-int tiled_render(Tiled *tiled) {
+int tiled_render(CTiledMap *tiled) {
 
     PROFILE_FUNC();
 
@@ -1137,11 +1141,11 @@ int tiled_render(Tiled *tiled) {
 
 void tiled_add(CEntity ent) {
 
-    if (Tiled::pool->Get(ent)) return;
+    if (Tiled__pool->Get(ent)) return;
 
     transform_add(ent);
 
-    Tiled *tiled = Tiled::pool->Add(ent);
+    CTiledMap *tiled = Tiled__pool->Add(ent);
 
     tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
     memset(tiled->render, 0, sizeof(tiled_renderer));
@@ -1149,47 +1153,51 @@ void tiled_add(CEntity ent) {
     tiled_render_init(tiled->render);
 }
 
-void tiled_remove(CEntity ent) { Tiled::pool->Remove(ent); }
+void tiled_remove(CEntity ent) { Tiled__pool->Remove(ent); }
 
-bool tiled_has(CEntity ent) { return Tiled::pool->Get(ent) != NULL; }
+bool tiled_has(CEntity ent) { return Tiled__pool->Get(ent) != NULL; }
 
 void tiled_init() {
     PROFILE_FUNC();
 
-    Tiled::pool = entitypool_new<Tiled>();
+    auto L = ENGINE_LUA();
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &Tiled::tiled_shader);
+    type_tiled = EcsRegisterCType<CTiledMap>(L);
+
+    Tiled__pool = EcsProtoGetCType<CTiledMap>(L);
+
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &CTiledMap::tiled_shader);
     error_assert(ok);
 }
 
 void tiled_fini() {
 
-    Tiled::pool->ForEach([](Tiled *tiled) {
+    Tiled__pool->ForEach([](CTiledMap *tiled) {
         // tiled_unload(&tiled->render->map);
         tiled_render_deinit(tiled->render);
         mem_free(tiled->map_name.data);
         mem_free(tiled->render);
     });
 
-    entitypool_free(Tiled::pool);
+    entitypool_free(Tiled__pool);
 }
 
 int tiled_update_all(App *app, event_t evt) {
 
-    entitypool_remove_destroyed(Tiled::pool, tiled_remove);
+    entitypool_remove_destroyed(Tiled__pool, tiled_remove);
 
-    Tiled::pool->ForEach([](Tiled *tiled) { tiled->pos = transform_get_position(tiled->ent); });
+    Tiled__pool->ForEach([](CTiledMap *tiled) { tiled->pos = transform_get_position(tiled->ent); });
 
     return 0;
 }
 
 void tiled_draw_all() {
 
-    Tiled::pool->ForEach([](Tiled *tiled) { tiled_render(tiled); });
+    Tiled__pool->ForEach([](CTiledMap *tiled) { tiled_render(tiled); });
 }
 
 void tiled_set_map(CEntity ent, const char *str) {
-    Tiled *tiled = Tiled::pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->Get(ent);
     error_assert(tiled);
     tiled->map_name = to_cstr(String(str));
 
@@ -1201,13 +1209,13 @@ void tiled_set_map(CEntity ent, const char *str) {
 }
 
 const char *tiled_get_map(CEntity ent) {
-    Tiled *tiled = Tiled::pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->Get(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
 }
 
 void tiled_loadlua(CEntity ent) {
-    Tiled *tiled = Tiled::pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->Get(ent);
     error_assert(tiled);
 
     Asset asset = {};
