@@ -535,3 +535,69 @@ void script_load_all(App *app) {
     //        mem_free(str);
     //    }
 }
+
+namespace Neko {
+
+LuaBpFileSystem::~LuaBpFileSystem() {}
+
+int LuaBpFileSystem::vfs_load_luabp(lua_State *L) {
+    if (!lua_istable(L, -1)) {
+        int type = lua_type(L, -1);
+        return luaL_error(L, "Expected table as argument, but get %d", type);
+    }
+    for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
+        if (!lua_isstring(L, -2)) {
+            lua_pop(L, 2);
+            return luaL_error(L, "Expected string keys in table");
+        }
+        String vfilename = luabind::luax_check_string(L, -2);
+        String content{};
+        if (lua_isstring(L, -1)) {
+            String content_raw = luabind::luax_check_string(L, -1);
+            content.data = b64_decode(content_raw.data, content_raw.len, content.len);
+            luabp[fnv1a(vfilename)] = content;
+        } else {
+            return luaL_error(L, "expected string at #2");
+        }
+    }
+    return 0;
+}
+
+void LuaBpFileSystem::trash() {
+    luabp.trash();
+    mem_free(luabpPath.data);
+}
+
+bool LuaBpFileSystem::mount(lua_State *L, LuaRef &tb) {
+    if (!tb.IsTable()) {
+        return false;
+    }
+    tb.Push();
+    if (vfs_load_luabp(L) != 0) {
+        lua_pop(L, 1);
+        return false;
+    }
+    lua_pop(L, 1);
+    return true;
+}
+
+bool LuaBpFileSystem::file_exists(String filepath) { return luabp.get(fnv1a(filepath)) != nullptr; }
+
+bool LuaBpFileSystem::read_entire_file(String *out, String filepath) {
+    String *result = luabp.get(fnv1a(filepath));
+    if (!result) return false;
+    *out = *result;
+    return true;
+}
+
+bool LuaBpFileSystem::list_all_files(Array<String> *files) {
+    for (auto bp : luabp) {
+        auto &s = std::format("{}", bp.key);
+        files->push(s);
+    }
+    return true;
+}
+
+u64 LuaBpFileSystem::file_modtime(String filepath) { return 0; }
+
+}  // namespace Neko

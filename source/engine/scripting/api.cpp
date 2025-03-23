@@ -482,7 +482,7 @@ static int neko_quit(lua_State *L) {
 
 static int neko_fatal_error(lua_State *L) {
     String msg = luax_check_string(L, 1);
-    fatal_error(msg);
+    gBase.fatal_error(msg);
     return 0;
 }
 
@@ -2088,12 +2088,11 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
     const_str path = lua_tostring(L, 1);
 
     String str;
-
     bool ok = vfs_read_entire_file(&str, path);
 
     if (ok) {
         const_str data = str.data;
-        lua_pushstring(L, data);
+        lua_pushlstring(L, str.data, str.len);
         neko_defer(mem_free(str.data));
         return 1;
     } else {
@@ -2101,6 +2100,28 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
         lua_pushstring(L, error_message);
         return lua_error(L);
     }
+}
+
+LUA_FUNCTION(__neko_bind_vfs_load_luabp) {
+    String name = luax_check_string(L, 1);
+
+    LuaRef tb = LuaRef::FromStack(L, 2);
+
+    LuaBpFileSystem *luabpFs = mem_new<LuaBpFileSystem>();
+    if (!luabpFs) {
+        return luaL_error(L, "Memory allocation for LuaBpFileSystem failed");
+    }
+    bool ok = luabpFs->mount(L, tb);
+    if (ok) {
+        ok &= vfs_mount_type(name, luabpFs);
+    }
+
+    if (!ok) {
+        mem_del(luabpFs);
+        return luaL_error(L, "Failed to mount LuaBpFileSystem");
+    }
+
+    return 0;
 }
 
 // 返回包含路径和 isDirectory 对的表
@@ -2406,6 +2427,7 @@ static int open_neko(lua_State *L) {
             {"callback_call", __neko_bind_callback_call},
 
             {"vfs_read_file", __neko_bind_vfs_read_file},
+            {"vfs_load_luabp", __neko_bind_vfs_load_luabp},
 
             {"print", __neko_bind_print},
 

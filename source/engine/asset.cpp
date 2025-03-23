@@ -242,7 +242,7 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
         }
 
         if (!ok) {
-            fatal_error(tmp_fmt("failed to hot reload: %s", a.name.data));
+            gBase.fatal_error(tmp_fmt("failed to hot reload: %s", a.name.data));
             return 0;
         }
 

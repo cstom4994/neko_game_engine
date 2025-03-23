@@ -7,6 +7,7 @@
 #include "base/scripting/luax.h"
 #include "base/scripting/lua_wrapper.hpp"
 #include "base/common/logger.hpp"
+#include "base/common/vfs.hpp"
 
 struct App;
 
@@ -29,8 +30,8 @@ NEKO_API() void script_mouse_down(MouseCode mouse);
 NEKO_API() void script_mouse_up(MouseCode mouse);
 NEKO_API() void script_mouse_move(vec2 pos);
 NEKO_API() void script_scroll(vec2 scroll);
-NEKO_API() void script_save_all(App* app);
-NEKO_API() void script_load_all(App* app);
+NEKO_API() void script_save_all(App *app);
+NEKO_API() void script_load_all(App *app);
 
 void luax_run_bootstrap(lua_State *L);
 void luax_run_nekogame(lua_State *L);
@@ -38,15 +39,37 @@ void luax_run_nekogame(lua_State *L);
 NEKO_API() int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
 NEKO_API() void script_push_event(const char *event);
 
-#define errcheck(...)                                      \
-    do                                                     \
-        if (__VA_ARGS__) {                                 \
-            LOG_INFO("lua: {}\n", lua_tostring(L, -1)); \
-            lua_pop(L, 1);                                 \
-            if (LockGuard<Mutex> lock{gBase.error_mtx}) {  \
-                gBase.error_mode.store(true);              \
-            }                                              \
-        }                                                  \
+namespace Neko {
+
+using LuaRef = luabind::LuaRef;
+
+class LuaBpFileSystem : public FileSystem {
+public:
+    String luabpPath;
+    HashMap<String> luabp;
+
+    ~LuaBpFileSystem();
+
+    int vfs_load_luabp(lua_State *L);
+    void trash();
+    bool mount(lua_State *L, LuaRef &tb);
+    bool file_exists(String filepath);
+    bool read_entire_file(String *out, String filepath);
+    bool list_all_files(Array<String> *files);
+    u64 file_modtime(String filepath);
+};
+
+}  // namespace Neko
+
+#define errcheck(...)                                     \
+    do                                                    \
+        if (__VA_ARGS__) {                                \
+            LOG_INFO("lua: {}\n", lua_tostring(L, -1));   \
+            lua_pop(L, 1);                                \
+            if (LockGuard<Mutex> lock{gBase.error_mtx}) { \
+                gBase.error_mode.store(true);             \
+            }                                             \
+        }                                                 \
     while (0)
 
 #endif

@@ -130,7 +130,7 @@ i32 luax_require_script_buffer(lua_State *L, String &contents, String name) {
             lua_pop(L, 1);  // 弹出错误消息
             StringBuilder sb = {};
             neko_defer(sb.trash());
-            fatal_error(String(sb << "Error loading script buffer: " << name << "\n" << error_message));
+            gBase.fatal_error(String(sb << "Error loading script buffer: " << name << "\n" << error_message));
             return LUA_REFNIL;
         }
     }
@@ -141,7 +141,7 @@ i32 luax_require_script_buffer(lua_State *L, String &contents, String name) {
         lua_pop(L, 2);  // 弹出错误消息和模块表
         StringBuilder sb = {};
         neko_defer(sb.trash());
-        fatal_error(String(sb << "Error running script buffer: " << name << "\n" << error_message));
+        gBase.fatal_error(String(sb << "Error running script buffer: " << name << "\n" << error_message));
         return LUA_REFNIL;
     }
 
@@ -172,7 +172,7 @@ i32 luax_require_script(lua_State *L, String filepath) {
     if (!ok) {
         StringBuilder sb = {};
         neko_defer(sb.trash());
-        fatal_error(String(sb << "failed to read script: " << filepath));
+        gBase.fatal_error(String(sb << "failed to read script: " << filepath));
         return LUA_REFNIL;
     }
     neko_defer(mem_free(contents.data));
@@ -204,10 +204,10 @@ int luax_msgh(lua_State *L) {
     String traceback = luax_check_string(L, -1);
 
     if (LockGuard<Mutex> lock{gBase.error_mtx}) {
-        gBase.fatal_error = to_cstr(err);
+        gBase.fatal_error_string = to_cstr(err);
         gBase.traceback = to_cstr(traceback);
 
-        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", gBase.fatal_error.data, gBase.traceback.data);
+        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", gBase.fatal_error_string.data, gBase.traceback.data);
 
         for (u64 i = 0; i < gBase.traceback.len; i++) {
             if (gBase.traceback.data[i] == '\t') {

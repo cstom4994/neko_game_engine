@@ -65,10 +65,10 @@ function haha()
     --     -- }
     -- }
 
-
-
-    local function random_spawn_npc(n)
+    local function random_spawn_npc(n, f)
         n = n or 8
+        f = f or function(v)
+        end
         for i = 1, n do
             local v = {
                 -- id = choose({"CEnemy"}),
@@ -92,6 +92,8 @@ function haha()
             else
                 print("no " .. v.id .. " class exists")
             end
+
+            f(v)
         end
     end
 
@@ -188,6 +190,12 @@ function haha()
         game_tick = game_tick + 1
 
         if game_tick % 400 == 1 then
+            -- local text = "生成怪物 ["
+            -- random_spawn_npc(8, function(v)
+            --     text = text .. "{" .. v.x .. "," .. v.y .. "}"
+            -- end)
+            -- text = text .. "]"
+            -- print(text)
             random_spawn_npc()
             print("生成怪物")
         end

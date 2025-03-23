@@ -164,10 +164,6 @@ int _game_draw(App *app, event_t evt) {
         if (ImGui::BeginMainMenuBar()) {
             ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
 
-            // if (g_app->debug_on) {
-            // sgimgui_draw_menu(&sgimgui, "gfx");
-            // }
-
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
             ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), get_timing_instance().true_dt * 1000.f,
                         1.f / get_timing_instance().true_dt);
@@ -292,7 +288,7 @@ int _game_draw(App *app, event_t evt) {
             y = draw_font(font, false, font_size, x, y, "-- ! Neko Error ! --", NEKO_COLOR_WHITE);
             y += font_size;
 
-            y = draw_font_wrapped(font, false, font_size, x, y, gBase.fatal_error, NEKO_COLOR_WHITE, gApp->cfg.width - x);
+            y = draw_font_wrapped(font, false, font_size, x, y, gBase.fatal_error_string, NEKO_COLOR_WHITE, gApp->cfg.width - x);
             y += font_size;
 
             if (gBase.traceback.data) {
@@ -422,7 +418,7 @@ static void _game_fini() {
     profile_shutdown();
 #endif
 
-    mem_free(gBase.fatal_error.data);
+    mem_free(gBase.fatal_error_string.data);
     mem_free(gBase.traceback.data);
 
     auto &eh = Neko::the<EventHandler>();
@@ -432,44 +428,6 @@ static void _game_fini() {
 
     gApp->~App();
     mem_free(gApp);
-}
-
-bool CL_IsHostClient(void) { return true; }
-
-void CL_Disconnect(void) {}
-
-// -------------------------------------------------------------------------
-
-bool CL_Init() {
-    Neko::modules::initialize<Game>();
-    auto &game = Neko::the<Game>();
-    game.init();
-
-    return true;
-}
-
-bool CL_Think() {
-    App *app = gApp;
-    auto &eh = Neko::the<EventHandler>();
-    // if (glfwWindowShouldClose(gApp->window)) {
-    //     game.quit();
-    // }
-    eh.event_pump();
-
-    eh.event_dispatch(event_t{.type = on_preupdate});
-    if (!gBase.error_mode.load()) {
-        eh.event_dispatch(event_t{.type = on_update});
-    }
-    eh.event_dispatch(event_t{.type = on_postupdate});
-
-    eh.event_dispatch(event_t{.type = on_draw});
-
-    return true;
-}
-
-bool CL_Shutdown() {
-    _game_fini();
-    return true;
 }
 
 void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
@@ -499,12 +457,6 @@ void Game::quit() { gApp->g_quit = true; }
 Game::Game() {}
 
 void Game::init() {
-
-    Neko::modules::initialize<Window>();
-    Neko::modules::initialize<EventHandler>();
-    Neko::modules::initialize<Input>();
-    Neko::modules::initialize<Assets>();
-    Neko::modules::initialize<Renderer>();
 
     gApp = new (mem_alloc(sizeof(App))) App();
 
@@ -749,15 +701,11 @@ static void _scroll(vec2 scroll) { script_scroll(scroll); }
 void system_init() {
     PROFILE_FUNC();
 
-    MountResult mount = {true, true, false};
-
     script_init();
 
     lua_State *L = ENGINE_LUA();
 
-    gBase.is_fused.store(mount.is_fused);
-
-    if (!gBase.error_mode.load() && mount.ok) {
+    if (!gBase.error_mode.load() /*&& mount.ok*/) {
         bool ok = asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
         if (!ok) {
             String conf = R"(
@@ -836,7 +784,6 @@ end
     physics_init();
     edit_init();
 
-    gBase.hot_reload_enabled.store(mount.can_hot_reload && gApp->cfg.hot_reload);
     gBase.reload_interval.store(gApp->cfg.reload_interval);
 
     luax_run_nekogame(L);
@@ -844,7 +791,7 @@ end
     gApp->inspector = new Neko::LuaInspector();
     gApp->inspector->luainspector_init(L);
 
-    if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts && mount.ok) {
+    if (!gBase.error_mode.load() && gApp->cfg.startup_load_scripts) {
         load_all_lua_scripts(L);
     }
 
@@ -1030,56 +977,58 @@ extern Neko::CBase gBase;
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
-bool EngineInit(int argc, const char *argv[]) {
-
+Int32 Main(int argc, const char *argv[]) {
+    bool ok = true;
     gBase.Init();
-
     gBase.SetArgs(argc, argv);
-
     gBase.LoadVFS("../gamedir");
-
     auto argsArray = BaseGetCommandLine(argc);
-
     glfwSetErrorCallback(_glfw_error_callback);
-
     if (!glfwInit()) {
-        // Sys_ErrorPopup("SDL_Init returned an error");
-        return false;
+        ok = false;
     }
 
     for (auto &s : argsArray) mem_free(s.data);
     argsArray.trash();
 
     // if (!SV_Init()) return false;
-    if (!CL_Init()) return false;
+    Neko::modules::initialize<Game>();
+    Neko::modules::initialize<Window>();
+    Neko::modules::initialize<EventHandler>();
+    Neko::modules::initialize<Input>();
+    Neko::modules::initialize<Assets>();
+    Neko::modules::initialize<Renderer>();
 
-    return true;
-}
+    auto &game = Neko::the<Game>();
+    game.init();
 
-void Sys_Shutdown(void) {
-    CL_Shutdown();
-    gBase.UnLoadVFS();
-    gBase.Fini();
-    glfwTerminate();
-}
-
-void Sys_Frame() { CL_Think(); }
-
-Int32 Main(int argc, const char *argv[]) {
-
-    if (!EngineInit(argc, argv)) {
-        LOG_INFO("Error during system initialization.\n");
+    if (!ok) {
+        printf("Error during system initialization.\n");
         return -1;
     }
 
     GLFWwindow *window = gApp->window->glfwWindow();
-
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        Sys_Frame();
+        App *app = gApp;
+        auto &eh = Neko::the<EventHandler>();
+        // if (glfwWindowShouldClose(gApp->window)) {
+        //     game.quit();
+        // }
+        eh.event_pump();
+        eh.event_dispatch(event_t{.type = on_preupdate});
+        if (!gBase.error_mode.load()) {
+            eh.event_dispatch(event_t{.type = on_update});
+        }
+        eh.event_dispatch(event_t{.type = on_postupdate});
+        eh.event_dispatch(event_t{.type = on_draw});
     }
 
-    Sys_Shutdown();
+    _game_fini();
+
+    gBase.UnLoadVFS();
+    gBase.Fini();
+    glfwTerminate();
 
     return 0;
 }

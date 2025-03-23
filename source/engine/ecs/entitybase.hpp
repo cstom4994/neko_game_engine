@@ -34,7 +34,7 @@ struct CTransform : CEntityBase {
 };
 
 // bbox pool
-struct BBoxPoolElem : CEntityBase {
+struct CBBoxPoolElem : CEntityBase {
     mat3 wmat;
     BBox bbox;
     f32 selected;  // > 0.5 if and only if selected

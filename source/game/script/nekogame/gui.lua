@@ -345,6 +345,13 @@ draw_imgui = function(dt)
         print(table.show({gw:detail()}))
     end
 
+    if ImGui.Button("test_luabp") then
+        local M = dofile("../out.lua")
+        neko.vfs_load_luabp("name", M)
+        local content = read_file("luabp/README copy.md")
+        print(content)
+    end
+
     if ImGui.Button("test_callback") then
 
         local f = function(f1, f2)

@@ -1,16 +1,14 @@
 #include "vfs.hpp"
 
 #include <filesystem>
+#include <format>
 
 #include "base/common/hashmap.hpp"
 #include "base/common/profiler.hpp"
 #include "base/common/util.hpp"
 #include "base/common/logger.hpp"
-
-// miniz
-#include "extern/miniz.h"
-
-void fatal_error(Neko::String str);
+#include "base/scripting/luax.h"
+#include "base/scripting/lua_wrapper.hpp"
 
 namespace Neko {
 
@@ -61,348 +59,205 @@ static bool list_all_files_help(Array<String> *files, const_str path) {
     return true;
 }
 
-struct FileSystem {
-    virtual void make() = 0;
-    virtual void trash() = 0;
-    virtual bool mount(String filepath) = 0;
-    virtual bool file_exists(String filepath) = 0;
-    virtual bool read_entire_file(String *out, String filepath) = 0;
-    virtual bool list_all_files(Array<String> *files) = 0;
-    virtual u64 file_modtime(String filepath) = 0;
-};
+HashMap<FileSystem *> g_vfs;
 
-static HashMap<FileSystem *> g_vfs;
+DirectoryFileSystem::~DirectoryFileSystem() {}
 
-struct DirectoryFileSystem : FileSystem {
-    String basepath;
+void DirectoryFileSystem::trash() { mem_free(basepath.data); }
 
-    void make() {}
-    void trash() { mem_free(basepath.data); }
+bool DirectoryFileSystem::mount(String filepath) {
+    // String path = to_cstr(filepath);
+    // neko_defer(mem_free(path.data));
+    // i32 res = os_change_dir(path.data);
+    // return res == 0;
+    basepath = to_cstr(filepath);
+    return true;
+}
 
-    bool mount(String filepath) {
-        // String path = to_cstr(filepath);
-        // neko_defer(mem_free(path.data));
-        // i32 res = os_change_dir(path.data);
-        // return res == 0;
-        basepath = to_cstr(filepath);
+bool DirectoryFileSystem::file_exists(String filepath) {
+    String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+    neko_defer(mem_free(path.data));
+
+    FILE *fp = neko_fopen(path.cstr(), "r");
+    if (fp != nullptr) {
+        neko_fclose(fp);
         return true;
     }
 
-    bool file_exists(String filepath) {
-        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
-        neko_defer(mem_free(path.data));
+    return false;
+}
 
-        FILE *fp = neko_fopen(path.cstr(), "r");
-        if (fp != nullptr) {
-            neko_fclose(fp);
-            return true;
-        }
+bool DirectoryFileSystem::read_entire_file(String *out, String filepath) {
+    if (!file_exists(filepath)) return false;
+    String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+    neko_defer(mem_free(path.data));
+    return read_entire_file_raw(out, path);
+}
 
+bool DirectoryFileSystem::list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
+
+u64 DirectoryFileSystem::file_modtime(String filepath) {
+    if (!file_exists(filepath)) return 0;
+    String path = tmp_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+    u64 modtime = os_file_modtime(path.cstr());
+    return modtime;
+}
+
+ZipFileSystem::~ZipFileSystem() {}
+
+void ZipFileSystem::trash() {
+    if (zip_contents.data != nullptr) {
+        mz_zip_reader_end(&zip);
+        mem_free(zip_contents.data);
+    }
+}
+
+bool ZipFileSystem::mount(String filepath) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool contents_ok = false;
+
+    // 判断是否已经挂载gamedata
+    // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
+    if (g_vfs.get(fnv1a(NEKO_PACKS::GAMEDATA))) {
+        contents_ok = vfs_read_entire_file(&contents, filepath);
+    } else {
+        contents_ok = read_entire_file_raw(&contents, filepath);
+    }
+
+    if (!contents_ok) {
         return false;
     }
 
-    bool read_entire_file(String *out, String filepath) {
-        if (!file_exists(filepath)) return false;
-        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
-        neko_defer(mem_free(path.data));
-        return read_entire_file_raw(out, path);
-    }
-
-    bool list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
-
-    u64 file_modtime(String filepath) {
-        if (!file_exists(filepath)) return 0;
-        String path = tmp_fmt("%s/%s", basepath.cstr(), filepath.cstr());
-        u64 modtime = os_file_modtime(path.cstr());
-        return modtime;
-    }
-};
-
-struct ZipFileSystem : FileSystem {
-    Mutex mtx = {};
-    mz_zip_archive zip = {};
-    String zip_contents = {};
-
-    void make() {}
-
-    void trash() {
-        if (zip_contents.data != nullptr) {
-            mz_zip_reader_end(&zip);
-            mem_free(zip_contents.data);
+    bool success = false;
+    neko_defer({
+        if (!success) {
+            mem_free(contents.data);
         }
-    }
-
-    bool mount(String filepath) {
-        PROFILE_FUNC();
-
-        String contents = {};
-        bool contents_ok = false;
-
-        // 判断是否已经挂载gamedata
-        // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
-        if (g_vfs.get(fnv1a(NEKO_PACKS::GAMEDATA))) {
-            contents_ok = vfs_read_entire_file(&contents, filepath);
-        } else {
-            contents_ok = read_entire_file_raw(&contents, filepath);
-        }
-
-        if (!contents_ok) {
-            return false;
-        }
-
-        bool success = false;
-        neko_defer({
-            if (!success) {
-                mem_free(contents.data);
-            }
-        });
-
-        char *data = contents.data;
-        char *end = &data[contents.len];
-
-        constexpr i32 eocd_size = 22;
-        char *eocd = end - eocd_size;
-        if (read4(eocd) != 0x06054b50) {
-            LOG_INFO("zip_fs failed to find EOCD record");
-            return false;
-        }
-
-        u32 central_size = read4(&eocd[12]);
-        if (read4(eocd - central_size) != 0x02014b50) {
-            LOG_INFO("zip_fs failed to find central directory");
-            return false;
-        }
-
-        u32 central_offset = read4(&eocd[16]);
-        char *begin = eocd - central_size - central_offset;
-        u64 zip_len = end - begin;
-        if (read4(begin) != 0x04034b50) {
-            LOG_INFO("zip_fs failed to read local file header");
-            return false;
-        }
-
-        mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
-        if (!zip_ok) {
-            mz_zip_error err = mz_zip_get_last_error(&zip);
-            LOG_INFO("zip_fs failed to read zip: {}", mz_zip_get_error_string(err));
-            return false;
-        }
-
-        zip_contents = contents;
-
-        success = true;
-        return true;
-    }
-
-    bool file_exists(String filepath) {
-        PROFILE_FUNC();
-
-        String path = to_cstr(filepath);
-        neko_defer(mem_free(path.data));
-
-        LockGuard<Mutex> lock{mtx};
-
-        i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
-        if (i == -1) {
-            return false;
-        }
-
-        mz_zip_archive_file_stat stat;
-        mz_bool ok = mz_zip_reader_file_stat(&zip, i, &stat);
-        if (!ok) {
-            return false;
-        }
-
-        return true;
-    }
-
-    bool read_entire_file(String *out, String filepath) {
-        PROFILE_FUNC();
-
-        String path = to_cstr(filepath);
-        neko_defer(mem_free(path.data));
-
-        LockGuard<Mutex> lock{mtx};
-
-        i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
-        if (file_index == -1) {
-            return false;
-        }
-
-        mz_zip_archive_file_stat stat;
-        mz_bool ok = mz_zip_reader_file_stat(&zip, file_index, &stat);
-        if (!ok) {
-            return false;
-        }
-
-        size_t size = stat.m_uncomp_size;
-        char *buf = (char *)mem_alloc(size + 1);
-
-        ok = mz_zip_reader_extract_to_mem(&zip, file_index, buf, size, 0);
-        if (!ok) {
-            mz_zip_error err = mz_zip_get_last_error(&zip);
-            fprintf(stderr, "failed to read file '%s': %s\n", path.data, mz_zip_get_error_string(err));
-            mem_free(buf);
-            return false;
-        }
-
-        buf[size] = 0;
-        *out = {buf, size};
-        return true;
-    }
-
-    bool list_all_files(Array<String> *files) {
-        PROFILE_FUNC();
-
-        LockGuard<Mutex> lock{mtx};
-
-        for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
-            mz_zip_archive_file_stat file_stat;
-            mz_bool ok = mz_zip_reader_file_stat(&zip, i, &file_stat);
-            if (!ok) {
-                return false;
-            }
-
-            String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
-            files->push(to_cstr(name));
-        }
-
-        return true;
-    }
-
-    u64 file_modtime(String filepath) { return 0; }
-};
-
-#if defined(NEKO_IS_WEB)
-EM_JS(char *, web_mount_dir, (), { return stringToNewUTF8(nekoMount); });
-
-EM_ASYNC_JS(void, web_load_zip, (), {
-    var dirs = nekoMount.split("/");
-    dirs.pop();
-
-    var path = [];
-    for (var dir of dirs) {
-        path.push(dir);
-        FS.mkdir(path.join("/"));
-    }
-
-    await fetch(nekoMount).then(async function(res) {
-        if (!res.ok) {
-            throw new Error("failed to fetch " + nekoMount);
-        }
-
-        var data = await res.arrayBuffer();
-        FS.writeFile(nekoMount, new Uint8Array(data));
     });
-});
 
-EM_ASYNC_JS(void, web_load_files, (), {
-    var jobs = [];
+    char *data = contents.data;
+    char *end = &data[contents.len];
 
-    function nekoWalkFiles(files, leading) {
-        var path = leading.join("/");
-        if (path != "") {
-            FS.mkdir(path);
-        }
-
-        for (var entry of Object.entries(files)) {
-            var key = entry[0];
-            var value = entry[1];
-            var filepath = [... leading, key ];
-            if (typeof value == "object") {
-                nekoWalkFiles(value, filepath);
-            } else if (value == 1) {
-                var file = filepath.join("/");
-
-                var job = fetch(file).then(async function(res) {
-                    if (!res.ok) {
-                        throw new Error("failed to fetch " + file);
-                    }
-                    var data = await res.arrayBuffer();
-                    FS.writeFile(file, new Uint8Array(data));
-                });
-
-                jobs.push(job);
-            }
-        }
-    }
-    nekoWalkFiles(nekoFiles, []);
-
-    await Promise.all(jobs);
-});
-#endif
-
-template <typename T>
-static bool vfs_mount_type(String fsname, String mount) {
-    void *ptr = mem_alloc(sizeof(T));
-    T *vfs = new (ptr) T();
-
-    vfs->make();
-    bool ok = vfs->mount(mount);
-    if (!ok) {
-        vfs->trash();
-        mem_free(vfs);
+    constexpr i32 eocd_size = 22;
+    char *eocd = end - eocd_size;
+    if (read4(eocd) != 0x06054b50) {
+        LOG_INFO("zip_fs failed to find EOCD record");
         return false;
     }
 
-    g_vfs[fnv1a(fsname)] = vfs;
+    u32 central_size = read4(&eocd[12]);
+    if (read4(eocd - central_size) != 0x02014b50) {
+        LOG_INFO("zip_fs failed to find central directory");
+        return false;
+    }
+
+    u32 central_offset = read4(&eocd[16]);
+    char *begin = eocd - central_size - central_offset;
+    u64 zip_len = end - begin;
+    if (read4(begin) != 0x04034b50) {
+        LOG_INFO("zip_fs failed to read local file header");
+        return false;
+    }
+
+    mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
+    if (!zip_ok) {
+        mz_zip_error err = mz_zip_get_last_error(&zip);
+        LOG_INFO("zip_fs failed to read zip: {}", mz_zip_get_error_string(err));
+        return false;
+    }
+
+    zip_contents = contents;
+
+    success = true;
+    return true;
+}
+
+bool ZipFileSystem::file_exists(String filepath) {
+    PROFILE_FUNC();
+
+    String path = to_cstr(filepath);
+    neko_defer(mem_free(path.data));
+
+    LockGuard<Mutex> lock{mtx};
+
+    i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+    if (i == -1) {
+        return false;
+    }
+
+    mz_zip_archive_file_stat stat;
+    mz_bool ok = mz_zip_reader_file_stat(&zip, i, &stat);
+    if (!ok) {
+        return false;
+    }
 
     return true;
 }
 
-MountResult vfs_mount(const_str fsname, const char *filepath) {
+bool ZipFileSystem::read_entire_file(String *out, String filepath) {
     PROFILE_FUNC();
 
-    MountResult res = {};
+    String path = to_cstr(filepath);
+    neko_defer(mem_free(path.data));
 
-#if defined(NEKO_IS_WEB)
-    String mount_dir = web_mount_dir();
-    neko_defer(free(mount_dir.data));
+    LockGuard<Mutex> lock{mtx};
 
-    if (mount_dir.ends_with(".zip")) {
-        web_load_zip();
-        res.ok = vfs_mount_type<ZipFileSystem>(mount_dir);
-    } else {
-        web_load_files();
-        res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
-    }
-#else
-    if (filepath == nullptr) {
-
-        String path = os_program_path();
-        LOG_INFO("program path: {}", path.data);
-
-        res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
-        if (!res.ok) {
-            res.ok = vfs_mount_type<ZipFileSystem>(fsname, "./gamedata.zip");
-            res.is_fused = true;
-            LOG_INFO("zip_fs load with gamedata.zip");
-        }
-    } else {
-        String mount_dir = filepath;
-
-        if (mount_dir.ends_with(".zip")) {
-            res.ok = vfs_mount_type<ZipFileSystem>(fsname, mount_dir);
-            res.is_fused = true;
-        } else {
-            res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, mount_dir);
-            res.can_hot_reload = res.ok;
-        }
-    }
-#endif
-
-    if (filepath != nullptr && !res.ok) {
-        fatal_error(tmp_fmt("failed to load: %s", filepath));
+    i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+    if (file_index == -1) {
+        return false;
     }
 
-    return res;
+    mz_zip_archive_file_stat stat;
+    mz_bool ok = mz_zip_reader_file_stat(&zip, file_index, &stat);
+    if (!ok) {
+        return false;
+    }
+
+    size_t size = stat.m_uncomp_size;
+    char *buf = (char *)mem_alloc(size + 1);
+
+    ok = mz_zip_reader_extract_to_mem(&zip, file_index, buf, size, 0);
+    if (!ok) {
+        mz_zip_error err = mz_zip_get_last_error(&zip);
+        fprintf(stderr, "failed to read file '%s': %s\n", path.data, mz_zip_get_error_string(err));
+        mem_free(buf);
+        return false;
+    }
+
+    buf[size] = 0;
+    *out = {buf, size};
+    return true;
 }
 
+bool ZipFileSystem::list_all_files(Array<String> *files) {
+    PROFILE_FUNC();
+
+    LockGuard<Mutex> lock{mtx};
+
+    for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
+        mz_zip_archive_file_stat file_stat;
+        mz_bool ok = mz_zip_reader_file_stat(&zip, i, &file_stat);
+        if (!ok) {
+            return false;
+        }
+
+        String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
+        files->push(to_cstr(name));
+    }
+
+    return true;
+}
+
+u64 ZipFileSystem::file_modtime(String filepath) { return 0; }
+
 void vfs_fini() {
-    for (auto vfs : g_vfs) {
+    for (auto &vfs : g_vfs) {
         LOG_INFO("vfs_fini({})", vfs.key);
-        (*vfs.value)->trash();
-        mem_free((*vfs.value));
+        FileSystem *fs = *vfs.value;
+        fs->trash();
+        mem_del(fs);
     }
 
     g_vfs.trash();

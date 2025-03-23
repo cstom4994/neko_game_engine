@@ -168,4 +168,17 @@ inline void DebugAllocator::dump_allocs(bool detailed) {
     neko_println("  --- leaks %d allocation(s) with %lld bytes ---", allocs, alloc_size);
 }
 
+template <typename T, typename... Args>
+T *mem_new(Args &&...args) {
+    T *o = (T *)mem_alloc(sizeof(T));
+    new (o) T(std::forward<Args>(args)...);
+    return o;
+}
+
+template <typename T>
+void mem_del(T *ptr) {
+    ptr->~T();
+    mem_free(ptr);
+}
+
 }  // namespace Neko

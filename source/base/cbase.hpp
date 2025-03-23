@@ -18,7 +18,7 @@ public:
     std::atomic<bool> is_fused;
 
     Mutex error_mtx;
-    String fatal_error;
+    String fatal_error_string;
     String traceback;
 
     std::atomic<bool> hot_reload_enabled;
@@ -35,11 +35,21 @@ public:
     void Init();
     void Fini();
 
-    MountResult LoadVFS(const_str path);
+    bool LoadVFS(String filepath);
     void UnLoadVFS();
 
     bool InitLuaBase();
     void FiniLuaBase();
+
+    inline void fatal_error(Neko::String str) {
+        if (!error_mode.load()) {
+            Neko::LockGuard<Neko::Mutex> lock{error_mtx};
+
+            fatal_error_string = to_cstr(str);
+            fprintf(stderr, "%s\n", fatal_error_string.data);
+            error_mode.store(true);
+        }
+    }
 };
 
 i32 keyboard_lookup(String str);
@@ -51,13 +61,3 @@ using Neko::CBase;
 extern CBase gBase;
 
 i32 neko_buildnum(void);
-
-inline void fatal_error(Neko::String str) {
-    if (!gBase.error_mode.load()) {
-        Neko::LockGuard<Neko::Mutex> lock{gBase.error_mtx};
-
-        gBase.fatal_error = to_cstr(str);
-        fprintf(stderr, "%s\n", gBase.fatal_error.data);
-        gBase.error_mode.store(true);
-    }
-}

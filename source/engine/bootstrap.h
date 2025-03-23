@@ -111,8 +111,6 @@ struct App {
 
 extern App *gApp;
 
-void fatal_error(String str);
-
 inline lua_State *&ENGINE_LUA() { return gApp->L; }
 inline EcsWorld *&ENGINE_ECS() { return gApp->ECS; }
 
@@ -154,14 +152,7 @@ void system_fini();
 
 int timing_update(App *app, event_t evt);
 
-extern void Sys_Shutdown(void);
-extern bool EngineInit(int argc, const char *argv[]);
 extern Int32 Main(int argc, const char *argv[]);
 
-extern bool CL_Init();
-extern bool CL_Think();
-extern bool CL_Shutdown();
-extern bool CL_IsHostClient(void);
-extern void CL_Disconnect(void);
 
 #endif

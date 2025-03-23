@@ -9,7 +9,7 @@ CEntityPool<CUnEditable>* uneditable__pool;
 
 int type_uneditable;
 
-CEntityPool<BBoxPoolElem>* BBoxPoolElem__pool;
+CEntityPool<CBBoxPoolElem>* BBoxPoolElem__pool;
 
 int type_bbox;
 
@@ -28,7 +28,7 @@ bool edit_get_editable(CEntity ent) { return !uneditable__pool->Get(ent); }
 // --- bboxes --------------------------------------------------------------
 
 void edit_bboxes_update(CEntity ent, BBox bbox) {
-    BBoxPoolElem* elem;
+    CBBoxPoolElem* elem;
 
     // editable?
     if (!edit_get_editable(ent)) return;
@@ -39,14 +39,14 @@ void edit_bboxes_update(CEntity ent, BBox bbox) {
     if (elem)
         elem->bbox = bbox_merge(elem->bbox, bbox);
     else {
-        elem = (BBoxPoolElem*)BBoxPoolElem__pool->Add(ent);
+        elem = (CBBoxPoolElem*)BBoxPoolElem__pool->Add(ent);
         elem->bbox = bbox;
     }
 }
 
 bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem__pool->Get(ent) != NULL; }
 BBox edit_bboxes_get(CEntity ent) {
-    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
+    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
     error_assert(elem);
     return elem->bbox;
 }
@@ -55,18 +55,18 @@ int edit_bboxes_get_num() { return entitypool_size(BBoxPoolElem__pool); }
 
 CEntity edit_bboxes_get_nth_ent(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem__pool));
-    BBoxPoolElem* elem = (BBoxPoolElem*)entitypool_nth(BBoxPoolElem__pool, n);
+    CBBoxPoolElem* elem = (CBBoxPoolElem*)entitypool_nth(BBoxPoolElem__pool, n);
     return elem->ent;
 }
 
 BBox edit_bboxes_get_nth_bbox(int n) {
     error_assert(n < entitypool_size(BBoxPoolElem__pool));
-    BBoxPoolElem* elem = entitypool_nth(BBoxPoolElem__pool, n);
+    CBBoxPoolElem* elem = entitypool_nth(BBoxPoolElem__pool, n);
     return elem->bbox;
 }
 
 void edit_bboxes_set_selected(CEntity ent, bool selected) {
-    BBoxPoolElem* elem = (BBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
+    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
     error_assert(elem);
     elem->selected = selected;
 }
@@ -79,9 +79,9 @@ static void _bboxes_init() {
 
     auto L = ENGINE_LUA();
 
-    type_bbox = EcsRegisterCType<BBoxPoolElem>(L);
+    type_bbox = EcsRegisterCType<CBBoxPoolElem>(L);
 
-    BBoxPoolElem__pool = EcsProtoGetCType<BBoxPoolElem>(L);
+    BBoxPoolElem__pool = EcsProtoGetCType<CBBoxPoolElem>(L);
 
     // 创建着色器程序 加载图集 绑定参数
     bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
@@ -96,12 +96,12 @@ static void _bboxes_init() {
     glBindVertexArray(bboxes_vao);
     glGenBuffers(1, &bboxes_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", BBoxPoolElem, wmat.v[0]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", BBoxPoolElem, wmat.v[3]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", BBoxPoolElem, wmat.v[6]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmin", BBoxPoolElem, bbox.min);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmax", BBoxPoolElem, bbox.max);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "selected", BBoxPoolElem, selected);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", CBBoxPoolElem, wmat.v[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", CBBoxPoolElem, wmat.v[3]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", CBBoxPoolElem, wmat.v[6]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmin", CBBoxPoolElem, bbox.min);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmax", CBBoxPoolElem, bbox.max);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "selected", CBBoxPoolElem, selected);
 }
 static void _bboxes_fini() {
     // clean up GL stuff
@@ -114,7 +114,7 @@ static void _bboxes_fini() {
 
 static void _bboxes_update_all() {
     CEntity ent;
-    BBoxPoolElem* elem;
+    CBBoxPoolElem* elem;
     static BBox defaultbb = {{-0.25, -0.25}, {0.25, 0.25}};
 
     if (!enabled) return;
@@ -147,7 +147,7 @@ static void _bboxes_draw_all() {
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
     nbboxes = entitypool_size(BBoxPoolElem__pool);
-    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(BBoxPoolElem), entitypool_begin(BBoxPoolElem__pool), GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, nbboxes * sizeof(CBBoxPoolElem), entitypool_begin(BBoxPoolElem__pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nbboxes);
 }
 
@@ -164,7 +164,7 @@ void edit_set_grid_size(vec2 size) {
 }
 vec2 edit_get_grid_size() { return grid_size; }
 
-static Array<BBoxPoolElem> grid_cells;  // 用于绘制网格的bbox
+static Array<CBBoxPoolElem> grid_cells;  // 用于绘制网格的bbox
 
 static void _grid_create_cells() {
     BBox cbox, cellbox;
@@ -206,7 +206,7 @@ static void _grid_create_cells() {
     // fill in with grid cells
     for (cur.x = cbox.min.x; cur.x < cbox.max.x; cur.x += cellbox.max.x)
         for (cur.y = cbox.min.y; cur.y < cbox.max.y; cur.y += cellbox.max.y) {
-            grid_cells.push(BBoxPoolElem{.wmat = mat3_scaling_rotation_translation(luavec2(1, 1), 0, cur), .bbox = cellbox, .selected = 0});
+            grid_cells.push(CBBoxPoolElem{.wmat = mat3_scaling_rotation_translation(luavec2(1, 1), 0, cur), .bbox = cellbox, .selected = 0});
         }
 }
 
@@ -229,7 +229,7 @@ static void _grid_draw() {
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
     ncells = grid_cells.len;
-    glBufferData(GL_ARRAY_BUFFER, ncells * sizeof(BBoxPoolElem), grid_cells.data, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, ncells * sizeof(CBBoxPoolElem), grid_cells.data, GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, ncells);
     grid_cells.resize(0);
 }
