@@ -278,123 +278,122 @@ end
 
 draw_imgui = function(dt)
     local ImGui = imgui
-    ImGui.Begin("Demo")
 
-    local ImGuiEnd<close> = setmetatable({}, {
-        __close = function()
-            ImGui.End()
-        end
-    })
+    local window<close> = ImGuiWindow("Demo")
 
-    ImGui.Text("TestDemo")
+    if window then
 
-    if ImGui.Button("test_http") then
-        local http = require 'http'
+        ImGui.Text("TestDemo")
 
-        local status, data = http.request('https://www.7ed.net/ruozi/api')
+        if ImGui.Button("test_http") then
+            local http = require 'http'
 
-        print('welcome')
-        print(status)
-        print(data)
+            local status, data = http.request('https://www.7ed.net/ruozi/api')
 
-        local json_data = neko.json_read(common.decode_unicode_escape(data))
+            print('welcome')
+            print(status)
+            print(data)
 
-        print(table.show(json_data))
+            local json_data = neko.json_read(common.decode_unicode_escape(data))
 
-        print(neko.json_write(json_data))
-    end
+            print(table.show(json_data))
 
-    if ImGui.Button("build_pack") then
-        neko.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
-    end
-
-    if ImGui.Button("read_pack") then
-        local test_pack, test_handle, test_items
-
-        local test_pack_buildnum, test_pack_item_count = neko.bindata_info("fgd.pack")
-        print("pack_info", test_pack_buildnum, test_pack_item_count)
-        test_pack = neko.bindata_load("test_pack_handle", "fgd.pack")
-        test_handle = test_pack:assets_load("neko_base.fgd")
-        test_items = test_pack:items()
-        print(type(test_handle))
-        test_pack:assets_unload(test_handle)
-        print(table.show(test_items))
-    end
-
-    if ImGui.Button("test_reg") then
-        local reg = neko.from_registry("_PRELOAD")
-        dump_func(reg)
-
-        reg = neko.from_registry(LUA_RIDX_GLOBALS, "sandbox")
-        dump_func(reg)
-    end
-
-    if ImGui.Button("test_traceback") then
-
-        local function bar(f1, f2)
-            print(neko.traceback(10, 10, true, true))
-        end
-        local function foo(a, b, c)
-            bar(print, foo)
-        end
-        foo("s", {}, 234)
-    end
-
-    if ImGui.Button("test_ecs") then
-
-        print(table.show({gw:detail()}))
-    end
-
-    if ImGui.Button("test_luabp") then
-        local M = dofile("../out.lua")
-        neko.vfs_load_luabp("name", M)
-        local content = read_file("luabp/README copy.md")
-        print(content)
-    end
-
-    if ImGui.Button("test_callback") then
-
-        local f = function(f1, f2)
-            print(neko.traceback(10, 10, true, true))
+            print(neko.json_write(json_data))
         end
 
-        neko.callback_save("test1", f)
-
-        neko.callback_call("test1", "haha", 114514)
-
-    end
-
-    -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)
-
-    ImGui.Separator()
-
-    if ImGui.Button("thread") then
-        local c1 = neko.make_channel 'c1'
-        local c2 = neko.make_channel 'c2'
-
-        local t1 = neko.make_thread [[
-          local c1 = neko.get_channel 'c1'
-          neko.thread_sleep(1)
-          c1:send 'one'
-        ]]
-
-        local t2 = neko.make_thread [[
-          local c2 = neko.get_channel 'c2'
-          neko.thread_sleep(2)
-          c2:send 'two'
-        ]]
-
-        for i = 1, 2 do
-            local msg, ch = neko.select(c1, c2)
-            print(msg, ch)
+        if ImGui.Button("build_pack") then
+            neko.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
         end
+
+        if ImGui.Button("read_pack") then
+            local test_pack, test_handle, test_items
+
+            local test_pack_buildnum, test_pack_item_count = neko.bindata_info("fgd.pack")
+            print("pack_info", test_pack_buildnum, test_pack_item_count)
+            test_pack = neko.bindata_load("test_pack_handle", "fgd.pack")
+            test_handle = test_pack:assets_load("neko_base.fgd")
+            test_items = test_pack:items()
+            print(type(test_handle))
+            test_pack:assets_unload(test_handle)
+            print(table.show(test_items))
+        end
+
+        if ImGui.Button("test_reg") then
+            local reg = neko.from_registry("_PRELOAD")
+            dump_func(reg)
+
+            reg = neko.from_registry(LUA_RIDX_GLOBALS, "sandbox")
+            dump_func(reg)
+        end
+
+        if ImGui.Button("test_traceback") then
+
+            local function bar(f1, f2)
+                print(neko.traceback(10, 10, true, true))
+            end
+            local function foo(a, b, c)
+                bar(print, foo)
+            end
+            foo("s", {}, 234)
+        end
+
+        if ImGui.Button("test_ecs") then
+
+            print(table.show({gw:detail()}))
+        end
+
+        if ImGui.Button("test_luabp") then
+            local M = dofile("../out.lua")
+            neko.vfs_load_luabp("name", M)
+            local content = read_file("luabp/README copy.md")
+            print(content)
+        end
+
+        if ImGui.Button("test_callback") then
+
+            local f = function(f1, f2)
+                print(neko.traceback(10, 10, true, true))
+            end
+
+            neko.callback_save("test1", f)
+
+            neko.callback_call("test1", "haha", 114514)
+
+        end
+
+        -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)
+
+        ImGui.Separator()
+
+        if ImGui.Button("thread") then
+            local c1 = neko.make_channel 'c1'
+            local c2 = neko.make_channel 'c2'
+
+            local t1 = neko.make_thread [[
+            local c1 = neko.get_channel 'c1'
+            neko.thread_sleep(1)
+            c1:send 'one'
+            ]]
+
+            local t2 = neko.make_thread [[
+            local c2 = neko.get_channel 'c2'
+            neko.thread_sleep(2)
+            c2:send 'two'
+            ]]
+
+            for i = 1, 2 do
+                local msg, ch = neko.select(c1, c2)
+                print(msg, ch)
+            end
+        end
+
+        -- if ImGui.InputText("TEST", text) then
+        --     print(tostring(text))
+        -- end
+
+        -- ImGui.Image(test_tex, 100.0, 100.0)
+        -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
+
     end
-
-    -- if ImGui.InputText("TEST", text) then
-    --     print(tostring(text))
-    -- end
-
-    -- ImGui.Image(test_tex, 100.0, 100.0)
-    -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
 
 end

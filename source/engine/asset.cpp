@@ -236,6 +236,11 @@ int assets_perform_hot_reload_changes(App *app, event_t evt) {
                 neko_assert(save_sid == a.shader.id);
                 break;
             }
+            case AssetKind_Text: {
+                mem_free(a.text.data);
+                ok = vfs_read_entire_file(&a.text, a.name);
+                break;
+            }
             default:
                 continue;
                 break;
@@ -285,6 +290,9 @@ void assets_shutdown() {
                 break;
             case AssetKind_Tiledmap:
                 tiled_unload(&v->tiledmap);
+                break;
+            case AssetKind_Text:
+                mem_free(v->text.data);
                 break;
             default:
                 break;
@@ -362,6 +370,10 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             }
             case AssetKind_Tiledmap: {
                 ok = tiled_load(&asset.tiledmap, filepath.cstr(), NULL);
+                break;
+            }
+            case AssetKind_Text: {
+                ok = vfs_read_entire_file(&asset.text, filepath);
                 break;
             }
             // case AssetKind_Pak:

@@ -2153,13 +2153,6 @@ int __neko_ls(lua_State *L) {
     return 1;
 }
 
-inline void neko_register_common(lua_State *L) {
-
-    LuaEnum<AssetKind>(L);
-
-    lua_register(L, "__neko_ls", __neko_ls);
-}
-
 #if 0
 
 int register_mt_aseprite_renderer(lua_State* L) {
@@ -2738,7 +2731,6 @@ static int open_neko(lua_State *L) {
         transform_destroy_rec(*ent);
         return 0;
     });
-
     X(
             "input_keycode_str", +[](lua_State *L) {
                 KeyCode type_val = (KeyCode)lua_tointeger(L, 1);
@@ -3307,6 +3299,7 @@ void createStructTables(lua_State *L) {
     LuaEnum<KeyCode, -1, 350>(L);
     LuaEnum<MouseCode>(L);
     LuaEnum<neko_texture_flags_t>(L);
+    LuaEnum<AssetKind>(L);
 
     LuaStruct<vec2>(L);
     LuaStruct<vec4>(L);
@@ -3394,7 +3387,8 @@ void open_neko_api(lua_State *L) {
 
     openlib_Event(L);
 
-    neko_register_common(L);
+    lua_register(L, "__neko_ls", __neko_ls);
+
     neko_w_init();
 }
 

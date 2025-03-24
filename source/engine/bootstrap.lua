@@ -1804,6 +1804,17 @@ local function serialize(obj)
     return lua
 end
 
+function ImGuiWindow(name, flags)
+    flags = flags or nil
+    if neko.imgui_obsolete.Begin(name, nil, flags) then
+        return setmetatable({}, {
+            __close = function()
+                neko.imgui_obsolete.End()
+            end
+        })
+    end
+end
+
 common.pack = serialize
 
 print("lua startup")

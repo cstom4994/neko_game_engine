@@ -192,9 +192,9 @@ public:
     Array<ScrollCallback> scroll_cbs;
 
 public:
-    void init() override;
-    void fini() override;
-    void update() override;
+    void init();
+    void fini();
+    void update();
 };
 
 typedef enum {

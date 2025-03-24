@@ -710,6 +710,8 @@ private:
     explicit LuaRef(lua_State *L, FromStackIndex fs) : LuaRefBase(L, fs) {}
 
 public:
+    LuaRef() : LuaRefBase(nullptr, LUA_REFNIL) {}
+
     LuaRef(lua_State *L) : LuaRefBase(L, LUA_REFNIL) {}
 
     LuaRef(lua_State *L, const std::string &global) : LuaRefBase(L, LUA_REFNIL) {
@@ -765,6 +767,8 @@ public:
         Push();
         return LuaTableElement<K>(L, key);
     }
+
+    bool IsRefNil() const { return m_ref == LUA_REFNIL; }
 
     static LuaRef FromStack(lua_State *L, int index = -1) {
         lua_pushvalue(L, index);
@@ -1668,7 +1672,8 @@ inline void LuaStructCreate(lua_State *L, const char *fieldName, const char *typ
                     while (lua_next(L, mt2_idx) != 0) {
                         const char *key = luaL_checkstring(L, -2);
                         u64 keyhash = fnv1a(key);
-                        if (keyhash == "__index"_hash ||     //
+                        if (keyhash == "__tostring"_hash ||  //
+                            keyhash == "__index"_hash ||     //
                             keyhash == "__newindex"_hash ||  //
                             keyhash == "__gc"_hash ||        //
                             keyhash == "__metatable"_hash) {
@@ -1701,6 +1706,17 @@ inline void LuaStructCreate(lua_State *L, const char *fieldName, const char *typ
             },
             1);
     lua_setfield(L, -2, "__gc");
+
+    lua_pushstring(L, type_name);
+    lua_pushcclosure(
+            L,
+            [](lua_State *L) -> int {
+                const char *_type_name = lua_tostring(L, lua_upvalueindex(1));
+                lua_pushstring(L, _type_name);
+                return 1;
+            },
+            1);
+    lua_setfield(L, -2, "__tostring");
 
     lua_pushboolean(L, 0);
     lua_pushcclosure(L, fieldaccess, 1);

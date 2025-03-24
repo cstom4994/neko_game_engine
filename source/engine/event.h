@@ -104,9 +104,9 @@ private:
     u64 m_prev_len;
 
 public:
-    void init() override;
-    void fini() override;
-    void update() override;
+    void init();
+    void fini();
+    void update();
 
     void event_register(void* receiver, int evt, EventCallback cb, lua_State* L);
     int event_post(event_t evt);

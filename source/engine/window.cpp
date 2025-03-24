@@ -76,12 +76,6 @@ void Window::SetFramebufferSizeCallback(GLFWframebuffersizefun func) { glfwSetFr
 
 void Window::SwapBuffer() { glfwSwapBuffers(window); }
 
-void Window::init() {}
-
-void Window::fini() {}
-
-void Window::update() {}
-
 void Window::create() {
     // create glfw window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);

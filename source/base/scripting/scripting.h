@@ -42,6 +42,10 @@ NEKO_API() void script_push_event(const char *event);
 namespace Neko {
 
 using LuaRef = luabind::LuaRef;
+using LuaRefID = i32;
+
+LuaRefID luax_require_script_buffer(lua_State *L, String &contents, String name = "<luax_require_script_buffer>");
+LuaRefID luax_require_script(lua_State *L, String filepath);
 
 class LuaBpFileSystem : public FileSystem {
 public:

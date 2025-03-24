@@ -545,7 +545,7 @@ class "Target"
 
 function Target:new(x, y, name, sprite)
     self.x, self.y = x, y
-    self.sprite = sprite or neko.sprite_load "assets/textures/target.ase"
+    self.sprite = sprite or neko.sprite_load "assets/target.ase"
     self.angle = 0
     -- self.z_index = -1
 
@@ -627,7 +627,12 @@ function Target:draw()
                 local enemy_pos = vec2(v.x, v.y)
                 local enemy_mt = getmetatable(v)
                 if local_pos:distance(enemy_pos) <= 100 then
-                    neko.draw_line(self.x, self.y - 40, v.x, v.y)
+                    -- neko.draw_line(self.x, self.y - 40, v.x, v.y)
+
+                    local a = ng.Vec2(self.x, self.y - 40)
+                    local b = ng.Vec2(v.x, v.y)
+                    ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
+
                     if enemy_mt == CEnemy then
                         v:hit(self, 30)
                     else

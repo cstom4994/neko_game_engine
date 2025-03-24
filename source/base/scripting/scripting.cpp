@@ -43,13 +43,41 @@ extern const uint8_t *get_bootstrap_lua();
 extern const uint8_t *get_nekogame_lua();
 extern const uint8_t *get_nekoeditor_lua();
 
-// LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
-// LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", bootstrap_lua);
-// LUAOPEN_EMBED_DATA(open_embed_nekogame, "nekogame.lua", g_lua_nekogame_data);
+String bootstrap_lua() {
+#if 0
+    String data{(const_str)get_bootstrap_lua(), neko_strlen((const_str)get_bootstrap_lua())};
+#else
+    Asset text{};
+    bool ok = asset_load_kind(AssetKind_Text, "../engine/bootstrap.lua", &text);
+    String data = text.text;
+#endif
+    return data;
+}
+
+String nekogame_lua() {
+#if 0
+    String data{(const_str)get_nekogame_lua(), neko_strlen((const_str)get_nekogame_lua())};
+#else
+    Asset text{};
+    bool ok = asset_load_kind(AssetKind_Text, "../engine/nekogame.lua", &text);
+    String data = text.text;
+#endif
+    return data;
+}
+
+String nekoeditor_lua() {
+#if 0
+    String data{(const_str)get_nekoeditor_lua(), neko_strlen((const_str)get_nekoeditor_lua())};
+#else
+    Asset text{};
+    bool ok = asset_load_kind(AssetKind_Text, "../engine/nekoeditor.lua", &text);
+    String data = text.text;
+#endif
+    return data;
+}
 
 extern "C" {
 int luaopen_http(lua_State *L);
-int luaopen_ffi(lua_State *L);
 int luaopen_source_gen_nekogame_luaot(lua_State *L);
 int luaopen_source_gen_nekoeditor_luaot(lua_State *L);
 }
@@ -63,20 +91,6 @@ void package_preload_embed(lua_State *L) {
     for (int i = 0; i < NEKO_ARR_SIZE(preloads); i++) {
         luax_package_preload(L, preloads[i].name, preloads[i].func);
     }
-}
-
-void luax_run_bootstrap(lua_State *L) {
-    if (luaL_loadbuffer(L, (const_str)get_bootstrap_lua(), neko_strlen((const_str)get_bootstrap_lua()), "<bootstrap>") != LUA_OK) {
-        fprintf(stderr, "%s\n", lua_tostring(L, -1));
-        neko_panic("failed to load bootstrap");
-    }
-    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
-        const char *errorMsg = lua_tostring(L, -1);
-        fprintf(stderr, "bootstrap error: %s\n", errorMsg);
-        lua_pop(L, 1);
-        neko_panic("failed to run bootstrap");
-    }
-    LOG_INFO("loaded bootstrap");
 }
 
 int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
@@ -93,11 +107,24 @@ int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
     return 0;
 }
 
+void luax_run_bootstrap(lua_State *L) {
+    if (luaL_loadbuffer(L, bootstrap_lua().data, bootstrap_lua().len, "<bootstrap>") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        neko_panic("failed to load bootstrap");
+    }
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        const char *errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "bootstrap error: %s\n", errorMsg);
+        lua_pop(L, 1);
+        neko_panic("failed to run bootstrap");
+    }
+    LOG_INFO("loaded bootstrap");
+}
+
 void luax_run_nekogame(lua_State *L) {
 
 #if 1
-
-    if (luaL_loadbuffer(L, (const_str)get_nekogame_lua(), neko_strlen((const_str)get_nekogame_lua()), "<nekogame>") != LUA_OK) {
+    if (luaL_loadbuffer(L, nekogame_lua().data, nekogame_lua().len, "<nekogame>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekogame");
     }
@@ -109,7 +136,7 @@ void luax_run_nekogame(lua_State *L) {
     }
     LOG_INFO("loaded nekogame");
 
-    if (luaL_loadbuffer(L, (const_str)get_nekoeditor_lua(), neko_strlen((const_str)get_nekoeditor_lua()), "<nekoeditor>") != LUA_OK) {
+    if (luaL_loadbuffer(L, nekoeditor_lua().data, nekoeditor_lua().len, "<nekoeditor>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekoeditor");
     }
@@ -537,6 +564,74 @@ void script_load_all(App *app) {
 }
 
 namespace Neko {
+
+LuaRefID luax_require_script_buffer(lua_State *L, String &contents, String name) {
+    PROFILE_FUNC();
+
+    if (gBase.error_mode.load()) {
+        return LUA_REFNIL;
+    }
+
+    lua_newtable(L);
+    i32 module_table = lua_gettop(L);
+
+    {
+        PROFILE_BLOCK("load lua script");
+
+        if (luaL_loadbuffer(L, contents.data, contents.len, name.cstr()) != LUA_OK) {
+            String error_message = luax_check_string(L, -1);
+            lua_pop(L, 1);  // 弹出错误消息
+            StringBuilder sb = {};
+            neko_defer(sb.trash());
+            gBase.fatal_error(String(sb << "Error loading script buffer: " << name << "\n" << error_message));
+            return LUA_REFNIL;
+        }
+    }
+
+    // run script
+    if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {
+        String error_message = luax_check_string(L, -1);
+        lua_pop(L, 2);  // 弹出错误消息和模块表
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+        gBase.fatal_error(String(sb << "Error running script buffer: " << name << "\n" << error_message));
+        return LUA_REFNIL;
+    }
+
+    // copy return results to module table
+    i32 top = lua_gettop(L);
+    for (i32 i = 1; i <= top - module_table; i++) {
+        lua_seti(L, module_table, i);
+    }
+
+    return luaL_ref(L, LUA_REGISTRYINDEX);
+}
+
+LuaRefID luax_require_script(lua_State *L, String filepath) {
+    PROFILE_FUNC();
+
+    if (gBase.error_mode.load()) {
+        return LUA_REFNIL;
+    }
+
+    LOG_INFO("{}", filepath.cstr());
+
+    String contents;
+    bool ok = vfs_read_entire_file(&contents, filepath);
+
+    // 如果是读取绝对路径
+    if (!ok) ok = read_entire_file_raw(&contents, filepath);
+
+    if (!ok) {
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+        gBase.fatal_error(String(sb << "failed to read script: " << filepath));
+        return LUA_REFNIL;
+    }
+    neko_defer(mem_free(contents.data));
+
+    return luax_require_script_buffer(L, contents, filepath);
+}
 
 LuaBpFileSystem::~LuaBpFileSystem() {}
 

@@ -43,6 +43,8 @@ function haha()
     ns.rotator.add(block, 1 * math.pi)
 
     ns.edit_inspector.add(block, "transform")
+    ns.edit_inspector.add(block, "sprite")
+    -- ns.edit_inspector.add(block, "tiled")
 
     print("blockblockblock", block.id)
 
@@ -59,10 +61,10 @@ function haha()
     --         position = ng.Vec2(0, 0),
     --         scale = ng.Vec2(0, 0)
     --     },
-    --     player = {}
-    --     -- aseprite = {
-    --     --     ase = "assets/B_witch.ase"
-    --     -- }
+    --     player = {},
+    --     aseprite = {
+    --         ase = "assets/B_witch.ase"
+    --     }
     -- }
 
     local function random_spawn_npc(n, f)
@@ -173,7 +175,8 @@ function haha()
 
         LocalGame.world:add(player)
         LocalGame.world:add(CEnemy(20, 20))
-        -- LocalGame.world:add(WorkingMan(50, -50))
+        LocalGame.world:add(WorkingMan(50, -50))
+        LocalGame.world:add(Target(50, -100))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
@@ -459,7 +462,7 @@ function haha_huge()
         ns.sprite.add(block)
         if symrand() < 0 then
             ns.sprite.set_texcell(block, ng.Vec2(0.0, 32.0))
-            ns.edit.select[block] = true
+            -- ns.edit.select[block] = true
         else
             ns.sprite.set_texcell(block, ng.Vec2(32.0, 32.0))
         end

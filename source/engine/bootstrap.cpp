@@ -112,19 +112,23 @@ extern void draw_gui();
 void rescale_framebuffer(float width, float height) {
     if (fbo_tex == 0 || rbo == 0) return;
 
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
     glBindTexture(GL_TEXTURE_2D, fbo_tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
-
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindRenderbuffer(GL_RENDERBUFFER, rbo);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 // 窗口大小改变的回调函数
@@ -136,6 +140,17 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
     // 更新视口
     glViewport(0, 0, width, height);
+
+    // 计算 ImGui 的缩放比例
+    if (ImGui::GetCurrentContext() != nullptr) {
+        ImGuiIO &io = ImGui::GetIO();
+        int fb_width, fb_height;
+        glfwGetFramebufferSize(window, &fb_width, &fb_height);
+        float scale_x = fb_width / (float)width;
+        float scale_y = fb_height / (float)height;
+
+        io.DisplayFramebufferScale = ImVec2(scale_x, scale_y);
+    }
 }
 
 float posteffect_intensity = 2.0f;
@@ -186,44 +201,63 @@ int _game_draw(App *app, event_t evt) {
         //              R_PRIMITIVE_TRIANGLES);
 
         // idraw_defaults(&g_app->idraw);
-        {
 
-            // script_draw_all();
-            tiled_draw_all();
+        // script_draw_all();
+        tiled_draw_all();
 
-            script_draw_all();
+        script_draw_all();
 
-            sprite_draw_all();
-            batch_draw_all(gApp->batch);
-            edit_draw_all();
-            physics_draw_all();
+        sprite_draw_all();
+        batch_draw_all(gApp->batch);
+        edit_draw_all();
+        physics_draw_all();
 
-            posteffect_enable = !edit_get_enabled();
+        TexturedQuad quad = {
+                .texture = NULL,
+                .position = {0, 0},
+                .dimentions = {40, 40},
+                .rect = {0},
+                .color = make_color(0x6cafb5, 100),
+        };
 
-            // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glDisable(GL_DEPTH_TEST);  // 禁用深度测试，以便屏幕空间四边形不会因深度测试而被丢弃。
-            // 清除所有相关缓冲区
-            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);  // 将透明颜色设置为白色
-            glClear(GL_COLOR_BUFFER_BIT);
+        renderer_push(renderer, &quad);
 
-            GLuint sid = posteffect_shader.shader.id;
-            glUseProgram(sid);
+        NEKO_INVOKE_ONCE(renderer_push_light(renderer, light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
 
-            glUniform1f(glGetUniformLocation(sid, "intensity"), posteffect_intensity);
-            glUniform1i(glGetUniformLocation(sid, "enable"), posteffect_enable);
+        renderer_flush(renderer);
 
-            glBindVertexArray(quadVAO);
-            glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-            f32 fy = draw_font(gApp->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy += draw_font(gApp->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
-            fy += draw_font(gApp->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
-        }
+        f32 fy = draw_font(gApp->default_font, false, 16.f, 0.f, 20.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+        fy += draw_font(gApp->default_font, false, 16.f, 0.f, fy, "我是第二行", NEKO_COLOR_WHITE);
+        fy += draw_font(gApp->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
+
+        posteffect_enable = !edit_get_enabled();
+
+        // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glDisable(GL_DEPTH_TEST);  // 禁用深度测试，以便屏幕空间四边形不会因深度测试而被丢弃。
+        // 清除所有相关缓冲区
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);  // 将透明颜色设置为白色
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        GLuint sid = posteffect_shader.shader.id;
+        glUseProgram(sid);
+
+        glUniform1f(glGetUniformLocation(sid, "intensity"), posteffect_intensity);
+        glUniform1i(glGetUniformLocation(sid, "enable"), posteffect_enable);
+        glUniform1f(glGetUniformLocation(sid, "rt_w"), gApp->cfg.width);
+        glUniform1f(glGetUniformLocation(sid, "rt_h"), gApp->cfg.height);
+
+        glBindVertexArray(quadVAO);
+        glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         auto ui = gApp->ui;
-
-        // ImGui::ShowDemoWindow();
+        neko_update_ui(ui);
+        DeferLoop(ui_begin(ui), ui_end(ui)) {
+            script_draw_ui();
+            draw_gui();
+        }
+        neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
 
         ImGui::SetNextWindowViewport(gApp->devui_vp);
         if (ImGui::Begin("Hello")) {
@@ -258,15 +292,6 @@ int _game_draw(App *app, event_t evt) {
         }
 
         // gameconsole_draw();
-
-        neko_update_ui(ui);
-
-        DeferLoop(ui_begin(ui), ui_end(ui)) {
-            script_draw_ui();
-            draw_gui();
-        }
-
-        neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
 
         gApp->inspector->luainspector_draw(ENGINE_LUA());
 
@@ -307,20 +332,6 @@ int _game_draw(App *app, event_t evt) {
             }
         }
     }
-
-    TexturedQuad quad = {
-            .texture = NULL,
-            .position = {0, 0},
-            .dimentions = {40, 40},
-            .rect = {0},
-            .color = make_color(0x6cafb5, 100),
-    };
-
-    renderer_push(renderer, &quad);
-
-    NEKO_INVOKE_ONCE(renderer_push_light(renderer, light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
-
-    renderer_flush(renderer);
 
     imgui_draw_post();
 
@@ -426,8 +437,7 @@ static void _game_fini() {
 
     Neko::modules::shutdown<EventHandler>();
 
-    gApp->~App();
-    mem_free(gApp);
+    mem_del(gApp);
 }
 
 void Game::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
@@ -458,7 +468,7 @@ Game::Game() {}
 
 void Game::init() {
 
-    gApp = new (mem_alloc(sizeof(App))) App();
+    gApp = mem_new<App>();
 
     LockGuard<Mutex> lock(gApp->g_init_mtx);
 
@@ -592,9 +602,6 @@ void Game::init() {
 
     neko_check_gl_error();
 }
-
-void Game::fini() {}
-void Game::update() {}
 
 int Game::set_window_title(const char *title) {
 #if defined(__EMSCRIPTEN__)

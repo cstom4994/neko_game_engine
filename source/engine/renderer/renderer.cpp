@@ -1158,12 +1158,6 @@ char* word_wrap(struct font* font, char* buffer, const char* string, i32 width) 
     return buffer;
 }
 
-void Renderer::init() {}
-
-void Renderer::fini() {}
-
-void Renderer::update() {}
-
 void Renderer::InitOpenGL() {
 
     // initialize GLEW

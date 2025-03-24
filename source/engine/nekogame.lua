@@ -269,10 +269,12 @@ local function bind_defaults(t, v)
 end
 
 local entity_table_mt = {
+    -- 当向表中添加新键值对时调用
     __newindex = function(t, k, v)
+        -- 获取注册表中的实体映射
         local map = rawget(t, entity_table_mt__regname)
 
-        -- remove
+        -- 如果值为 nil 则从映射中移除该键
         if v == nil then
             if map == nil then
                 return
@@ -281,27 +283,31 @@ local entity_table_mt = {
             return
         end
 
-        -- add
+        -- 如果映射不存在 则创建一个新的映射
         if not map then
             map = {}
             rawset(t, entity_table_mt__regname, map)
         end
+        -- 绑定默认值
         bind_defaults(t, v)
+        -- 将键值对添加到映射中
         map[k.id] = {
             ['k'] = k,
             ['v'] = v
         }
     end,
 
+    -- 当从表中获取值时调用
     __index = function(t, k)
+        -- 获取注册表中的实体映射
         local map = rawget(t, entity_table_mt__regname)
 
-        -- no map => empty
+        -- 如果映射不存在 则返回 nil
         if not map then
             return nil
         end
 
-        -- find slot, return value in it
+        -- 查找映射中的槽位 并返回其中的值
         local slot = map[k.id]
         if not slot then
             return nil
@@ -309,10 +315,12 @@ local entity_table_mt = {
         return slot.v
     end,
 
+    -- 序列化函数 用于将表转换为可保存的格式
     __serialize_f = function(t)
+        -- 获取注册表中的实体映射 如果不存在则返回空表
         local map = rawget(t, entity_table_mt__regname) or {}
 
-        -- don't save filtered-out entities
+        -- 不保存被过滤掉的实体
         local filtered = {}
         for k, slot in pairs(map) do
             if ng.entity_get_save_filter(slot.k) then
@@ -322,21 +330,22 @@ local entity_table_mt = {
         return 'ng.__entity_table_load', filtered
     end,
 
-    -- allows iteration using pairs(...)
+    -- 允许使用 pairs 函数进行迭代
     __pairs = function(t)
+        -- 获取注册表中的实体映射
         local map = rawget(t, entity_table_mt__regname)
 
         return function(_, k)
-            -- no map => empty
+            -- 如果映射不存在 则返回空
             if not map then
                 return nil, nil
             end
 
-            -- get next in map
+            -- 获取映射中的下一个键值对
             local id, slot = next(map, k and k.id or nil)
             if not id then
                 return nil, nil
-            end -- end
+            end
             return slot.k, slot.v
         end, nil, nil
     end
@@ -644,11 +653,6 @@ function ng.add(sys, ent, props)
         end
     end
 end
-
-ns.meta = {
-    receive_events = false
-}
-ns.meta.props = {}
 
 function ng.simple_sys()
     local sys = {

@@ -59,6 +59,12 @@ uniform float bOffset = -0.005;
 
 uniform vec2 pixel_count = vec2(512.0, 512.0 * (9.0/16.0));
 
+float pixel_w = 3.0; // 15.0
+float pixel_h = 2.0; // 10.0
+
+    uniform float rt_w; // 渲染目标宽度
+    uniform float rt_h; // 渲染目标高度
+
 void main()
 {
 
@@ -77,7 +83,26 @@ void main()
 
         // 伽马矫正
         pixel = vec4(pow(pixel.xyz, vec3(1) / power), pixel.w);
-    }else{
+    }else if(enable==2){
+        vec2 uv = TexCoords;
+
+        float vx_offset = 0.5;
+
+        vec3 tc = vec3(1.0, 0.0, 0.0);
+        if (uv.x < (vx_offset-0.005))
+        {
+            float dx = pixel_w*(1./rt_w);
+            float dy = pixel_h*(1./rt_h);
+            vec2 coord = vec2(dx*floor(uv.x/dx),dy*floor(uv.y/dy));
+            tc = texture(screenTexture, coord).rgb;
+        }
+        else if (uv.x>=(vx_offset+0.005))
+        {
+            tc = texture(screenTexture, uv).rgb;
+        }
+
+        pixel = vec4(tc, 1.0);
+    }else {
         pixel = texture(screenTexture, TexCoords);
     }
 

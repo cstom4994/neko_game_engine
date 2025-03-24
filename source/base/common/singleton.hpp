@@ -48,10 +48,6 @@ public:
         return *instance_;
     }
 
-    virtual void init() {};
-    virtual void fini() {};
-    virtual void update() {};
-
 private:
     static std::unique_ptr<BaseT> instance_;
     std::thread::id main_thread_ = std::this_thread::get_id();

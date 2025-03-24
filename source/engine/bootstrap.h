@@ -123,9 +123,7 @@ public:
     Game();
 
 public:
-    void init() override;
-    void fini() override;
-    void update() override;
+    void init();
 
     void game_set_bg_color(Color c);
 
@@ -153,6 +151,5 @@ void system_fini();
 int timing_update(App *app, event_t evt);
 
 extern Int32 Main(int argc, const char *argv[]);
-
 
 #endif

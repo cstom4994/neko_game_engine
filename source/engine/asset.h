@@ -7,7 +7,7 @@
 #include "base/common/color.hpp"
 #include "base/common/vfs.hpp"
 #include "base/common/xml.hpp"
-#include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/scripting.h"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
@@ -143,6 +143,7 @@ enum AssetKind : i32 {
     AssetKind_AseSprite,
     AssetKind_Tiledmap,
     AssetKind_Shader,
+    AssetKind_Text,
     // AssetKind_Pak,
 };
 
@@ -157,11 +158,12 @@ struct Asset {
     u64 modtime;
     AssetKind kind;
     union {
-        i32 lua_ref;
+        LuaRefID lua_ref;
         AssetTexture texture;
         AseSpriteData sprite;
         AssetShader shader;
         TiledMap tiledmap;
+        String text;
         // Pak pak;
     };
 };

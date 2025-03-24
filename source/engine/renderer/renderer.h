@@ -180,9 +180,6 @@ NEKO_API() char* word_wrap(struct font* font, char* buffer, const char* string, 
 
 class Renderer : public Neko::SingletonClass<Renderer> {
 public:
-    void init() override;
-    void fini() override;
-    void update() override;
 
     void InitOpenGL();
 };

@@ -1,5 +1,4 @@
 -- hot_require 'nekogame.edit'
-
 local ImGui = neko.imgui_obsolete
 
 ns.edit = {
@@ -28,6 +27,8 @@ ns.edit.bboxes_get_nth_ent = ng.edit_bboxes_get_nth_ent
 ns.edit.bboxes_set_selected = ng.edit_bboxes_set_selected
 
 ns.edit.line_add = ng.edit_line_add
+
+local PropertyMeta = {}
 
 -- called when using ng.add { ... }, just do nothing
 function ns.edit.add()
@@ -64,7 +65,7 @@ end
 
 -- codestr is 'a', 'b', 'c', '<tab>' etc. as returned by input.*_to_string(...)
 function ns.edit._mode_exec_bind(up, codestr)
-    -- modifier prefixes
+    -- 修饰符前缀
     local mods = {
         ["lctrl"] = 'C-',
         ["rctrl"] = 'C-',
@@ -128,7 +129,7 @@ end
 
 ns.edit.stopped = true
 
--- load this when stopped
+-- 停止时加载
 local stop_savepoint = nil
 local stop_save_next_frame = false -- whether to save a stop soon
 local function stop_save()
@@ -276,30 +277,29 @@ function ns.edit.camera_zoom_out()
     ns.edit.camera_zoom(-1)
 end
 
---- other files ----------------------------------------------------------------
+-- 编辑器内容
+local SelectTable = ng.entity_table()
+local SingleSelectID = 0
+local SingleSelectEnt = nil
 
--- core edit stuff
--- hot_require 'nekogame.edit_select'
-ns.edit.select = ng.entity_table()
-
--- get some selected entity, or nil if none selected
+-- 获取一些选定的实体 如果没有则返回nil
 function ns.edit.select_get_first()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         return ent
     end
     return nil
 end
 
 function ns.edit.select_toggle(ent)
-    if ns.edit.select[ent] then
-        ns.edit.select[ent] = nil
+    if SelectTable[ent] then
+        SelectTable[ent] = nil
     else
-        ns.edit.select[ent] = true
+        SelectTable[ent] = true
     end
 end
 
 function ns.edit.select_clear()
-    ns.edit.select = ng.entity_table()
+    SelectTable = ng.entity_table()
 end
 
 --- 单击选择 ---------------------------------------------------------------
@@ -313,11 +313,13 @@ local function _get_entities_under_mouse()
         local ent = ns.edit.bboxes_get_nth_ent(i)
         local bbox = neko.edit_bboxes_get_nth_bbox(i)
         local wmat = neko.transform_get_world_matrix(ent)
+        local on = false
         if neko.bbox_contains2(bbox, wmat, mouse_pos) then
             table.insert(ents, ent)
+            on = true
         end
 
-        print("_get_entities_under_mouse", ent, bbox)
+        print("_get_entities_under_mouse", ent, ent.id, bbox, on)
     end
 
     -- 按与鼠标的距离排序
@@ -336,51 +338,55 @@ function ns.edit.select_click_single()
     local ents = _get_entities_under_mouse()
 
     if #ents == 0 then
-        ns.edit.select = ng.entity_table()
+        SelectTable = ng.entity_table()
         ns.edit.undo_save()
         return
     end
 
-    -- if something's already selected, select the next thing
-    ents[#ents + 1] = ents[1] -- duplicate first at end to wrap-around
+    -- 如果已经选择了什么 则选择下一个实体
     local sel = 0
-    for i = 1, #ents - 1 do
-        sel = i
-        if ns.edit.select[ents[i]] then
+    for i = 1, #ents do
+        if SelectTable[ents[i]] then
+            sel = i
             break
         end
     end
-    ns.edit.select = ng.entity_table()
-    ns.edit.select[ents[sel + 1]] = true
+    SelectTable = ng.entity_table()
+    sel = (sel % #ents) + 1
+    SelectTable[ents[sel]] = true
+
+    SingleSelectID = ents[sel].id
+    SingleSelectEnt = ents[sel]
+
+    print("选择", ents[sel], ents[sel].id)
 
     ns.edit.undo_save()
 end
 
 function ns.edit.select_click_multi()
-    -- anything under mouse?
+    -- 判断鼠标下是否有实体
     local ents = _get_entities_under_mouse()
     if #ents == 0 then
         ns.edit.undo_save()
         return
     end
 
-    -- if something isn't selected, select it
+    -- 如果没有东西被选择则选择一个实体
     for i = 1, #ents do
-        if not ns.edit.select[ents[i]] then
-            ns.edit.select[ents[i]] = true
+        if not SelectTable[ents[i]] then
+            SelectTable[ents[i]] = true
             ns.edit.undo_save()
             return
         end
     end
 
-    -- otherwise deselect the first
-    ns.edit.select[ents[1]] = nil
+    -- 否则取消第一个选择
+    SelectTable[ents[1]] = nil
 
     ns.edit.undo_save()
 end
 
--- hot_require 'nekogame.edit_command'
---- command mode ---------------------------------------------------------------
+--- 命令模式 ---------------------------------------------------------------
 ns.edit.modes.command = {}
 
 local command_end_callback, command_completion_func, command_completions
@@ -563,15 +569,15 @@ end
 
 -- 检查所选实体的系统 如果未选择实体 则创建实体
 function ns.edit.command_inspect()
-    local add = ng.entity_table_empty(ns.edit.select)
+    local add = ng.entity_table_empty(SelectTable)
 
     local function system(s)
         if add then
             local e = ng.entity_create()
             ns.edit_inspector.add(e, s)
-            ns.edit.select[e] = true
-        elseif not ng.entity_table_empty(ns.edit.select) then
-            for ent in pairs(ns.edit.select) do
+            SelectTable[e] = true
+        elseif not ng.entity_table_empty(SelectTable) then
+            for ent in pairs(SelectTable) do
                 ns.edit_inspector.add(ent, s)
             end
         end
@@ -632,12 +638,12 @@ end
 
 local last_save_prefab = nekogame_usr_path .. 'prefabs/'
 function ns.edit.command_save_prefab()
-    if ng.entity_table_empty(ns.edit.select) then
+    if ng.entity_table_empty(SelectTable) then
         return
     end
 
     local function save(f)
-        for ent in pairs(ns.edit.select) do
+        for ent in pairs(SelectTable) do
             if ns.transform.has(ent) then
                 ns.transform.set_save_filter_rec(ent, true)
             else
@@ -658,7 +664,7 @@ function ns.edit.command_load_prefab()
     local function load(f)
         ns.edit.select_clear()
         local ent = ns.prefab.load(f)
-        ns.edit.select[ent] = true
+        SelectTable[ent] = true
         if ns.transform.has(ent) then
             -- move to center of view
             local w = ns.transform.local_to_world(ns.edit.camera, ng.vec2_zero)
@@ -679,8 +685,7 @@ function ns.edit.set_default_prefab_file(s)
     last_load_prefab = s
 end
 
--- hot_require 'nekogame.edit_transform'
---- grab -----------------------------------------------------------------------
+--- 抓取模式 -----------------------------------------------------------------------
 local grab_old_pos, grab_mouse_start
 local grab_disp -- 'extra' displacement on top of mouse motion
 local grab_snap -- whether snapping to grid
@@ -695,7 +700,7 @@ function ns.edit.grab_end()
 end
 
 function ns.edit.grab_cancel()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         ns.transform.set_position(ent, grab_old_pos[ent])
     end
     ns.edit.set_mode('normal')
@@ -739,7 +744,7 @@ function ns.edit.modes.grab.enter()
 
     -- store old positions
     grab_old_pos = ng.entity_table()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         grab_old_pos[ent] = ns.transform.get_position(ent)
     end
 end
@@ -760,10 +765,10 @@ function ns.edit.modes.grab.update_all()
     end
 
     -- move selected objects
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         -- move only if no ancestor is being moved (avoid double-move)
         local anc = ns.transform.get_parent(ent)
-        while not ng.is_nil_entity(anc) and not ns.edit.select[anc] do
+        while not ng.is_nil_entity(anc) and not SelectTable[anc] do
             anc = ns.transform.get_parent(anc)
         end
         if ng.is_nil_entity(anc) then
@@ -797,7 +802,7 @@ function ns.edit.rotate_end()
 end
 
 function ns.edit.rotate_cancel()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         ns.transform.set_position(ent, rotate_old_posrot[ent].pos)
         ns.transform.set_rotation(ent, rotate_old_posrot[ent].rot)
     end
@@ -813,7 +818,7 @@ function ns.edit.modes.rotate.enter()
 
     -- store old positions, rotations
     rotate_old_posrot = ng.entity_table()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         rotate_old_posrot[ent] = {
             pos = ns.transform.get_position(ent),
             rot = ns.transform.get_rotation(ent)
@@ -823,7 +828,7 @@ function ns.edit.modes.rotate.enter()
     -- compute pivot (currently just the median)
     local n = 0
     rotate_pivot = ng.vec2_zero
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         rotate_pivot = rotate_pivot + ns.transform.get_world_position(ent)
         n = n + 1
     end
@@ -835,7 +840,7 @@ function ns.edit.modes.rotate.update_all()
     local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
     local ang = ng.vec2_atan2(mc - rotate_pivot) - ng.vec2_atan2(ms - rotate_pivot)
 
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         -- set new rotation
         ns.transform.set_rotation(ent, rotate_old_posrot[ent].rot + ang)
 
@@ -853,14 +858,11 @@ function ns.edit.modes.rotate.update_all()
     end
 end
 
--- hot_require 'nekogame.edit_inspector'
-
 --- edit_field -----------------------------------------------------------------
 
 local field_types = {}
 
--- edit_field makes it easy to provide editors for simple properties of various
--- types (Vec2, f32 etc.)
+-- edit_field 使得为各种简单属性提供编辑器很容易
 
 -- 'args' may contain:
 --      field_type: the field type (boolean, string, f32, enum, Vec2,
@@ -880,18 +882,18 @@ end
 ---@param field any
 ---@param val any
 function ng.edit_field_update(field, val)
-    local f = field_types[field.type].update
-    if f then
-        f(field, val)
+    local update_func = field_types[field.type].update
+    if update_func then
+        update_func(field, val)
     end
 end
 
 --- 将显示更新为 val 如果已编辑 则使用新值调用 setter
 ---@param field any
 function ng.edit_field_post_update(field, ...)
-    local f = field_types[field.type].post_update
-    if f then
-        f(field, unpack({...}))
+    local post_update_func = field_types[field.type].post_update
+    if post_update_func then
+        post_update_func(field, unpack({...}))
     end
 end
 
@@ -947,6 +949,21 @@ field_types['f32'] = {
 
     update = function(field, val)
         ImGui.Text("%f", val)
+    end
+}
+
+field_types['userdata'] = {
+    create = function(args)
+        local field = field_create_common(args)
+        return field
+    end,
+
+    post_update = function(field, val, setter)
+
+    end,
+
+    update = function(field, val)
+        ImGui.Text("userdata %s", tostring(val))
     end
 }
 
@@ -1011,6 +1028,8 @@ field_types['Vec2'] = {
         ImGui.Text("<%f,%f>", val.x, val.y)
     end
 }
+
+field_types['vec2'] = field_types['Vec2']
 
 field_types['Color'] = {
     create = function(args)
@@ -1083,12 +1102,12 @@ field_types['CEntity'] = {
         -- ns.gui_text.set_str(field.text, ng.is_nil_entity(val) and '(nil)' or string.format('[%d]', val.id))
         -- if ns.gui.event_mouse_down(field.textbox) == ng.MC_LEFT and not ng.is_nil_entity(val) then
         --     ns.edit.select_clear()
-        --     ns.edit.select[val] = true
+        --     SelectTable[val] = true
         -- end
     end,
 
     update = function(field, val)
-        ImGui.Text("%llu", val.id)
+        ImGui.Text("%d", val.id)
     end
 }
 
@@ -1128,11 +1147,11 @@ ns.edit_inspector = {
     inspect = false
 }
 
-ns.edit_inspector.custom = {} -- custom inspectors -- eg. for physics
+ns.edit_inspector.custom = {} -- 自定义监视器
 
 local inspectors = ng.entity_table() -- CEntity (sys --> inspector) map
 
--- forward event to custom event handler
+-- 转发事件给自定义监视器
 local function custom_event(inspector, evt)
     local custom = ns.edit_inspector.custom[inspector.sys]
     if custom then
@@ -1149,24 +1168,11 @@ end
 local function property_type(inspector, name)
     local r = ng.get(inspector.sys, name, inspector.ent)
 
-    -- TODO 这里需要等到全面改用NekoLuaWrapper及相应反射才能
-    --      通过userdata确定具体C类型
     local field_type = type(r)
-
-    -- print("property_type", name, field_type)
-
     local ctype = nil
     if field_type == 'cdata' or field_type == 'userdata' then
-        -- local refctt = neko.refct.typeof(r)
-
-        -- print("ffi.typeof", ffi.typeof(r))
-
-        -- ctype = refctt.name
-        -- if refctt.what == 'enum' then
-        --     field_type = 'enum'
-        -- else
-        --     field_type = ctype
-        -- end
+        -- 如果是userdata就尝试调用__tosting方法
+        field_type = tostring(r)
     end
     if field_type == 'number' then
         field_type = 'f32'
@@ -1177,14 +1183,15 @@ end
 
 --- 添加属性字段
 ---@param inspector any
----@param name any
+---@param name string
 local function add_property(inspector, name)
-    if inspector.props[name] then
+    if inspector.props[name] then -- 已经存在
         return
-    end -- already exists
+    end
 
-    local field_type, ctype = property_type(inspector, name)
+    local field_type, ctype = property_type(inspector, name) -- 是否为合法属性字段
     if not field_type or not field_types[field_type] then
+        -- print("add_property not found", field_type, field_types[field_type])
         return
     end
 
@@ -1202,14 +1209,16 @@ local function add_property(inspector, name)
 
 end
 
--- add all properties for an inspector, either through ns.meta.props or
--- through automatic discovery
+--- 为检查器添加所有字段
+--- @param inspector any
 local function add_properties(inspector)
-    if ns.meta.props[inspector.sys] then
-        for _, p in ipairs(ns.meta.props[inspector.sys]) do
+    if PropertyMeta[inspector.sys] then -- 从PropertyMeta查表
+        for _, p in ipairs(PropertyMeta[inspector.sys]) do
             add_property(inspector, p.name)
         end
-    elseif rawget(ns, inspector.sys) then
+    end
+
+    if rawget(ns, inspector.sys) then -- 通过自动发现
         for f in pairs(ns[inspector.sys]) do
             if string.sub(f, 1, 4) == 'set_' then
                 local prop = string.sub(f, 5, string.len(f))
@@ -1222,15 +1231,15 @@ local function add_properties(inspector)
 end
 
 --- 返回检查器对象
----@param ent 检查实体ent
----@param sys 检查系统的类型
+--- @param ent any 检查实体ent
+--- @param sys any 检查系统的类型
 local function make_inspector(ent, sys)
     local inspector = {}
 
     inspector.ent = ent
     inspector.sys = sys
 
-    -- put near entity initially
+    -- 最初位置靠近实体
     local pos = ng.Vec2(16, -16)
     if ns.transform.has(ent) then
         pos = ns.transform.local_to_world(ent, ng.vec2_zero)
@@ -1239,7 +1248,7 @@ local function make_inspector(ent, sys)
     inspector.last_pos = pos
     inspector.docked = false
 
-    -- property fields
+    -- 属性字段
     inspector.props = {}
     add_properties(inspector)
 
@@ -1247,7 +1256,9 @@ local function make_inspector(ent, sys)
     return inspector
 end
 
--- 为 CEntity ent 添加系统检查器
+--- 为 CEntity ent 添加系统检查器
+--- @param ent any 检查实体ent
+--- @param sys any 检查系统的类型
 function ns.edit_inspector.add(ent, sys)
     local adder = ns[sys].add
     if not adder then
@@ -1258,17 +1269,18 @@ function ns.edit_inspector.add(ent, sys)
         inspectors[ent] = {}
     end
 
-    if inspectors[ent][sys] then
+    if inspectors[ent][sys] then -- 已经存在
         return
     end
-    if not ns[sys].has(ent) then
+    if not ns[sys].has(ent) then -- 如果此时ent实体上没有绑定sys系统
         adder(ent)
     end
-    inspectors[ent][sys] = make_inspector(ent, sys)
+    inspectors[ent][sys] = make_inspector(ent, sys) -- 创建检查器
 end
 
--- remove sys inspector for CEntity ent -- sys is optional, removes all
--- inspectors on ent if not specified
+--- 为CEntity移除所有系统检查器
+--- @param ent any 检查实体ent
+--- @param sys any 检查系统的类型 如果未指定sys则会删除ent上的所有检查器
 function ns.edit_inspector.remove(ent, sys)
     if not inspectors[ent] then
         return
@@ -1286,11 +1298,11 @@ function ns.edit_inspector.remove(ent, sys)
     inspectors[ent][sys] = nil
 end
 
--- return set of all valid inspector systems
+--- 返回所有有效系统检查器的表
 function ns.edit_inspector.get_systems()
     local sys = {}
-    -- system must either have property metadata or an 'add(...)' function
-    for k in pairs(ns.meta.props) do
+    -- 系统必须具有属性metadata或add函数
+    for k in pairs(PropertyMeta) do
         sys[k] = true
     end
     for k in pairs(ns) do
@@ -1302,11 +1314,11 @@ function ns.edit_inspector.get_systems()
 end
 
 local function remove_destroyed()
-    -- if closed a window, save an undo point
+    -- 如果关闭窗口 保存撤消点
     local some_closed = false
 
     for ent, insps in pairs(inspectors) do
-        if ns.entity.destroyed(ent) then
+        if ns.entity.destroyed(ent) then -- 如果实体已经被销毁
             ns.edit_inspector.remove(ent)
         else
             for _, inspector in pairs(insps) do
@@ -1328,7 +1340,7 @@ local function remove_destroyed()
 end
 
 --- 递归地使实体不可编辑/不可保存等
----@param ent any
+--- @param ent any
 local function update_group_editable_rec(ent)
     ns.edit.set_editable(ent, false)
     ns.group.set_groups(ent, 'builtin edit_inspector')
@@ -1343,27 +1355,27 @@ end
 
 local function update_inspector(inspector)
 
-    -- ns.gui_window.set_highlight(inspector.window, ns.edit.select[inspector.ent])
+    -- ns.gui_window.set_highlight(inspector.window, SelectTable[inspector.ent])
     local title = inspector.sys
     -- ns.gui_window.set_title(inspector.window, title)
 
-    ImGui.Begin(title)
+    local window<close> = ImGuiWindow(title)
+    if window then
+        ImGui.Text("Inspector:\n%d\n%s", inspector.ent.id, table.show(SelectTable))
 
-    ImGui.Text(tostring(ns.edit.select[inspector.ent]))
+        add_properties(inspector) -- 捕获新添加的属性
 
-    add_properties(inspector) -- 捕获新添加的属性
+        -- update_group_editable_rec(inspector.window)
 
-    -- update_group_editable_rec(inspector.window)
+        ImGui.Separator()
 
-    ImGui.Separator()
-
-    for k, prop in pairs(inspector.props) do
-        ImGui.Text("%s %s %s", k, inspector.sys, prop.name)
-        ng.edit_field_update(prop.field, ng.get(inspector.sys, prop.name, inspector.ent))
+        -- 显示属性
+        for k, prop in pairs(inspector.props) do
+            ImGui.Text("%s.%s", inspector.sys, prop.name)
+            ng.edit_field_update(prop.field, ng.get(inspector.sys, prop.name, inspector.ent))
+        end
+        custom_event(inspector, 'update')
     end
-    custom_event(inspector, 'update')
-
-    ImGui.End()
 end
 
 function ns.edit_inspector.update_all()
@@ -1435,19 +1447,20 @@ function ns.edit_inspector.load_all(data)
     -- end
 end
 
--- system-specific
--- hot_require 'nekogame.edit_entity'
+-- 系统特定
 
+-- 递归销毁transform
 function ns.edit.destroy_rec()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         ns.transform.destroy_rec(ent)
     end
 
     ns.edit.undo_save()
 end
 
+-- 递归销毁实体
 function ns.edit.destroy()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         ns.entity.destroy(ent)
     end
 
@@ -1455,8 +1468,8 @@ function ns.edit.destroy()
 end
 
 function ns.edit.duplicate()
-    -- save just current selection to a string
-    for ent in pairs(ns.edit.select) do
+    -- 仅将当前选择保存到字符串
+    for ent in pairs(SelectTable) do
         if ns.transform.has(ent) then
             ns.transform.set_save_filter_rec(ent, true)
         else
@@ -1480,9 +1493,9 @@ function ns.edit.duplicate()
     ns.edit.undo_save()
 end
 
--- default binds
--- hot_require 'nekogame.edit_binds'
--- normal mode
+-- 默认按键绑定
+
+-- 正常模式
 ns.edit.modes.normal['S-;'] = ns.edit.command_start
 ns.edit.modes.normal['u'] = ns.edit.undo
 
@@ -1516,7 +1529,7 @@ ns.edit.modes.normal['b'] = ns.edit.boxsel_start
 ns.edit.modes.normal[','] = ns.edit.command_inspect
 ns.edit.modes.normal['S-g'] = ns.edit.command_grid
 
--- grab mode
+-- 抓取模式
 ns.edit.modes.grab['<enter>'] = ns.edit.grab_end
 ns.edit.modes.grab['<escape>'] = ns.edit.grab_cancel
 ns.edit.modes.grab['<mouse_1>'] = ns.edit.grab_end
@@ -1539,24 +1552,24 @@ ns.edit.modes.grab['S-<down>'] = function()
     ns.edit.grab_move_down(5)
 end
 
--- rotate mode
+-- 旋转模式
 ns.edit.modes.rotate['<enter>'] = ns.edit.rotate_end
 ns.edit.modes.rotate['<escape>'] = ns.edit.rotate_cancel
 ns.edit.modes.rotate['<mouse_1>'] = ns.edit.rotate_end
 ns.edit.modes.rotate['<mouse_2>'] = ns.edit.rotate_cancel
 
--- -- boxsel mode
+-- BoxSel模式
 -- ns.edit.modes.boxsel['<mouse_1>'] = ns.edit.boxsel_begin
 -- ns.edit.modes.boxsel['C-<mouse_1>'] = ns.edit.boxsel_begin
 -- ns.edit.modes.boxsel['^<mouse_1>'] = ns.edit.boxsel_end
 -- ns.edit.modes.boxsel['^C-<mouse_1>'] = ns.edit.boxsel_end_add
 
--- -- phypoly mode
+-- Pyypoly模式
 -- ns.edit.modes.phypoly['<enter>'] = ns.edit.phypoly_end
 -- ns.edit.modes.phypoly['<escape>'] = ns.edit.phypoly_cancel
 -- ns.edit.modes.phypoly['<mouse_1>'] = ns.edit.phypoly_add_vertex
 
---- main events ----------------------------------------------------------------
+--- 主事件 ----------------------------------------------------------------
 
 function ns.edit.key_up(key)
     if not ns.edit.get_enabled() then
@@ -1591,9 +1604,9 @@ function ns.edit.scroll(scroll)
 end
 
 function ns.edit.update_all()
-    for ent in pairs(ns.edit.select) do
+    for ent in pairs(SelectTable) do
         if ns.entity.destroyed(ent) then
-            ns.edit.select[ent] = nil
+            SelectTable[ent] = nil
         end
     end
 
@@ -1618,55 +1631,59 @@ function ns.edit.update_all()
     -- forward to mode
     ns.edit.mode_event('update_all')
 
-    ImGui.Begin("Editor")
-    ImGui.Text("TestDemo:" .. ns.edit.mode_text)
+    local window<close> = ImGuiWindow("Editor")
 
-    -- -- update grid text
-    local g = ns.edit.get_grid_size()
-    if g.x <= 0 and g.y <= 0 then
-        ImGui.Text("no grid")
-    else
-        local s
-        if g.x == g.y then
-            s = string.format('grid %.4g', g.x)
+    if window then
+
+        ImGui.Text("TestDemo:" .. ns.edit.mode_text)
+
+        -- -- update grid text
+        local g = ns.edit.get_grid_size()
+        if g.x <= 0 and g.y <= 0 then
+            ImGui.Text("no grid")
         else
-            s = string.format('grid %.4g %.4g', g.x, g.y)
+            local s
+            if g.x == g.y then
+                s = string.format('grid %.4g', g.x)
+            else
+                s = string.format('grid %.4g %.4g', g.x, g.y)
+            end
+            ImGui.Text(s)
         end
-        ImGui.Text(s)
-    end
 
-    -- update select text
-    local nselect = 0
-    for _ in pairs(ns.edit.select) do
-        nselect = nselect + 1
-    end
-    if nselect > 0 then
-        ImGui.Text('select ' .. nselect)
-    else
-        ImGui.Text("no select")
-    end
+        local nselect = 0
+        for w in pairs(SelectTable) do
+            nselect = nselect + 1
+            ImGui.Text(tostring(w))
+        end
+        if nselect > 0 then
+            ImGui.Text("SelectN: " .. nselect)
+            ImGui.Text("Select: " .. SingleSelectID .. tostring(SingleSelectEnt))
+        else
+            ImGui.Text("no select")
+        end
 
-    -- update play/stop text
-    if ns.edit.stopped then
-        ImGui.Text('\x10')
-    else
-        ImGui.Text('\xcb')
-    end
+        -- update play/stop text
+        if ns.edit.stopped then
+            ImGui.Text("Stopped")
+        else
+            ImGui.Text("Running")
+        end
 
-    ImGui.End()
+    end
 
 end
 
 function ns.edit.post_update_all()
     -- print("ns.edit.post_update_all")
 
-    ns.edit.mode_event('post_update_all')
+    ns.edit.mode_event("post_update_all")
 
     -- update bbox highlight
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
         -- local bbox = neko.edit_bboxes_get_nth_bbox(i)
-        ns.edit.bboxes_set_selected(ent, ns.edit.select[ent] ~= nil)
+        ns.edit.bboxes_set_selected(ent, SelectTable[ent] ~= nil)
     end
 
     -- save stop?
@@ -1678,107 +1695,107 @@ end
 
 function ns.edit.save_all()
     return {
-        sel = ns.edit.select
+        sel = SelectTable
     }
 end
 
 function ns.edit.load_all(d)
-    ng.entity_table_merge(ns.edit.select, d.sel)
+    ng.entity_table_merge(SelectTable, d.sel)
 end
 
 --- C 系统属性 --------------------------------------------------------
 
-ns.meta.props['transform'] = {{
-    name = 'parent'
+PropertyMeta["transform"] = {{
+    name = "parent"
 }, {
-    name = 'position'
+    name = "position"
 }, {
-    name = 'rotation'
+    name = "rotation"
 }, {
-    name = 'scale'
+    name = "scale"
 }}
 
-ns.meta.props['camera'] = {{
-    name = 'current'
+PropertyMeta["camera"] = {{
+    name = "current"
 }, {
-    name = 'viewport_height'
+    name = "viewport_height"
 }}
 
-ns.meta.props['sprite'] = {{
-    name = 'size'
+PropertyMeta["sprite"] = {{
+    name = "size"
 }, {
-    name = 'texcell'
+    name = "texcell"
 }, {
-    name = 'texsize'
+    name = "texsize"
 }, {
-    name = 'depth'
+    name = "depth"
 }}
 
-ns.meta.props['physics'] = {{
-    name = 'type'
+PropertyMeta["physics"] = {{
+    name = "type"
 }, {
-    name = 'mass'
+    name = "mass"
 }, {
-    name = 'freeze_rotation'
+    name = "freeze_rotation"
 }, {
-    name = 'velocity'
+    name = "velocity"
 }, {
-    name = 'force'
+    name = "force"
 }, {
-    name = 'angular_velocity'
+    name = "angular_velocity"
 }, {
-    name = 'torque'
+    name = "torque"
 }, {
-    name = 'velocity_limit'
+    name = "velocity_limit"
 }, {
-    name = 'angular_velocity_limit'
+    name = "angular_velocity_limit"
 }}
 
-ns.meta.props['gui'] = {{
-    name = 'color'
+PropertyMeta["gui"] = {{
+    name = "color"
 }, {
-    name = 'visible'
+    name = "visible"
 }, {
-    name = 'focusable'
+    name = "focusable"
 }, {
-    name = 'captures_events'
+    name = "captures_events"
 }, {
-    name = 'halign'
+    name = "halign"
 }, {
-    name = 'valign'
+    name = "valign"
 }, {
-    name = 'padding'
+    name = "padding"
 }}
-ns.meta.props['gui_rect'] = {{
-    name = 'size'
+PropertyMeta["gui_rect"] = {{
+    name = "size"
 }, {
-    name = 'hfit'
+    name = "hfit"
 }, {
-    name = 'vfit'
+    name = "vfit"
 }, {
-    name = 'hfill'
+    name = "hfill"
 }, {
-    name = 'vfill'
+    name = "vfill"
 }}
-ns.meta.props['gui_text'] = {{
-    name = 'str'
+PropertyMeta["gui_text"] = {{
+    name = "str"
 }}
-ns.meta.props['gui_textedit'] = {{
-    name = 'cursor'
+PropertyMeta["gui_textedit"] = {{
+    name = "cursor"
 }, {
-    name = 'numerical'
+    name = "numerical"
 }}
 
-ns.meta.props['sound'] = {{
-    name = 'path'
+PropertyMeta["sound"] = {{
+    name = "path"
 }, {
-    name = 'playing'
+    name = "playing"
 }, {
-    name = 'seek'
+    name = "seek"
 }, {
-    name = 'finish_destroy'
+    name = "finish_destroy"
 }, {
-    name = 'loop'
+    name = "loop"
 }, {
-    name = 'gain'
+    name = "gain"
 }}

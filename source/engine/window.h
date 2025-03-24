@@ -13,9 +13,6 @@ private:
     GLFWwindow *window;
 
 public:
-    void init() override;
-    void fini() override;
-    void update() override;
 
     void create();
 
