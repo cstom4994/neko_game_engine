@@ -3308,6 +3308,8 @@ void createStructTables(lua_State *L) {
     LuaStruct<Color>(L);
     LuaStruct<CEntity>(L);
     LuaStruct<BBox>(L);
+
+    LuaStruct<Asset>(L);
 }
 
 void open_neko_api(lua_State *L) {

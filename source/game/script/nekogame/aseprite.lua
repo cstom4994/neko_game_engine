@@ -2,9 +2,9 @@ ns.aseprite = {
     pool = {}
 }
 
-local Aseprite = ns.aseprite
+local Aseprite<const> = ns.aseprite
 
-function ns.aseprite.update_all()
+function ns.aseprite.OnUpdate()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
@@ -15,7 +15,7 @@ function ns.aseprite.update_all()
     end
 end
 
-function ns.aseprite.draw_all()
+function ns.aseprite.OnDraw()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
@@ -32,7 +32,7 @@ function ns.aseprite.draw_all()
     end
 end
 
-function ns.aseprite.draw_ui()
+function ns.aseprite.OnDrawUI()
 
 end
 

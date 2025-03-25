@@ -1183,7 +1183,7 @@ void tiled_fini() {
     entitypool_free(Tiled__pool);
 }
 
-int tiled_update_all(App *app, event_t evt) {
+int tiled_update_all(App *app, Event evt) {
 
     entitypool_remove_destroyed(Tiled__pool, tiled_remove);
 

@@ -187,7 +187,7 @@ function haha()
     ns.gamelogic.fini = function()
     end
 
-    ns.gamelogic.pre_update_all = function()
+    ns.gamelogic.OnPreUpdate = function()
         LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
 
         game_tick = game_tick + 1
@@ -208,7 +208,7 @@ function haha()
         end
 
     end
-    ns.gamelogic.update_all = function()
+    ns.gamelogic.OnUpdate = function()
         local dt = neko.dt()
 
         LocalGame.b2:step(dt)
@@ -217,7 +217,7 @@ function haha()
         cursor:update(dt)
     end
 
-    ns.gamelogic.draw_all = function()
+    ns.gamelogic.OnDraw = function()
         local dt = neko.dt()
 
         LocalGame.world:draw()
@@ -227,7 +227,7 @@ function haha()
         -- neko.default_font():draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
     end
 
-    ns.gamelogic.draw_ui = function()
+    ns.gamelogic.OnDrawUI = function()
     end
 
     -- neko.before_quit = function()

@@ -593,3 +593,8 @@ template <>
 struct std::hash<Neko::String> {
     std::size_t operator()(const Neko::String& k) const { return Neko::fnv1a(k); }
 };
+
+template <>
+struct std::formatter<Neko::String> : std::formatter<std::string> {
+    auto format(Neko::String str, std::format_context& ctx) const { return std::formatter<std::string>::format(str.cstr(), ctx); }
+};

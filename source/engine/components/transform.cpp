@@ -305,7 +305,7 @@ void transform_fini() {
     entitypool_free(CTransform__pool);
 }
 
-int transform_update_all(App *app, event_t evt) {
+int transform_update_all(App *app, Event evt) {
     CTransform *transform;
     static BBox bbox = {{0, 0}, {0, 0}};
 

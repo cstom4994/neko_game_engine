@@ -1393,6 +1393,6 @@ int open_filesys(lua_State *L) {
 
 void physics_init() { PROFILE_FUNC(); }
 void physics_fini() {}
-int physics_update_all(App *app, event_t evt) { return 0; }
-int physics_post_update_all(App *app, event_t evt) { return 0; }
+int physics_update_all(App *app, Event evt) { return 0; }
+int physics_post_update_all(App *app, Event evt) { return 0; }
 void physics_draw_all() {}

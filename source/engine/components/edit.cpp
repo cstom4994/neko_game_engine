@@ -306,7 +306,7 @@ static void _line_draw_all() {
 
 // -------------------------------------------------------------------------
 
-int edit_clear(App* app, event_t evt) {
+int edit_clear(App* app, Event evt) {
     entitypool_clear(BBoxPoolElem__pool);
     line_points.resize(0);
     return 0;
@@ -336,7 +336,7 @@ void edit_fini() {
 
 static void _uneditable_remove(CEntity ent) { uneditable__pool->Remove(ent); }
 
-int edit_update_all(App* app, event_t evt) {
+int edit_update_all(App* app, Event evt) {
     entitypool_remove_destroyed(uneditable__pool, _uneditable_remove);
 
     _bboxes_update_all();

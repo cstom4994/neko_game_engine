@@ -19,17 +19,7 @@ NEKO_API() void ng_push_cdata(const char *t, void *p);
 
 NEKO_API() void script_init();
 NEKO_API() void script_fini();
-NEKO_API() int script_pre_update_all(App *app, event_t evt);
-NEKO_API() int script_update_all(App *app, event_t evt);
-NEKO_API() int script_post_update_all(App *app, event_t evt);
-NEKO_API() void script_draw_ui();
-NEKO_API() void script_draw_all();
-NEKO_API() void script_key_down(KeyCode key);
-NEKO_API() void script_key_up(KeyCode key);
-NEKO_API() void script_mouse_down(MouseCode mouse);
-NEKO_API() void script_mouse_up(MouseCode mouse);
-NEKO_API() void script_mouse_move(vec2 pos);
-NEKO_API() void script_scroll(vec2 scroll);
+
 NEKO_API() void script_save_all(App *app);
 NEKO_API() void script_load_all(App *app);
 
@@ -37,7 +27,6 @@ void luax_run_bootstrap(lua_State *L);
 void luax_run_nekogame(lua_State *L);
 
 NEKO_API() int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
-NEKO_API() void script_push_event(const char *event);
 
 namespace Neko {
 
@@ -65,16 +54,16 @@ public:
 
 }  // namespace Neko
 
-#define errcheck(...)                                     \
-    do                                                    \
-        if (__VA_ARGS__) {                                \
-            LOG_INFO("lua: {}\n", lua_tostring(L, -1));   \
-            lua_pop(L, 1);                                \
-            if (LockGuard<Mutex> lock{gBase.error_mtx}) { \
-                gBase.error_mode.store(true);             \
-            }                                             \
-        }                                                 \
-    while (0)
+template <typename... Args>
+void errcheck(lua_State *L, Args... args) {
+    if ((... || args)) {
+        LOG_INFO("lua: {}\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        if (LockGuard<Mutex> lock{gBase.error_mtx}) {
+            gBase.error_mode.store(true);
+        }
+    }
+}
 
 #endif
 
@@ -115,6 +104,34 @@ void checktable_refl(lua_State *L, const_str tname, T &&v) {
         LOG_INFO("[exception] no {} table", tname);
     }
     lua_pop(L, 1);
+}
+
+template <typename... Ts>
+std::tuple<Ts...> parse_args(lua_State *L) {
+    std::tuple<Ts...> ret;
+    util::static_for<0, sizeof...(Ts)>([&ret, &s]([[maybe_unused]] auto i) constexpr {
+        using T = std::decay_t<decltype(std::get<i.value>(std::declval<std::tuple<Ts...>>()))>;
+        auto &v = std::get<i.value>(ret);
+        int idx = i.value + 1;
+        if constexpr (std::is_same_v<T, bool>) {
+            v = lua_toboolean(L, idx);
+        } else if constexpr (std::is_same_v<T, float>) {
+            v = lua_tonumber(L, idx);
+        } else if constexpr (std::is_same_v<T, double>) {
+            v = lua_tonumber(L, idx);
+        } else if constexpr (std::is_same_v<T, std::int64_t> || std::is_same_v<T, int>) {
+            v = lua_tointeger(L, idx);
+        } else if constexpr (std::is_same_v<T, std::uint64_t> || std::is_same_v<T, unsigned int>) {
+            v = lua_tointeger(L, idx);
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            v = lua_tostring(L, idx);
+        } else if constexpr (std::is_same_v<T, tz::lua::nil>) {
+
+        } else {
+            static_assert(std::is_void_v<T>, "Unrecognised lua argument type");
+        }
+    });
+    return ret;
 }
 
 }  // namespace Neko::luabind

@@ -96,7 +96,7 @@ void camera_init() {
 
 void camera_fini() { entitypool_free(CCamera__pool); }
 
-int camera_update_all(App *app, event_t evt) {
+int camera_update_all(App *app, Event evt) {
     vec2 win_size;
     f32 aspect;
     CCamera *camera;

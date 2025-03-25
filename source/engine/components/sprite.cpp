@@ -139,7 +139,7 @@ void sprite_fini() {
     mem_free(atlas);
 }
 
-int sprite_update_all(App *app, event_t evt) {
+int sprite_update_all(App *app, Event evt) {
 
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 

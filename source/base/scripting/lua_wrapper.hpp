@@ -1754,7 +1754,7 @@ int LuaStructField_w(lua_State *L, const char *typeName, const char *field, int 
 
 template <typename T>
 void LuaStruct(lua_State *L, const char *fieldName = reflection::GetTypeName<T>()) {
-
+    static_assert(std::is_standard_layout_v<T>);
     auto fieldaccess = [](lua_State *L) -> int {
         int index = 1;
         int set = lua_toboolean(L, lua_upvalueindex(1));
@@ -1770,11 +1770,8 @@ void LuaStruct(lua_State *L, const char *fieldName = reflection::GetTypeName<T>(
 
         return LuaStructField_w<T, 0>(L, typeName, field, set, *data);
     };
-
     LuaStructCreate(L, fieldName, reflection::GetTypeName<T>(), sizeof(T), fieldaccess);
-
     // lua_setglobal(L, fieldName);
-
     LuaStructAddType<T>(L, LuaType<T>(L));
 }
 
@@ -1917,15 +1914,17 @@ inline bool LuaTypeIsEnum(lua_State *L, LuaTypeid type) {
 
 template <typename Enum, int min_value = -64, int max_value = 64>
 void LuaEnum(lua_State *L) {
-    std::map<int, std::string> values;
+    HashMap<String> values;
+    neko_defer(values.trash());
     reflection::guess_enum_range<Enum, min_value>(values, std::make_integer_sequence<int, max_value - min_value>());
     reflection::guess_enum_bit_range<Enum>(values, std::make_integer_sequence<int, 32>());
 
     LuaTypeid id = LuaType<Enum>(L);
     LuaEnumAddType(L, id, sizeof(Enum));
     for (const auto &value : values) {
-        const Enum enum_value[] = {(Enum)value.first};
-        LuaEnumAddValue(L, id, enum_value, value.second.c_str());
+        const Enum enum_value[] = {(Enum)value.key};
+        LuaEnumAddValue(L, id, enum_value, value.value->cstr());
+        mem_free(value.value->data);
     }
 }
 
@@ -2040,8 +2039,8 @@ void LuaRawStructPush(lua_State *L, const T &v) {
 template <typename T>
     requires(std::is_aggregate_v<T>)
 inline void LuaPush(lua_State *L, const T &v) {
-    bool is_reg_struct = LuaTypeIsStruct(L, LuaType<T>(L));
-    if (is_reg_struct) {
+    bool isLuaStruct = LuaTypeIsStruct(L, LuaType<T>(L));
+    if (isLuaStruct) {
         LuaStructPush<T>(L, v);
     } else {  // 未经过注册的聚合类
         assert(!"use LuaPushRaw");
@@ -2205,9 +2204,19 @@ inline void LuaTypeTo(lua_State *L, LuaTypeid type_id, void *c_out, int index) {
 inline void VaradicLuaPush(lua_State *L) {}
 
 template <typename T, typename... Args>
-inline void VaradicLuaPush(lua_State *L, T &&t, Args... args) {
-    LuaPush<T>(L, std::forward<T>(t));
-    VaradicLuaPush(L, args...);
+inline void VaradicLuaPush(lua_State *L, T &&v, Args &&...args) {
+    using U = std::decay_t<T>;  // 确保 T 不是引用类型
+    if constexpr (std::is_aggregate_v<U>) {
+        bool isLuaStruct = LuaTypeIsStruct(L, LuaType<U>(L));
+        if (isLuaStruct) {
+            LuaStructPush<U>(L, v);
+        } else {  // 未经过注册的聚合类
+            assert(!"use LuaPushRaw");
+        }
+    } else {
+        LuaPush<U>(L, std::forward<T>(v));
+    }
+    VaradicLuaPush(L, std::forward<Args>(args)...);
 }
 
 template <typename R, typename... Args>

@@ -46,7 +46,7 @@ struct App;
 
 NEKO_API() void sound_init();
 NEKO_API() void sound_fini();
-NEKO_API() int sound_update_all(App *app, event_t evt);
-int sound_postupdate(App *app, event_t evt);
+NEKO_API() int sound_update_all(App *app, Event evt);
+int sound_postupdate(App *app, Event evt);
 
 void audio_play_event(String event);

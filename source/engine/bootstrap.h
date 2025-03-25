@@ -148,7 +148,7 @@ public:
 void system_init();
 void system_fini();
 
-int timing_update(App *app, event_t evt);
+int timing_update(App *app, Event evt);
 
 extern Int32 Main(int argc, const char *argv[]);
 

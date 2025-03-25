@@ -228,7 +228,7 @@ function style_window()
     end
 end
 
-function ns.gui_test.update_all()
+function ns.gui_test.OnUpdate()
 end
 
 function ns.gui_test.add(ent)
@@ -268,7 +268,7 @@ function ns.gui_test.has(ent)
     return ns.gui_test.ent ~= nil
 end
 
-function ns.gui_test.draw_ui()
+function ns.gui_test.OnDrawUI()
     if ns.gui_test.ent ~= nil then
         test_lui()
     end

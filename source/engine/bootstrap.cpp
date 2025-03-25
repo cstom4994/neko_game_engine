@@ -156,7 +156,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 float posteffect_intensity = 2.0f;
 int posteffect_enable = 1;
 
-int _game_draw(App *app, event_t evt) {
+int _game_draw(App *app, Event evt) {
 
     auto &game = Neko::the<Game>();
 
@@ -205,7 +205,7 @@ int _game_draw(App *app, event_t evt) {
         // script_draw_all();
         tiled_draw_all();
 
-        script_draw_all();
+        the<EventHandler>().EventPushLuaType(OnDraw);
 
         sprite_draw_all();
         batch_draw_all(gApp->batch);
@@ -254,7 +254,7 @@ int _game_draw(App *app, event_t evt) {
         auto ui = gApp->ui;
         neko_update_ui(ui);
         DeferLoop(ui_begin(ui), ui_end(ui)) {
-            script_draw_ui();
+            the<EventHandler>().EventPushLuaType(OnDrawUI);
             draw_gui();
         }
         neko_render_ui(ui, gApp->cfg.width, gApp->cfg.height);
@@ -485,6 +485,8 @@ void Game::init() {
 
     the<Renderer>().InitOpenGL();
 
+    the<EventHandler>().init();
+
     // random seed
     srand(time(NULL));
 
@@ -514,36 +516,48 @@ void Game::init() {
     auto &eh = Neko::the<EventHandler>();
 
     struct {
-        event_mask evt;
+        EventMask evt;
         EventCallback cb;
     } evt_list[] = {
-            {event_mask::preupdate, (EventCallback)assets_perform_hot_reload_changes},  //
-            {event_mask::preupdate, (EventCallback)edit_clear},                         //
-            {event_mask::preupdate, (EventCallback)timing_update},                      //
-            {event_mask::preupdate, (EventCallback)script_pre_update_all},              //
-            {event_mask::preupdate, (EventCallback)gui_pre_update_all},                 //
+            {EventMask::PreUpdate, assets_perform_hot_reload_changes},  //
+            {EventMask::PreUpdate, edit_clear},                         //
+            {EventMask::PreUpdate, timing_update},                      //
+            {EventMask::PreUpdate,
+             [](App *, Event) -> int {
+                 the<EventHandler>().EventPushLuaType(OnPreUpdate);
+                 return 0;
+             }},                                         //
+            {EventMask::PreUpdate, gui_pre_update_all},  //
 
-            {event_mask::update, (EventCallback)script_update_all},
-            {event_mask::update, (EventCallback)physics_update_all},
-            {event_mask::update, (EventCallback)transform_update_all},
+            {EventMask::Update,
+             [](App *, Event) -> int {
+                 the<EventHandler>().EventPushLuaType(OnUpdate);
+                 return 0;
+             }},
+            {EventMask::Update, physics_update_all},
+            {EventMask::Update, transform_update_all},
 
-            {event_mask::update, (EventCallback)camera_update_all},
-            {event_mask::update, (EventCallback)sprite_update_all},
-            {event_mask::update, (EventCallback)batch_update_all},
-            {event_mask::update, (EventCallback)sound_update_all},
-            {event_mask::update, (EventCallback)tiled_update_all},
-            {event_mask::update, (EventCallback)edit_update_all},
+            {EventMask::Update, camera_update_all},
+            {EventMask::Update, sprite_update_all},
+            {EventMask::Update, batch_update_all},
+            {EventMask::Update, sound_update_all},
+            {EventMask::Update, tiled_update_all},
+            {EventMask::Update, edit_update_all},
 
-            {event_mask::postupdate, (EventCallback)script_post_update_all},
-            {event_mask::postupdate, (EventCallback)physics_post_update_all},
-            {event_mask::postupdate, (EventCallback)sound_postupdate},
-            {event_mask::postupdate, (EventCallback)entity_update_all},
+            {EventMask::PostUpdate,
+             [](App *, Event) -> int {
+                 the<EventHandler>().EventPushLuaType(OnPostUpdate);
+                 return 0;
+             }},
+            {EventMask::PostUpdate, physics_post_update_all},
+            {EventMask::PostUpdate, sound_postupdate},
+            {EventMask::PostUpdate, entity_update_all},
 
-            {event_mask::draw, (EventCallback)_game_draw},
+            {EventMask::Draw, _game_draw},
     };
 
     for (auto evt : evt_list) {
-        eh.event_register(gApp, evt.evt, evt.cb, NULL);
+        eh.Register(gApp, evt.evt, evt.cb, NULL);
     }
 
     glGenFramebuffers(1, &fbo);
@@ -685,26 +699,6 @@ static void load_all_lua_scripts(lua_State *L) {
     }
 }
 
-static void _key_down(KeyCode key, int scancode, int mode) {
-    // gui_key_down(key);
-    script_key_down(key);
-}
-static void _key_up(KeyCode key, int scancode, int mode) {
-    // gui_key_up(key);
-    script_key_up(key);
-}
-static void _char_down(unsigned int c) { /*gui_char_down(c);*/ }
-static void _mouse_down(MouseCode mouse) {
-    // gui_mouse_down(mouse);
-    script_mouse_down(mouse);
-}
-static void _mouse_up(MouseCode mouse) {
-    // gui_mouse_up(mouse);
-    script_mouse_up(mouse);
-}
-static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
-static void _scroll(vec2 scroll) { script_scroll(scroll); }
-
 void system_init() {
     PROFILE_FUNC();
 
@@ -810,26 +804,30 @@ end
 
     {
         PROFILE_BLOCK("neko.args");
-
         lua_State *L = ENGINE_LUA();
-
         if (!gBase.error_mode.load()) {
             luax_neko_get(L, "args");
-
             Slice<String> args = gBase.GetArgs();
             lua_createtable(L, args.len - 1, 0);
             for (u64 i = 1; i < args.len; i++) {
                 lua_pushlstring(L, args[i].data, args[i].len);
                 lua_rawseti(L, -2, i);
             }
-
             luax_pcall(L, 1, 0);
         }
     }
 
     // fire init event
-    script_push_event("init");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
+    the<EventHandler>().EventPushLua("init");
+    errcheck(L, luax_pcall_nothrow(L, 1, 0));
+
+    auto _key_down = [](KeyCode key, int scancode, int mode) { the<EventHandler>().EventPushLuaType(OnKeyDown, (int)key); };
+    auto _key_up = [](KeyCode key, int scancode, int mode) { the<EventHandler>().EventPushLuaType(OnKeyUp, (int)key); };
+    auto _char_down = [](unsigned int c) { /*gui_char_down(c);*/ };
+    auto _mouse_down = [](MouseCode mouse) { the<EventHandler>().EventPushLuaType(OnMouseDown, (int)mouse); };
+    auto _mouse_up = [](MouseCode mouse) { the<EventHandler>().EventPushLuaType(OnMouseUp, (int)mouse); };
+    auto _mouse_move = [](vec2 pos) { the<EventHandler>().EventPushLuaType(OnMouseMove, pos); };
+    auto _scroll = [](vec2 scroll) { the<EventHandler>().EventPushLuaType(OnMouseScroll, scroll); };
 
     input_add_key_down_callback(_key_down);
     input_add_key_up_callback(_key_up);
@@ -902,7 +900,7 @@ f32 timing_get_scale() { return gApp->scale; }
 void timing_set_paused(bool p) { gApp->paused = p; }  // 暂停将刻度设置为 0 并在恢复时恢复它
 bool timing_get_paused() { return gApp->paused; }
 
-int timing_update(App *app, event_t evt) {
+int timing_update(App *app, Event evt) {
 
     // update dt
     static double last_time = -1;
@@ -1022,13 +1020,14 @@ Int32 Main(int argc, const char *argv[]) {
         // if (glfwWindowShouldClose(gApp->window)) {
         //     game.quit();
         // }
-        eh.event_pump();
-        eh.event_dispatch(event_t{.type = on_preupdate});
+        eh.Pump();
+        eh.Dispatch(Event{.type = OnPreUpdate});
         if (!gBase.error_mode.load()) {
-            eh.event_dispatch(event_t{.type = on_update});
+            eh.Dispatch(Event{.type = OnUpdate});
         }
-        eh.event_dispatch(event_t{.type = on_postupdate});
-        eh.event_dispatch(event_t{.type = on_draw});
+        eh.Dispatch(Event{.type = OnPostUpdate});
+        eh.Dispatch(Event{.type = OnDraw});
+        // eh.Dispatch(Event{.type = OnDrawUI});
     }
 
     _game_fini();

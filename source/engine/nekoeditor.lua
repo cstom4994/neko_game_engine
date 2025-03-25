@@ -245,7 +245,7 @@ end
 ns.edit_camera_drag = {
     enabled = false
 }
-function ns.edit_camera_drag.update_all()
+function ns.edit_camera_drag.OnUpdate()
     if not ns.edit.get_enabled() then
         ns.edit_camera_drag.enabled = false
         return
@@ -528,7 +528,7 @@ function ns.edit.modes.command.exit()
     command_completions = {}
 end
 
-function ns.edit.modes.command.update_all()
+function ns.edit.modes.command.OnUpdate()
     -- if ns.gui.event_key_down(ns.edit.command_text) == ng.KC_ENTER then
     --     ns.edit.command_end()
     --     return
@@ -749,7 +749,7 @@ function ns.edit.modes.grab.enter()
     end
 end
 
-function ns.edit.modes.grab.update_all()
+function ns.edit.modes.grab.OnUpdate()
     local ms = ns.camera.unit_to_world(grab_mouse_start)
     local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
 
@@ -835,7 +835,7 @@ function ns.edit.modes.rotate.enter()
     rotate_pivot = rotate_pivot / n
 end
 
-function ns.edit.modes.rotate.update_all()
+function ns.edit.modes.rotate.OnUpdate()
     local ms = ns.camera.unit_to_world(rotate_mouse_start)
     local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
     local ang = ng.vec2_atan2(mc - rotate_pivot) - ng.vec2_atan2(ms - rotate_pivot)
@@ -1378,7 +1378,7 @@ local function update_inspector(inspector)
     end
 end
 
-function ns.edit_inspector.update_all()
+function ns.edit_inspector.OnUpdate()
     remove_destroyed()
     if not ns.edit.get_enabled() then
         return
@@ -1407,8 +1407,8 @@ local function post_update_inspector(inspector)
     custom_event(inspector, 'post_update')
 end
 
-function ns.edit_inspector.post_update_all()
-    -- print("ns.edit_inspector.post_update_all")
+function ns.edit_inspector.OnPostUpdate()
+    -- print("ns.edit_inspector.OnPostUpdate")
 
     remove_destroyed()
     if not ns.edit.get_enabled() then
@@ -1571,39 +1571,39 @@ ns.edit.modes.rotate['<mouse_2>'] = ns.edit.rotate_cancel
 
 --- 主事件 ----------------------------------------------------------------
 
-function ns.edit.key_up(key)
+function ns.edit.OnKeytUp(key)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_key_up(key)
 end
 
-function ns.edit.key_down(key)
+function ns.edit.OnKeyDown(key)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_key_down(key)
 end
 
-function ns.edit.mouse_down(mouse)
+function ns.edit.OnMouseDown(mouse)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_mouse_down(mouse)
 end
 
-function ns.edit.mouse_up(mouse)
+function ns.edit.OnMouseUp(mouse)
     if not ns.edit.get_enabled() then
         return
     end
     ns.edit.mode_mouse_up(mouse)
 end
 
-function ns.edit.scroll(scroll)
+function ns.edit.OnMouseScroll(scroll)
     ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
 end
 
-function ns.edit.update_all()
+function ns.edit.OnUpdate()
     for ent in pairs(SelectTable) do
         if ns.entity.destroyed(ent) then
             SelectTable[ent] = nil
@@ -1629,7 +1629,7 @@ function ns.edit.update_all()
     ns.edit.devui_visible = true
 
     -- forward to mode
-    ns.edit.mode_event('update_all')
+    ns.edit.mode_event('OnUpdate')
 
     local window<close> = ImGuiWindow("Editor")
 
@@ -1674,10 +1674,10 @@ function ns.edit.update_all()
 
 end
 
-function ns.edit.post_update_all()
-    -- print("ns.edit.post_update_all")
+function ns.edit.OnPostUpdate()
+    -- print("ns.edit.OnPostUpdate")
 
-    ns.edit.mode_event("post_update_all")
+    ns.edit.mode_event("OnPostUpdate")
 
     -- update bbox highlight
     for i = 0, ns.edit.bboxes_get_num() - 1 do

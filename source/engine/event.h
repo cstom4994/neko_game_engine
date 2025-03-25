@@ -4,64 +4,51 @@
 
 #include "engine/base.hpp"
 #include "base/common/singleton.hpp"
+#include "engine/input_keycode.h"
+
+struct App;
 
 #define Event_mt "event"
 
 #define event_getdelegates(_handler, _evt) ((_handler)->m_delegate_map.get(_evt))
 
 #define EVENT_TYPES   \
-    X(none)           \
-    X(quit)           \
-    X(press)          \
-    X(release)        \
-    X(fileread)       \
-    X(filewrite)      \
-    X(preupdate)      \
-    X(update)         \
-    X(postupdate)     \
-    X(predraw)        \
-    X(draw)           \
-    X(postdraw)       \
-    X(pregui)         \
-    X(gui)            \
-    X(postgui)        \
-    X(addcomponent)   \
-    X(setcomponent)   \
-    X(delcomponent)   \
-    X(addtype)        \
-    X(deltype)        \
-    X(startcollision) \
-    X(endcollision)
+    X(None)           \
+    X(Quit)           \
+    X(KeyDown)        \
+    X(KeyUp)          \
+    X(MouseDown)      \
+    X(MouseUp)        \
+    X(MouseMove)      \
+    X(MouseScroll)    \
+    X(FileRead)       \
+    X(FileWrite)      \
+    X(PreUpdate)      \
+    X(Update)         \
+    X(PostUpdate)     \
+    X(PreDraw)        \
+    X(Draw)           \
+    X(PostDraw)       \
+    X(PreDrawUI)      \
+    X(DrawUI)         \
+    X(PostDrawUI)     \
+    X(AddComponent)   \
+    X(SetComponent)   \
+    X(DelComponent)   \
+    X(AddType)        \
+    X(DelType)        \
+    X(StartCollision) \
+    X(EndCollision)
 
-enum event_enum {
-#define X(_name) on_##_name,
+enum EventEnum {
+#define X(name) On##name,
     EVENT_TYPES
 #undef X
             NUM_EVENTS
 };
 
-static const char* event_string(event_enum id) {
-
-#define X(x)       \
-    case on_##x:   \
-        return #x; \
-        break;
-
-    switch (id) {
-        EVENT_TYPES;
-        case NUM_EVENTS:
-            break;
-    }
-
-#undef X
-
-    static char buffer[32];
-    sprintf(buffer, "unknown event_string: %d", id);
-    return buffer;
-}
-
-enum event_mask {
-#define X(_name) _name = 1 << on_##_name,
+enum EventMask {
+#define X(name) name = 1 << On##name,
     EVENT_TYPES
 #undef X
 };
@@ -73,18 +60,19 @@ using EventVariant = struct {
     std::variant<std::monostate, u64, f64, void*> v;
 };
 
-typedef struct {
-    event_enum type;
+struct Event {
+    EventEnum type;
     EventVariant p0;
     EventVariant p1;
-} event_t;
+};
 
-typedef int (*EventCallback)(void*, event_t);
+// using EventCallback = std::function<int(App*, Event)>;
+typedef int (*EventCallback)(App*, Event);
 
 typedef struct EventDelegate {
     union {
         struct {
-            void* receiver;
+            App* receiver;
             EventCallback callback;
         };
         struct {
@@ -99,19 +87,40 @@ class EventHandler : public Neko::SingletonClass<EventHandler> {
     using DelegateArray = Array<EventDelegate>;
 
 private:
-    Queue<event_t> m_evqueue;
+    Queue<Event> m_evqueue;
     HashMap<DelegateArray> m_delegate_map;
     u64 m_prev_len;
+
+    HashMap<String> eventNames;
 
 public:
     void init();
     void fini();
     void update();
 
-    void event_register(void* receiver, int evt, EventCallback cb, lua_State* L);
-    int event_post(event_t evt);
-    void event_dispatch(event_t evt);
-    void event_pump();
+    void Register(App* receiver, int evt, EventCallback cb, lua_State* L);
+    int Post(Event evt);
+    void Dispatch(Event evt);
+    void Pump();
+
+    void EventPushLua(String event);
+
+    template <typename... Args>
+    inline void EventPushLuaArgs(lua_State* L, Args&&... args) {
+        VaradicLuaPush(L, std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    inline void EventPushLuaType(EventEnum type, Args&&... args) {
+        lua_State* L = ENGINE_LUA();
+        String& name = eventNames[type];
+        int n = sizeof...(args);
+        EventPushLua(name.cstr());
+        EventPushLuaArgs(L, std::forward<Args>(args)...);
+        errcheck(L, luax_pcall_nothrow(L, 1 + n, 0));
+    }
+
+    String EventName(EventEnum type) { return eventNames[type]; }
 };
 
 int openlib_Event(lua_State* L);

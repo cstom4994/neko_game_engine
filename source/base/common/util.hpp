@@ -124,6 +124,42 @@ struct TupleArrayRef<0> {
 
 }  // namespace tuple
 
+template <int F, int L>
+struct static_for_t {
+    template <typename Functor>
+    static inline constexpr void apply(const Functor& f) {
+        if (F < L) {
+            f(std::integral_constant<int, F>{});
+            static_for_t<F + 1, L>::apply(f);
+        }
+    }
+
+    template <typename Functor>
+    inline constexpr void operator()(const Functor& f) const {
+        apply(f);
+    }
+};
+
+template <int N>
+struct static_for_t<N, N> {
+    template <typename Functor>
+    static inline constexpr void apply([[maybe_unused]] const Functor& f) {}
+};
+
+template <int F, int L>
+inline constexpr static_for_t<F, L> static_for = {};
+
+template <typename T, typename... S>
+constexpr bool static_find() {
+    bool b = false;
+    static_for<0, sizeof...(S)>([&b]([[maybe_unused]] auto i) constexpr {
+        if constexpr (std::is_same<std::decay_t<decltype(std::get<i.value>(std::declval<std::tuple<S...>>()))>, T>::value) {
+            b = true;
+        }
+    });
+    return b;
+}
+
 }  // namespace util
 
 }  // namespace Neko

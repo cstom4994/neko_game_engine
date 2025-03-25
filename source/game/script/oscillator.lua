@@ -24,7 +24,7 @@ function ns.oscillator.add(ent, osc)
     ns.oscillator.tbl[ent] = osc
 end
 
-function ns.oscillator.update_all()
+function ns.oscillator.OnUpdate()
     for ent, _ in pairs(ns.oscillator.tbl) do
         if ns.entity.destroyed(ent) then
             ns.oscillator.tbl[ent] = nil

@@ -418,7 +418,7 @@ AssetTexture neko_aseprite_simple(String filename);
 
 // AssetTexture
 
-bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+bool load_texture_data_from_memory(const void* memory, int sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
 bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
 
 #endif

@@ -266,7 +266,7 @@ class FMODAudio {
 
     FMODBank *bank_load(const char *path);
 
-    static std::map<int, std::string> err_values;
+    static HashMap<String> err_values;
 
 public:
     void init_fmod_system();
@@ -608,11 +608,11 @@ FMOD_VECTOR FMODAudio::VectorToFmod(const vec3 &vPosition) {
     return fVec;
 }
 
-std::map<int, std::string> FMODAudio::err_values;
+HashMap<String> FMODAudio::err_values;
 
 int FMODAudio::ErrorCheck(FMOD_RESULT result) {
     if (result != FMOD_OK) {
-        LOG_INFO("FMOD Error: {} {}", (int)result, err_values[result].c_str());
+        LOG_INFO("FMOD Error: {} {}", (int)result, err_values[result].cstr());
         return -1;
     }
     return 0;
@@ -625,6 +625,11 @@ float FMODAudio::VolumeTodB(float volume) { return 20.0f * log10f(volume); }
 void FMODAudio::Shutdown() {
     FMODAudio::ErrorCheck(get_fmod_system()->unloadAll());
     FMODAudio::ErrorCheck(get_fmod_system()->release());
+
+    for (auto &v : err_values) {
+        mem_free(v.value->data);
+    }
+    err_values.trash();
 
     banks.trash();
     audio_events.trash();
@@ -755,9 +760,9 @@ void sound_fini() {
 #endif
 }
 
-int sound_update_all(App *app, event_t evt) { return 0; }
+int sound_update_all(App *app, Event evt) { return 0; }
 
-int sound_postupdate(App *app, event_t evt) {
+int sound_postupdate(App *app, Event evt) {
 
 #if NEKO_AUDIO == 1
 

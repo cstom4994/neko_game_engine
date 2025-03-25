@@ -33,7 +33,7 @@ bool entity_destroyed(CEntity ent);
 
 NEKO_API() void entity_init();
 NEKO_API() void entity_fini();
-NEKO_API() int entity_update_all(App* app, event_t evt);
+NEKO_API() int entity_update_all(App* app, Event evt);
 
 inline bool CEntityEq(CEntity e, CEntity f) { return e.id == f.id; }
 

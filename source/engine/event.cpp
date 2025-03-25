@@ -2,15 +2,24 @@
 
 #include "base/scripting/luax.h"
 #include "base/common/logger.hpp"
+#include "base/common/reflection.hpp"
+#include "engine/bootstrap.h"
 
 void EventHandler::init() {
 
     assert(NUM_EVENTS < 32);
     m_evqueue.make();
     m_delegate_map.reserve(NUM_EVENTS);
+
+    Neko::reflection::guess_enum_range<EventEnum, 0>(eventNames, std::make_integer_sequence<int, NUM_EVENTS>());
 }
 
 void EventHandler::fini() {
+
+    for (auto& v : eventNames) {
+        mem_free(v.value->data);
+    }
+    eventNames.trash();
 
     m_evqueue.trash();
 
@@ -24,7 +33,7 @@ void EventHandler::fini() {
 
 void EventHandler::update() {}
 
-void EventHandler::event_register(void* receiver, int evt, EventCallback cb, lua_State* L) {
+void EventHandler::Register(App* receiver, int evt, EventCallback cb, lua_State* L) {
     for (int i = 0; i < NUM_EVENTS; i++) {
         if ((1 << i) & evt) {
 
@@ -47,10 +56,10 @@ void EventHandler::event_register(void* receiver, int evt, EventCallback cb, lua
 }
 
 // 立即调用事件监听器
-void EventHandler::event_dispatch(event_t evt) {
+void EventHandler::Dispatch(Event evt) {
     DelegateArray* list = event_getdelegates(this, evt.type);
     if (list == nullptr) {
-        LOG_INFO("event_dispatch: no event cb called {}", event_string(evt.type));
+        LOG_INFO("event_dispatch: no event cb called {}", EventName(evt.type));
         return;
     }
     for (auto l : *list) {
@@ -64,27 +73,36 @@ void EventHandler::event_dispatch(event_t evt) {
             if (lua_toboolean(l.L, -1)) break;
         } else {
             error_assert(l.callback);
-            if (l.callback(l.receiver, evt)) break;
+            if (l.callback && l.callback(l.receiver, evt)) break;
         }
     }
 }
 
 // 将事件放入队列
-int EventHandler::event_post(event_t evt) {
+int EventHandler::Post(Event evt) {
     m_evqueue.enqueue(evt);
     return 1;
 }
 
 // 清空事件队列并将事件分派给所有监听器
-void EventHandler::event_pump() {
+void EventHandler::Pump() {
     m_prev_len = m_evqueue.len;
     while (m_evqueue.len > 0) {
-        event_t evt = m_evqueue.demand();
-        event_dispatch(evt);
+        Event evt = m_evqueue.demand();
+        Dispatch(evt);
     }
 }
 
-// event_t.listen(obj, evt, func [, filter])
+void EventHandler::EventPushLua(String event) {
+    // call nekogame.__fire_event(event, ...)
+    lua_State* L = ENGINE_LUA();
+    lua_getglobal(L, "ng");
+    lua_getfield(L, -1, "__fire_event");
+    lua_remove(L, -2);
+    lua_pushstring(L, event.cstr());
+}
+
+// Event.listen(obj, evt, func [, filter])
 static int w_event_listen(lua_State* L) {
     lua_pushvalue(L, 1);
     i64 ref = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -95,16 +113,16 @@ static int w_event_listen(lua_State* L) {
         cb = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     auto& eh = Neko::the<EventHandler>();
-    eh.event_register(reinterpret_cast<void*>(ref), evt, reinterpret_cast<EventCallback>(cb), L);
+    eh.Register(gApp, evt, reinterpret_cast<EventCallback>(cb), L);
     return 0;
 }
 
-// event_t(num, data)
+// Event(num, data)
 static int w_event_new(lua_State* L) {
     f64 float64;
-    event_t* evt = (event_t*)lua_newuserdata(L, sizeof(event_t));
+    Event* evt = (Event*)lua_newuserdata(L, sizeof(Event));
     luaL_setmetatable(L, Event_mt);
-    evt->type = (event_enum)luaL_checkinteger(L, 2);
+    evt->type = (EventEnum)luaL_checkinteger(L, 2);
     switch (lua_type(L, 3)) {
         case LUA_TNUMBER:
             float64 = lua_tonumber(L, 3);
@@ -125,19 +143,19 @@ static int w_event_new(lua_State* L) {
     return 1;
 }
 
-// event_t.dispatch(evt, [, data])
+// Event.dispatch(evt, [, data])
 static int w_event_postnow(lua_State* L) {
-    event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
+    Event* evt = (Event*)luaL_checkudata(L, 1, Event_mt);
     auto& eh = Neko::the<EventHandler>();
-    eh.event_dispatch(*evt);
+    eh.Dispatch(*evt);
     return 0;
 }
 
-// event_t.post(evt [, data])
+// Event.post(evt [, data])
 static int w_event_postlater(lua_State* L) {
-    event_t* evt = (event_t*)luaL_checkudata(L, 1, Event_mt);
+    Event* evt = (Event*)luaL_checkudata(L, 1, Event_mt);
     auto& eh = Neko::the<EventHandler>();
-    eh.event_post(*evt);
+    eh.Post(*evt);
     return 0;
 }
 

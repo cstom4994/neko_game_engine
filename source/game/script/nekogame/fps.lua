@@ -23,7 +23,7 @@
 --     }
 -- }
 
--- function ns.fps.update_all()
+-- function ns.fps.OnUpdate()
 --     -- timing
 --     nframes = nframes + 1
 --     timer = timer + neko.dt().true_dt

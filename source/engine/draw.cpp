@@ -1014,7 +1014,7 @@ void batch_fini(batch_renderer *batch) {
     mem_free(batch);
 }
 
-int batch_update_all(App *app, event_t evt) {
+int batch_update_all(App *app, Event evt) {
 
     AssetTexture tex_aliens = texture_get_ptr("assets/aliens.png");
 

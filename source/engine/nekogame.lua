@@ -710,7 +710,7 @@ function ng.simple_sys()
         end
     end
 
-    sys.update_all = sys.simple_update_all
+    sys.OnUpdate = sys.simple_update_all
 
     return sys
 end
@@ -780,7 +780,7 @@ function ns.name.find(name)
     return name_entity[name] and name_entity[name] or ng.CEntity(ng.entity_nil)
 end
 
-function ns.name.update_all()
+function ns.name.OnUpdate()
     ng.entity_table_remove_destroyed(entity_name, ns.name.remove)
 end
 
@@ -914,7 +914,7 @@ function ns.group.set_save_filter(groups, val)
     end
 end
 
-function ns.group.update_all()
+function ns.group.OnUpdate()
     for ent in pairs(entity_groups) do
         if ns.entity.destroyed(ent) then
             ns.group.remove(ent)
@@ -1052,12 +1052,12 @@ end
 
 add_event('focus_enter', false)
 add_event('focus_exit', false)
-add_event('mouse_down', ng.MC_NONE)
-add_event('mouse_up', ng.MC_NONE)
-add_event('key_down', ng.KC_NONE)
-add_event('key_up', ng.KC_NONE)
+add_event('OnMouseDown', ng.MC_NONE)
+add_event('OnMouseUp', ng.MC_NONE)
+add_event('OnKeyDown', ng.KC_NONE)
+add_event('OnKeyUp', ng.KC_NONE)
 
-function ns.gui_event.update_all()
+function ns.gui_event.OnUpdate()
     for ent in pairs(event_handlers) do
         if ns.entity.destroyed(ent) then
             event_handlers[ent] = nil

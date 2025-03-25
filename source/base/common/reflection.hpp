@@ -1,9 +1,9 @@
 #pragma once
 
-#include <map>
-
 #include "base/common/base.hpp"
 #include "base/common/pp.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/string.hpp"
 
 namespace std {
 template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>
@@ -63,38 +63,46 @@ constexpr auto name_v = name<T>();
 
 struct DummyFlag {};
 template <typename Enum, typename T, Enum enumValue>
-inline int get_enum_value(std::map<int, std::string>& values) {
+inline int get_enum_value(HashMap<String>& values) {
 #if defined _MSC_VER && !defined __clang__
     std::string func(__FUNCSIG__);
     std::string mark = "DummyFlag";
     auto pos = func.find(mark) + mark.size();
-    std::string enumStr = func.substr(pos);
+    std::string enumStrRaw = func.substr(pos);
 
-    auto start = enumStr.find_first_not_of(", ");
-    auto end = enumStr.find('>');
-    if (start != enumStr.npos && end != enumStr.npos && enumStr[start] != '(') {
-        enumStr = enumStr.substr(start, end - start);
-        values.insert({(int)enumValue, enumStr});
+    auto start = enumStrRaw.find_first_not_of(", ");
+    auto end = enumStrRaw.find('>');
+    if (start != enumStrRaw.npos && end != enumStrRaw.npos && enumStrRaw[start] != '(') {
+        enumStrRaw = enumStrRaw.substr(start, end - start);
+        if (!values.get(enumValue)) {
+            String enumStr = to_cstr(enumStrRaw);
+            values[enumValue] = enumStr;
+        }
     }
 
 #else  // gcc, clang
     std::string func(__PRETTY_FUNCTION__);
     std::string mark = "enumValue = ";
     auto pos = func.find(mark) + mark.size();
-    std::string enumStr = func.substr(pos, func.size() - pos - 1);
-    char ch = enumStr[0];
-    if (!(ch >= '0' && ch <= '9') && ch != '(') values.insert({(int)enumValue, enumStr});
+    std::string enumStrRaw = func.substr(pos, func.size() - pos - 1);
+    char ch = enumStrRaw[0];
+    if (!(ch >= '0' && ch <= '9') && ch != '(') {
+        if (!values.get(enumValue)) {
+            String enumStr = to_cstr(enumStrRaw);
+            values[enumValue] = enumStr;
+        }
+    }
 #endif
     return 0;
 }
 
 template <typename Enum, int min_value, int... ints>
-void guess_enum_range(std::map<int, std::string>& values, const std::integer_sequence<int, ints...>&) {
+void guess_enum_range(HashMap<String>& values, const std::integer_sequence<int, ints...>&) {
     auto dummy = {get_enum_value<Enum, DummyFlag, (Enum)(ints + min_value)>(values)...};
 }
 
 template <typename Enum, int... ints>
-void guess_enum_bit_range(std::map<int, std::string>& values, const std::integer_sequence<int, ints...>&) {
+void guess_enum_bit_range(HashMap<String>& values, const std::integer_sequence<int, ints...>&) {
     auto dummy = {get_enum_value<Enum, DummyFlag, (Enum)0>(values), get_enum_value<Enum, DummyFlag, (Enum)(1 << (int)ints)>(values)...};
 }
 

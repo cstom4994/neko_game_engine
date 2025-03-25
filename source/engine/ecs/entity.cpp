@@ -92,7 +92,7 @@ void entity_init() {
 
 void entity_fini() {}
 
-int entity_update_all(App* app, event_t evt) {
+int entity_update_all(App* app, Event evt) {
     // EcsId i;
     // DestroyEntry* entry;
 

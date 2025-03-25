@@ -237,12 +237,12 @@ int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
 void script_run_string(const char *s) {
     lua_State *L = ENGINE_LUA();
     luaL_loadstring(L, s);
-    errcheck(luax_pcall_nothrow(L, 0, LUA_MULTRET));
+    errcheck(L, luax_pcall_nothrow(L, 0, LUA_MULTRET));
 }
 void script_run_file(const char *filename) {
     lua_State *L = ENGINE_LUA();
     luaL_loadfile(L, filename);
-    errcheck(luax_pcall_nothrow(L, 0, LUA_MULTRET));
+    errcheck(L, luax_pcall_nothrow(L, 0, LUA_MULTRET));
 }
 void script_error(const char *s) {
     lua_State *L = ENGINE_LUA();
@@ -260,16 +260,7 @@ void ng_push_cdata(const char *t, void *p) {
     lua_remove(L, -2);
     lua_pushstring(L, t);
     lua_pushlightuserdata(L, p);
-    errcheck(luax_pcall_nothrow(L, 2, 1));
-}
-
-void script_push_event(const char *event) {
-    // call nekogame.__fire_event(event, ...)
-    lua_State *L = ENGINE_LUA();
-    lua_getglobal(L, "ng");
-    lua_getfield(L, -1, "__fire_event");
-    lua_remove(L, -2);
-    lua_pushstring(L, event);
+    errcheck(L, luax_pcall_nothrow(L, 2, 1));
 }
 
 // 将命令行参数转发为 nekogame_args[0], nekogame_args[1], ...
@@ -322,7 +313,7 @@ static void _load_nekogame_ffi() {
     // get ffi.cdef
     lua_getglobal(L, "require");
     lua_pushstring(L, "ffi");
-    errcheck(luax_pcall_nothrow(L, 1, 1));
+    errcheck(L,luax_pcall_nothrow(L, 1, 1));
     lua_getfield(L, lua_gettop(L), "cdef");
 
     // accumulate nekogame_ffi cdefs
@@ -336,12 +327,13 @@ static void _load_nekogame_ffi() {
     }
     luaL_pushresult(&buf);
 
-    errcheck(luax_pcall_nothrow(L, 1, 0));
+    errcheck(L,luax_pcall_nothrow(L, 1, 0));
 #endif
 }
 
-int app_stop(App *app, event_t evt) {
-    LOG_INFO("app_stop {} {}", event_string(evt.type), std::get<f64>(evt.p0.v));
+int app_stop(App *app, Event evt) {
+    auto &eh = the<EventHandler>();
+    LOG_INFO("app_stop {} {}", eh.EventName(evt.type), std::get<f64>(evt.p0.v));
     return 0;
 }
 
@@ -377,7 +369,7 @@ void script_init() {
     lua_channels_setup();
 
     auto &eh = Neko::the<EventHandler>();
-    eh.event_register(gApp, quit, (EventCallback)app_stop, NULL);
+    eh.Register(gApp, Quit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
 
@@ -419,106 +411,17 @@ void script_fini() {
         }
 
         auto &eh = Neko::the<EventHandler>();
-        eh.event_dispatch(event_t{.type = on_quit, .p0 = {.v = 199.14f}});
+        eh.Dispatch(Event{.type = OnQuit, .p0 = {.v = 199.14f}});
     }
 
-    script_push_event("fini");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
+    the<EventHandler>().EventPushLua("fini");
+    errcheck(L, luax_pcall_nothrow(L, 1, 0));
 
     lua_pop(L, 1);  // luax_msgh
 
     LuaVM vm{ENGINE_LUA()};
 
     vm.Fini(ENGINE_LUA());
-}
-
-int script_pre_update_all(App *app, event_t evt) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("pre_update_all");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-
-    return 0;
-}
-
-int script_update_all(App *app, event_t evt) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("update_all");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-
-    return 0;
-}
-
-int script_post_update_all(App *app, event_t evt) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("post_update_all");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-
-    return 0;
-}
-
-void script_draw_ui() {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("draw_ui");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-}
-
-void script_draw_all() {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("draw_all");
-    errcheck(luax_pcall_nothrow(L, 1, 0));
-}
-
-void script_key_down(KeyCode key) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("key_down");
-    LuaPush<int>(L, key);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
-}
-void script_key_up(KeyCode key) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("key_up");
-    LuaPush<int>(L, key);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
-}
-
-void script_mouse_down(MouseCode mouse) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("mouse_down");
-    LuaPush<int>(L, mouse);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
-}
-void script_mouse_up(MouseCode mouse) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("mouse_up");
-    LuaPush<int>(L, mouse);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
-}
-
-void script_mouse_move(vec2 pos) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("mouse_move");
-    // ng_push_cdata("vec2 *", &pos);
-    LuaPush<vec2>(L, pos);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
-}
-
-void script_scroll(vec2 scroll) {
-    lua_State *L = ENGINE_LUA();
-
-    script_push_event("scroll");
-    // ng_push_cdata("vec2 *", &scroll);
-    LuaPush<vec2>(L, scroll);
-    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
 void script_save_all(App *app) {
@@ -532,7 +435,7 @@ void script_save_all(App *app) {
     //     lua_getglobal(L, "ng");
     //     lua_getfield(L, -1, "__save_all");
     //     lua_remove(L, -2);
-    //     errcheck(luax_pcall_nothrow(L, 0, 1));
+    //     errcheck(L,luax_pcall_nothrow(L, 0, 1));
     //     str = lua_tostring(L, -1);
 
     //    // save it
@@ -556,7 +459,7 @@ void script_load_all(App *app) {
     //         lua_getfield(L, -1, "__load_all");
     //         lua_remove(L, -2);
     //         lua_pushstring(L, str);
-    //         errcheck(luax_pcall_nothrow(L, 1, 0));
+    //         errcheck(L,luax_pcall_nothrow(L, 1, 0));
 
     //        // release
     //        mem_free(str);

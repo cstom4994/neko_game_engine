@@ -14,7 +14,7 @@ end
 
 -- misc
 ns.app = {}
-function ns.app.key_down(key)
+function ns.app.OnKeyDown(key)
     if neko.gui_has_focus() then
         return
     end

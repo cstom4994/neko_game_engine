@@ -822,7 +822,7 @@ AssetTexture texture_get_ptr(const char* filename) {
 
 bool texture_update(AssetTexture* tex, String filename) { return _texture_load_vfs(tex, filename); }
 
-bool load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
+bool load_texture_data_from_memory(const void* memory, int sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
     // Load texture data
 
     int channels;
@@ -844,7 +844,7 @@ bool load_texture_data_from_file(const char* file_path, i32* width, i32* height,
     size_t len = 0;
     const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
     neko_assert(file_data);
-    bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
+    bool ret = load_texture_data_from_memory(file_data, (int)len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
         LOG_INFO("could not load texture: {}", file_path);
     }

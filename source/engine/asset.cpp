@@ -187,7 +187,7 @@ static void hot_reload_thread(void *) {
     LOG_INFO("hot_reload_thread end");
 }
 
-int assets_perform_hot_reload_changes(App *app, event_t evt) {
+int assets_perform_hot_reload_changes(App *app, Event evt) {
     Assets &g_assets = the<Assets>();
 
     LockGuard<Mutex> lock{g_assets.changes_mtx};

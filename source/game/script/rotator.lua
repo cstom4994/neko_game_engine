@@ -34,7 +34,7 @@ end
 
 -- update
 
-function ns.rotator.update_all()
+function ns.rotator.OnUpdate()
     ng.entity_table_remove_destroyed(ns.rotator.tbl, ns.rotator.remove)
 
     for ent, rotator in pairs(ns.rotator.tbl) do
