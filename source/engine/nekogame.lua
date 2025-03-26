@@ -59,67 +59,6 @@ function ng.gc_setmetatable()
     return setmetatable
 end
 
---- utilities ------------------------------------------------------------------
-
--- dereference a cdata from a pointer
--- function ng.__deref_cdata(ct, p)
---     return ffi.cast(ct, p)[0]
--- end
-
--- enum --> values and enum --> string functions
-local enum_values_map = {}
-function ng.enum_values(typename)
-    if enum_values_map[typename] then
-        return enum_values_map[typename]
-    end
-    enum_values_map[typename] = {}
-
-    -- Lua贫瘠的反射
-    -- for v in refct.typeof(typename):values() do
-    --     enum_values_map[typename][v.name] = true
-    -- end
-    return enum_values_map[typename]
-end
-
-function ng.enum_tostring(typename, val)
-    -- no nice inverse mapping exists...
-    for name in pairs(ng.enum_values(typename)) do
-        if ffi.new(typename, name) == val then
-            return name
-        end
-    end
-    return nil
-end
-
--- return serialized string for cdata, func must be of form
--- void (typeof(cdata) *, Serializer *)
-function ng.c_serialize(func, cdata)
-    -- local s = ng.store_open()
-    -- func(cdata, nil, s)
-    -- local dump = ffi.string(ng.store_write_str(s))
-    -- ng.store_close(s)
-    return dump
-end
-
--- return struct deserialized from string 'str', func must be of form
--- void (ctype *, Deserializer *)
-function ng.c_deserialize(ctype, func, str)
-    -- local cdata = ctype {}
-    -- local s = ng.store_open_str(str)
-    -- func(cdata, nil, cdata, s)
-    -- ng.store_close(s)
-    return cdata
-end
-
--- create a save/load function given C type and C save/load functions all
--- as string names
-function ng.c_save_load(ctype, c_save, c_load)
-    return function(cdata)
-        local cdump = ng.c_serialize(loadstring('return ' .. c_save)(), cdata)
-        return 'ng.c_deserialize(' .. ctype .. ', ' .. c_load .. ', ' .. ng.safestr(cdump) .. ')'
-    end
-end
-
 --- CEntity ---------------------------------------------------------------------
 
 -- compress entity save format
@@ -446,46 +385,44 @@ ng.cent = function(ent)
     return ent_c
 end
 
--- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
--- to C function sys_func, eg. ns.transform.rotate(...) becomes
--- transform_rotate(...)
-local system_binds = {}
+-- ng.systems 表
+local SystemBindTable = {} -- 用于存储系统绑定的表
 local systems_mt = {
-    __index = function(t, k)
-
+    __index = function(t, systemName) -- 当访问表中不存在的键时调用
+        -- 定义一个函数 用于调用 API
         local call_api = function(name)
-            -- if ng.api[name] ~= nil then
-            --     return ng.api[name]
-            -- else
-            --     return ng[name]
-            -- end
-            return ng[name]
+            return ng[name] or function()
+                error("API not found: " .. name)
+            end
         end
 
-        local v = rawget(t, k)
-
+        -- 尝试从表 t 中获取键 systemName 的值
+        local v = rawget(t, systemName)
         if v ~= nil then
             return v
         end
 
-        local v = system_binds[k]
+        -- 尝试从 SystemBindTable 中获取键 systemName 的值
+        local v = SystemBindTable[systemName]
         if v ~= nil then
             return v
         end
 
-        local names = {}
-        v = setmetatable({}, {
-            __index = function(_, k2)
-                local name = names[k2]
-                if name ~= nil then
-                    return call_api(name)
+        -- 如果前面都没有找到 则创建一个新的表并设置元表
+        local FuncTable = {} -- 这个表用于存储函数名 会被v表作为闭包捕获 并持久存在
+        local v = setmetatable({}, {
+            __index = function(_, systemFuncName) -- 当访问表中不存在的键时调用
+                local funcName = FuncTable[systemFuncName]
+                if funcName ~= nil then
+                    return call_api(funcName)
                 end
-                name = k .. '_' .. k2
-                names[k2] = name
-                return call_api(name)
+                funcName = systemName .. '_' .. systemFuncName -- 构造新的函数名 并存储在 FuncTable 表中
+                FuncTable[systemFuncName] = funcName
+                return call_api(funcName)
             end
         })
-        system_binds[k] = v
+        -- 将新创建的表存储在 SystemBindTable 中 并返回
+        SystemBindTable[systemName] = v
         return v
     end
 }
@@ -722,12 +659,26 @@ function ng.wrap_string(sys, prop)
     end
 end
 
--- hot_require 'nekogame.entity'
-local old_entity_create = ng.entity_create
-function ng.entity_create()
-    local e = old_entity_create()
-    ns.group.add(e, 'default')
+--- 创建实体
+---@param name string 实体的名字
+---@return userdata 返回创建的实体CEntity
+function ng.entity_create(name)
+    name = name or "New Entity " .. math.random(1, 256)
+    local e = neko.EntityCreate(name)
     return e
+end
+
+--- 销毁实体
+---@param ent userdata 需要销毁的实体CEntity
+function ng.entity_destroy(ent)
+    neko.EntityDestroy(ent)
+end
+
+--- 判断实体是否被销毁
+---@param ent userdata 实体CEntity
+---@return boolean 返回是否被销毁
+function ng.entity_destroyed(ent)
+    return neko.EntityDestroyed(ent)
 end
 
 -- hot_require 'nekogame.name'
@@ -806,228 +757,6 @@ function ns.name.load_all(d)
         ns.name.set_name(ent, name)
     end
 end
-
--- hot_require 'nekogame.group'
-ns.group = {}
-
-local group_entities = {} -- group name --> entity_table
-local entity_groups = ng.entity_table() -- entity --> set of group names
-
--- iterate over a group collection, which can be a string of
--- space-separated group names or a table with group names as keys
-local function _groups(groups)
-    if type(groups) == 'string' then
-        return string.gmatch(groups, '%S+')
-    end
-    return pairs(groups)
-end
-
-function ns.group.add(ent, groups)
-    -- if no groups parameter, nothing to do
-    if not groups then
-        return
-    end
-
-    for group in _groups(groups) do
-        -- connect both ways
-        if not group_entities[group] then
-            group_entities[group] = ng.entity_table()
-        end
-        group_entities[group][ent] = true
-        if not entity_groups[ent] then
-            entity_groups[ent] = {}
-        end
-        entity_groups[ent][group] = true
-    end
-end
-
-ns.group.add_groups = ns.group.add
-
-function ns.group.remove(ent, groups)
-    if type(groups) == 'nil' then
-        -- no groups given, remove from all
-        if entity_groups[ent] then
-            groups = entity_groups[ent]
-        else
-            return -- no groups to remove from
-        end
-    end
-
-    for group in _groups(groups) do
-        -- disconnect both ways
-        if group_entities[group] then
-            group_entities[group][ent] = nil
-        end
-        if entity_groups[ent] then
-            entity_groups[ent][group] = nil
-        end
-    end
-end
-
-function ns.group.has(ent)
-    return true
-end
-
-function ns.group.set_groups(ent, groups)
-    ns.group.remove(ent)
-    ns.group.add(ent, groups)
-end
-
-function ns.group.get_groups(ent)
-    local groups = {}
-    if entity_groups[ent] then
-        for group in pairs(entity_groups[ent]) do
-            table.insert(groups, group)
-        end
-    end
-    return table.concat(groups, ' ')
-end
-
-function ns.group.get_entities(groups)
-    local ents = {}
-    for group in _groups(groups) do
-        if group_entities[group] then
-            ng.entity_table_merge(ents, group_entities[group])
-        end
-    end
-    return ents
-end
-
-function ns.group.destroy(groups)
-    for group in _groups(groups) do
-        if group_entities[group] then
-            for ent in pairs(group_entities[group]) do
-                ns.entity.destroy(ent)
-            end
-        end
-        group_entities[group] = nil
-    end
-end
-
-function ns.group.set_save_filter(groups, val)
-    for group in _groups(groups) do
-        if group_entities[group] then
-            for ent in pairs(group_entities[group]) do
-                ns.entity.set_save_filter(ent, val)
-            end
-        end
-    end
-end
-
-function ns.group.OnUpdate()
-    for ent in pairs(entity_groups) do
-        if ns.entity.destroyed(ent) then
-            ns.group.remove(ent)
-        end
-    end
-end
-
-function ns.group.save_all()
-    return entity_groups
-end
-
-function ns.group.load_all(d)
-    for ent, groups in pairs(d) do
-        ns.group.set_groups(ent, groups)
-    end
-end
-
--- hot_require 'nekogame.input'
-local keycode_to_string_tbl = {
-    KC_ESCAPE = '<escape>',
-    KC_ENTER = '<enter>',
-    KC_TAB = '<tab>',
-    KC_BACKSPACE = '<backspace>',
-    KC_INSERT = '<insert>',
-    KC_DELETE = '<delete>',
-    KC_RIGHT = '<right>',
-    KC_LEFT = '<left>',
-    KC_DOWN = '<down>',
-    KC_UP = '<up>',
-    KC_PAGE_UP = '<page_up>',
-    KC_PAGE_DOWN = '<page_down>',
-    KC_HOME = '<home>',
-    KC_END = '<end>',
-    KC_CAPS_LOCK = '<caps_lock>',
-    KC_SCROLL_LOCK = '<scroll_lock>',
-    KC_NUM_LOCK = '<num_lock>',
-    KC_PRINT_SCREEN = '<print_screen>',
-    KC_PAUSE = '<pause>',
-    KC_F1 = '<f1>',
-    KC_F2 = '<f2>',
-    KC_F3 = '<f3>',
-    KC_F4 = '<f4>',
-    KC_F5 = '<f5>',
-    KC_F6 = '<f6>',
-    KC_F7 = '<f7>',
-    KC_F8 = '<f8>',
-    KC_F9 = '<f9>',
-    KC_F10 = '<f10>',
-    KC_F11 = '<f11>',
-    KC_F12 = '<f12>',
-    KC_F13 = '<f13>',
-    KC_F14 = '<f14>',
-    KC_F15 = '<f15>',
-    KC_F16 = '<f16>',
-    KC_F17 = '<f17>',
-    KC_F18 = '<f18>',
-    KC_F19 = '<f19>',
-    KC_F20 = '<f20>',
-    KC_F21 = '<f21>',
-    KC_F22 = '<f22>',
-    KC_F23 = '<f23>',
-    KC_F24 = '<f24>',
-    KC_F25 = '<f25>',
-    KC_KP_0 = '<kp_0>',
-    KC_KP_1 = '<kp_1>',
-    KC_KP_2 = '<kp_2>',
-    KC_KP_3 = '<kp_3>',
-    KC_KP_4 = '<kp_4>',
-    KC_KP_5 = '<kp_5>',
-    KC_KP_6 = '<kp_6>',
-    KC_KP_7 = '<kp_7>',
-    KC_KP_8 = '<kp_8>',
-    KC_KP_9 = '<kp_9>',
-    KC_KP_DECIMAL = '<kp_decimal>',
-    KC_KP_DIVIDE = '<kp_divide>',
-    KC_KP_MULTIPLY = '<kp_multiply>',
-    KC_KP_SUBTRACT = '<kp_subtract>',
-    KC_KP_ADD = '<kp_add>',
-    KC_KP_ENTER = '<kp_enter>',
-    KC_KP_EQUAL = '<kp_equal>',
-    KC_LEFT_SHIFT = '<shift>',
-    KC_LEFT_CONTROL = '<control>',
-    KC_LEFT_ALT = '<alt>',
-    KC_LEFT_SUPER = '<super>',
-    KC_RIGHT_SHIFT = '<shift>',
-    KC_RIGHT_CONTROL = '<control>',
-    KC_RIGHT_ALT = '<alt>',
-    KC_RIGHT_SUPER = '<super>',
-    KC_MENU = '<menu>'
-}
-function ng.input_keycode_to_string(key)
-    return keycode_to_string_tbl[neko.input_keycode_str(key)] or neko.input_keycode_str(key)
-end
-
-local mousecode_to_string_tbl = {
-    [0] = '<mouse_1>', -- MC_LEFT
-    [1] = '<mouse_2>', -- MC_RIGHT
-    [2] = '<mouse_3>', -- MC_MIDDLE
-    [3] = '<mouse_4>',
-    [4] = '<mouse_5>',
-    [5] = '<mouse_6>',
-    [6] = '<mouse_7>',
-    [7] = '<mouse_8>'
-}
-function ng.input_mousecode_to_string(mouse)
-    return mousecode_to_string_tbl[tonumber(mouse)]
-end
-
--- hot_require 'nekogame.gui'
--- local root = ns.gui.get_root()
--- ns.group.set_groups(root, 'builtin')
-
--- ng.wrap_string('gui_text', 'str')
 
 --- event ----------------------------------------------------------------------
 

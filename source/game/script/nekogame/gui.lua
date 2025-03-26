@@ -339,7 +339,22 @@ draw_imgui = function(dt)
 
         if ImGui.Button("test_ecs") then
 
-            print(table.show({gw:detail()}))
+            print(table.show({EcsWorld:detail()}))
+        end
+
+        if ImGui.Button("test_ecs_2") then
+            for i = 1, 10, 1 do
+                local id = ns.entity.create("Test Entity " .. i)
+            end
+        end
+
+        if ImGui.Button("test_ecs_3") then
+            for v in EcsWorld:match("all", "test_component_1") do
+                print(v.x)
+            end
+            for v in EcsWorld:match("all", "CTag") do
+                print(v)
+            end
         end
 
         if ImGui.Button("test_luabp") then

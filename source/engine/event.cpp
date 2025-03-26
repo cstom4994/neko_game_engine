@@ -5,13 +5,15 @@
 #include "base/common/reflection.hpp"
 #include "engine/bootstrap.h"
 
+namespace Neko {
+
 void EventHandler::init() {
 
     assert(NUM_EVENTS < 32);
     m_evqueue.make();
     m_delegate_map.reserve(NUM_EVENTS);
 
-    Neko::reflection::guess_enum_range<EventEnum, 0>(eventNames, std::make_integer_sequence<int, NUM_EVENTS>());
+    reflection::guess_enum_range<EventEnum, 0>(eventNames, std::make_integer_sequence<int, NUM_EVENTS>());
 }
 
 void EventHandler::fini() {
@@ -178,3 +180,5 @@ int openlib_Event(lua_State* L) {
     lua_setglobal(L, "event");
     return 0;
 }
+
+}  // namespace Neko

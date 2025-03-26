@@ -82,7 +82,7 @@ struct EcsWorld {
     ComponentPool component_pool[TYPE_COUNT];  // 存储所有组件的标记数据
 };
 
-int l_ecs_create_world(lua_State* L);
+int EcsCreateWorld(lua_State* L);
 
 // EcsId ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
 

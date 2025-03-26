@@ -159,7 +159,7 @@ int EcsGetTid_w(lua_State* L, int stk, int proto_id) {
     lua_gettable(L, proto_id);
     int id = lua_tointeger(L, -1);
     lua_pop(L, 1);
-    luaL_argcheck(L, id >= TYPE_MIN_ID, stk, "invalid type");
+    luaL_argcheck(L, id >= TYPE_MIN_ID, stk, "invalid type id");
     return id;
 }
 
@@ -177,7 +177,7 @@ int EcsGetTid(lua_State* L, const char* name) {
     int id = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
-    neko_assert(id >= TYPE_MIN_ID && "invalid type");
+    neko_assert(id >= TYPE_MIN_ID && "invalid type id");
 
     lua_pop(L, 2);  // # pop __NEKO_ECS_CORE | WORLD_PROTO_ID
 
@@ -886,11 +886,12 @@ struct EcsLuaWrap {
     }
 };
 
-int l_ecs_create_world(lua_State* L) {
+int EcsCreateWorld(lua_State* L) {
 
     MatchCtx* mctx;
     EcsWorld* world = (EcsWorld*)lua_newuserdatauv(L, sizeof(*world), WORLD_UPVAL_N);
     std::memset(world, 0, sizeof(*world));
+    int top = lua_gettop(L);
 
     EcsWorldInit_i(world);
 
@@ -925,36 +926,36 @@ int l_ecs_create_world(lua_State* L) {
     lua_setmetatable(L, -2);
 
     lua_createtable(L, 0, TYPE_COUNT);
-    lua_setiuservalue(L, 1, WORLD_PROTO_ID);
+    lua_setiuservalue(L, top, WORLD_PROTO_ID);
 
     lua_createtable(L, 0, TYPE_COUNT);
-    lua_setiuservalue(L, 1, WORLD_PROTO_DEFINE);
+    lua_setiuservalue(L, top, WORLD_PROTO_DEFINE);
 
     lua_createtable(L, TYPE_MAX_ID, 0);
-    lua_setiuservalue(L, 1, WORLD_COMPONENTS);
+    lua_setiuservalue(L, top, WORLD_COMPONENTS);
 
     lua_createtable(L, 0, 0);
-    lua_setiuservalue(L, 1, WORLD_SYSTEMS);
+    lua_setiuservalue(L, top, WORLD_SYSTEMS);
 
     mctx = (MatchCtx*)lua_newuserdatauv(L, sizeof(*mctx), 1);
-    lua_pushvalue(L, 1);
-    lua_setiuservalue(L, -2, 1);               // # match_ctx uv 1
-    lua_setiuservalue(L, 1, WORLD_MATCH_CTX);  // # l_ecs_t uv 4
+    lua_pushvalue(L, top);
+    lua_setiuservalue(L, -2, top);               // # match_ctx uv 1
+    lua_setiuservalue(L, top, WORLD_MATCH_CTX);  // # l_ecs_t uv 4
 
     lua_pushliteral(L, "__eid");
-    lua_setiuservalue(L, 1, WORLD_KEY_EID);
+    lua_setiuservalue(L, top, WORLD_KEY_EID);
 
     lua_pushliteral(L, "__tid");
-    lua_setiuservalue(L, 1, WORLD_KEY_TID);
+    lua_setiuservalue(L, top, WORLD_KEY_TID);
 
     lua_pushliteral(L, "__ud");
-    lua_setiuservalue(L, 1, WORLD_KEY_UD);
+    lua_setiuservalue(L, top, WORLD_KEY_UD);
 
     const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
     lua_pushstring(L, s);
-    lua_setiuservalue(L, 1, WORLD_UPVAL_N);
+    lua_setiuservalue(L, top, WORLD_UPVAL_N);
 
-    lua_pushvalue(L, 1);
+    lua_pushvalue(L, top);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
 
     return 1;

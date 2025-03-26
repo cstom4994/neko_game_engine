@@ -1,5 +1,30 @@
+
+
+function ImGuiMouseHoldon()
+    local ImGui = neko.imgui_obsolete
+    if ImGui.IsItemHovered() then
+        if ImGui.IsMouseDown(0) then
+            return true
+        end
+    end
+    return false
+end
+
+
 function haha()
     LocalGame = {}
+
+    EcsWorld:register("test_component_1", {
+        x = 0,
+        y = 0
+    })
+
+    local test_component_1_ent1 = EcsWorld:new{
+        test_component_1 = {
+            x = 114514,
+            y = 233
+        }
+    }
 
     ns.gamelogic = {
         pool = {}
@@ -14,7 +39,7 @@ function haha()
 
     -- add camera: 32 pixels is one unit
 
-    LocalGame.camera = ns.entity.create()
+    LocalGame.camera = ns.entity.create("Main Camera")
 
     ns.transform.add(LocalGame.camera)
     ns.camera.add(LocalGame.camera)

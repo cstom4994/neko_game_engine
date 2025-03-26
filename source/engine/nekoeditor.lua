@@ -4,29 +4,21 @@ local ImGui = neko.imgui_obsolete
 ns.edit = {
     inspect = false,
     devui_visible = false,
-    command_text = "",
-    command_text_colon = "",
     mode_text = ""
 }
 
---- expose C functions ---------------------------------------------------------
-
 ns.edit.set_enabled = neko.edit_set_enabled
 ns.edit.get_enabled = neko.edit_get_enabled
-
-ns.edit.set_editable = ng.edit_set_editable
-ns.edit.get_editable = ng.edit_get_editable
-
-ns.edit.set_grid_size = ng.edit_set_grid_size
-ns.edit.get_grid_size = ng.edit_get_grid_size
-
--- ns.edit.bboxes_update = ng.edit_bboxes_update
-ns.edit.bboxes_has = ng.edit_bboxes_has
-ns.edit.bboxes_get_num = ng.edit_bboxes_get_num
-ns.edit.bboxes_get_nth_ent = ng.edit_bboxes_get_nth_ent
-ns.edit.bboxes_set_selected = ng.edit_bboxes_set_selected
-
-ns.edit.line_add = ng.edit_line_add
+ns.edit.set_editable = neko.edit_set_editable
+ns.edit.get_editable = neko.edit_get_editable
+ns.edit.set_grid_size = neko.edit_set_grid_size
+ns.edit.get_grid_size = neko.edit_get_grid_size
+-- ns.edit.bboxes_update = neko.edit_bboxes_update
+ns.edit.bboxes_has = neko.edit_bboxes_has
+ns.edit.bboxes_get_num = neko.edit_bboxes_get_num
+ns.edit.bboxes_get_nth_ent = neko.edit_bboxes_get_nth_ent
+ns.edit.bboxes_set_selected = neko.edit_bboxes_set_selected
+ns.edit.line_add = neko.edit_line_add
 
 local PropertyMeta = {}
 
@@ -91,28 +83,28 @@ function ns.edit.mode_key_down(key)
     if neko.gui_captured_event() then
         return
     end
-    ns.edit._mode_exec_bind(false, ns.input.keycode_to_string(key))
+    ns.edit._mode_exec_bind(false, key)
 end
 
 function ns.edit.mode_key_up(key)
     if neko.gui_captured_event() then
         return
     end
-    ns.edit._mode_exec_bind(true, ns.input.keycode_to_string(key))
+    ns.edit._mode_exec_bind(true, key)
 end
 
 function ns.edit.mode_mouse_down(mouse)
     if neko.gui_captured_event() then
         return
     end
-    ns.edit._mode_exec_bind(false, ns.input.mousecode_to_string(mouse))
+    ns.edit._mode_exec_bind(false, mouse)
 end
 
 function ns.edit.mode_mouse_up(mouse)
     if neko.gui_captured_event() then
         return
     end
-    ns.edit._mode_exec_bind(true, ns.input.mousecode_to_string(mouse))
+    ns.edit._mode_exec_bind(true, mouse)
 end
 
 function ns.edit.set_mode(mode)
@@ -133,7 +125,6 @@ ns.edit.stopped = true
 local stop_savepoint = nil
 local stop_save_next_frame = false -- whether to save a stop soon
 local function stop_save()
-    ns.group.set_save_filter('default edit_inspector', true)
     -- local s = ng.store_open()
     -- ns.system.save_all(s)
     -- stop_savepoint = ffi.string(ng.store_write_str(s))
@@ -152,7 +143,6 @@ function ns.edit.stop()
         return
     end
 
-    ns.group.destroy('default edit_inspector')
     -- local s = ng.store_open_str(stop_savepoint)
     -- ns.system.load_all(s)
     -- ng.store_close(s)
@@ -174,17 +164,7 @@ end
 ns.edit.history = {}
 
 function ns.edit.undo_save()
-    -- ns.group.set_save_filter('default edit_inspector', true)
-    -- local s = ng.store_open()
-    -- ns.system.save_all(s)
 
-    -- local str = ffi.string(ng.store_write_str(s))
-    -- table.insert(ns.edit.history, str)
-    -- if ns.edit.stopped then
-    --     stop_savepoint = str
-    -- end -- update stop if stopped
-
-    -- ng.store_close(s)
 end
 
 function ns.edit.undo()
@@ -192,9 +172,6 @@ function ns.edit.undo()
         print('nothing to undo')
         return
     end
-
-    -- TODO: make 'edit' entity group and destroy all except that?
-    ns.group.destroy('default edit_inspector')
 
     table.remove(ns.edit.history)
     local str = ns.edit.history[#ns.edit.history]
@@ -217,9 +194,6 @@ ns.edit.mode = 'normal' -- start in normal mode
 
 local camera_default_height = 150
 ns.edit.camera = ng.add {
-    group = {
-        groups = 'builtin'
-    },
     edit = {
         editable = false
     },
@@ -384,305 +358,6 @@ function ns.edit.select_click_multi()
     SelectTable[ents[1]] = nil
 
     ns.edit.undo_save()
-end
-
---- 命令模式 ---------------------------------------------------------------
-ns.edit.modes.command = {}
-
-local command_end_callback, command_completion_func, command_completions
-local command_completions_index, command_always_complete
-
-local function command_update_completions_text()
-    ns.edit.command_completions_text = table.concat(command_completions, ' | ')
-end
-local function command_update_completions()
-    local s = ns.edit.command_text
-    command_completions = command_completion_func(s)
-    command_update_completions_text()
-end
-
--- whether sub is a subsequence of seq
-local function subseq(seq, sub)
-    local j = 1
-    local lsub = #sub + 1
-    if lsub == 1 then
-        return true
-    end
-    for i = 1, #seq do
-        if string.byte(seq, i) == string.byte(sub, j) then
-            j = j + 1
-            if j == lsub then
-                return true
-            end
-        end
-    end
-    return false
-end
-
--- returns a completion function that uses substring search
--- case insensitive
-function ns.edit.command_completion_substr(t)
-    return function(s)
-        local comps = {}
-        local s = string.lower(s)
-        for k in pairs(t) do
-            if subseq(string.lower(k), s) then
-                table.insert(comps, k)
-            end
-        end
-        return comps
-    end
-end
-
--- 使用文件系统搜索的补全函数 不区分大小写
-function ns.edit.command_completion_fs(s)
-    local comps = {}
-    -- local s = string.lower(s)
-    -- local dir_path = string.match(s, '(.*/)') or './'
-    -- local suffix = string.match(s, '.*/(.*)') or s
-    -- local dir = ns.fs.dir_open(dir_path)
-    -- if dir == nil then
-    --     return {}
-    -- end
-    -- while true do
-    --     local f = ns.fs.dir_next_file(dir)
-    --     if f == nil then
-    --         break
-    --     end
-    --     f = ng.string(f)
-    --     if f ~= '.' and f ~= '..' and subseq(string.lower(dir_path .. f), s) then
-    --         table.insert(comps, dir_path .. f)
-    --     end
-    -- end
-    -- ns.fs.dir_close(dir)
-    return comps
-end
-
-local function run_string(s)
-    local r, e = loadstring(s)
-    if r then
-        r()
-    else
-        error(e)
-    end
-end
-
-function ns.edit.command_start(prompt, callback, completion_func, always_complete, initial)
-    ns.edit.set_mode('command')
-
-    -- default is eval script
-    prompt = prompt or 'lua: '
-    command_end_callback = callback or run_string
-    command_completion_func = completion_func or function()
-        return {}
-    end
-    command_always_complete = always_complete and true or false
-
-    initial = initial or ''
-    ns.edit.command_text = initial or ''
-    -- ns.gui_textedit.set_cursor(ns.edit.command_text, #initial)
-
-    ns.edit.command_text_colon = prompt
-    command_update_completions()
-end
-
-function ns.edit.command_end()
-    if command_always_complete then
-        if #command_completions == 0 then
-            return
-        end -- no completions
-        ns.edit.command_complete()
-    end
-
-    ns.edit.set_mode('normal')
-
-    local s = ns.edit.command_text
-    if command_end_callback then
-        command_end_callback(s)
-    else
-        print('no command callback for \'' .. s .. '\'')
-    end
-end
-
-function ns.edit.command_cancel()
-    ns.edit.set_mode('normal')
-end
-
--- actually pick a completion
-function ns.edit.command_complete()
-    if #command_completions > 0 then
-        local comp = command_completions[1]
-        ns.edit.command_text = comp
-        -- ns.gui_textedit.set_cursor(ns.edit.command_text, #comp)
-        command_update_completions()
-    end
-end
-
-function ns.edit.modes.command.enter()
-    ns.edit.set_mode_text('command')
-
-    ns.edit.command_completions_text = ''
-end
-
-function ns.edit.modes.command.exit()
-    command_completions = {}
-end
-
-function ns.edit.modes.command.OnUpdate()
-    -- if ns.gui.event_key_down(ns.edit.command_text) == ng.KC_ENTER then
-    --     ns.edit.command_end()
-    --     return
-    -- elseif ns.gui.event_focus_exit(ns.edit.command_text) then
-    --     ns.edit.command_cancel()
-    --     return
-    -- end
-
-    -- if ns.gui.event_changed(ns.edit.command_text) then
-    --     command_update_completions()
-    -- end
-    -- if ns.gui.event_key_down(ns.edit.command_text) == ng.KC_TAB then
-    --     ns.edit.command_complete()
-    -- end
-
-    -- -- next/prev completion
-    -- if ns.gui.event_key_down(ns.edit.command_text) == ng.KC_DOWN then
-    --     table.insert(command_completions, table.remove(command_completions, 1))
-    --     command_update_completions_text()
-    -- elseif ns.gui.event_key_down(ns.edit.command_text) == ng.KC_UP then
-    --     table.insert(command_completions, 1, table.remove(command_completions))
-    --     command_update_completions_text()
-    -- end
-end
-
---- 内置提示 -----------------------------------------------------------
-
--- 询问网格大小
-local function command_gridx(x)
-    local function gridy(y)
-        ns.edit.set_grid_size(ng.Vec2(tonumber(x) or 0, tonumber(y) or 0))
-    end
-    ns.edit.command_start('grid y: ', gridy)
-end
-function ns.edit.command_grid()
-    ns.edit.command_start('grid x: ', command_gridx)
-end
-
--- 检查所选实体的系统 如果未选择实体 则创建实体
-function ns.edit.command_inspect()
-    local add = ng.entity_table_empty(SelectTable)
-
-    local function system(s)
-        if add then
-            local e = ng.entity_create()
-            ns.edit_inspector.add(e, s)
-            SelectTable[e] = true
-        elseif not ng.entity_table_empty(SelectTable) then
-            for ent in pairs(SelectTable) do
-                ns.edit_inspector.add(ent, s)
-            end
-        end
-        ns.edit.undo_save()
-    end
-
-    -- 完成已列出属性的系统
-    local syss = ns.edit_inspector.get_systems()
-    local comp = ns.edit.command_completion_substr(syss)
-
-    ns.edit.command_start(add and 'new entity: ' or 'edit system: ', system, comp, true)
-end
-
-local last_save = nekogame_usr_path .. 'levels/'
-function ns.edit.command_save()
-    local function save(f)
-        print("edit: saving group 'default' to file '" .. f .. "' ... ")
-        ns.group.set_save_filter('default', true)
-        -- local s = ng.store_open()
-        -- ns.system.save_all(s)
-        -- ng.store_write_file(s, f)
-        -- ng.store_close(s)
-        print("done")
-
-        ns.edit.stop_save()
-
-        last_save = f
-    end
-
-    ns.edit.command_start('save to file: ', save, ns.edit.command_completion_fs, false, last_save)
-end
-
-local last_load = nekogame_usr_path .. 'levels/'
-function ns.edit.command_load()
-    local function load(f)
-        ns.group.destroy('default')
-
-        print("edit: loading from file '" .. f .. "' ... ")
-        local s = ng.store_open_file(f)
-        ns.system.load_all(s)
-        ng.store_close(s)
-        print("done")
-
-        ns.edit.stop_save()
-        ns.timing.set_paused(true)
-        ns.edit.stopped = true
-
-        last_load = f
-    end
-
-    ns.edit.command_start('load from file: ', load, ns.edit.command_completion_fs, false, last_load)
-end
-
-function ns.edit.set_default_file(s)
-    last_save = s
-    last_load = s
-end
-
-local last_save_prefab = nekogame_usr_path .. 'prefabs/'
-function ns.edit.command_save_prefab()
-    if ng.entity_table_empty(SelectTable) then
-        return
-    end
-
-    local function save(f)
-        for ent in pairs(SelectTable) do
-            if ns.transform.has(ent) then
-                ns.transform.set_save_filter_rec(ent, true)
-            else
-                ns.entity.set_save_filter(ent, true)
-            end
-        end
-
-        ns.prefab.save(f, ns.edit.select_get_first())
-
-        last_save_prefab = f
-    end
-
-    ns.edit.command_start('save prefab: ', save, ns.edit.command_completion_fs, false, last_save_prefab)
-end
-
-local last_load_prefab = nekogame_usr_path .. 'prefabs/'
-function ns.edit.command_load_prefab()
-    local function load(f)
-        ns.edit.select_clear()
-        local ent = ns.prefab.load(f)
-        SelectTable[ent] = true
-        if ns.transform.has(ent) then
-            -- move to center of view
-            local w = ns.transform.local_to_world(ns.edit.camera, ng.vec2_zero)
-            w.x = math.floor(w.x + 0.5)
-            w.y = math.floor(w.y + 0.5)
-            ns.transform.set_position(ent, w)
-        end
-        ns.edit.undo_save()
-
-        last_load_prefab = f
-    end
-
-    ns.edit.command_start('load prefab: ', load, ns.edit.command_completion_fs, true, last_load_prefab)
-end
-
-function ns.edit.set_default_prefab_file(s)
-    last_save_prefab = s
-    last_load_prefab = s
 end
 
 --- 抓取模式 -----------------------------------------------------------------------
@@ -1339,20 +1014,6 @@ local function remove_destroyed()
     end
 end
 
---- 递归地使实体不可编辑/不可保存等
---- @param ent any
-local function update_group_editable_rec(ent)
-    ns.edit.set_editable(ent, false)
-    ns.group.set_groups(ent, 'builtin edit_inspector')
-
-    if ns.transform.has(ent) then
-        local children = ns.transform.get_children(ent)
-        for i = 0, ns.transform.get_num_children(ent) - 1 do
-            update_group_editable_rec(children[i])
-        end
-    end
-end
-
 local function update_inspector(inspector)
 
     -- ns.gui_window.set_highlight(inspector.window, SelectTable[inspector.ent])
@@ -1364,8 +1025,6 @@ local function update_inspector(inspector)
         ImGui.Text("Inspector:\n%d\n%s", inspector.ent.id, table.show(SelectTable))
 
         add_properties(inspector) -- 捕获新添加的属性
-
-        -- update_group_editable_rec(inspector.window)
 
         ImGui.Separator()
 
@@ -1496,44 +1155,34 @@ end
 -- 默认按键绑定
 
 -- 正常模式
-ns.edit.modes.normal['S-;'] = ns.edit.command_start
 ns.edit.modes.normal['u'] = ns.edit.undo
-
-ns.edit.modes.normal['s'] = ns.edit.command_save
-ns.edit.modes.normal['l'] = ns.edit.command_load
-ns.edit.modes.normal['\''] = ns.edit.command_save_prefab
-ns.edit.modes.normal['.'] = ns.edit.command_load_prefab
 
 ns.edit.modes.normal['p'] = ns.edit.pause_toggle
 ns.edit.modes.normal['S-p'] = ns.edit.stop
 
 ns.edit.modes.normal['a'] = ns.edit.select_clear
-ns.edit.modes.normal['<mouse_1>'] = ns.edit.select_click_single
-ns.edit.modes.normal['C-<mouse_1>'] = ns.edit.select_click_multi
+ns.edit.modes.normal['MC_LEFT'] = ns.edit.select_click_single
+ns.edit.modes.normal['C-MC_LEFT'] = ns.edit.select_click_multi
 
 ns.edit.modes.normal['x'] = ns.edit.destroy
 ns.edit.modes.normal['S-x'] = ns.edit.destroy_rec
 ns.edit.modes.normal['S-d'] = ns.edit.duplicate
 
-ns.edit.modes.normal['S-<mouse_1>'] = ns.edit.camera_drag_start
-ns.edit.modes.normal['^S-<mouse_1>'] = ns.edit.camera_drag_end
-ns.edit.modes.normal['<mouse_3>'] = ns.edit.camera_drag_start
-ns.edit.modes.normal['^<mouse_3>'] = ns.edit.camera_drag_end
+ns.edit.modes.normal['S-MC_LEFT'] = ns.edit.camera_drag_start
+ns.edit.modes.normal['^S-MC_LEFT'] = ns.edit.camera_drag_end
+ns.edit.modes.normal['MC_MIDDLE'] = ns.edit.camera_drag_start
+ns.edit.modes.normal['^MC_MIDDLE'] = ns.edit.camera_drag_end
 ns.edit.modes.normal['-'] = ns.edit.camera_zoom_out
 ns.edit.modes.normal['='] = ns.edit.camera_zoom_in
 
 ns.edit.modes.normal['g'] = ns.edit.grab_start
 ns.edit.modes.normal['r'] = ns.edit.rotate_start
-ns.edit.modes.normal['b'] = ns.edit.boxsel_start
-
-ns.edit.modes.normal[','] = ns.edit.command_inspect
-ns.edit.modes.normal['S-g'] = ns.edit.command_grid
 
 -- 抓取模式
 ns.edit.modes.grab['<enter>'] = ns.edit.grab_end
 ns.edit.modes.grab['<escape>'] = ns.edit.grab_cancel
-ns.edit.modes.grab['<mouse_1>'] = ns.edit.grab_end
-ns.edit.modes.grab['<mouse_2>'] = ns.edit.grab_cancel
+ns.edit.modes.grab['MC_LEFT'] = ns.edit.grab_end
+ns.edit.modes.grab['MC_RIGHT'] = ns.edit.grab_cancel
 ns.edit.modes.grab['g'] = ns.edit.grab_snap_on
 ns.edit.modes.grab['<left>'] = ns.edit.grab_move_left
 ns.edit.modes.grab['<right>'] = ns.edit.grab_move_right
@@ -1555,23 +1204,12 @@ end
 -- 旋转模式
 ns.edit.modes.rotate['<enter>'] = ns.edit.rotate_end
 ns.edit.modes.rotate['<escape>'] = ns.edit.rotate_cancel
-ns.edit.modes.rotate['<mouse_1>'] = ns.edit.rotate_end
-ns.edit.modes.rotate['<mouse_2>'] = ns.edit.rotate_cancel
-
--- BoxSel模式
--- ns.edit.modes.boxsel['<mouse_1>'] = ns.edit.boxsel_begin
--- ns.edit.modes.boxsel['C-<mouse_1>'] = ns.edit.boxsel_begin
--- ns.edit.modes.boxsel['^<mouse_1>'] = ns.edit.boxsel_end
--- ns.edit.modes.boxsel['^C-<mouse_1>'] = ns.edit.boxsel_end_add
-
--- Pyypoly模式
--- ns.edit.modes.phypoly['<enter>'] = ns.edit.phypoly_end
--- ns.edit.modes.phypoly['<escape>'] = ns.edit.phypoly_cancel
--- ns.edit.modes.phypoly['<mouse_1>'] = ns.edit.phypoly_add_vertex
+ns.edit.modes.rotate['MC_LEFT'] = ns.edit.rotate_end
+ns.edit.modes.rotate['MC_RIGHT'] = ns.edit.rotate_cancel
 
 --- 主事件 ----------------------------------------------------------------
 
-function ns.edit.OnKeytUp(key)
+function ns.edit.OnKeyUp(key)
     if not ns.edit.get_enabled() then
         return
     end
@@ -1610,13 +1248,6 @@ function ns.edit.OnUpdate()
         end
     end
 
-    -- if ns.edit.event_mouse_down(ns.edit.play_text) == ng.MC_LEFT then
-    --     if ns.edit.stopped then
-    --         ns.edit.play()
-    --     else
-    --         ns.edit.stop()
-    --     end
-    -- end
     if not ns.timing.get_paused() then
         ns.edit.stopped = false
     end

@@ -8,9 +8,7 @@
 
 struct App;
 
-#define Event_mt "event"
-
-#define event_getdelegates(_handler, _evt) ((_handler)->m_delegate_map.get(_evt))
+struct lua_State;
 
 #define EVENT_TYPES   \
     X(None)           \
@@ -53,7 +51,11 @@ enum EventMask {
 #undef X
 };
 
-struct lua_State;
+namespace Neko {
+
+constexpr const char* Event_mt = "event_mt";
+
+#define event_getdelegates(_handler, _evt) ((_handler)->m_delegate_map.get(_evt))
 
 using EventVariant = struct {
     int t;
@@ -124,3 +126,5 @@ public:
 };
 
 int openlib_Event(lua_State* L);
+
+}  // namespace Neko

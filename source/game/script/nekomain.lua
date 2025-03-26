@@ -4,6 +4,15 @@ mu = neko.ui
 db = neko.db
 imgui = neko.imgui_obsolete
 
+function console_print(...)
+    local args = table.pack(...)
+    local sargs = {}
+    for i = 1, args.n do
+        sargs[i] = tostring(args[i])
+    end
+    ns.console.puts(table.concat(sargs, '    '))
+end
+
 function neko.__define_default_callbacks()
     neko.before_quit = function()
     end
@@ -19,7 +28,7 @@ function ns.app.OnKeyDown(key)
         return
     end
 
-    local keyname = neko.input_keycode_str(key)
+    local keyname = key
 
     if keyname == "KC_F1" then
         ns.console.set_visible(not ns.console.get_visible())
@@ -33,8 +42,7 @@ function ns.app.OnKeyDown(key)
 
     if ns.edit.get_enabled() then
         if keyname == "KC_C" then
-            print("destroying group 'default'")
-            ns.group.destroy('default')
+
         end
     end
 end

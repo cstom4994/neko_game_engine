@@ -130,18 +130,14 @@ enum KeyCode {
 };
 
 enum MouseCode {
-    MC_1 = 0,
-    MC_2 = 1,
-    MC_3 = 2,
+    MC_LEFT = 0,
+    MC_RIGHT = 1,
+    MC_MIDDLE = 2,
     MC_4 = 3,
     MC_5 = 4,
     MC_6 = 5,
     MC_7 = 6,
     MC_8 = 7,
 
-    MC_NONE = 32,
-
-    MC_LEFT = MC_1,
-    MC_RIGHT = MC_2,
-    MC_MIDDLE = MC_3,
+    MC_NONE = 32
 };

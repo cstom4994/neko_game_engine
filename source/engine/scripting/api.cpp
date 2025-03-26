@@ -2555,21 +2555,22 @@ static int open_neko(lua_State *L) {
         return 0;
     });
 
-    X("entity_create", [](lua_State *L) -> int {
-        CEntity ent = entity_create("any_shit_from_lua");
+    X("EntityCreate", [](lua_State *L) -> int {
+        String name = luax_opt_string(L, 1, "something_unknown_from_lua");
+        CEntity ent = entity_create(name);
         LuaPush<CEntity>(L, ent);
         return 1;
     });
-    X("entity_destroy", [](lua_State *L) -> int {
+    X("EntityDestroy", [](lua_State *L) -> int {
         CEntity *ent = LuaGet<CEntity>(L, 1);
         entity_destroy(*ent);
         return 0;
     });
-    X("entity_destroy_all", [](lua_State *L) -> int {
+    X("EntityDestroyAll", [](lua_State *L) -> int {
         entity_destroy_all();
         return 0;
     });
-    X("entity_destroyed", [](lua_State *L) -> int {
+    X("EntityDestroyed", [](lua_State *L) -> int {
         CEntity *ent = LuaGet<CEntity>(L, 1);
         bool v = entity_destroyed(*ent);
         lua_pushboolean(L, v);

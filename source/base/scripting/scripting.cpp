@@ -373,22 +373,8 @@ void script_init() {
 
     luax_run_bootstrap(L);
 
-    lua_register(L, "ecs_create", l_ecs_create_world);
-
-    vm.RunString(R"(
-        local __worlds = {}
-
-        function fetch_world(name)
-            local mw = __worlds[name]
-            if not mw then
-                mw = ecs_create()
-                __worlds[name] = mw
-            end
-            return mw
-        end
-
-        gw = fetch_world("Admin")
-    )");
+    EcsCreateWorld(L);
+    lua_setglobal(L, "EcsWorld");
 
     lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     ENGINE_ECS() = (EcsWorld *)luaL_checkudata(L, -1, ECS_WORLD_METATABLE);
