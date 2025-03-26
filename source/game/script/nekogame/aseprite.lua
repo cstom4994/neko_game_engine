@@ -4,7 +4,7 @@ ns.aseprite = {
 
 local Aseprite<const> = ns.aseprite
 
-function ns.aseprite.OnUpdate()
+function Aseprite.OnUpdate()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
@@ -15,7 +15,7 @@ function ns.aseprite.OnUpdate()
     end
 end
 
-function ns.aseprite.OnDraw()
+function Aseprite.OnDraw()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
@@ -32,12 +32,12 @@ function ns.aseprite.OnDraw()
     end
 end
 
-function ns.aseprite.OnDrawUI()
+function Aseprite.OnDrawUI()
 
 end
 
-function ns.aseprite._flush(ent)
-    print("ns.aseprite._flush " .. ent.id)
+function Aseprite._flush(ent)
+    print("Aseprite._flush " .. ent.id)
 
     local e = Aseprite.pool[ent]
 
@@ -46,21 +46,21 @@ function ns.aseprite._flush(ent)
     end
 end
 
-function ns.aseprite.set_ase(ent, data)
-    print("ns.aseprite.set_ase " .. ent.id .. " " .. tostring(data))
+function Aseprite.set_ase(ent, data)
+    print("Aseprite.set_ase " .. ent.id .. " " .. tostring(data))
 
     Aseprite.pool[ent].ase = data
 
     Aseprite._flush(ent)
 end
 
-function ns.aseprite.has(ent)
-    print("ns.aseprite.has " .. ent.id)
+function Aseprite.has(ent)
+    print("Aseprite.has " .. ent.id)
     return (Aseprite.pool[ent] ~= nil)
 end
 
-function ns.aseprite.add(ent)
-    print("ns.aseprite.add " .. ent.id)
+function Aseprite.add(ent)
+    print("Aseprite.add " .. ent.id)
 
     Aseprite.pool[ent] = {
         ase = nil,
@@ -70,8 +70,8 @@ function ns.aseprite.add(ent)
     Aseprite._flush(ent)
 end
 
-function ns.aseprite.remove(ent)
-    print("ns.aseprite.remove " .. ent.id)
+function Aseprite.remove(ent)
+    print("Aseprite.remove " .. ent.id)
     if not Aseprite.has(ent) then
         print("aseprite not has " .. ent.id)
     end

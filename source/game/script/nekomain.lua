@@ -47,20 +47,7 @@ function ns.app.OnKeyDown(key)
     end
 end
 
-local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua') or haha
-if run then
-    local function errorHandler(err)
-        __print("Error: ", err)
-    end
-
-    -- 运行给定的脚本
-    local status, result = xpcall(run, errorHandler)
-    if status then
-        print("run successful")
-    else
-        print("run failed")
-    end
-
+local CheckDefaultCamera = function()
     -- 没有相机则添加默认值
     if ng.is_nil_entity(ns.camera.get_current_camera()) then
         ng.add {
@@ -75,27 +62,45 @@ if run then
     else
         print("Default camera")
     end
+end
+
+local function errorHandler(err)
+    __print("Error: ", err)
+end
+
+local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
+if run then
+
+    -- 运行给定的脚本
+    local status, result = xpcall(run, errorHandler)
+    if status then
+        print("run successful")
+    else
+        print("run failed")
+    end
+
+    CheckDefaultCamera()
 else
     -- 没有启动脚本
 
-    -- 添加默认相机
-    ng.add {
-        camera = {
-            viewport_height = 18.75
-        }
-    }
+    CheckDefaultCamera()
 
     -- neko.set_window_title("Sandbox")
 
     if ng.args[1] == "unittest" then
         hot_require('test').UnitTest()
+    else
+        local status, result = xpcall(haha, errorHandler)
+        if status then
+            print("run successful")
+        else
+            print("run failed")
+        end
     end
 
     -- 进入编辑模式
     ns.timing.set_paused(true)
     ns.edit.set_enabled(true)
 end
-
--- ns.edit.undo_save()
 
 print("nekomain.lua loaded default")

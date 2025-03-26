@@ -364,8 +364,6 @@ void script_init() {
     _forward_args();
     _set_paths();
 
-    gApp->g_lua_callbacks_table_ref = LUA_NOREF;
-
     lua_channels_setup();
 
     auto &eh = Neko::the<EventHandler>();

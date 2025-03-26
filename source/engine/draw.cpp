@@ -866,10 +866,10 @@ static int mt_sprite_effect(lua_State *L) {
     int te = lua_type(L, 2);
     if (te == LUA_TSTRING) {
         const char *bits = lua_tostring(L, 2);
-        spr.effects = Neko::util::BitSet<SPRITE_EFFECT_COUNTS>(bits);
+        spr.effects = Neko::util::BitSet<SpriteEffectCounts>(bits);
     } else if (te == LUA_TNUMBER) {
         int bits = lua_tointeger(L, 2);
-        spr.effects = std::bitset<SPRITE_EFFECT_COUNTS>(bits);
+        spr.effects = std::bitset<SpriteEffectCounts>(bits);
     } else {
         return luaL_error(L, "error mt_sprite_effect bitset type");
     }

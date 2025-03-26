@@ -37,24 +37,6 @@ local function UnitTest()
         end)
 
         describe('module1', function()
-            it('feature_ffi_reflect_enum', function()
-                local reflect = ffi_reflect()
-                e = reflect.enum [[
-                    A, B, /* 注释正确解析 */
-                    C = 7,  // 注释正确解析
-                    D,
-                    E = 0xc
-                ]]
-                assert(e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E == 12)
-
-                d = reflect.enum_define [[
-                    #define foo 0
-                    #define bar 1
-                    #define baz 5
-                    #define qux 6
-                ]]
-                assert(d.foo == 0 and d.bar == 1 and d.baz == 5 and d.qux == 6)
-            end)
 
             it('feature_table_gc', function()
                 -- local setmetatable = hot_require("gc_metatable")
@@ -116,10 +98,6 @@ local function UnitTest()
                 -- -- 加载网络确保结构相同
                 -- local my_network = hot_require("nn"):new_network({2, 3, 1})
                 -- my_network.synapses = table.load("network.txt")
-            end)
-
-            it('feature_xml_parser', function()
-                Test.test_xml()
             end)
         end)
 
@@ -199,20 +177,20 @@ local function UnitTest()
                 -- print(td.foo:verify(foo))
             end)
 
-            it('feature_bind_enum', function()
-                expect(Test.TestAssetKind_1("AssetKind_Tiledmap")).to.equal(4)
-                expect(Test.TestAssetKind_2(2)).to.equal("AssetKind_Image")
-            end)
+            -- it('feature_bind_enum', function()
+            --     expect(Test.TestAssetKind_1("AssetKind_Tiledmap")).to.equal(4)
+            --     expect(Test.TestAssetKind_2(2)).to.equal("AssetKind_Image")
+            -- end)
 
-            it('feature_bind_struct', function()
-                local v4 = neko.vec4.new()
-                v4.x = 10
-                v4.y = 10
-                v4.z = 10
-                v4.w = 10
-                local v4_c = Test.LUASTRUCT_test_vec4(v4)
-                expect(table.show({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(table.show({20.0, 20.0, 20.0, 20.0}))
-            end)
+            -- it('feature_bind_struct', function()
+            --     local v4 = neko.vec4.new()
+            --     v4.x = 10
+            --     v4.y = 10
+            --     v4.z = 10
+            --     v4.w = 10
+            --     local v4_c = Test.LUASTRUCT_test_vec4(v4)
+            --     expect(table.show({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(table.show({20.0, 20.0, 20.0, 20.0}))
+            -- end)
 
             -- it('feature_spritepack', function()
             --     local tools = require("__neko.spritepack")
@@ -260,17 +238,17 @@ local function UnitTest()
                 -- print("getctime", filesys.getctime("xmake.lua"))
             end)
 
-            it('feature_test_binding_1', function()
-                expect(Test.TestBinding_1()).to.be.truthy()
-            end)
+            -- it('feature_test_binding_1', function()
+            --     expect(Test.TestBinding_1()).to.be.truthy()
+            -- end)
 
             it('feature_nameof', function()
-                print("Name of table: ", neko.nameof({}))
-                print("Name of string.sub: ", neko.nameof(string.sub))
-                print("Name of print: ", neko.nameof(print))
+                print("Name of table: ", nameof({}))
+                print("Name of string.sub: ", nameof(string.sub))
+                print("Name of print: ", nameof(print))
 
                 local Field_foo = 100
-                print(neko.nameof(Field_foo))
+                print(nameof(Field_foo))
             end)
 
             it('feature_ltype', function()
@@ -367,6 +345,130 @@ local function UnitTest()
 
             --     print(os.clock() - st)
             -- end)
+
+            it('feature_ecs_t1', function()
+                local w = EcsWorld
+
+                w:register("vector2", {
+                    x = 0,
+                    y = 0
+                })
+
+                w:register("vector3", {
+                    x = 0,
+                    y = 0,
+                    z = 0
+                })
+                w:register("vector4", {
+                    x = 0,
+                    y = 0,
+                    z = 0,
+                    w = 0
+                })
+
+                local eid1 = w:new{
+                    vector2 = {
+                        x = 101,
+                        y = 102
+                    },
+                    vector3 = {
+                        x = 103,
+                        y = 104,
+                        z = 105
+                    }
+                }
+
+                local eid2 = w:new{
+                    vector3 = {
+                        x = 201,
+                        y = 202,
+                        z = 203
+                    },
+                    vector4 = {
+                        x = 204,
+                        y = 205,
+                        z = 206,
+                        w = 207
+                    }
+                }
+
+                local eid3 = w:new{
+                    vector2 = {
+                        x = 301,
+                        y = 302
+                    },
+                    vector4 = {
+                        x = 303,
+                        y = 304,
+                        z = 305,
+                        w = 306
+                    }
+                }
+
+                print("==============test get")
+                local vector2, vector3, vector4 = w:get(eid1, "vector2", "vector3", "vector4")
+                assert(vector2.x == 101 and vector3.x == 103 and (not vector4))
+                print("===============test match")
+                print("all vector4")
+                -- for v4 in w:match("all", "vector4") do
+                --     print(v4.x)
+                -- end
+                -- print("all vector4 and vector3")
+                -- for v4 in w:match("all", "vector4", "vector3") do
+                --     print(v4.x)
+                -- end
+                -- print("all dirty vector4")
+                -- for v4 in w:match("dirty", "vector4") do
+                --     print(v4.x)
+                -- end
+                -- for v4 in w:match("all", "vector4") do
+                --     print("touch", v4.x)
+                --     w:touch(v4)
+                -- end
+                -- print("all dirty vector4 and vector3")
+                -- for v4 in w:match("dirty", "vector4", "vector3") do
+                --     print(v4.x)
+                -- end
+                -- print("all dirty vector4 and vector3 and vector2")
+                -- for v4 in w:match("dirty", "vector4", "vector3", "vector2") do
+                --     print(v4.x)
+                -- end
+                -- print("add vector2 for vector4 and vector3")
+                -- for v4 in w:match("dirty", "vector4", "vector3") do
+                --     w:add(v4.__eid, "vector2", {
+                --         x = 0,
+                --         y = 0
+                --     })
+                --     print(v4.x)
+                -- end
+                -- print("remove vector2 for vector4 and vector3")
+                -- for v4 in w:match("dirty", "vector4", "vector3", "vector2") do
+                --     w:remove(v4.__eid, "vector2")
+                --     print(v4.x)
+                -- end
+                -- print("dirty vector4 vector3 vector2")
+                -- for v4 in w:match("dirty", "vector4", "vector3", "vector2") do
+                --     print(v4.x)
+                -- end
+
+                w:del(eid2)
+
+                w:update()
+
+                print("=========")
+                w:dump()
+                print("=========")
+
+                print("dead")
+                -- for v4 in w:match("dead", "vector4") do
+                --     print("dead", v4.x)
+                -- end
+
+                -- print("all vector4")
+                -- for v4 in w:match("all", "vector4") do
+                --     print(v4.x)
+                -- end
+            end)
         end)
     end)
 

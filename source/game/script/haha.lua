@@ -1,5 +1,3 @@
-
-
 function ImGuiMouseHoldon()
     local ImGui = neko.imgui_obsolete
     if ImGui.IsItemHovered() then
@@ -9,7 +7,6 @@ function ImGuiMouseHoldon()
     end
     return false
 end
-
 
 function haha()
     LocalGame = {}
@@ -213,6 +210,9 @@ function haha()
     end
 
     ns.gamelogic.OnPreUpdate = function()
+        if ns.edit.get_enabled() then
+            return
+        end
         LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
 
         game_tick = game_tick + 1
@@ -236,10 +236,13 @@ function haha()
     ns.gamelogic.OnUpdate = function()
         local dt = neko.dt()
 
-        LocalGame.b2:step(dt)
-        LocalGame.world:update(dt)
+        if not ns.edit.get_enabled() then
 
-        cursor:update(dt)
+            LocalGame.b2:step(dt)
+            LocalGame.world:update(dt)
+
+            cursor:update(dt)
+        end
     end
 
     ns.gamelogic.OnDraw = function()
@@ -247,7 +250,9 @@ function haha()
 
         LocalGame.world:draw()
 
-        cursor:draw()
+        if not ns.edit.get_enabled() then
+            cursor:draw()
+        end
 
         -- neko.default_font():draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
     end

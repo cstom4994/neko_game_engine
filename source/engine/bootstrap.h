@@ -84,21 +84,10 @@ struct App {
 
     ImGuiID devui_vp;
 
-    bool mouse_state[3];
-    bool prev_mouse_state[3];
-    float prev_mouse_x;
-    float prev_mouse_y;
-    float mouse_x;
-    float mouse_y;
-    float scroll_x;
-    float scroll_y;
-
     FontFamily *default_font;
 
     f32 scale = 1.0f;
     bool paused = false;
-
-    int g_lua_callbacks_table_ref;  // LUA_NOREF
 
 #if NEKO_AUDIO == 1
     void *miniaudio_vfs;

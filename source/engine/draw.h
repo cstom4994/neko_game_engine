@@ -4,6 +4,7 @@
 #include "engine/asset.h"
 #include "engine/base.hpp"
 #include "engine/graphics.h"
+#include "engine/sprite.h"
 
 // deps
 #include "extern/stb_truetype.h"

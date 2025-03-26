@@ -33,18 +33,13 @@ end
 --- mode management-------------------------------------------------------------
 
 ns.edit.modes = {
-    ['none'] = {},
-    ['all'] = {}
+    ["none"] = {},
+    ["all"] = {}
 }
-ns.edit.mode = 'none'
+ns.edit.mode = "none" -- 当前编辑器模式
 
 function ns.edit.mode_event(evt)
-    -- convert key/mouse enum to number
-    if type(evt) == 'cdata' then
-        evt = tonumber(evt)
-    end
-
-    -- forward to all, then to current mode
+    -- 转到到all模式 然后到当前模式
     local e = ns.edit.modes.all[evt]
     if e then
         e()
@@ -55,10 +50,8 @@ function ns.edit.mode_event(evt)
     end
 end
 
--- codestr is 'a', 'b', 'c', '<tab>' etc. as returned by input.*_to_string(...)
-function ns.edit._mode_exec_bind(up, codestr)
-    -- 修饰符前缀
-    local mods = {
+function ns.edit.__ModeExecBind(up, codestr)
+    local mods = { -- 修饰符前缀
         ["lctrl"] = 'C-',
         ["rctrl"] = 'C-',
         ["lalt"] = 'M-',
@@ -71,43 +64,39 @@ function ns.edit._mode_exec_bind(up, codestr)
             codestr = prefix .. codestr
         end
     end
-
-    -- up prefix
-    codestr = up and ('^' .. codestr) or codestr
-
-    -- execute!
+    codestr = up and ('^' .. codestr) or codestr -- 放开按键的事件名以^开头
     ns.edit.mode_event(codestr)
 end
 
-function ns.edit.mode_key_down(key)
-    if neko.gui_captured_event() then
+function ns.edit.ModeKeyDown(key)
+    if neko.IsGuiCapturedEvent() then
         return
     end
-    ns.edit._mode_exec_bind(false, key)
+    ns.edit.__ModeExecBind(false, key)
 end
 
-function ns.edit.mode_key_up(key)
-    if neko.gui_captured_event() then
+function ns.edit.ModeKeyUp(key)
+    if neko.IsGuiCapturedEvent() then
         return
     end
-    ns.edit._mode_exec_bind(true, key)
+    ns.edit.__ModeExecBind(true, key)
 end
 
-function ns.edit.mode_mouse_down(mouse)
-    if neko.gui_captured_event() then
+function ns.edit.ModeMouseDown(mouse)
+    if neko.IsGuiCapturedEvent() then
         return
     end
-    ns.edit._mode_exec_bind(false, mouse)
+    ns.edit.__ModeExecBind(false, mouse)
 end
 
-function ns.edit.mode_mouse_up(mouse)
-    if neko.gui_captured_event() then
+function ns.edit.ModeMouseUp(mouse)
+    if neko.IsGuiCapturedEvent() then
         return
     end
-    ns.edit._mode_exec_bind(true, mouse)
+    ns.edit.__ModeExecBind(true, mouse)
 end
 
-function ns.edit.set_mode(mode)
+function ns.edit.SetMode(mode)
     ns.edit.mode_event('exit')
     ns.edit.mode = mode
     ns.edit.mode_event('enter')
@@ -185,7 +174,7 @@ end
 ns.edit.modes.normal = {}
 
 function ns.edit.modes.normal.enter()
-    ns.edit.hide_mode_text()
+
 end
 
 ns.edit.mode = 'normal' -- start in normal mode
@@ -278,10 +267,8 @@ end
 
 --- 单击选择 ---------------------------------------------------------------
 
-local function _get_entities_under_mouse()
-
+local function GetEntitiesUnderMouse()
     local ents = {}
-
     local mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
@@ -293,9 +280,8 @@ local function _get_entities_under_mouse()
             on = true
         end
 
-        print("_get_entities_under_mouse", ent, ent.id, bbox, on)
+        print("GetEntitiesUnderMouse", ent, ent.id, bbox, on)
     end
-
     -- 按与鼠标的距离排序
     local distcomp = function(e1, e2)
         local p1 = ns.transform.get_world_position(e1)
@@ -303,13 +289,12 @@ local function _get_entities_under_mouse()
         return ng.vec2_dist(p1, mouse_pos) < ng.vec2_dist(p2, mouse_pos)
     end
     table.sort(ents, distcomp)
-
     return ents
 end
 
 function ns.edit.select_click_single()
     -- 判断鼠标下有东西
-    local ents = _get_entities_under_mouse()
+    local ents = GetEntitiesUnderMouse()
 
     if #ents == 0 then
         SelectTable = ng.entity_table()
@@ -339,7 +324,7 @@ end
 
 function ns.edit.select_click_multi()
     -- 判断鼠标下是否有实体
-    local ents = _get_entities_under_mouse()
+    local ents = GetEntitiesUnderMouse()
     if #ents == 0 then
         ns.edit.undo_save()
         return
@@ -366,11 +351,11 @@ local grab_disp -- 'extra' displacement on top of mouse motion
 local grab_snap -- whether snapping to grid
 
 function ns.edit.grab_start()
-    ns.edit.set_mode('grab')
+    ns.edit.SetMode('grab')
 end
 
 function ns.edit.grab_end()
-    ns.edit.set_mode('normal')
+    ns.edit.SetMode('normal')
     ns.edit.undo_save()
 end
 
@@ -378,7 +363,7 @@ function ns.edit.grab_cancel()
     for ent in pairs(SelectTable) do
         ns.transform.set_position(ent, grab_old_pos[ent])
     end
-    ns.edit.set_mode('normal')
+    ns.edit.SetMode('normal')
 end
 
 function ns.edit.grab_snap_on()
@@ -468,11 +453,11 @@ end
 local rotate_old_posrot, rotate_mouse_start, rotate_pivot
 
 function ns.edit.rotate_start()
-    ns.edit.set_mode('rotate')
+    ns.edit.SetMode('rotate')
 end
 
 function ns.edit.rotate_end()
-    ns.edit.set_mode('normal')
+    ns.edit.SetMode('normal')
     ns.edit.undo_save()
 end
 
@@ -481,7 +466,7 @@ function ns.edit.rotate_cancel()
         ns.transform.set_position(ent, rotate_old_posrot[ent].pos)
         ns.transform.set_rotation(ent, rotate_old_posrot[ent].rot)
     end
-    ns.edit.set_mode('normal')
+    ns.edit.SetMode('normal')
 end
 
 ns.edit.modes.rotate = {}
@@ -577,7 +562,7 @@ local function field_create_common(args)
     return field
 end
 
-field_types['boolean'] = {
+field_types["boolean"] = {
     create = function(args)
         local field = field_create_common(args)
         field.checkbox = {}
@@ -593,7 +578,7 @@ field_types['boolean'] = {
     end
 }
 
-field_types['string'] = {
+field_types["string"] = {
     create = function(args)
         local field = field_create_common(args)
         field.textbox = {}
@@ -610,7 +595,7 @@ field_types['string'] = {
     end
 }
 
-field_types['f32'] = {
+field_types["f32"] = {
     create = function(args)
         local field = field_create_common(args)
         field.textbox = {}
@@ -627,7 +612,7 @@ field_types['f32'] = {
     end
 }
 
-field_types['userdata'] = {
+field_types["userdata"] = {
     create = function(args)
         local field = field_create_common(args)
         return field
@@ -645,7 +630,7 @@ field_types['userdata'] = {
 -- if it's a C enum field the C enum values are automatically used, else a
 -- set of values must be provided as an extra parameter to
 -- ng.edit_field_post_update(...)
-field_types['enum'] = {
+field_types["enum"] = {
     create = function(args)
         local field = field_create_common(args)
         field.enumtype = args.ctype
@@ -670,7 +655,7 @@ field_types['enum'] = {
     end
 }
 
-field_types['Vec2'] = {
+field_types["Vec2"] = {
     create = function(args)
         local field = field_create_common(args)
         field.x_field = ng.edit_field_create {
@@ -704,9 +689,9 @@ field_types['Vec2'] = {
     end
 }
 
-field_types['vec2'] = field_types['Vec2']
+field_types["vec2"] = field_types["Vec2"]
 
-field_types['Color'] = {
+field_types["Color"] = {
     create = function(args)
         local field = field_create_common(args)
         field.r_field = ng.edit_field_create {
@@ -756,7 +741,7 @@ field_types['Color'] = {
     end
 }
 
-field_types['CEntity'] = {
+field_types["CEntity"] = {
     create = function(args)
         local field = field_create_common(args)
         field.enumtype = args.ctype
@@ -786,7 +771,7 @@ field_types['CEntity'] = {
     end
 }
 
-field_types['BBox'] = {
+field_types["BBox"] = {
     create = function(args)
         local field = field_create_common(args)
         field.min_field = ng.edit_field_create {
@@ -1155,57 +1140,57 @@ end
 -- 默认按键绑定
 
 -- 正常模式
-ns.edit.modes.normal['u'] = ns.edit.undo
+ns.edit.modes.normal["KC_U"] = ns.edit.undo
 
-ns.edit.modes.normal['p'] = ns.edit.pause_toggle
-ns.edit.modes.normal['S-p'] = ns.edit.stop
+ns.edit.modes.normal["KC_P"] = ns.edit.pause_toggle
+ns.edit.modes.normal["S-KC_P"] = ns.edit.stop
 
-ns.edit.modes.normal['a'] = ns.edit.select_clear
-ns.edit.modes.normal['MC_LEFT'] = ns.edit.select_click_single
-ns.edit.modes.normal['C-MC_LEFT'] = ns.edit.select_click_multi
+ns.edit.modes.normal["KC_A"] = ns.edit.select_clear
+ns.edit.modes.normal["MC_LEFT"] = ns.edit.select_click_single
+ns.edit.modes.normal["C-MC_LEFT"] = ns.edit.select_click_multi
 
-ns.edit.modes.normal['x'] = ns.edit.destroy
-ns.edit.modes.normal['S-x'] = ns.edit.destroy_rec
-ns.edit.modes.normal['S-d'] = ns.edit.duplicate
+ns.edit.modes.normal["x"] = ns.edit.destroy
+ns.edit.modes.normal["S-x"] = ns.edit.destroy_rec
+ns.edit.modes.normal["S-d"] = ns.edit.duplicate
 
-ns.edit.modes.normal['S-MC_LEFT'] = ns.edit.camera_drag_start
-ns.edit.modes.normal['^S-MC_LEFT'] = ns.edit.camera_drag_end
-ns.edit.modes.normal['MC_MIDDLE'] = ns.edit.camera_drag_start
-ns.edit.modes.normal['^MC_MIDDLE'] = ns.edit.camera_drag_end
-ns.edit.modes.normal['-'] = ns.edit.camera_zoom_out
-ns.edit.modes.normal['='] = ns.edit.camera_zoom_in
+ns.edit.modes.normal["S-MC_LEFT"] = ns.edit.camera_drag_start
+ns.edit.modes.normal["^S-MC_LEFT"] = ns.edit.camera_drag_end
+ns.edit.modes.normal["MC_MIDDLE"] = ns.edit.camera_drag_start
+ns.edit.modes.normal["^MC_MIDDLE"] = ns.edit.camera_drag_end
+ns.edit.modes.normal["KC_MINUS"] = ns.edit.camera_zoom_out
+ns.edit.modes.normal["KC_EQUAL"] = ns.edit.camera_zoom_in
 
-ns.edit.modes.normal['g'] = ns.edit.grab_start
-ns.edit.modes.normal['r'] = ns.edit.rotate_start
+ns.edit.modes.normal["KC_G"] = ns.edit.grab_start
+ns.edit.modes.normal["KC_R"] = ns.edit.rotate_start
 
 -- 抓取模式
-ns.edit.modes.grab['<enter>'] = ns.edit.grab_end
-ns.edit.modes.grab['<escape>'] = ns.edit.grab_cancel
-ns.edit.modes.grab['MC_LEFT'] = ns.edit.grab_end
-ns.edit.modes.grab['MC_RIGHT'] = ns.edit.grab_cancel
-ns.edit.modes.grab['g'] = ns.edit.grab_snap_on
-ns.edit.modes.grab['<left>'] = ns.edit.grab_move_left
-ns.edit.modes.grab['<right>'] = ns.edit.grab_move_right
-ns.edit.modes.grab['<up>'] = ns.edit.grab_move_up
-ns.edit.modes.grab['<down>'] = ns.edit.grab_move_down
-ns.edit.modes.grab['S-<left>'] = function()
+ns.edit.modes.grab["KC_ENTER"] = ns.edit.grab_end
+ns.edit.modes.grab["KC_ESCAPE"] = ns.edit.grab_cancel
+ns.edit.modes.grab["MC_LEFT"] = ns.edit.grab_end
+ns.edit.modes.grab["MC_RIGHT"] = ns.edit.grab_cancel
+ns.edit.modes.grab["KC_G"] = ns.edit.grab_snap_on
+ns.edit.modes.grab["KC_LEFT"] = ns.edit.grab_move_left
+ns.edit.modes.grab["KC_RIGHT"] = ns.edit.grab_move_right
+ns.edit.modes.grab["KC_UP"] = ns.edit.grab_move_up
+ns.edit.modes.grab["KC_DOWN"] = ns.edit.grab_move_down
+ns.edit.modes.grab["S-KC_LEFT"] = function()
     ns.edit.grab_move_left(5)
 end
-ns.edit.modes.grab['S-<right>'] = function()
+ns.edit.modes.grab["S-KC_RIGHT"] = function()
     ns.edit.grab_move_right(5)
 end
-ns.edit.modes.grab['S-<up>'] = function()
+ns.edit.modes.grab["S-KC_UP"] = function()
     ns.edit.grab_move_up(5)
 end
-ns.edit.modes.grab['S-<down>'] = function()
+ns.edit.modes.grab["S-KC_DOWN"] = function()
     ns.edit.grab_move_down(5)
 end
 
 -- 旋转模式
-ns.edit.modes.rotate['<enter>'] = ns.edit.rotate_end
-ns.edit.modes.rotate['<escape>'] = ns.edit.rotate_cancel
-ns.edit.modes.rotate['MC_LEFT'] = ns.edit.rotate_end
-ns.edit.modes.rotate['MC_RIGHT'] = ns.edit.rotate_cancel
+ns.edit.modes.rotate["KC_ENTER"] = ns.edit.rotate_end
+ns.edit.modes.rotate["KC_ESCAPE"] = ns.edit.rotate_cancel
+ns.edit.modes.rotate["MC_LEFT"] = ns.edit.rotate_end
+ns.edit.modes.rotate["MC_RIGHT"] = ns.edit.rotate_cancel
 
 --- 主事件 ----------------------------------------------------------------
 
@@ -1213,28 +1198,28 @@ function ns.edit.OnKeyUp(key)
     if not ns.edit.get_enabled() then
         return
     end
-    ns.edit.mode_key_up(key)
+    ns.edit.ModeKeyUp(key)
 end
 
 function ns.edit.OnKeyDown(key)
     if not ns.edit.get_enabled() then
         return
     end
-    ns.edit.mode_key_down(key)
+    ns.edit.ModeKeyDown(key)
 end
 
 function ns.edit.OnMouseDown(mouse)
     if not ns.edit.get_enabled() then
         return
     end
-    ns.edit.mode_mouse_down(mouse)
+    ns.edit.ModeMouseDown(mouse)
 end
 
 function ns.edit.OnMouseUp(mouse)
     if not ns.edit.get_enabled() then
         return
     end
-    ns.edit.mode_mouse_up(mouse)
+    ns.edit.ModeMouseUp(mouse)
 end
 
 function ns.edit.OnMouseScroll(scroll)
@@ -1289,7 +1274,7 @@ function ns.edit.OnUpdate()
         end
         if nselect > 0 then
             ImGui.Text("SelectN: " .. nselect)
-            ImGui.Text("Select: " .. SingleSelectID .. tostring(SingleSelectEnt))
+            ImGui.Text("Select: " .. SingleSelectID .. " [" .. tostring(SingleSelectEnt) .. "]")
         else
             ImGui.Text("no select")
         end
@@ -1306,18 +1291,15 @@ function ns.edit.OnUpdate()
 end
 
 function ns.edit.OnPostUpdate()
-    -- print("ns.edit.OnPostUpdate")
-
     ns.edit.mode_event("OnPostUpdate")
 
-    -- update bbox highlight
+    -- 设置选中的bbox高光
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
         -- local bbox = neko.edit_bboxes_get_nth_bbox(i)
         ns.edit.bboxes_set_selected(ent, SelectTable[ent] ~= nil)
     end
 
-    -- save stop?
     if stop_save_next_frame then
         stop_save()
         stop_save_next_frame = false
@@ -1360,73 +1342,4 @@ PropertyMeta["sprite"] = {{
     name = "texsize"
 }, {
     name = "depth"
-}}
-
-PropertyMeta["physics"] = {{
-    name = "type"
-}, {
-    name = "mass"
-}, {
-    name = "freeze_rotation"
-}, {
-    name = "velocity"
-}, {
-    name = "force"
-}, {
-    name = "angular_velocity"
-}, {
-    name = "torque"
-}, {
-    name = "velocity_limit"
-}, {
-    name = "angular_velocity_limit"
-}}
-
-PropertyMeta["gui"] = {{
-    name = "color"
-}, {
-    name = "visible"
-}, {
-    name = "focusable"
-}, {
-    name = "captures_events"
-}, {
-    name = "halign"
-}, {
-    name = "valign"
-}, {
-    name = "padding"
-}}
-PropertyMeta["gui_rect"] = {{
-    name = "size"
-}, {
-    name = "hfit"
-}, {
-    name = "vfit"
-}, {
-    name = "hfill"
-}, {
-    name = "vfill"
-}}
-PropertyMeta["gui_text"] = {{
-    name = "str"
-}}
-PropertyMeta["gui_textedit"] = {{
-    name = "cursor"
-}, {
-    name = "numerical"
-}}
-
-PropertyMeta["sound"] = {{
-    name = "path"
-}, {
-    name = "playing"
-}, {
-    name = "seek"
-}, {
-    name = "finish_destroy"
-}, {
-    name = "loop"
-}, {
-    name = "gain"
 }}

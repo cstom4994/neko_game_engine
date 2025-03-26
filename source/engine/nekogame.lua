@@ -231,8 +231,8 @@ local entity_table_mt = {
         bind_defaults(t, v)
         -- 将键值对添加到映射中
         map[k.id] = {
-            ['k'] = k,
-            ['v'] = v
+            ["k"] = k,
+            ["v"] = v
         }
     end,
 

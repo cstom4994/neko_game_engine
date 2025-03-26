@@ -608,32 +608,8 @@ static int neko_key_press(lua_State *L) {
 
 static int neko_mouse_down(lua_State *L) {
     lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
+    if (n >= 0 && n <= 8) {
         lua_pushboolean(L, input_mouse_down((MouseCode)n));
-    } else {
-        lua_pushboolean(L, false);
-    }
-
-    return 1;
-}
-
-static int neko_mouse_release(lua_State *L) {
-    lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
-        bool is_release = !gApp->mouse_state[n] && gApp->prev_mouse_state[n];
-        lua_pushboolean(L, is_release);
-    } else {
-        lua_pushboolean(L, false);
-    }
-
-    return 1;
-}
-
-static int neko_mouse_click(lua_State *L) {
-    lua_Integer n = luaL_checkinteger(L, 1);
-    if (n >= 0 && n < NEKO_ARR_SIZE(gApp->mouse_state)) {
-        bool is_click = gApp->mouse_state[n] && !gApp->prev_mouse_state[n];
-        lua_pushboolean(L, is_click);
     } else {
         lua_pushboolean(L, false);
     }
@@ -650,22 +626,10 @@ static int neko_mouse_pos(lua_State *L) {
     return 2;
 }
 
-static int neko_mouse_delta(lua_State *L) {
-    lua_pushnumber(L, gApp->mouse_x - gApp->prev_mouse_x);
-    lua_pushnumber(L, gApp->mouse_y - gApp->prev_mouse_y);
-    return 2;
-}
-
 static int neko_show_mouse(lua_State *L) {
     bool show = lua_toboolean(L, 1);
     the<Window>().ShowMouse(show);
     return 0;
-}
-
-static int neko_scroll_wheel(lua_State *L) {
-    lua_pushnumber(L, gApp->scroll_x);
-    lua_pushnumber(L, gApp->scroll_y);
-    return 2;
 }
 
 static int neko_scissor_rect(lua_State *L) {
@@ -2453,12 +2417,8 @@ static int open_neko(lua_State *L) {
             {"key_release", neko_key_release},
             {"key_press", neko_key_press},
             {"mouse_down", neko_mouse_down},
-            {"mouse_release", neko_mouse_release},
-            {"mouse_click", neko_mouse_click},
             {"mouse_pos", neko_mouse_pos},
-            {"mouse_delta", neko_mouse_delta},
             {"show_mouse", neko_show_mouse},
-            {"scroll_wheel", neko_scroll_wheel},
 
             {"bbox_bound", l_bbox_bound},
             {"bbox_merge", l_bbox_merge},
@@ -2470,7 +2430,7 @@ static int open_neko(lua_State *L) {
             {"edit_set_enabled", l_edit_set_enabled},
             {"edit_get_enabled", l_edit_get_enabled},
             {"gui_has_focus", l_gui_has_focus},
-            {"gui_captured_event", l_gui_captured_event},
+            {"IsGuiCapturedEvent", l_gui_captured_event},
             {"transform_get_world_matrix", l_transform_get_world_matrix},
 
             // draw
