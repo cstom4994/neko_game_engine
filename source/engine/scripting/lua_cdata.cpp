@@ -112,7 +112,7 @@ static inline int get_stride(TYPEID type) {
     return (int)ret;
 }
 
-// 保留原有直接访问函数
+// 直接访问
 template <TYPEID tid>
 static int generic_getter(lua_State* L) {
     void* p = lua_touserdata(L, 1);
@@ -191,6 +191,42 @@ static int setter_direct(lua_State* L) {
     return 1;
 }
 
+// 偏移量相关函数生成
+template <TYPEID tid, int N>
+void register_offset(lua_State* L) {
+    lua_pushinteger(L, N);
+    lua_pushcclosure(L, &generic_getter<tid>, 1);
+    lua_setfield(L, -2, ("get_" + std::to_string(N)).c_str());
+
+    lua_pushinteger(L, N);
+    lua_pushcclosure(L, &generic_setter<tid>, 1);
+    lua_setfield(L, -2, ("set_" + std::to_string(N)).c_str());
+}
+
+// 注册所有偏移量函数
+template <TYPEID tid>
+void register_offsets(lua_State* L) {
+    register_offset<tid, 0>(L);
+    register_offset<tid, 1>(L);
+    register_offset<tid, 2>(L);
+    register_offset<tid, 3>(L);
+    register_offset<tid, 4>(L);
+    register_offset<tid, 5>(L);
+    register_offset<tid, 6>(L);
+    register_offset<tid, 7>(L);
+}
+
+// 类型注册入口
+template <TYPEID tid>
+void register_type(lua_State* L) {
+    lua_newtable(L);
+    register_offsets<tid>(L);
+    // lua_setfield(L, -2, typeid(typename type_dispatcher<tid>::c_type).name());
+
+    lua_pushinteger(L, (int)tid);
+    lua_setfield(L, -2, "typeid");
+}
+
 #define SET_TYPEID(type, name)                   \
     lua_pushinteger(L, (int)TYPEID::tid_##type); \
     lua_setfield(L, -2, #name);
@@ -242,18 +278,17 @@ int open_cdata(lua_State* L) {
             L,
             [](lua_State* L) {
                 lua_newtable(L);
-                SET_TYPEID(int8, int8_t);
-                SET_TYPEID(int16, int16_t);
-                SET_TYPEID(int32, int32_t);
-                SET_TYPEID(int64, int64_t);
-                SET_TYPEID(uint8, uint8_t);
-                SET_TYPEID(uint16, uint16_t);
-                SET_TYPEID(uint32, uint32_t);
-                SET_TYPEID(uint64, uint64_t);
-                SET_TYPEID(bool, bool);
-                SET_TYPEID(ptr, ptr);
-                SET_TYPEID(float, float);
-                SET_TYPEID(double, double);
+                std::apply(
+                        [&](auto&&... args) {
+                            auto f = [&]<typename T>(T& traits) {
+                                const TYPEID type_id = traits.type_id;
+                                register_type<type_id>(L);
+                                lua_setfield(L, -2, traits.name);
+                            };
+                            int dummy[] = {0, ((void)f(args), 0)...};
+                            std::ignore = dummy;
+                        },
+                        type_traits_tuple);
                 return 1;
             },
             0);

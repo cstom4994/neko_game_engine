@@ -510,6 +510,33 @@ local function UnitTest()
                 Test.set_active(obj, true)
                 expect(Test.get_active(obj)).to.equal(true)
             end)
+
+            it("feature_tableptr", function()
+
+                local clone = {1, 2, 3, 4}
+                local a = {
+                    true,
+                    false,
+                    114514,
+                    3.1415,
+                    a = clone,
+                    b = "hello",
+                    c = {
+                        a = 1,
+                        b = clone
+                    }
+                }
+                local p = neko.tbptr_to(a)
+                neko.tbptr_create(p)
+                for _, k, v in neko.tbptr_pairs(p) do
+                    print(k, v)
+                    if type(v) == "userdata" then
+                        for _, k, v in neko.tbptr_pairs(v) do
+                            print("\t", k, v)
+                        end
+                    end
+                end
+            end)
         end)
     end)
 

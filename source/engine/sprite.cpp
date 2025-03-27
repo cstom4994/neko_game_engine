@@ -107,6 +107,37 @@ AtlasImage *Atlas::get(String name) {
     return by_name.get(key);
 }
 
+#if 0
+
+static int neko_atlas_load(lua_State *L) {
+    String str = luax_check_string(L, 1);
+    bool generate_mips = lua_toboolean(L, 2);
+
+    Atlas atlas = {};
+    bool ok = atlas.load(str, generate_mips);
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, atlas, "mt_atlas");
+    return 1;
+}
+
+static int neko_tilemap_load(lua_State *L) {
+    String str = luax_check_string(L, 1);
+
+    Asset asset = {};
+    bool ok = asset_load_kind(AssetKind_Tiledmap, str, &asset);
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, asset.hash, "mt_tilemap");
+    return 1;
+}
+
+#endif
+
 #endif
 
 bool AseSpriteData::load(String filepath) {

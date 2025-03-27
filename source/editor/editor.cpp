@@ -924,14 +924,9 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
             }
 
             if (ImGui::BeginTabItem("Shaders")) {
-
-                Array<Asset> views = asset_view(AssetKind_Shader);
-                neko_defer(views.trash());
-
-                for (int i = 0; i < views.len; i++) {
-                    inspect_shader(views[i].name.cstr(), views[i].shader.id);
-                }
-
+                asset_view_each([](const Asset& view) {
+                    if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), view.shader.id);
+                });
                 ImGui::EndTabItem();
             }
 

@@ -1764,8 +1764,22 @@ local cdata_init = function()
 
             i = i + 1
         end
-        local getter, setter = M.__CORE.parser(buildin_id[typename], table.unpack(offset))
-        return {getter, setter}
+        local type_id = buildin_id[typename]
+        if type_id ~= nil and type_id.typeid >= 0 then
+            local getter, setter = M.__CORE.parser(type_id.typeid, table.unpack(offset))
+            return {getter, setter}
+        else
+            error("unknown cdata type: " .. typename)
+            return {
+                getter = function(...)
+                    error("unimplemented")
+                end,
+                setter = function(...)
+                    error("unimplemented")
+                end
+            }
+        end
+
     end
 
     local function check(types)

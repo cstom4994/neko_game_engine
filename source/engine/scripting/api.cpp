@@ -20,6 +20,11 @@
 #include "engine/ui.h"
 #include "engine/bindata.h"
 #include "engine/window.h"
+#include "engine/scripting/lua_util.h"
+
+// lua
+#include "lapi.h"
+#include "ltable.h"
 
 // deps
 #include "extern/sokol_time.h"
@@ -790,37 +795,6 @@ static int neko_image_load(lua_State *L) {
     luax_new_userdata(L, asset.hash, "mt_image");
     return 1;
 }
-
-#if 0
-
-static int neko_atlas_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-    bool generate_mips = lua_toboolean(L, 2);
-
-    Atlas atlas = {};
-    bool ok = atlas.load(str, generate_mips);
-    if (!ok) {
-        return 0;
-    }
-
-    luax_new_userdata(L, atlas, "mt_atlas");
-    return 1;
-}
-
-static int neko_tilemap_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    Asset asset = {};
-    bool ok = asset_load_kind(AssetKind_Tiledmap, str, &asset);
-    if (!ok) {
-        return 0;
-    }
-
-    luax_new_userdata(L, asset.hash, "mt_tilemap");
-    return 1;
-}
-
-#endif
 
 #if 1
 
@@ -2343,6 +2317,63 @@ static int l_gui_captured_event(lua_State *L) {
 void inspector_set_visible(bool visible) { gApp->inspector->visible = visible; }
 bool inspector_get_visible() { return gApp->inspector->visible; }
 
+// 将table转换为lightuserdata
+int tbptr_to(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    const void *tb = lua_topointer(L, 1);
+    lua_pushlightuserdata(L, (void *)tb);
+    return 1;
+}
+
+// 通过lightuserdata指针创建table
+int tbptr_create(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);   // 确保参数是 lightuserdata
+    Table *tb = (Table *)lua_touserdata(L, 1);  // 取出指针并转换为 Table*
+    int narr = tb->alimit;                      // 获取数组部分的大小
+    int nrec = 1 << tb->lsizenode;              // 计算哈希部分的大小 (2^lsizenode)
+    lua_createtable(L, narr, nrec);             // 创建一个新的 Lua 表
+    return 1;
+}
+
+// pairs推入迭代器
+int tbptr_pairs(lua_State *L) {
+    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);  // 确保参数是 lightuserdata
+
+    // fastable迭代器
+    auto iter = [](lua_State *L) -> int {
+        luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);  // 确保参数是 lightuserdata
+        Table *t = (Table *)lua_touserdata(L, 1);  // 取出指针并转换为 Table*
+        int index = luaL_checkinteger(L, 2);       // 获取索引
+
+        if (index >= 0) {  // 遍历数组部分
+            if (t->alimit > 0) {
+                index = LuaTableArrayNext(t, index);
+                if (index != 0) {
+                    lua_pushinteger(L, index);
+                    lua_pushinteger(L, index);
+                    PushTValue(L, &t->array[index - 1]);
+                    return 3;
+                }
+            }
+        }
+        index = LuaTableHashNext(t, index);  // 遍历哈希部分
+        if (index != 0) {
+            Node *n = gnode(t, -index - 1);
+            lua_pushinteger(L, index);
+            TValue tv{n->u.key_val, n->u.key_tt};
+            PushTValue(L, &tv);
+            PushTValue(L, gval(n));
+            return 3;
+        }
+        return 0;
+    };
+
+    lua_pushcfunction(L, iter);  // 压入迭代器函数
+    lua_pushvalue(L, 1);         // 压入表指针
+    lua_pushinteger(L, 0);       // 索引
+    return 3;                    // iter | table | 0
+}
+
 extern int open_cdata(lua_State *L);
 
 static void typeclosure(lua_State *L) {
@@ -2388,6 +2419,10 @@ static int open_neko(lua_State *L) {
 
             {"vfs_read_file", __neko_bind_vfs_read_file},
             {"vfs_load_luabp", __neko_bind_vfs_load_luabp},
+
+            {"tbptr_create", tbptr_create},
+            {"tbptr_pairs", tbptr_pairs},
+            {"tbptr_to", tbptr_to},
 
             {"print", __neko_bind_print},
 

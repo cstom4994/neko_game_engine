@@ -134,6 +134,18 @@ bool asset_load(AssetLoadData desc, String filepath, Asset* out);
 
 Array<Asset> asset_view(AssetKind kind);
 
+template <std::invocable<const Asset&> F>
+inline void asset_view_each(F&& f) {
+    Assets& g_assets = the<Assets>();
+
+    g_assets.rw_lock.shared_lock();
+    neko_defer(g_assets.rw_lock.shared_unlock());
+
+    for (auto& [key, asset] : g_assets.table) {
+        std::invoke(f, *asset);
+    }
+}
+
 bool asset_read(u64 key, Asset* out);
 void asset_write(Asset asset);
 
