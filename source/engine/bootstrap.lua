@@ -324,380 +324,6 @@ end
 
 common.utils = utils
 
-local supported_type = {
-    type_map = true,
-    type_enum = true,
-    type_array = true,
-    type_undefined = true,
-    type_struct = true,
-    type_internal = true,
-    type_object = true
-}
-
-local internal_type = {
-    number = true,
-    string = true,
-    boolean = true
-}
-
-local function type_tostring(self)
-    return self._typename
-end
-
--------- 内置类型 (number/string/boolean)
-
-local internal_mt = {
-    __metatable = "type_internal",
-    __tostring = type_tostring
-};
-internal_mt.__index = internal_mt
-
-local function gen_type(v)
-    return setmetatable({
-        _default = v,
-        _typename = type(v)
-    }, internal_mt)
-end
-
-function internal_mt:__call(v)
-    if v ~= nil then
-        if type(v) ~= self._typename then
-            error("type mismatch " .. tostring(v) .. " is not " .. self._typename)
-        end
-        return v
-    else
-        return self._default
-    end
-end
-
-function internal_mt:verify(v)
-    if type(v) == self._typename then
-        return true
-    else
-        return false, "type mismatch " .. tostring(v) .. " is not " .. self._typename
-    end
-end
-
--------- 枚举类型
-
-local enum_mt = {
-    __metatable = "type_enum",
-    __tostring = type_tostring
-};
-enum_mt.__index = enum_mt
-
-function enum_mt:__call(v)
-    if v == nil then
-        return self._default
-    else
-        assert(self[v] == true, "Invalid enum value")
-        return v
-    end
-end
-
-function enum_mt:verify(v)
-    if self[v] == true then
-        return true
-    else
-        return false, "Invalid enum value " .. tostring(v)
-    end
-end
-
-local function new_enum(enums)
-    assert(type(enums) == "table", "Invalid enum")
-    local enum_obj = {
-        _default = enums[1],
-        _typename = "enum"
-    }
-    for idx, v in ipairs(enums) do
-        assert(type(v) == "string" and enum_obj[v] == nil, "Invalid enum value")
-        enum_obj[v] = true
-    end
-    return setmetatable(enum_obj, enum_mt)
-end
-
------------ 对象类型
-
-local object_mt = {
-    __metatable = "type_object",
-    __tostring = type_tostring
-};
-object_mt.__index = object_mt
-
-function object_mt:__call(obj)
-    assert(self:verify(obj))
-    return obj
-end
-
-function object_mt:verify(v)
-    if v == nil then
-        return true
-    end
-    local t = type(v)
-    if t == "table" or t == "userdata" then
-        return true
-    end
-
-    return false, "Not an object " .. tostring(v)
-end
-
----------- 数组类型
-
-local array_mt = {
-    __metatable = "type_array",
-    __tostring = type_tostring
-};
-array_mt.__index = array_mt
-
-function array_mt:__call(init)
-    if init == nil then
-        return {}
-    else
-        local array = {}
-        local t = self._array
-        for idx, v in ipairs(init) do
-            assert(t:verify(v))
-            array[idx] = t(v)
-        end
-        return array
-    end
-end
-
-function array_mt:verify(obj)
-    if type(obj) ~= "table" then
-        return false, "Not an table"
-    else
-        local t = self._array
-        local max = 0
-        for idx, v in ipairs(obj) do
-            local ok, err = t:verify(v)
-            if not ok then
-                return ok, err
-            end
-            max = idx
-        end
-        for k in pairs(obj) do
-            if type(k) ~= "number" then
-                return false, "Invalid key " .. tostring(k)
-            end
-            local nk = math.tointeger(k)
-            if nk == nil or nk <= 0 or nk > max then
-                return false, "Invalid key " .. tostring(nk)
-            end
-        end
-        return true
-    end
-end
-
-local function new_array(t)
-    assert(supported_type[getmetatable(t)], "Need a type for array")
-    return setmetatable({
-        _typename = "array of " .. tostring(t),
-        _array = t
-    }, array_mt)
-end
-
--------------- 映射类型
-
-local map_mt = {
-    __metatable = "type_map",
-    __tostring = type_tostring
-};
-map_mt.__index = map_mt
-
-function map_mt:__call(init)
-    if init == nil then
-        return {}
-    else
-        local map = {}
-        local keyt = self._key
-        local valuet = self._value
-        for k, v in pairs(init) do
-            assert(keyt:verify(k))
-            assert(valuet:verify(v))
-            map[keyt(k)] = valuet(v)
-        end
-        return map
-    end
-end
-
-function map_mt:verify(obj)
-    if type(obj) ~= "table" then
-        return false, "Not an table"
-    else
-        local keyt = self._key
-        local valuet = self._value
-        for k, v in pairs(obj) do
-            local ok, err = keyt:verify(k)
-            if not ok then
-                return false, string.format("Invalid key %s : %s", k, err)
-            end
-            local ok, err = valuet:verify(v)
-            if not ok then
-                return false, string.format("Invalid value %s : %s", k, err)
-            end
-        end
-        return true
-    end
-end
-
-local function new_map(key, value)
-    assert(supported_type[getmetatable(key)], "Need a type for key")
-    assert(supported_type[getmetatable(value)], "Need a type for value")
-    return setmetatable({
-        _typename = string.format("map of %s:%s", key, value),
-        _key = key,
-        _value = value
-    }, map_mt)
-end
-
----------------------
-
-local types = {
-    enum = new_enum,
-    array = new_array,
-    map = new_map,
-    object = setmetatable({
-        _typename = "object"
-    }, object_mt)
-}
-
-for _, v in ipairs {0, false, ""} do
-    types[type(v)] = gen_type(v)
-end
-
-local struct_mt = {
-    __metatable = "type_struct",
-    __tostring = type_tostring
-};
-struct_mt.__index = struct_mt
-
-function struct_mt:__call(init)
-    local obj = {}
-    local meta = self._types
-    local default = self._defaults
-    if init then
-        for k, type_obj in pairs(meta) do
-            local v = init[k]
-            if v == nil then
-                v = default[k]
-            end
-            obj[k] = type_obj(v)
-        end
-        for k, v in pairs(init) do
-            if not meta[k] then
-                error(tostring(k) .. " is not a valid key")
-            end
-        end
-    else
-        for k, type_obj in pairs(meta) do
-            local v = default[k]
-            obj[k] = type_obj(v)
-        end
-    end
-    return obj
-end
-
-function struct_mt:verify(obj)
-    local t = self._types
-    if type(obj) ~= "table" then
-        return false, "not a table"
-    end
-    for k, v in pairs(obj) do
-        local meta = t[k]
-        if not meta then
-            return false, "Invalid key : " .. tostring(k)
-        end
-    end
-    for k, meta in pairs(t) do
-        local v = obj[k]
-        local ok, err = meta:verify(v)
-        if not ok then
-            return false, string.format("Type mismatch : %s should be %s (%s)", k, meta, err)
-        end
-    end
-    return true
-end
-
-local function create_type(proto, t)
-    t._defaults = {}
-    t._types = {}
-    for k, v in pairs(proto) do
-        t._defaults[k] = v
-        local vt = type(v)
-        if internal_type[vt] then
-            t._types[k] = types[vt]
-        elseif vt == "table" and supported_type[getmetatable(v)] then
-            t._types[k] = v
-            t._defaults[k] = nil
-        else
-            error("Unsupport type " .. tostring(k) .. ":" .. tostring(v))
-        end
-    end
-    return setmetatable(t, struct_mt)
-end
-
-function types.struct(proto)
-    assert(type(proto) == "table", "Invalid type proto")
-    return create_type(proto, {
-        _typename = "anonymous struct"
-    })
-end
-
-local function define_type(_, typename, proto)
-    local t = rawget(types, typename)
-    if t == nil then
-        t = {}
-    elseif getmetatable(t) == "type_undefined" then
-        debug.setmetatable(t, nil)
-    else
-        error("Redefined type " .. tostring(typename))
-    end
-    assert(type(proto) == "table", "Invalid type proto")
-    local pt = getmetatable(proto)
-    if pt == nil then
-        proto = create_type(proto, t)
-    elseif not supported_type[pt] then
-        error("Invalid proto meta " .. pt)
-    end
-    proto._typename = typename
-    types[typename] = proto
-end
-
-local function undefined_error(self)
-    error(self._typename .. " is undefined")
-end
-
-local undefined_type_mt = {
-    __call = undefined_error,
-    verify = undefined_error,
-    __metatable = "type_undefined",
-    __tostring = function(self)
-        return "undefined " .. self._typename
-    end
-}
-
-undefined_type_mt.__index = undefined_type_mt
-
-local function create_undefined_type(_, typename)
-    local type_obj = setmetatable({
-        _typename = typename
-    }, undefined_type_mt)
-    types[typename] = type_obj
-    return type_obj
-end
-
-setmetatable(types, {
-    __index = create_undefined_type
-})
-
-common.td_create = function()
-    return setmetatable({}, {
-        __index = types,
-        __newindex = define_type
-    })
-end
-
 -- va
 common.va = function()
     local va = {}
@@ -1816,5 +1442,394 @@ function ImGuiWindow(name, flags)
 end
 
 common.pack = serialize
+
+local cdata_init = function()
+    local M = {}
+    M.__CORE = neko.__cdata()
+    local function parse_struct(code)
+        local nest = {}
+        local nest_n = 0
+        code = code:gsub("(%b{})", function(v)
+            nest_n = nest_n + 1
+            nest[nest_n] = v
+            return "{" .. nest_n .. "} "
+        end)
+        local names = {}
+        local lines = {}
+        local line_n = 0
+        for line in code:gmatch "%s*(.-)%s*;" do
+            line_n = line_n + 1
+            line = line:gsub("%s+", " ")
+            line = line:gsub(" ?%*%s*", " *")
+            local prefix, array = line:match "^(.-)%s*(%b[])$"
+            if array then
+                array = math.tointeger(array:match "%[(%d+)%]") or 0
+                line = prefix
+            end
+            local typestr, pointer, name = line:match "^(.-) (%**)([_%w]+)$"
+            assert(typestr, line)
+            local type_prefix, subtype = typestr:match "^([%w_]+)%s+(.+)"
+            if type_prefix == "struct" or type_prefix == "union" then
+                typestr = type_prefix
+                local nesttypeid = subtype:match "^{(%d+)}$"
+                if nesttypeid then
+                    local nestcontent = assert(nest[tonumber(nesttypeid)]):match "^{(.*)}$"
+                    subtype = parse_struct(nestcontent)
+                    subtype.type = type_prefix
+                end
+            end
+            if pointer == "" then
+                pointer = nil
+            end
+            local t = {
+                array = array,
+                type = typestr,
+                subtype = subtype,
+                pointer = pointer,
+                name = name
+            }
+            assert(names[name] == nil, name)
+            names[name] = true
+            lines[line_n] = t
+        end
+
+        return lines
+    end
+
+    local function parse(what, code, types)
+        for typename, content in code:gmatch(what .. "%s+([_%w]+)%s*(%b{})%s*;") do
+            assert(types[typename] == nil)
+            local s = parse_struct(content:match "^{%s*(.-)%s*}$")
+            s.type = what
+            s.name = what .. " " .. typename
+            types[s.name] = s
+        end
+    end
+
+    local buildin_types = (function(map)
+        local r = {}
+        for k, v in pairs(map) do
+            if type(k) == "number" then
+                r[v] = true
+            else
+                r[k] = v
+            end
+        end
+        return r
+    end) {
+        int = "int32_t",
+        short = "int16_t",
+        char = "int8_t",
+        ["unsigned char"] = "uint8_t",
+        ["unsigned short"] = "uint16_t",
+        ["unsigned int"] = "uint32_t",
+        "float",
+        "double",
+        "void",
+        "bool",
+        "int8_t",
+        "int16_t",
+        "int32_t",
+        "int64_t",
+        "uint8_t",
+        "uint16_t",
+        "uint32_t",
+        "uint64_t",
+        ["i8"] = "int8_t",
+        ["i16"] = "int16_t",
+        ["i32"] = "int32_t",
+        ["i64"] = "int64_t",
+        ["u8"] = "uint8_t",
+        ["u16"] = "uint16_t",
+        ["u32"] = "uint32_t",
+        ["u64"] = "uint64_t"
+    }
+
+    local buildin_size = {
+        int8_t = 1,
+        int16_t = 2,
+        int32_t = 4,
+        int64_t = 8,
+        uint8_t = 1,
+        uint16_t = 2,
+        uint32_t = 4,
+        uint64_t = 8,
+        float = 4,
+        double = 8,
+        ptr = 8,
+        bool = 1
+    }
+
+    local buildin_id = M.__CORE.ctype()
+
+    for k, v in pairs(buildin_types) do
+        if v ~= true then -- 如果k不是原始类型(即为别名)
+            buildin_size[k] = buildin_size[v] -- 复制k的原类型大小
+            buildin_id[k] = buildin_id[v] -- 复制k的原类型id
+        end
+    end
+
+    local function check_types(types)
+        for k, t in pairs(types) do
+            for idx, f in ipairs(t) do
+                local typename = f.type
+                if typename == "struct" or typename == "union" then
+                    if type(f.subtype) == "string" then
+                        local fullname = typename .. " " .. f.subtype
+                        local subtype = types[fullname]
+                        if not subtype then
+                            error("Unknown " .. fullname)
+                        end
+                        assert(subtype.type == typename)
+                        f.subtype = subtype
+                    end
+                else
+                    if not buildin_types[typename] then
+                        error("Unknown " .. typename)
+                    end
+                end
+                if f.array == 0 and t[idx + 1] then
+                    error("Array " .. f.name .. "[] must be the last field")
+                end
+            end
+        end
+    end
+
+    local function calc_offset(types)
+        local solve
+
+        local function calc_align(t)
+            local align = 0
+            for _, f in ipairs(t) do
+                if f.pointer then
+                    f.size = buildin_size.ptr
+                    f.align = f.size
+                elseif f.subtype then
+                    local subtype = solve(f.subtype)
+                    f.size = subtype.size
+                    f.align = subtype.align
+                    if subtype.align > align then
+                        align = subtype.align
+                    end
+                else
+                    f.size = assert(buildin_size[f.type])
+                    f.align = f.size
+                    if f.align > align then
+                        align = f.align
+                    end
+                end
+                if f.array then
+                    f.size = f.size * f.array
+                end
+            end
+            return align
+        end
+
+        local function solve_struct(t)
+            t.align = calc_align(t)
+            local size = 0
+            for _, f in ipairs(t) do
+                if size % f.align ~= 0 then
+                    size = (size // f.align + 1) * f.align
+                end
+                f.offset = size
+                size = size + f.size
+            end
+            if size % t.align ~= 0 then
+                size = (size // t.align + 1) * t.align
+            end
+            t.size = size
+        end
+        local function solve_union(t)
+            t.align = align(t)
+            local size = 0 -- 取最大的成员大小
+            for _, f in ipairs(t) do
+                f.offset = 0
+                if f.size > size then
+                    size = f.size
+                end
+            end
+            t.size = size
+        end
+        do -- 解决局部函数
+            local unsolved = {}
+            local solved = {}
+            function solve(t)
+                local fullname = t.name
+                if fullname then
+                    if solved[fullname] then
+                        return solved[fullname]
+                    end
+                    assert(not unsolved[fullname])
+                    unsolved[fullname] = true
+                end
+
+                if t.type == "struct" then
+                    solve_struct(t)
+                else
+                    solve_union(t)
+                end
+
+                if fullname then
+                    solved[fullname] = t
+                    unsolved[fullname] = nil
+                end
+                return t
+            end
+        end
+
+        for k, t in pairs(types) do
+            solve(t)
+        end
+
+        local function solve_pointer_size(t)
+            for _, f in ipairs(t) do
+                if f.pointer then
+                    assert(f.pointer == "*")
+                    if f.subtype then
+                        f.pointer_size = f.subtype.size
+                    else
+                        f.pointer_size = buildin_size[f.type]
+                    end
+                end
+            end
+        end
+
+        for k, t in pairs(types) do
+            solve_pointer_size(t)
+        end
+    end
+
+    local function keys_lookup(t)
+        local keys = {}
+        for _, f in ipairs(t) do
+            keys[f.name] = f
+        end
+        t.keys = keys
+        return keys
+    end
+
+    local function find_key(t, key)
+        local keys = t.keys or keys_lookup(t)
+        return assert(keys[key], key)
+    end
+
+    local function gen_check(types, k)
+        local keys = {}
+        local n = 0
+        for name in k:gmatch "[^.]*" do
+            n = n + 1
+            keys[n] = name
+        end
+        local t = types[keys[1]]
+        if t == nil then
+            error(keys[1] .. " undefined")
+        end
+        local offset = {}
+        local last_offset = 0
+        local offset_n = 1
+        local i = 2
+        local typename
+        while i <= n do
+            local name = keys[i]
+            local array_name, array_index = name:match "(.+)%[(%d+)]$"
+            name = array_name or name
+
+            local f = find_key(t, name)
+            offset[offset_n] = last_offset + f.offset
+            if f.pointer then
+                assert(f.pointer == "*") -- todo: support "**"
+                offset_n = offset_n + 1
+                last_offset = 0
+                typename = "ptr"
+            elseif f.subtype then
+                last_offset = last_offset + f.offset
+                t = f.subtype
+                assert(i ~= n)
+            else
+                assert(i == n)
+                typename = f.type
+            end
+
+            if array_index then
+                local index = tonumber(array_index)
+                if f.pointer then
+                    offset[offset_n] = index * f.pointer_size
+                    offset_n = offset_n + 1
+                else
+                    last_offset = last_offset + index * f.size
+                    offset[offset_n] = last_offset
+                end
+            end
+
+            i = i + 1
+        end
+        local getter, setter = M.__CORE.parser(buildin_id[typename], table.unpack(offset))
+        return {getter, setter}
+    end
+
+    local function check(types)
+        local function cache_check(self, k)
+            local v = gen_check(types, k)
+            self[k] = v
+            return v
+        end
+        return setmetatable({}, {
+            __index = cache_check
+        })
+    end
+
+    local methods = {};
+    methods.__index = methods
+
+    function methods:dump()
+        for _, s in pairs(self._types) do
+            print(s.name, "size", s.size, "align", s.align)
+            for _, f in ipairs(s) do
+                local array = ""
+                if f.array then
+                    array = "[" .. f.array .. "]"
+                end
+                local typename = f.type
+                if f.subtype then
+                    typename = f.subtype.name or ("nest " .. f.subtype.type)
+                end
+                print(string.format("\t%3d : %s %s%s%s", f.offset, typename, (f.pointer or ""), f.name, array))
+            end
+        end
+    end
+
+    function methods:size(name)
+        local t = assert(self._types[name])
+        return t.size
+    end
+
+    function methods:getter(name)
+        return self._check[name][1]
+    end
+
+    function methods:setter(name)
+        return self._check[name][2]
+    end
+
+    function M.struct(code)
+        local types = {}
+        parse("struct", code, types)
+        parse("union", code, types)
+        check_types(types)
+        calc_offset(types)
+
+        local obj = {
+            _types = types,
+            _check = check(types)
+        }
+
+        return setmetatable(obj, methods)
+    end
+
+    return M
+end
+
+neko.cdata = cdata_init()
 
 print("lua startup")

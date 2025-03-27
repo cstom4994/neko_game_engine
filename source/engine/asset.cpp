@@ -296,6 +296,19 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
     }
 }
 
+Array<Asset> asset_view(AssetKind kind) {
+    Assets &g_assets = the<Assets>();
+
+    g_assets.rw_lock.shared_lock();
+    neko_defer(g_assets.rw_lock.shared_unlock());
+
+    Array<Asset> views{};
+    for (auto &v : g_assets.table) {
+        if (v.value->kind == kind) views.push(*v.value);
+    }
+    return views;
+}
+
 bool asset_read(u64 key, Asset *out) {
     Assets &g_assets = the<Assets>();
 

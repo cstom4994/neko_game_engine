@@ -774,6 +774,8 @@ void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
 
 Neko::CCharacter cJohn;
 
+void inspect_shader(const char* label, GLuint program);
+
 int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
     this->setL(L);
@@ -923,10 +925,12 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
             if (ImGui::BeginTabItem("Shaders")) {
 
-                // for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
-                //     auto sp = g_app->shader_array[i];
-                //     inspect_shader(sp.name, sp.id);
-                // }
+                Array<Asset> views = asset_view(AssetKind_Shader);
+                neko_defer(views.trash());
+
+                for (int i = 0; i < views.len; i++) {
+                    inspect_shader(views[i].name.cstr(), views[i].shader.id);
+                }
 
                 ImGui::EndTabItem();
             }

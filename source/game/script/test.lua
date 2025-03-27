@@ -124,59 +124,6 @@ local function UnitTest()
                 expect(1).to.be.a('number') -- Pass
             end)
 
-            it('feature_td', function()
-                local td_create = common.td_create
-
-                local td = td_create()
-
-                td.ee = td.enum {"XXX", "YYY"}
-
-                td.foo = {
-                    x = td.number,
-                    y = 1,
-                    z = td.enum {"a", "b", "c"},
-                    obj = td.object, -- a ref to lua object (table/userdata)
-                    a = td.array(td.ee),
-                    m = td.map(td.string, td.number),
-                    s = td.struct { -- anonymous struct
-                        alpha = false,
-                        beta = true
-                    }
-                }
-
-                local foo = td.foo {
-                    a = {"XXX", "XXX"},
-                    m = {
-                        x = 1,
-                        y = 2
-                    },
-                    z = "c",
-                    obj = td.foo,
-                    s = {
-                        alpha = true
-                    }
-                }
-
-                expect(foo.x).to.equal(0) -- default number is 0
-                expect(foo.y).to.equal(1) -- default 1
-                expect(foo.z).to.equal("c")
-                expect(foo.a[1]).to.equal("XXX")
-                expect(foo.m.x).to.equal(1)
-                expect(foo.m.y).to.equal(2)
-                expect(foo.obj).to.equal(td.foo) -- a type
-                expect(foo.s.alpha).to.equal(true)
-                expect(foo.s.beta).to.equal(true)
-
-                -- foo.z = "d" -- invalid enum
-                -- print(td.foo:verify(foo))
-                -- foo.z = nil
-                -- print(td.foo:verify(foo))
-                -- foo.z = "a"
-                -- print(td.foo:verify(foo))
-                -- foo.a[1] = nil
-                -- print(td.foo:verify(foo))
-            end)
-
             -- it('feature_bind_enum', function()
             --     expect(Test.TestAssetKind_1("AssetKind_Tiledmap")).to.equal(4)
             --     expect(Test.TestAssetKind_2(2)).to.equal("AssetKind_Image")
@@ -468,6 +415,100 @@ local function UnitTest()
                 -- for v4 in w:match("all", "vector4") do
                 --     print(v4.x)
                 -- end
+            end)
+
+            it("feature_cparser_1", function()
+
+                local CDATA = neko.cdata
+                local Test = {}
+
+                local obj = CDATA.struct([[
+                    struct TestStructA {
+                        int8_t id8;
+                        int16_t id16;
+                        int32_t id32;
+                        int64_t id64;
+                        uint8_t idu8;
+                        uint16_t idu16;
+                        uint32_t idu32;
+                        uint64_t idu64;
+                        float x;
+                        double y;
+                        bool active;
+                    };
+                    ]])
+
+                -- getter 和 setter 定义
+                Test.get_id8 = obj:getter "struct TestStructA.id8"
+                Test.set_id8 = obj:setter "struct TestStructA.id8"
+
+                Test.get_id16 = obj:getter "struct TestStructA.id16"
+                Test.set_id16 = obj:setter "struct TestStructA.id16"
+
+                Test.get_id32 = obj:getter "struct TestStructA.id32"
+                Test.set_id32 = obj:setter "struct TestStructA.id32"
+
+                Test.get_id64 = obj:getter "struct TestStructA.id64"
+                Test.set_id64 = obj:setter "struct TestStructA.id64"
+
+                Test.get_idu8 = obj:getter "struct TestStructA.idu8"
+                Test.set_idu8 = obj:setter "struct TestStructA.idu8"
+
+                Test.get_idu16 = obj:getter "struct TestStructA.idu16"
+                Test.set_idu16 = obj:setter "struct TestStructA.idu16"
+
+                Test.get_idu32 = obj:getter "struct TestStructA.idu32"
+                Test.set_idu32 = obj:setter "struct TestStructA.idu32"
+
+                Test.get_idu64 = obj:getter "struct TestStructA.idu64"
+                Test.set_idu64 = obj:setter "struct TestStructA.idu64"
+
+                Test.get_x = obj:getter "struct TestStructA.x"
+                Test.set_x = obj:setter "struct TestStructA.x"
+
+                Test.get_y = obj:getter "struct TestStructA.y"
+                Test.set_y = obj:setter "struct TestStructA.y"
+
+                Test.get_active = obj:getter "struct TestStructA.active"
+                Test.set_active = obj:setter "struct TestStructA.active"
+
+                print(obj:size "struct TestStructA")
+
+                local obj = CDATA.__CORE.udata(obj:size "struct TestStructA")
+
+                -- 设置和测试
+                Test.set_id8(obj, 42)
+                expect(Test.get_id8(obj)).to.equal(42)
+
+                Test.set_id16(obj, 1337)
+                expect(Test.get_id16(obj)).to.equal(1337)
+
+                Test.set_id32(obj, 123456789)
+                expect(Test.get_id32(obj)).to.equal(123456789)
+
+                Test.set_id64(obj, 123456789012345)
+                expect(Test.get_id64(obj)).to.equal(123456789012345)
+
+                Test.set_idu8(obj, 250)
+                expect(Test.get_idu8(obj)).to.equal(250)
+
+                Test.set_idu16(obj, 65535)
+                expect(Test.get_idu16(obj)).to.equal(65535)
+
+                Test.set_idu32(obj, 4294967295)
+                expect(Test.get_idu32(obj)).to.equal(4294967295)
+
+                Test.set_idu64(obj, 9007199254740991)
+                expect(Test.get_idu64(obj)).to.equal(9007199254740991)
+
+                Test.set_x(obj, 3.14159265)
+                expect(math.abs(Test.get_x(obj) - 3.14159265) < 0.0001).to.be.truthy()
+
+                Test.set_y(obj, 2.718281828459045)
+                expect(math.abs(Test.get_y(obj) - 2.718281828459045) < 0.0000001).to.be.truthy()
+
+                Test.set_active(obj, true)
+                expect(Test.get_active(obj)).to.equal(true)
             end)
         end)
     end)

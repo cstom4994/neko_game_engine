@@ -132,6 +132,8 @@ int assets_perform_hot_reload_changes(App* app, Event evt);
 bool asset_load_kind(AssetKind kind, String filepath, Asset* out);
 bool asset_load(AssetLoadData desc, String filepath, Asset* out);
 
+Array<Asset> asset_view(AssetKind kind);
+
 bool asset_read(u64 key, Asset* out);
 void asset_write(Asset asset);
 

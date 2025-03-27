@@ -2343,6 +2343,8 @@ static int l_gui_captured_event(lua_State *L) {
 void inspector_set_visible(bool visible) { gApp->inspector->visible = visible; }
 bool inspector_get_visible() { return gApp->inspector->visible; }
 
+extern int open_cdata(lua_State *L);
+
 static void typeclosure(lua_State *L) {
     static const char *typenames[] = {
             "nil",       // 0
@@ -2375,6 +2377,7 @@ static int open_neko(lua_State *L) {
             // internal
             {"__registry_load", neko_registry_load},
             {"__registry_lua_script", neko_require_lua_script},
+            {"__cdata", open_cdata},
 
             {"ecs_f", __neko_bind_ecs_f},
 
