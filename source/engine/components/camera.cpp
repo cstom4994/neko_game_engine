@@ -66,12 +66,12 @@ mat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
 
 const mat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
 
-vec2 camera_world_to_pixels(vec2 p) { return Neko::the<Game>().unit_to_pixels(camera_world_to_unit(p)); }
+vec2 camera_world_to_pixels(vec2 p) { return Neko::the<CL>().unit_to_pixels(camera_world_to_unit(p)); }
 vec2 camera_world_to_unit(vec2 p) {
     // use cached inverse view matrix
     return mat3_transform(inverse_view_matrix, p);
 }
-vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<Game>().pixels_to_unit(p)); }
+vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<CL>().pixels_to_unit(p)); }
 vec2 camera_unit_to_world(vec2 p) {
     CEntity cam = camera_get_current_camera();
     if (!CEntityEq(cam, entity_nil)) return transform_local_to_world(cam, p);
@@ -96,7 +96,7 @@ void camera_init() {
 
 void camera_fini() { entitypool_free(CCamera__pool); }
 
-int camera_update_all(App *app, Event evt) {
+int camera_update_all(Event evt) {
     vec2 win_size;
     f32 aspect;
     CCamera *camera;
@@ -106,7 +106,7 @@ int camera_update_all(App *app, Event evt) {
 
     entitypool_remove_destroyed(CCamera__pool, camera_remove);
 
-    win_size = Neko::the<Game>().get_window_size();
+    win_size = Neko::the<CL>().get_window_size();
     aspect = win_size.x / win_size.y;
 
     entitypool_foreach(camera, CCamera__pool) {
@@ -125,7 +125,7 @@ int camera_update_all(App *app, Event evt) {
     return 0;
 }
 
-void camera_save_all(App *app) {
+void camera_save_all(CL *app) {
     // Store *t, *camera_s;
     // CCamera *camera;
 
@@ -137,7 +137,7 @@ void camera_save_all(App *app) {
     //     entitypool_save_foreach(camera, camera_s, CCamera__pool, "pool", t) float_save(&camera->viewport_height, "viewport_height", camera_s);
     // }
 }
-void camera_load_all(App *app) {
+void camera_load_all(CL *app) {
     // Store *t, *camera_s;
     // CCamera *camera;
 

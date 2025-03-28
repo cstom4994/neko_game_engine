@@ -6,7 +6,7 @@
 #include "base/common/singleton.hpp"
 #include "engine/input_keycode.h"
 
-struct App;
+
 
 struct lua_State;
 
@@ -68,13 +68,13 @@ struct Event {
     EventVariant p1;
 };
 
-// using EventCallback = std::function<int(App*, Event)>;
-typedef int (*EventCallback)(App*, Event);
+// using EventCallback = std::function<int(Game*, Event)>;
+typedef int (*EventCallback)(Event);
 
 typedef struct EventDelegate {
     union {
         struct {
-            App* receiver;
+            // Game* receiver;
             EventCallback callback;
         };
         struct {
@@ -100,7 +100,7 @@ public:
     void fini();
     void update();
 
-    void Register(App* receiver, int evt, EventCallback cb, lua_State* L);
+    void Register(int evt, EventCallback cb, lua_State* L);
     int Post(Event evt);
     void Dispatch(Event evt);
     void Pump();

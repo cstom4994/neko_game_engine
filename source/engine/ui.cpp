@@ -323,7 +323,7 @@ void neko_set_ui_renderer_clip(engine_ui_renderer_t *renderer, rect_t rect) {
 
 INPUT_WRAP_DEFINE(ui);
 
-ui_context_t *ui_global_ctx() { return gApp->ui; }
+ui_context_t *ui_global_ctx() { return the<CL>().ui; }
 
 void neko_init_ui_renderer() {
     ui_renderer = neko_new_ui_renderer();
@@ -806,7 +806,7 @@ MUIRef *lua_ui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
     return ref;
 }
 
-static ui_context_t *ui_ctx() { return gApp->ui; }
+static ui_context_t *ui_ctx() { return the<CL>().ui; }
 
 static int l_ui_set_focus(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);

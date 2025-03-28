@@ -6,8 +6,6 @@
 #include "engine/event.h"
 #include "engine/ecs/lua_ecs.hpp"
 
-struct App;
-
 // 测试 ECS 用
 typedef struct CGameObjectTest {
     char name[64];
@@ -33,7 +31,7 @@ bool entity_destroyed(CEntity ent);
 
 NEKO_API() void entity_init();
 NEKO_API() void entity_fini();
-NEKO_API() int entity_update_all(App* app, Event evt);
+NEKO_API() int entity_update_all(Event evt);
 
 inline bool CEntityEq(CEntity e, CEntity f) { return e.id == f.id; }
 
@@ -185,7 +183,7 @@ void entitypool_sort(CEntityPool<T>* pool, int (*compar)(const void*, const void
 
 // elem must be /pointer to/ pointer to element
 template <typename T>
-void entitypool_elem_save(CEntityPool<T>* pool, void* elem, App* app) {
+void entitypool_elem_save(CEntityPool<T>* pool, void* elem) {
     // EntityPoolElem** p;
 
     // // save CEntity id
@@ -193,7 +191,7 @@ void entitypool_elem_save(CEntityPool<T>* pool, void* elem, App* app) {
     // entity_save(&(*p)->ent, "pool_elem", s);
 }
 template <typename T>
-void entitypool_elem_load(CEntityPool<T>* pool, void* elem, App* app) {
+void entitypool_elem_load(CEntityPool<T>* pool, void* elem) {
     // CEntity ent;
     // EntityPoolElem** p;
 

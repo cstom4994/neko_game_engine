@@ -21,30 +21,30 @@ static MouseCode _glfw_to_mousecode(int mouse) { return (MouseCode)mouse; }
 
 bool input_key_down(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(gApp->window->glfwWindow(), glfwkey) == GLFW_PRESS;
+    return glfwGetKey(the<CL>().window->glfwWindow(), glfwkey) == GLFW_PRESS;
 }
 
 bool input_key_release(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(gApp->window->glfwWindow(), glfwkey) == GLFW_RELEASE;
+    return glfwGetKey(the<CL>().window->glfwWindow(), glfwkey) == GLFW_RELEASE;
 }
 
 vec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
-    glfwGetCursorPos(gApp->window->glfwWindow(), &x, &y);
+    glfwGetCursorPos(the<CL>().window->glfwWindow(), &x, &y);
     return luavec2(x, y);
 }
 
 vec2 input_get_mouse_pos_pixels() {
     double x, y;
-    glfwGetCursorPos(gApp->window->glfwWindow(), &x, &y);
+    glfwGetCursorPos(the<CL>().window->glfwWindow(), &x, &y);
     return luavec2(x, -y);
 }
-vec2 input_get_mouse_pos_unit() { return Neko::the<Game>().pixels_to_unit(input_get_mouse_pos_pixels()); }
+vec2 input_get_mouse_pos_unit() { return Neko::the<CL>().pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
-    return glfwGetMouseButton(gApp->window->glfwWindow(), glfwmouse) == GLFW_PRESS;
+    return glfwGetMouseButton(the<CL>().window->glfwWindow(), glfwmouse) == GLFW_PRESS;
 }
 
 void input_add_key_down_callback(KeyCallback f) { Neko::the<Input>().key_down_cbs.push(f); }

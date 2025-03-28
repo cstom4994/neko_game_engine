@@ -123,11 +123,9 @@ public:
     Array<FileChange> tmp_changes;
 };
 
-struct App;
-
 void assets_shutdown();
 void assets_start_hot_reload();
-int assets_perform_hot_reload_changes(App* app, Event evt);
+int assets_perform_hot_reload_changes(Event evt);
 
 bool asset_load_kind(AssetKind kind, String filepath, Asset* out);
 bool asset_load(AssetLoadData desc, String filepath, Asset* out);

@@ -36,6 +36,26 @@ struct VertexBuffer {
     void configure_vb(u32 index, u32 component_count, u32 stride, u32 offset) const;
     void draw_vb() const;
     void draw_vb_n(u32 count) const;
+
+    template <typename T>
+    void pushVertices(const std::vector<T>& vertices) {
+        push_vertices(vertices.data(), static_cast<uint32_t>(vertices.size()));
+    }
+
+    template <typename T>
+    void pushIndices(const std::vector<T>& indices) {
+        push_indices(indices.data(), static_cast<uint32_t>(indices.size()));
+    }
+
+    template <typename T>
+    void updateVertices(const std::vector<T>& vertices, uint32_t offset) {
+        update_vertices(vertices.data(), offset, static_cast<uint32_t>(vertices.size()));
+    }
+
+    template <typename T>
+    void updateIndices(const std::vector<T>& indices, uint32_t offset) {
+        update_indices(indices.data(), offset, static_cast<uint32_t>(indices.size()));
+    }
 };
 
 struct RenderTarget {
@@ -102,17 +122,17 @@ struct QuadRenderer {
 
     f32 verts[100 * 11 * 4];
     u32 indices[100 * 6];
-};
 
-QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions);
-void free_renderer(QuadRenderer* renderer);
-void renderer_flush(QuadRenderer* renderer);
-void renderer_end_frame(QuadRenderer* renderer);
-void renderer_push(QuadRenderer* renderer, TexturedQuad* quad);
-void renderer_push_light(QuadRenderer* renderer, struct light light);
-void renderer_clip(QuadRenderer* renderer, rect_t clip);
-void renderer_resize(QuadRenderer* renderer, vec2 size);
-void renderer_fit_to_main_window(QuadRenderer* renderer);
+    void new_renderer(AssetShader shader, vec2 dimentions);
+    void free_renderer();
+    void renderer_flush();
+    void renderer_end_frame();
+    void renderer_push(TexturedQuad* quad);
+    void renderer_push_light(struct light light);
+    void renderer_clip(rect_t clip);
+    void renderer_resize(vec2 size);
+    void renderer_fit_to_main_window();
+};
 
 struct PostProcessor {
     RenderTarget target;

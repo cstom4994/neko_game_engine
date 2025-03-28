@@ -148,7 +148,7 @@ void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
 
 void tiled_init();
 void tiled_fini();
-int tiled_update_all(App* app, Event evt);
+int tiled_update_all(Event evt);
 void tiled_draw_all();
 
 class CTiledMap : public CEntityBase {

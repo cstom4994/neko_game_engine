@@ -42,11 +42,9 @@ inline int neko_sound_load(lua_State *L) {
 
 #endif
 
-struct App;
-
 NEKO_API() void sound_init();
 NEKO_API() void sound_fini();
-NEKO_API() int sound_update_all(App *app, Event evt);
-int sound_postupdate(App *app, Event evt);
+NEKO_API() int sound_update_all(Event evt);
+int sound_postupdate(Event evt);
 
 void audio_play_event(String event);

@@ -9,7 +9,7 @@
 #include "base/common/logger.hpp"
 #include "base/common/vfs.hpp"
 
-struct App;
+
 
 NEKO_API() void script_run_string(const char *s);
 NEKO_API() void script_run_file(const char *filename);
@@ -19,9 +19,6 @@ NEKO_API() void ng_push_cdata(const char *t, void *p);
 
 NEKO_API() void script_init();
 NEKO_API() void script_fini();
-
-NEKO_API() void script_save_all(App *app);
-NEKO_API() void script_load_all(App *app);
 
 void luax_run_bootstrap(lua_State *L);
 void luax_run_nekogame(lua_State *L);

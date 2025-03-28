@@ -286,152 +286,142 @@ void bind_render_target_output(RenderTarget* target, u32 unit) {
 #define verts_per_quad 4
 #define indices_per_quad 6
 
-#define MAX_GLYPHSET 256
-
 Color256 make_color(u32 rgb, u8 alpha) { return Color256{(u8)((rgb >> 16) & 0xFF), (u8)((rgb >> 8) & 0xFF), (u8)(rgb & 0xff), alpha}; }
 
-QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions) {
-    QuadRenderer* renderer = (QuadRenderer*)mem_calloc(1, sizeof(QuadRenderer));
+void QuadRenderer::new_renderer(AssetShader shader, vec2 dimentions) {
 
-    renderer->quad_count = 0;
-    renderer->texture_count = 0;
+    this->quad_count = 0;
+    this->texture_count = 0;
 
-    renderer->ambient_light = 1.0f;
+    this->ambient_light = 1.0f;
 
-    renderer->vb.init_vb(vb_dynamic | vb_tris);
-    renderer->vb.bind_vb_for_edit(true);
-    renderer->vb.push_vertices(NULL, els_per_vert * verts_per_quad * batch_size);
-    renderer->vb.push_indices(NULL, indices_per_quad * batch_size);
-    renderer->vb.configure_vb(0, 2, els_per_vert, 0);  /* vec2 position */
-    renderer->vb.configure_vb(1, 2, els_per_vert, 2);  /* vec2 uv */
-    renderer->vb.configure_vb(2, 4, els_per_vert, 4);  /* vec4 color */
-    renderer->vb.configure_vb(3, 1, els_per_vert, 8);  /* f32 texture_id */
-    renderer->vb.configure_vb(4, 1, els_per_vert, 9);  /* f32 inverted */
-    renderer->vb.configure_vb(5, 1, els_per_vert, 10); /* f32 unlit */
-    renderer->vb.bind_vb_for_edit(NULL);
+    this->vb.init_vb(vb_dynamic | vb_tris);
+    this->vb.bind_vb_for_edit(true);
+    this->vb.push_vertices(NULL, els_per_vert * verts_per_quad * batch_size);
+    this->vb.push_indices(NULL, indices_per_quad * batch_size);
+    this->vb.configure_vb(0, 2, els_per_vert, 0);  /* vec2 position */
+    this->vb.configure_vb(1, 2, els_per_vert, 2);  /* vec2 uv */
+    this->vb.configure_vb(2, 4, els_per_vert, 4);  /* vec4 color */
+    this->vb.configure_vb(3, 1, els_per_vert, 8);  /* f32 texture_id */
+    this->vb.configure_vb(4, 1, els_per_vert, 9);  /* f32 inverted */
+    this->vb.configure_vb(5, 1, els_per_vert, 10); /* f32 unlit */
+    this->vb.bind_vb_for_edit(NULL);
 
-    renderer->clip_enable = false;
-    renderer->camera_enable = false;
+    this->clip_enable = false;
+    this->camera_enable = false;
 
-    renderer->shader = shader;
-    neko_bind_shader(renderer->shader.id);
+    this->shader = shader;
+    neko_bind_shader(this->shader.id);
 
-    renderer->camera = mat4_ortho(0.0f, (f32)dimentions.x, (f32)dimentions.y, 0.0f, -1.0f, 1.0f);
-    neko_shader_set_m4f(renderer->shader.id, "camera", renderer->camera);
-    renderer->dimentions = dimentions;
+    this->camera = mat4_ortho(0.0f, (f32)dimentions.x, (f32)dimentions.y, 0.0f, -1.0f, 1.0f);
+    neko_shader_set_m4f(this->shader.id, "camera", this->camera);
+    this->dimentions = dimentions;
 
     neko_bind_shader(NULL);
-
-    return renderer;
 }
 
-void free_renderer(QuadRenderer* renderer) {
-    renderer->vb.fini_vb();
+void QuadRenderer::free_renderer() { this->vb.fini_vb(); }
 
-    mem_free(renderer);
-}
-
-void renderer_flush(QuadRenderer* renderer) {
-    if (renderer->quad_count == 0) {
+void QuadRenderer::renderer_flush() {
+    if (this->quad_count == 0) {
         return;
     }
 
-    if (renderer->clip_enable) {
+    if (this->clip_enable) {
         draw_enable(vt_clip);
-        draw_clip(rect_t{renderer->clip.x, (i32)renderer->dimentions.y - (renderer->clip.y + renderer->clip.h), renderer->clip.w, renderer->clip.h});
+        draw_clip(rect_t{this->clip.x, (i32)this->dimentions.y - (this->clip.y + this->clip.h), this->clip.w, this->clip.h});
     } else {
         draw_disable(vt_clip);
     }
 
-    neko_bind_shader(renderer->shader.id);
+    neko_bind_shader(this->shader.id);
 
-    for (u32 i = 0; i < renderer->texture_count; i++) {
-        neko_bind_texture(renderer->textures[i], i);
+    for (u32 i = 0; i < this->texture_count; i++) {
+        neko_bind_texture(this->textures[i], i);
 
         char name[32];
         sprintf(name, "textures[%u]", i);
 
-        neko_shader_set_int(renderer->shader.id, name, i);
+        neko_shader_set_int(this->shader.id, name, i);
     }
 
-    for (u32 i = 0; i < renderer->light_count; i++) {
+    for (u32 i = 0; i < this->light_count; i++) {
         char name[64];
 
         sprintf(name, "lights[%u].position", i);
-        neko_shader_set_v2f(renderer->shader.id, name, renderer->lights[i].position);
+        neko_shader_set_v2f(this->shader.id, name, this->lights[i].position);
 
         sprintf(name, "lights[%u].intensity", i);
-        neko_shader_set_float(renderer->shader.id, name, renderer->lights[i].intensity);
+        neko_shader_set_float(this->shader.id, name, this->lights[i].intensity);
 
         sprintf(name, "lights[%u].range", i);
-        neko_shader_set_float(renderer->shader.id, name, renderer->lights[i].range);
+        neko_shader_set_float(this->shader.id, name, this->lights[i].range);
     }
 
-    neko_shader_set_int(renderer->shader.id, "light_count", renderer->light_count);
+    neko_shader_set_int(this->shader.id, "light_count", this->light_count);
 
-    neko_shader_set_m4f(renderer->shader.id, "camera", renderer->camera);
-    neko_shader_set_float(renderer->shader.id, "ambient_light", renderer->ambient_light);
+    neko_shader_set_m4f(this->shader.id, "camera", this->camera);
+    neko_shader_set_float(this->shader.id, "ambient_light", this->ambient_light);
 
-    if (renderer->camera_enable) {
-        mat4 view =
-                mat4_translate(mat4_identity(), neko_v3(-((f32)renderer->camera_pos.x) + ((f32)renderer->dimentions.x / 2), -((f32)renderer->camera_pos.y) + ((f32)renderer->dimentions.y / 2), 0.0f));
-        neko_shader_set_m4f(renderer->shader.id, "view", view);
+    if (this->camera_enable) {
+        mat4 view = mat4_translate(mat4_identity(), neko_v3(-((f32)this->camera_pos.x) + ((f32)this->dimentions.x / 2), -((f32)this->camera_pos.y) + ((f32)this->dimentions.y / 2), 0.0f));
+        neko_shader_set_m4f(this->shader.id, "view", view);
     } else {
-        neko_shader_set_m4f(renderer->shader.id, "view", mat4_identity());
+        neko_shader_set_m4f(this->shader.id, "view", mat4_identity());
     }
 
-    renderer->vb.bind_vb_for_edit(true);
-    renderer->vb.update_vertices(renderer->verts, 0, renderer->quad_count * els_per_vert * verts_per_quad);
-    renderer->vb.update_indices(renderer->indices, 0, renderer->quad_count * indices_per_quad);
-    renderer->vb.bind_vb_for_edit(false);
+    this->vb.bind_vb_for_edit(true);
+    this->vb.update_vertices(this->verts, 0, this->quad_count * els_per_vert * verts_per_quad);
+    this->vb.update_indices(this->indices, 0, this->quad_count * indices_per_quad);
+    this->vb.bind_vb_for_edit(false);
 
-    renderer->vb.bind_vb_for_draw(true);
-    renderer->vb.draw_vb_n(renderer->quad_count * indices_per_quad);
-    renderer->vb.bind_vb_for_draw(false);
+    this->vb.bind_vb_for_draw(true);
+    this->vb.draw_vb_n(this->quad_count * indices_per_quad);
+    this->vb.bind_vb_for_draw(false);
     neko_bind_shader(NULL);
 
-    renderer->quad_count = 0;
-    renderer->texture_count = 0;
+    this->quad_count = 0;
+    this->texture_count = 0;
 
     draw_disable(vt_clip);
 }
 
-void renderer_end_frame(QuadRenderer* renderer) {
-    renderer_flush(renderer);
-    renderer->light_count = 0;
+void QuadRenderer::renderer_end_frame() {
+    renderer_flush();
+    this->light_count = 0;
 }
 
-void renderer_push_light(QuadRenderer* renderer, struct light light) {
-    if (renderer->light_count > max_lights) {
+void QuadRenderer::renderer_push_light(struct light light) {
+    if (this->light_count > max_lights) {
         fprintf(stderr, "Too many lights! Max: %d\n", max_lights);
         return;
     }
 
-    renderer->lights[renderer->light_count++] = light;
+    this->lights[this->light_count++] = light;
 }
 
-void renderer_push(QuadRenderer* renderer, TexturedQuad* quad) {
+void QuadRenderer::renderer_push(TexturedQuad* quad) {
     f32 tx = 0, ty = 0, tw = 0, th = 0;
 
     i32 tidx = -1;
     if (quad->texture) {
-        for (u32 i = 0; i < renderer->texture_count; i++) {
-            if (renderer->textures[i] == quad->texture) {
+        for (u32 i = 0; i < this->texture_count; i++) {
+            if (this->textures[i] == quad->texture) {
                 tidx = (i32)i;
                 break;
             }
         }
 
         if (tidx == -1) {
-            renderer->textures[renderer->texture_count] = quad->texture;
-            tidx = renderer->texture_count;
+            this->textures[this->texture_count] = quad->texture;
+            tidx = this->texture_count;
 
-            renderer->texture_count++;
+            this->texture_count++;
 
-            if (renderer->texture_count >= 32) {
-                renderer_flush(renderer);
+            if (this->texture_count >= 32) {
+                renderer_flush();
                 tidx = 0;
-                renderer->textures[0] = quad->texture;
+                this->textures[0] = quad->texture;
             }
         }
 
@@ -473,37 +463,37 @@ void renderer_push(QuadRenderer* renderer, TexturedQuad* quad) {
             p0.x, p0.y, tx,      ty,      r, g, b, a, (f32)tidx, (f32)quad->inverted, (f32)quad->unlit, p1.x, p1.y, tx + tw, ty,      r, g, b, a, (f32)tidx, (f32)quad->inverted, (f32)quad->unlit,
             p2.x, p2.y, tx + tw, ty + th, r, g, b, a, (f32)tidx, (f32)quad->inverted, (f32)quad->unlit, p3.x, p3.y, tx,      ty + th, r, g, b, a, (f32)tidx, (f32)quad->inverted, (f32)quad->unlit};
 
-    const u32 idx_off = renderer->quad_count * verts_per_quad;
+    const u32 idx_off = this->quad_count * verts_per_quad;
 
     u32 indices[] = {idx_off + 3, idx_off + 2, idx_off + 1, idx_off + 3, idx_off + 1, idx_off + 0};
 
-    memcpy(renderer->verts + (renderer->quad_count * els_per_vert * verts_per_quad), verts, els_per_vert * verts_per_quad * sizeof(f32));
-    memcpy(renderer->indices + (renderer->quad_count * indices_per_quad), indices, indices_per_quad * sizeof(u32));
+    memcpy(this->verts + (this->quad_count * els_per_vert * verts_per_quad), verts, els_per_vert * verts_per_quad * sizeof(f32));
+    memcpy(this->indices + (this->quad_count * indices_per_quad), indices, indices_per_quad * sizeof(u32));
 
-    renderer->quad_count++;
+    this->quad_count++;
 
-    if (renderer->quad_count >= batch_size) {
-        renderer_flush(renderer);
+    if (this->quad_count >= batch_size) {
+        renderer_flush();
     }
 }
 
-void renderer_clip(QuadRenderer* renderer, rect_t clip) {
-    if (renderer->clip.x != clip.x || renderer->clip.y != clip.y || renderer->clip.w != clip.w || renderer->clip.h != clip.h) {
-        renderer_flush(renderer);
-        renderer->clip = clip;
+void QuadRenderer::renderer_clip(rect_t clip) {
+    if (this->clip.x != clip.x || this->clip.y != clip.y || this->clip.w != clip.w || this->clip.h != clip.h) {
+        renderer_flush();
+        this->clip = clip;
     }
 }
 
-void renderer_resize(QuadRenderer* renderer, vec2 size) {
-    renderer->dimentions = size;
-    renderer->camera = mat4_ortho(0.0f, (f32)size.x, (f32)size.y, 0.0f, -1.0f, 1.0f);
+void QuadRenderer::renderer_resize(vec2 size) {
+    this->dimentions = size;
+    this->camera = mat4_ortho(0.0f, (f32)size.x, (f32)size.y, 0.0f, -1.0f, 1.0f);
 }
 
-void renderer_fit_to_main_window(QuadRenderer* renderer) {
+void QuadRenderer::renderer_fit_to_main_window() {
     i32 win_w, win_h;
     the<Window>().Query(0, &win_w, &win_h);
 
-    renderer_resize(renderer, neko_v2(win_w, win_h));
+    renderer_resize(neko_v2(win_w, win_h));
 }
 
 PostProcessor* new_post_processor(AssetShader shader) {

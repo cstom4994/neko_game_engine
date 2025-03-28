@@ -331,7 +331,7 @@ static void _load_nekogame_ffi() {
 #endif
 }
 
-int app_stop(App *app, Event evt) {
+int app_stop(Event evt) {
     auto &eh = the<EventHandler>();
     LOG_INFO("app_stop {} {}", eh.EventName(evt.type), std::get<f64>(evt.p0.v));
     return 0;
@@ -367,7 +367,7 @@ void script_init() {
     lua_channels_setup();
 
     auto &eh = Neko::the<EventHandler>();
-    eh.Register(gApp, Quit, (EventCallback)app_stop, NULL);
+    eh.Register(Quit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
 
@@ -408,7 +408,7 @@ void script_fini() {
     vm.Fini(ENGINE_LUA());
 }
 
-void script_save_all(App *app) {
+void script_save_all(CL *app) {
     // lua_State *L = ENGINE_LUA();
 
     // Store *t;
@@ -430,7 +430,7 @@ void script_save_all(App *app) {
     //}
 }
 
-void script_load_all(App *app) {
+void script_load_all(CL *app) {
     // lua_State *L = ENGINE_LUA();
 
     // Store *t;

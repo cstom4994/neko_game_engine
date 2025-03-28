@@ -139,7 +139,7 @@ void sprite_fini() {
     mem_free(atlas);
 }
 
-int sprite_update_all(App *app, Event evt) {
+int sprite_update_all(Event evt) {
 
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
@@ -181,7 +181,7 @@ void sprite_draw_all() {
     glDrawArrays(GL_POINTS, 0, nsprites);
 }
 
-void sprite_save_all(App *app) {
+void sprite_save_all(CL *app) {
     // Store *t, *sprite_s;
     // CSprite *sprite;
 
@@ -196,7 +196,7 @@ void sprite_save_all(App *app) {
     //     }
     // }
 }
-void sprite_load_all(App *app) {
+void sprite_load_all(CL *app) {
     // Store *t, *sprite_s;
     // CSprite *sprite;
     // char *tatlas;

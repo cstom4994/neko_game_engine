@@ -67,9 +67,9 @@ void entity_init() {
         EcsEntityNew(L, table, NULL);
     }
 
-    //struct CTransform {};
+    // struct CTransform {};
 
-    //int type_transform = EcsRegisterCType<CTransform>(L);
+    // int type_transform = EcsRegisterCType<CTransform>(L);
 
     //{
     //    LuaRef table = LuaRef::NewTable(L);
@@ -92,7 +92,7 @@ void entity_init() {
 
 void entity_fini() {}
 
-int entity_update_all(App* app, Event evt) {
+int entity_update_all(Event evt) {
     // EcsId i;
     // DestroyEntry* entry;
 

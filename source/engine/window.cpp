@@ -8,7 +8,7 @@ int game_set_window_vsync(bool vsync) {
 }
 
 int game_set_window_minsize(int width, int height) {
-    glfwSetWindowSizeLimits(gApp->window->glfwWindow(), width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    glfwSetWindowSizeLimits(the<CL>().window->glfwWindow(), width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
     return 0;
 }
 
@@ -19,8 +19,8 @@ int game_get_window_width(int *val) {
     w = emsc_width();
     h = emsc_height();
 #else
-    if (gApp->window) {
-        glfwGetWindowSize(gApp->window->glfwWindow(), &w, &h);
+    if (the<CL>().window) {
+        glfwGetWindowSize(the<CL>().window->glfwWindow(), &w, &h);
     }
 #endif
     *val = w;
@@ -34,8 +34,8 @@ int game_get_window_height(int *val) {
     w = emsc_width();
     h = emsc_height();
 #else
-    if (gApp->window) {
-        glfwGetWindowSize(gApp->window->glfwWindow(), &w, &h);
+    if (the<CL>().window) {
+        glfwGetWindowSize(the<CL>().window->glfwWindow(), &w, &h);
     }
 #endif
     *val = h;
@@ -44,8 +44,8 @@ int game_get_window_height(int *val) {
 
 int game_set_window_position(int x, int y) {
 #if !defined(__EMSCRIPTEN__)
-    if (gApp->window) {
-        glfwSetWindowPos(gApp->window->glfwWindow(), x, y);
+    if (the<CL>().window) {
+        glfwSetWindowPos(the<CL>().window->glfwWindow(), x, y);
     }
 #endif
     return 0;

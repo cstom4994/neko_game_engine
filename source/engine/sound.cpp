@@ -25,7 +25,7 @@ Sound *sound_load(String filepath) {
     String cpath = to_cstr(filepath);
     neko_defer(mem_free(cpath.data));
 
-    res = ma_sound_init_from_file(&gApp->audio_engine, cpath.data, 0, nullptr, nullptr, &sound->ma);
+    res = ma_sound_init_from_file(&the<CL>().audio_engine, cpath.data, 0, nullptr, nullptr, &sound->ma);
     if (res != MA_SUCCESS) {
         mem_free(sound);
         return nullptr;
@@ -59,7 +59,7 @@ static int mt_sound_gc(lua_State *L) {
         mem_free(sound);
     } else {
         sound->zombie = true;
-        gApp->garbage_sounds.push(sound);
+        the<CL>().garbage_sounds.push(sound);
     }
 
     return 0;
@@ -664,13 +664,13 @@ void sound_init() {
 #if NEKO_AUDIO == 1
         PROFILE_BLOCK("miniaudio");
 
-        gApp->miniaudio_vfs = vfs_for_miniaudio();
+        the<CL>().miniaudio_vfs = vfs_for_miniaudio();
 
         ma_engine_config ma_config = ma_engine_config_init();
         ma_config.channels = 2;
         ma_config.sampleRate = 44100;
-        ma_config.pResourceManagerVFS = gApp->miniaudio_vfs;
-        ma_result res = ma_engine_init(&ma_config, &gApp->audio_engine);
+        ma_config.pResourceManagerVFS = the<CL>().miniaudio_vfs;
+        ma_result res = ma_engine_init(&ma_config, &the<CL>().audio_engine);
         if (res != MA_SUCCESS) {
             fatal_error("failed to initialize audio engine");
         }
@@ -748,21 +748,21 @@ void sound_init() {
 void sound_fini() {
 
 #if NEKO_AUDIO == 1
-    for (Sound *sound : gApp->garbage_sounds) {
+    for (Sound *sound : the<CL>().garbage_sounds) {
         sound->trash();
     }
-    gApp->garbage_sounds.trash();
+    the<CL>().garbage_sounds.trash();
 
-    ma_engine_uninit(&gApp->audio_engine);
-    mem_free(gApp->miniaudio_vfs);
+    ma_engine_uninit(&the<CL>().audio_engine);
+    mem_free(the<CL>().miniaudio_vfs);
 #elif NEKO_AUDIO == 2
     audio_fmod.Shutdown();
 #endif
 }
 
-int sound_update_all(App *app, Event evt) { return 0; }
+int sound_update_all(Event evt) { return 0; }
 
-int sound_postupdate(App *app, Event evt) {
+int sound_postupdate(Event evt) {
 
 #if NEKO_AUDIO == 1
 

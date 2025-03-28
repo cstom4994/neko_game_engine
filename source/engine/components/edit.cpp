@@ -140,7 +140,7 @@ static void _bboxes_draw_all() {
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
-    win = Neko::the<Game>().get_window_size();
+    win = Neko::the<CL>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 0);
 
@@ -221,7 +221,7 @@ static void _grid_draw() {
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
-    win = Neko::the<Game>().get_window_size();
+    win = Neko::the<CL>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 1);
 
@@ -306,7 +306,7 @@ static void _line_draw_all() {
 
 // -------------------------------------------------------------------------
 
-int edit_clear(App* app, Event evt) {
+int edit_clear(Event evt) {
     entitypool_clear(BBoxPoolElem__pool);
     line_points.resize(0);
     return 0;
@@ -336,7 +336,7 @@ void edit_fini() {
 
 static void _uneditable_remove(CEntity ent) { uneditable__pool->Remove(ent); }
 
-int edit_update_all(App* app, Event evt) {
+int edit_update_all(Event evt) {
     entitypool_remove_destroyed(uneditable__pool, _uneditable_remove);
 
     _bboxes_update_all();
@@ -352,7 +352,7 @@ void edit_draw_all() {
     _line_draw_all();
 }
 
-void edit_save_all(App* app) {
+void edit_save_all(CL* app) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 
@@ -361,7 +361,7 @@ void edit_save_all(App* app) {
     //     entitypool_save_foreach(elem, elem_s, uneditable__pool, "uneditable_pool", t);
     // }
 }
-void edit_load_all(App* app) {
+void edit_load_all(CL* app) {
     // Store *t, *elem_s;
     // EntityPoolElem *elem;
 

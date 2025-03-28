@@ -78,7 +78,7 @@ void imgui_init(GLFWwindow* window) {
 
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
-    gApp->devui_vp = ImGui::GetMainViewport()->ID;
+    the<CL>().devui_vp = ImGui::GetMainViewport()->ID;
 }
 
 void imgui_fini() {

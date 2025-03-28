@@ -305,7 +305,7 @@ void transform_fini() {
     entitypool_free(CTransform__pool);
 }
 
-int transform_update_all(App *app, Event evt) {
+int transform_update_all(Event evt) {
     CTransform *transform;
     static BBox bbox = {{0, 0}, {0, 0}};
 
@@ -318,7 +318,7 @@ int transform_update_all(App *app, Event evt) {
 }
 
 // save/load for just the children array
-static void _children_save(CTransform *t, App *app) {
+static void _children_save(CTransform *t, CL *app) {
     // Store *u;
 
     // if (store_child_save(&u, "children", s))
@@ -326,7 +326,7 @@ static void _children_save(CTransform *t, App *app) {
     //         for (auto &child : t->children)
     //             if (entity_get_save_filter(child)) entity_save(&child, NULL, u);
 }
-static void _children_load(CTransform *t, App *app) {
+static void _children_load(CTransform *t, CL *app) {
     // Store *u;
     // CEntity child;
 
@@ -343,7 +343,7 @@ static void _children_load(CTransform *t, App *app) {
     //     }
 }
 
-void transform_save_all(App *app) {
+void transform_save_all(CL *app) {
     // Store *t, *transform_s;
     // CTransform *transform;
 
@@ -364,7 +364,7 @@ void transform_save_all(App *app) {
     //         uint_save(&transform->dirty_count, "dirty_count", transform_s);
     //     }
 }
-void transform_load_all(App *app) {
+void transform_load_all(CL *app) {
     // Store *t, *transform_s;
     // CTransform *transform;
 

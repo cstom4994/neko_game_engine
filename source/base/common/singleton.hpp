@@ -75,7 +75,7 @@ bool is_initialized() noexcept {
 }
 
 template <typename T>
-T& instance() {
+inline T& instance() {
     using BaseT = typename T::base_type;
     return static_cast<T&>(SingletonClass<BaseT>::instance());
 }
@@ -84,7 +84,7 @@ T& instance() {
 
 namespace Neko {
 template <typename T>
-T& the() {
+inline T& the() {
     return modules::instance<T>();
 }
 }  // namespace Neko

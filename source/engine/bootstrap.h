@@ -41,7 +41,7 @@ namespace Neko {
 struct LuaInspector;
 }
 
-typedef struct AppTime {
+struct AppTime {
     u64 startup;
     u64 last;
     u64 accumulator;
@@ -50,7 +50,7 @@ typedef struct AppTime {
 
     f32 dt;
     f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
-} AppTime;
+};
 
 void timing_set_scale(f32 s);
 f32 timing_get_scale();
@@ -61,30 +61,26 @@ bool timing_get_paused();
 AppTime get_timing_instance();
 
 struct lua_State;
-struct App {
 
+// ECS_COMPONENT_EXTERN(pos_t);
+// ECS_COMPONENT_EXTERN(vel_t);
+// ECS_COMPONENT_EXTERN(rect_t);
+
+class CL : public Neko::SingletonClass<CL> {
+public:
     bool g_quit = false;  // 如果为 true 则退出主循环
     Mutex g_init_mtx;
-
-    AppTime timing_instance;
-
-    lua_State *L;
-    EcsWorld *ECS;
-    lua_State *LiteLua;
-
-    batch_renderer *batch;
-
-    ui_context_t *ui;
-
-    bool win_console;
-
-    engine_cfg_t cfg;
-
-    LuaInspector *inspector;
-
-    ImGuiID devui_vp;
-
-    FontFamily *default_font;
+    AppTime timing_instance{};
+    lua_State *L{};
+    EcsWorld *ECS{};
+    batch_renderer *batch{};
+    ui_context_t *ui{};
+    bool win_console{};
+    engine_cfg_t cfg{};
+    LuaInspector *inspector{};
+    ImGuiID devui_vp{};
+    FontFamily *default_font{};
+    Window *window{};
 
     f32 scale = 1.0f;
     bool paused = false;
@@ -95,49 +91,33 @@ struct App {
     Array<Sound *> garbage_sounds;
 #endif
 
-    Window *window;
-};
-
-extern App *gApp;
-
-inline lua_State *&ENGINE_LUA() { return gApp->L; }
-inline EcsWorld *&ENGINE_ECS() { return gApp->ECS; }
-
-// ECS_COMPONENT_EXTERN(pos_t);
-// ECS_COMPONENT_EXTERN(vel_t);
-// ECS_COMPONENT_EXTERN(rect_t);
-
-class Game : public Neko::SingletonClass<Game> {
 public:
-    Game();
+    CL();
 
 public:
+    lua_State *&get_lua() { return this->L; }
+    EcsWorld *&get_ecs() { return this->ECS; }
+
     void init();
-
     void game_set_bg_color(Color c);
 
     // 屏幕空间坐标系:
     // unit: (0, 0) 中间, (1, 1) 右上
     // pixels: (0, 0) 左上方, game_get_window_size() 右下角
     void set_window_size(vec2 s);  // width, height in pixels
-
     vec2 get_window_size();
-
     int set_window_title(const char *title);
-
     vec2 unit_to_pixels(vec2 p);
-
     vec2 pixels_to_unit(vec2 p);
-
     void quit();
-
     void SplashScreen();
+    int timing_update(Event evt);
+    void system_init();
+    void system_fini();
 };
 
-void system_init();
-void system_fini();
-
-int timing_update(App *app, Event evt);
+inline lua_State *&ENGINE_LUA() { return the<CL>().get_lua(); }
+inline EcsWorld *&ENGINE_ECS() { return the<CL>().get_ecs(); }
 
 extern Int32 Main(int argc, const char *argv[]);
 

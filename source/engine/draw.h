@@ -5,6 +5,7 @@
 #include "engine/base.hpp"
 #include "engine/graphics.h"
 #include "engine/sprite.h"
+#include "engine/event.h"
 
 // deps
 #include "extern/stb_truetype.h"
@@ -143,11 +144,9 @@ typedef struct batch_renderer {
     bool trans;
 } batch_renderer;
 
-struct App;
-
 NEKO_API() batch_renderer* batch_init(int vertex_capacity);
 NEKO_API() void batch_fini(batch_renderer* batch);
-NEKO_API() int batch_update_all(App* app, Event evt);
+NEKO_API() int batch_update_all(Event evt);
 NEKO_API() void batch_draw_all(batch_renderer* batch);
 
 NEKO_API() void batch_flush(batch_renderer* renderer);

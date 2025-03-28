@@ -385,7 +385,7 @@ RectDescription rect_description_args(lua_State *L, i32 arg_start) {
 void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    batch_renderer *b = gApp->batch;
+    batch_renderer *b = the<CL>().batch;
 
     neko_assert(b);
 
@@ -594,11 +594,11 @@ float FontFamily::width(float size, String text) {
 }
 
 FontFamily *neko_default_font() {
-    if (gApp->default_font == nullptr) {
-        gApp->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-        gApp->default_font->load(gApp->cfg.default_font);
+    if (the<CL>().default_font == nullptr) {
+        the<CL>().default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
+        the<CL>().default_font->load(the<CL>().cfg.default_font);
     }
-    return gApp->default_font;
+    return the<CL>().default_font;
 }
 
 static void draw_font_line(FontFamily *font, bool draw_in_world, float size, float *start_x, float *start_y, String line, Color256 col) {
@@ -616,7 +616,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
         glUniform1i(glGetUniformLocation(font_program, "mode"), 0);
     } else {
-        mat4 cam_mat = mat4_ortho(0.0f, (float)gApp->cfg.width, (float)gApp->cfg.height, 0.0f, -1.0f, 1.0f);
+        mat4 cam_mat = mat4_ortho(0.0f, (float)the<CL>().cfg.width, (float)the<CL>().cfg.height, 0.0f, -1.0f, 1.0f);
         glUniformMatrix4fv(glGetUniformLocation(font_program, "u_mvp"), 1, GL_FALSE, (const GLfloat *)cam_mat.elements);
         glUniform1i(glGetUniformLocation(font_program, "mode"), 1);
     }
@@ -748,7 +748,7 @@ static FontFamily &check_font_udata(lua_State *L, i32 arg) {
 static int mt_font_gc(lua_State *L) {
     FontFamily &font = check_font_udata(L, 1);
 
-    if (font.ttf != gApp->default_font->ttf) {
+    if (font.ttf != the<CL>().default_font->ttf) {
         font.trash();
     }
     return 0;
@@ -1014,9 +1014,11 @@ void batch_fini(batch_renderer *batch) {
     mem_free(batch);
 }
 
-int batch_update_all(App *app, Event evt) {
+int batch_update_all(Event evt) {
 
     AssetTexture tex_aliens = texture_get_ptr("assets/aliens.png");
+
+    auto &game = the<CL>();
 
     struct {
         float x, y, w, h;
@@ -1038,7 +1040,7 @@ int batch_update_all(App *app, Event evt) {
             .th = alien_uvs[2].h,
     };
 
-    batch_texture(app->batch, tex_aliens.id);
+    batch_texture(game.batch, tex_aliens.id);
 
     float x1 = ch.px;
     float y1 = ch.py;
@@ -1050,13 +1052,13 @@ int batch_update_all(App *app, Event evt) {
     float u2 = (ch.tx + ch.tw) / tex_aliens.width;
     float v2 = (ch.ty + ch.th) / tex_aliens.height;
 
-    batch_push_vertex(app->batch, x1, y1, u1, v1);
-    batch_push_vertex(app->batch, x2, y2, u2, v2);
-    batch_push_vertex(app->batch, x1, y2, u1, v2);
+    batch_push_vertex(game.batch, x1, y1, u1, v1);
+    batch_push_vertex(game.batch, x2, y2, u2, v2);
+    batch_push_vertex(game.batch, x1, y2, u1, v2);
 
-    batch_push_vertex(app->batch, x1, y1, u1, v1);
-    batch_push_vertex(app->batch, x2, y1, u2, v1);
-    batch_push_vertex(app->batch, x2, y2, u2, v2);
+    batch_push_vertex(game.batch, x1, y1, u1, v1);
+    batch_push_vertex(game.batch, x2, y1, u2, v1);
+    batch_push_vertex(game.batch, x2, y2, u2, v2);
 
     return 0;
 }

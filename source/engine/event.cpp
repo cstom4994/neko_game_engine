@@ -35,14 +35,14 @@ void EventHandler::fini() {
 
 void EventHandler::update() {}
 
-void EventHandler::Register(App* receiver, int evt, EventCallback cb, lua_State* L) {
+void EventHandler::Register(int evt, EventCallback cb, lua_State* L) {
     for (int i = 0; i < NUM_EVENTS; i++) {
         if ((1 << i) & evt) {
 
             EventDelegate l = {};
 
             l.callback = cb;
-            l.receiver = receiver;
+            // l.receiver = receiver;
             l.L = L;
 
             DelegateArray* list = event_getdelegates(this, i);
@@ -75,7 +75,8 @@ void EventHandler::Dispatch(Event evt) {
             if (lua_toboolean(l.L, -1)) break;
         } else {
             error_assert(l.callback);
-            if (l.callback && l.callback(l.receiver, evt)) break;
+            // if (l.callback && l.callback(l.receiver, evt)) break;
+            if (l.callback(evt)) break;
         }
     }
 }
@@ -115,7 +116,7 @@ static int w_event_listen(lua_State* L) {
         cb = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     auto& eh = Neko::the<EventHandler>();
-    eh.Register(gApp, evt, reinterpret_cast<EventCallback>(cb), L);
+    eh.Register(evt, reinterpret_cast<EventCallback>(cb), L);
     return 0;
 }
 
