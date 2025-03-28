@@ -68,7 +68,7 @@ local function errorHandler(err)
     __print("Error: ", err)
 end
 
-local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
+local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua') or haha
 if run then
 
     -- 运行给定的脚本
@@ -90,12 +90,7 @@ else
     if ng.args[1] == "unittest" then
         hot_require('test').UnitTest()
     else
-        local status, result = xpcall(haha, errorHandler)
-        if status then
-            print("run successful")
-        else
-            print("run failed")
-        end
+        print("No script to run")
     end
 
     -- 进入编辑模式

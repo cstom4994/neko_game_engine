@@ -82,6 +82,19 @@ struct EcsWorld {
     ComponentPool component_pool[TYPE_COUNT];  // 存储所有组件的标记数据
 };
 
+enum MatchMode {
+    MATCH_ALL = 0,
+    MATCH_DIRTY = 1,
+    MATCH_DEAD = 2,
+};
+
+struct MatchCtx {
+    EcsWorld* world;
+    int i;
+    int kn;
+    int keys[ENTITY_MAX_COMPONENTS];
+};
+
 int EcsCreateWorld(lua_State* L);
 
 // EcsId ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
@@ -99,15 +112,26 @@ int EcsRegister(lua_State* L, const_str name);
 int EcsGetTid(lua_State* L, const char* name);
 
 Entity* EcsEntityAlloc(EcsWorld* world);
-int EcsComponentAlloc(EcsWorld* world, Entity* e, int tid);
+void EcsEntityDead(EcsWorld* world, Entity* e);
 Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc);
 void EcsEntityDel(lua_State* L, int eid);
+void EcsEntityFree(EcsWorld* world, Entity* e);
+int EcsComponentAlloc(EcsWorld* world, Entity* e, int tid);
+int EcsComponentHas(Entity* e, int tid);
 int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref);
 int EcsComponentSet(lua_State* L, Entity* e, const char* name, const LuaRef& ref);
 LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name);
 LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid);
-
+void EcsComponentDead(EcsWorld* world, int tid, int cid);
+void EcsComponentDirty(EcsWorld* world, int tid, int cid);
+void EcsComponentClear(Entity* e, int tid);
+int EcsGetTid_w(lua_State* L, int stk, int proto_id);
 Entity* EcsGetEnt(lua_State* L, EcsWorld* w, int eid);
+Entity* EcsGetEnt_i(lua_State* L, EcsWorld* w, int stk);
+void EcsWorldFini_i(EcsWorld* w);
+void EcsWorldInit_i(EcsWorld* world);
+void EcsEntityUpdateCid(Entity* e, int tid, int cid);
+int EcsEntityGetCid(Entity* e, int tid);
 
 template <typename T>
 int EcsRegisterCType(lua_State* L) {

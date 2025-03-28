@@ -930,6 +930,20 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
                 ImGui::EndTabItem();
             }
 
+            if (ImGui::BeginTabItem("Textures")) {
+                asset_view_each([](const Asset& view) {
+                    if (view.kind == AssetKind_Image) {
+                        f32 scale = 250.0 / view.texture.height;
+                        ImGui::Image(view.texture.id, ImVec2(view.texture.width, view.texture.height) * scale);
+                    }
+                    if (view.kind == AssetKind_AseSprite) {
+                        f32 scale = 250.0 / view.sprite.tex.height;
+                        ImGui::Image(view.sprite.tex.id, ImVec2(view.sprite.tex.width, view.sprite.tex.height) * scale);
+                    }
+                });
+                ImGui::EndTabItem();
+            }
+
             ImGui::EndTabBar();
         }
     }

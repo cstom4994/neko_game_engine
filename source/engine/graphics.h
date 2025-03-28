@@ -11,6 +11,8 @@
 #include <GLFW/glfw3.h>
 #undef APIENTRY
 
+#include "engine/renderer/texture.h"
+
 static const char* opengl_string(GLenum e) {
 
 #define XX(x)      \
@@ -202,14 +204,6 @@ static const char* opengl_string(GLenum e) {
 // NEKO_GRAPHICS
 =============================*/
 
-#ifdef _DEBUG
-#define neko_check_gl_error() gfx_print_error(__FILE__, __LINE__)
-#else
-#define neko_check_gl_error()
-#endif
-
-NEKO_API() void gfx_print_error(const char* file, u32 line);
-
 // OpenGL
 #define __neko_gl_state_backup()                                                \
     GLenum last_active_texture;                                                 \
@@ -283,99 +277,28 @@ NEKO_API() void gfx_print_error(const char* file, u32 line);
     glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);    \
     glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3])
 
-// Graphics Pipeline
-
-#define neko_enum_decl(NAME, ...) typedef enum NAME { _neko_##NAME##_default = 0x0, __VA_ARGS__, _neko_##NAME##_count, _neko_##NAME##_force_u32 = 0x7fffffff } NAME;
-
-typedef struct gfx_info_t {
-    const_str version;
-    const_str vendor;
-    u32 major_version;
-    u32 minor_version;
-    u32 max_texture_units;
-    u32 max_texture_size;
-    struct {
-        bool available;
-        u32 max_work_group_count[3];
-        u32 max_work_group_size[3];
-        u32 max_work_group_invocations;
-    } compute;
-} gfx_info_t;
-
 /*==========================
 // Graphics Interface
 ==========================*/
 
-// 内部 OpenGL 数据
-typedef struct neko_gl_data_t {
-    Array<AssetTexture> textures;
-} neko_gl_data_t;
-
 typedef struct gfx_t {
-    neko_gl_data_t* ud;
-    gfx_info_t info;  // Used for querying by user for features
+    Array<AssetTexture> textures;
+
+    struct glinfo_t {
+        const_str version;
+        const_str vendor;
+        u32 major_version;
+        u32 minor_version;
+        u32 max_texture_units;
+        u32 max_texture_size;
+        struct {
+            bool available;
+            u32 max_work_group_count[3];
+            u32 max_work_group_size[3];
+            u32 max_work_group_invocations;
+        } compute;
+    } glinfo;
 } gfx_t;
-
-NEKO_API() gfx_t* g_render;
-
-#define neko_render() RENDER()
-
-NEKO_API() gfx_t* gfx_create();
-NEKO_API() void gfx_fini(gfx_t* render);
-NEKO_API() void gfx_init(gfx_t* render);
-
-NEKO_API() gfx_info_t* gfx_info();
-NEKO_API() neko_gl_data_t* gfx_ogl();
-
-typedef struct neko_rgb_color_t {
-    float r, g, b;
-} neko_rgb_color_t;
-
-typedef u32 neko_color_t;
-
-struct neko_resource_t;
-
-NEKO_API() neko_color_t neko_color_from_rgb_color(neko_rgb_color_t rgb);
-NEKO_API() neko_rgb_color_t neko_rgb_color_from_color(neko_color_t color);
-
-typedef enum neko_vertex_buffer_flags_t {
-    NEKO_VERTEXBUFFER_STATIC_DRAW = 1 << 0,
-    NEKO_VERTEXBUFFER_DYNAMIC_DRAW = 1 << 1,
-    NEKO_VERTEXBUFFER_DRAW_LINES = 1 << 2,
-    NEKO_VERTEXBUFFER_DRAW_LINE_STRIP = 1 << 3,
-    NEKO_VERTEXBUFFER_DRAW_TRIANGLES = 1 << 4,
-} neko_vertex_buffer_flags_t;
-
-typedef struct neko_vertex_buffer_t {
-    u32 va_id;
-    u32 vb_id;
-    u32 ib_id;
-    u32 index_count;
-    neko_vertex_buffer_flags_t flags;
-} neko_vertex_buffer_t;
-
-NEKO_API() neko_vertex_buffer_t* neko_new_vertex_buffer(neko_vertex_buffer_flags_t flags);
-NEKO_API() void neko_free_vertex_buffer(neko_vertex_buffer_t* buffer);
-NEKO_API() void neko_bind_vertex_buffer_for_draw(neko_vertex_buffer_t* buffer);
-NEKO_API() void neko_bind_vertex_buffer_for_edit(neko_vertex_buffer_t* buffer);
-NEKO_API() void neko_push_vertices(neko_vertex_buffer_t* buffer, float* vertices, u32 count);
-NEKO_API() void neko_push_indices(neko_vertex_buffer_t* buffer, u32* indices, u32 count);
-NEKO_API() void neko_update_vertices(neko_vertex_buffer_t* buffer, float* vertices, u32 offset, u32 count);
-NEKO_API() void neko_update_indices(neko_vertex_buffer_t* buffer, u32* indices, u32 offset, u32 count);
-NEKO_API() void neko_configure_vertex_buffer(neko_vertex_buffer_t* buffer, u32 index, u32 component_count, u32 stride, u32 offset);
-NEKO_API() void neko_draw_vertex_buffer(neko_vertex_buffer_t* buffer);
-NEKO_API() void neko_draw_vertex_buffer_custom_count(neko_vertex_buffer_t* buffer, u32 count);
-
-NEKO_API() AssetTexture* neko_new_texture(neko_resource_t* resource, neko_texture_flags_t flags);
-NEKO_API() AssetTexture* neko_new_texture_from_memory(void* data, u32 size, neko_texture_flags_t flags);
-NEKO_API() AssetTexture* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture(AssetTexture* texture, neko_resource_t* resource, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, neko_texture_flags_t flags);
-NEKO_API() void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned char* pixels, i32 width, i32 height, i32 component_count, neko_texture_flags_t flags);
-NEKO_API() void neko_deinit_texture(AssetTexture* texture);
-
-NEKO_API() void neko_free_texture(AssetTexture* texture);
-NEKO_API() void neko_bind_texture(AssetTexture* texture, u32 slot);
 
 #define BUFFER_FRAMES 3
 
@@ -403,22 +326,5 @@ typedef struct {
 //     GLuint ebo;
 //     uint16_t indexes[2];
 // } StreamState;
-
-bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
-void texture_bind(const char* filename);
-vec2 texture_get_size(const char* filename);  // (width, height)
-AssetTexture texture_get_ptr(const char* filename);
-bool texture_update(AssetTexture* tex, String filename);
-bool texture_update_data(AssetTexture* tex, u8* data);
-
-u64 generate_texture_handle(void* pixels, int w, int h, void* udata);
-void destroy_texture_handle(u64 texture_id, void* udata);
-
-AssetTexture neko_aseprite_simple(String filename);
-
-// AssetTexture
-
-bool load_texture_data_from_memory(const void* memory, int sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
 
 #endif

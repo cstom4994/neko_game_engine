@@ -335,8 +335,6 @@ int _game_draw(App *app, Event evt) {
 
     imgui_draw_post();
 
-    neko_check_gl_error();
-
     gApp->window->SwapBuffer();
 
     return 0;
@@ -367,13 +365,14 @@ void Game::SplashScreen() {
 
         u32 indices[] = {0, 1, 3, 1, 2, 3};
 
-        neko_vertex_buffer_t *quad = neko_new_vertex_buffer(neko_vertex_buffer_flags_t(NEKO_VERTEXBUFFER_STATIC_DRAW | NEKO_VERTEXBUFFER_DRAW_TRIANGLES));
+        VertexBuffer quad;
+        quad.init_vb(vb_static | vb_tris);
 
-        neko_bind_vertex_buffer_for_edit(quad);
-        neko_push_vertices(quad, verts, sizeof(verts) / sizeof(float));
-        neko_push_indices(quad, indices, sizeof(indices) / sizeof(u32));
-        neko_configure_vertex_buffer(quad, 0, 2, 4, 0);
-        neko_configure_vertex_buffer(quad, 1, 2, 4, 2);
+        quad.bind_vb_for_edit(true);
+        quad.push_vertices(verts, sizeof(verts) / sizeof(float));
+        quad.push_indices(indices, sizeof(indices) / sizeof(u32));
+        quad.configure_vb(0, 2, 4, 0);
+        quad.configure_vb(1, 2, 4, 2);
 
         mat4 projection = mat4_ortho(-((float)gApp->cfg.width / 24.0f), (float)gApp->cfg.width / 24.0f, (float)gApp->cfg.height / 24.0f, -((float)gApp->cfg.height / 24.0f), -1.0f, 1.0f);
         mat4 model = mat4_scalev(vec3{splash_texture.width / 2.0f, splash_texture.height / 2.0f, 0.0f});
@@ -388,16 +387,14 @@ void Game::SplashScreen() {
         neko_shader_set_m4f(sid, "transform", model);
         neko_shader_set_m4f(sid, "projection", projection);
 
-        neko_bind_vertex_buffer_for_draw(quad);
-        neko_draw_vertex_buffer(quad);
+        quad.bind_vb_for_draw(true);
+        quad.draw_vb();
 
         gApp->window->SwapBuffer();
 
-        neko_free_vertex_buffer(quad);
+        quad.fini_vb();
 
         // neko_free_texture(&splash_texture);
-
-        neko_check_gl_error();
     }
 }
 
@@ -613,8 +610,6 @@ void Game::init() {
     error_assert(ok);
 
     renderer = new_renderer(sprite_shader.shader, neko_v2(gApp->cfg.width, gApp->cfg.height));
-
-    neko_check_gl_error();
 }
 
 int Game::set_window_title(const char *title) {
@@ -762,9 +757,6 @@ end
         LOG_INFO("using default game proxy");
     }
 
-    g_render = gfx_create();
-    gfx_init(g_render);
-
     game.SplashScreen();
 
     neko_default_font();
@@ -873,8 +865,6 @@ void system_fini() {
         gApp->default_font->trash();
         mem_free(gApp->default_font);
     }
-
-    gfx_fini(g_render);
 
     {
         PROFILE_BLOCK("destroy assets");

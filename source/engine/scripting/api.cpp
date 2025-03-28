@@ -3297,7 +3297,7 @@ void createStructTables(lua_State *L) {
 
     LuaEnum<KeyCode, -1, 350>(L);
     LuaEnum<MouseCode>(L);
-    LuaEnum<neko_texture_flags_t>(L);
+    LuaEnum<TextureFlags>(L);
     LuaEnum<AssetKind>(L);
 
     LuaStruct<vec2>(L);

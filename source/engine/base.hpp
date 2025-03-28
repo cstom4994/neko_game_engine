@@ -294,63 +294,6 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-#define enum_save(val, n, s)    \
-    do {                        \
-        int e__;                \
-        e__ = *(val);           \
-        int_save(&e__, n, (s)); \
-    } while (0)
-#define enum_load(val, n, d, s)         \
-    do {                                \
-        int e__;                        \
-        int_load(&e__, n, (int)d, (s)); \
-        *((int *)val) = e__;            \
-    } while (0)
-
-enum neko_texture_flags_t : int {
-    NEKO_TEXTURE_ALIASED = 1 << 0,
-    NEKO_TEXTURE_ANTIALIASED = 1 << 1,
-    NEKO_TEXTURE_SUBTEX = 1 << 2,
-    NEKO_TEXTURE_NO_FLIP_VERTICAL = 1 << 3,
-};
-
-typedef struct AssetTexture {
-    u32 id;  // 如果未初始化或纹理错误 则为 0
-    int width;
-    int height;
-    int components;
-    bool flip_image_vertical;
-    int unit;
-
-    neko_texture_flags_t flags;
-
-} AssetTexture;
-
-typedef enum neko_resource_type_t {
-    NEKO_RESOURCE_STRING,
-    NEKO_RESOURCE_BINARY,
-    NEKO_RESOURCE_TEXTURE,
-    NEKO_RESOURCE_SHADER,
-    NEKO_RESOURCE_ASSEMBLY,
-    NEKO_RESOURCE_SCRIPT,
-    NEKO_RESOURCE_MODEL,
-    NEKO_RESOURCE_MATERIAL,
-    NEKO_RESOURCE_FONT
-} neko_resource_type_t;
-
-typedef struct neko_resource_t {
-    neko_resource_type_t type;
-
-    void *payload;
-    u32 payload_size;
-
-    i64 modtime;
-
-    char *file_name;
-    u32 file_name_length;
-    u32 file_name_hash;
-} neko_resource_t;
-
 typedef struct BBox {
     vec2 min;
     vec2 max;

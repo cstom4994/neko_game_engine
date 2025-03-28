@@ -358,6 +358,10 @@ draw_imgui = function(dt)
         end
 
         if ImGui.Button("test_luabp") then
+            hot_require('test').UnitTest()
+        end
+
+        if ImGui.Button("test_luabp") then
             local M = dofile("../out.lua")
             neko.vfs_load_luabp("name", M)
             local content = read_file("luabp/README copy.md")

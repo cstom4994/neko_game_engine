@@ -16,6 +16,7 @@
 #include "engine/edit.h"
 #include "engine/graphics.h"
 #include "engine/renderer/shader.h"
+#include "engine/renderer/renderer.h"
 #include "engine/input.h"
 #include "base/scripting/lua_wrapper.hpp"
 #include "extern/atlas.h"
@@ -72,37 +73,36 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
     renderer->shader = ui_shader.shader.id;
     renderer->quad_count = 0;
 
-    neko_vertex_buffer_t *buffer = neko_new_vertex_buffer((neko_vertex_buffer_flags_t)(NEKO_VERTEXBUFFER_DRAW_TRIANGLES | NEKO_VERTEXBUFFER_DYNAMIC_DRAW));
+    VertexBuffer &vb = renderer->vb;
+    vb.init_vb(vb_tris | vb_dynamic);
 
     renderer->font = neko_default_font();
 
-    neko_bind_vertex_buffer_for_edit(buffer);
-    neko_push_vertices(buffer, NULL, (9 * 4) * ui_renderer_max_quads);
-    neko_push_indices(buffer, NULL, 6 * ui_renderer_max_quads);
-    neko_configure_vertex_buffer(buffer, 0, 2, 9, 0); /* vec2 position */
-    neko_configure_vertex_buffer(buffer, 1, 2, 9, 2); /* vec2 uv */
-    neko_configure_vertex_buffer(buffer, 2, 4, 9, 4); /* vec4 color */
+    vb.bind_vb_for_edit(true);
+    vb.push_vertices(NULL, (9 * 4) * ui_renderer_max_quads);
+    vb.push_indices(NULL, 6 * ui_renderer_max_quads);
+    vb.configure_vb(0, 2, 9, 0); /* vec2 position */
+    vb.configure_vb(1, 2, 9, 2); /* vec2 uv */
+    vb.configure_vb(2, 4, 9, 4); /* vec4 color */
     //  布局指定渲染模式
     //  	0 = rectangle
     //   	1 = icon (using atlas)
     //  	2 = text (ascii)
     //  	3 = text (unicode)
-    neko_configure_vertex_buffer(buffer, 3, 1, 9, 8); /* float mode */
-    neko_bind_vertex_buffer_for_edit(NULL);
-
-    renderer->vb = buffer;
+    vb.configure_vb(3, 1, 9, 8); /* float mode */
+    vb.bind_vb_for_edit(false);
 
     return renderer;
 }
 
 void neko_free_ui_renderer(engine_ui_renderer_t *renderer) {
-    neko_free_vertex_buffer(renderer->vb);
+    renderer->vb.fini_vb();
 
     mem_free(renderer);
 }
 
-void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, rect_t src, neko_color_t color, float transparency, u32 mode) {
-    neko_bind_vertex_buffer_for_edit(renderer->vb);
+void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, rect_t src, u32 color, float transparency, u32 mode) {
+    renderer->vb.bind_vb_for_edit(true);
 
     float tx = src.x;
     float ty = src.y;
@@ -117,7 +117,7 @@ void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, re
     } else if (mode == 2) {
     }
 
-    neko_rgb_color_t col = neko_rgb_color_from_color(color);
+    Color col = color256_to_rgb(color);
 
     float verts[] = {dst.x,         dst.y,         tx,      ty,      col.r, col.g, col.b, transparency, (float)mode,   //
                      dst.x + dst.w, dst.y,         tx + tw, ty,      col.r, col.g, col.b, transparency, (float)mode,   //
@@ -128,10 +128,10 @@ void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, re
 
     u32 indices[] = {index_offset + 3, index_offset + 2, index_offset + 1, index_offset + 3, index_offset + 1, index_offset + 0};
 
-    neko_update_vertices(renderer->vb, verts, renderer->quad_count * 9 * 4, 9 * 4);
-    neko_update_indices(renderer->vb, indices, renderer->quad_count * 6, 6);
+    renderer->vb.update_vertices(verts, renderer->quad_count * 9 * 4, 9 * 4);
+    renderer->vb.update_indices(indices, renderer->quad_count * 6, 6);
 
-    neko_bind_vertex_buffer_for_edit(NULL);
+    renderer->vb.bind_vb_for_edit(false);
 
     renderer->quad_count++;
 
@@ -189,7 +189,7 @@ void neko_end_ui_renderer(engine_ui_renderer_t *renderer) {
 }
 
 void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
-    neko_bind_vertex_buffer_for_edit(NULL);
+    renderer->vb.bind_vb_for_edit(false);
     neko_bind_shader(renderer->shader);
 
     neko_bind_texture(renderer->icon_texture, 0);
@@ -199,9 +199,9 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
 
     neko_shader_set_m4f(renderer->shader, "camera", renderer->camera);
 
-    neko_bind_vertex_buffer_for_draw(renderer->vb);
-    neko_draw_vertex_buffer_custom_count(renderer->vb, renderer->quad_count * 6);
-    neko_bind_vertex_buffer_for_draw(NULL);
+    renderer->vb.bind_vb_for_draw(true);
+    renderer->vb.draw_vb_n(renderer->quad_count * 6);
+    renderer->vb.bind_vb_for_draw(false);
 
     neko_bind_texture({}, 0);
     neko_bind_shader(NULL);
@@ -210,7 +210,7 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
     renderer->draw_call_count++;
 }
 
-float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *text, vec2 position, neko_color_t color, float transparency) {
+float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *text, vec2 position, u32 color, float transparency) {
     // const char* p = text;
     // u32 code_point;
     // while (*p) {
@@ -281,7 +281,7 @@ float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *t
     return position.x;
 }
 
-void engine_ui_renderer_draw_rect(engine_ui_renderer_t *renderer, rect_t rect, neko_color_t color, float transparency) {
+void engine_ui_renderer_draw_rect(engine_ui_renderer_t *renderer, rect_t rect, u32 color, float transparency) {
     rect_t dst = {rect.x, rect.y, rect.w, rect.h};
 
     rect_t ui_src = ui_atlas_lookup(UI_ATLAS_WHITE);
@@ -291,7 +291,7 @@ void engine_ui_renderer_draw_rect(engine_ui_renderer_t *renderer, rect_t rect, n
     engine_ui_renderer_push_quad(renderer, dst, src, color, transparency, 0);
 }
 
-void engine_ui_renderer_draw_icon(engine_ui_renderer_t *renderer, u32 id, rect_t rect, neko_color_t color, float transparency) {
+void engine_ui_renderer_draw_icon(engine_ui_renderer_t *renderer, u32 id, rect_t rect, u32 color, float transparency) {
     rect_t src = renderer->icon_rects[id];
 
     i32 x = rect.x + (rect.w - src.w) / 2;
@@ -328,7 +328,7 @@ ui_context_t *ui_global_ctx() { return gApp->ui; }
 void neko_init_ui_renderer() {
     ui_renderer = neko_new_ui_renderer();
 
-    ui_renderer->icon_texture = neko_new_texture_from_memory_uncompressed(ui_atlas_texture, sizeof(ui_atlas_texture), UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, NEKO_TEXTURE_ANTIALIASED);
+    ui_renderer->icon_texture = neko_new_texture_from_memory_uncompressed(ui_atlas_texture, sizeof(ui_atlas_texture), UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, TEXTURE_ANTIALIASED);
 
     for (u32 i = UI_ICON_CLOSE; i <= UI_ICON_MAX; i++) {
         rect_t rect = ui_atlas_lookup(i);
@@ -354,9 +354,9 @@ void neko_deinit_ui_renderer() {
 }
 
 static void neko_ui_renderer_push_quad(rect_t dst, rect_t src, Color256 color, u32 mode) {
-    neko_rgb_color_t rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
+    Color rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
 
-    neko_color_t c = neko_color_from_rgb_color(rgb);
+    u32 c = color256_from_rgb(rgb);
 
     engine_ui_renderer_push_quad(ui_renderer, dst, src, c, (float)color.a / 255.0f, mode);
 }
@@ -376,9 +376,9 @@ static void neko_set_ui_renderer_clip(rect_t rect) {
 static void neko_render_ui_text(const char *text, vec2 pos, Color256 color) {
     vec2 p = {(float)pos.x, (float)pos.y};
 
-    neko_rgb_color_t rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
+    Color rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
 
-    neko_color_t c = neko_color_from_rgb_color(rgb);
+    u32 c = color256_from_rgb(rgb);
 
     engine_ui_renderer_draw_text(ui_renderer, text, p, c, (float)color.a / 255.0f);
 }
@@ -386,9 +386,9 @@ static void neko_render_ui_text(const char *text, vec2 pos, Color256 color) {
 static void neko_render_ui_rect(rect_t rect, Color256 color) {
     rect_t r = {(float)rect.x, (float)rect.y, (float)rect.w, (float)rect.h};
 
-    neko_rgb_color_t rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
+    Color rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
 
-    neko_color_t c = neko_color_from_rgb_color(rgb);
+    u32 c = color256_from_rgb(rgb);
 
     engine_ui_renderer_draw_rect(ui_renderer, r, c, (float)color.a / 255.0f);
 }
@@ -396,9 +396,9 @@ static void neko_render_ui_rect(rect_t rect, Color256 color) {
 static void neko_render_ui_icon(i32 id, rect_t rect, Color256 color) {
     rect_t r = {(float)rect.x, (float)rect.y, (float)rect.w, (float)rect.h};
 
-    neko_rgb_color_t rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
+    Color rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};
 
-    neko_color_t c = neko_color_from_rgb_color(rgb);
+    u32 c = color256_from_rgb(rgb);
 
     engine_ui_renderer_draw_icon(ui_renderer, id, r, c, (float)color.a / 255.0f);
 }

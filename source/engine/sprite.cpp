@@ -197,7 +197,7 @@ bool AseSpriteData::load(String filepath) {
     {
         PROFILE_BLOCK("make image");
 
-        neko_init_texture_from_memory_uncompressed(&new_tex, data, ase_width, ase_height, 4, NEKO_TEXTURE_ALIASED);
+        neko_init_texture_from_memory_uncompressed(&new_tex, data, ase_width, ase_height, 4, TEXTURE_ALIASED);
     }
 
     HashMap<AseSpriteLoop> by_tag = {};

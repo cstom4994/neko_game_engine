@@ -5,6 +5,7 @@
 #include "base/common/hashmap.hpp"
 #include "base/common/string.hpp"
 #include "engine/base.hpp"
+#include "engine/renderer/texture.h"
 
 using namespace Neko;
 

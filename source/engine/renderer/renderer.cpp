@@ -1,19 +1,21 @@
+
+#include "renderer.h"
+
+#include "base/common/base.hpp"
+#include "base/common/mem.hpp"
+#include "engine/bootstrap.h"
+#include "engine/graphics.h"
+#include "engine/renderer/texture.h"
+
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
-#include "base/common/base.hpp"
-#include "base/common/mem.hpp"
-#include "engine/bootstrap.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "engine/graphics.h"
-#include "renderer.h"
 
 static void __stdcall gl_debug_callback(u32 source, u32 type, u32 id, u32 severity, i32 length, const char* message, const void* up) {
 
@@ -133,260 +135,82 @@ struct bmp_header {
 };
 #pragma pack(pop)
 
-void init_vb(VertexBuffer* vb, const i32 flags) {
-    vb->flags = flags;
+void VertexBuffer::init_vb(const i32 flags) {
+    this->flags = flags;
 
-    glGenVertexArrays(1, &vb->va_id);
-    glGenBuffers(1, &vb->vb_id);
-    glGenBuffers(1, &vb->ib_id);
+    glGenVertexArrays(1, &this->va_id);
+    glGenBuffers(1, &this->vb_id);
+    glGenBuffers(1, &this->ib_id);
 }
 
-void deinit_vb(VertexBuffer* vb) {
-    glDeleteVertexArrays(1, &vb->va_id);
-    glDeleteBuffers(1, &vb->vb_id);
-    glDeleteBuffers(1, &vb->ib_id);
+void VertexBuffer::fini_vb() {
+    glDeleteVertexArrays(1, &this->va_id);
+    glDeleteBuffers(1, &this->vb_id);
+    glDeleteBuffers(1, &this->ib_id);
 }
 
-void bind_vb_for_draw(const VertexBuffer* vb) { glBindVertexArray(vb ? vb->va_id : 0); }
+void VertexBuffer::bind_vb_for_draw(bool bind) const { glBindVertexArray(bind ? this->va_id : 0); }
 
-void bind_vb_for_edit(const VertexBuffer* vb) {
-    if (!vb) {
+void VertexBuffer::bind_vb_for_edit(bool bind) const {
+    if (!bind) {
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     } else {
-        glBindVertexArray(vb->va_id);
-        glBindBuffer(GL_ARRAY_BUFFER, vb->vb_id);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vb->ib_id);
+        glBindVertexArray(this->va_id);
+        glBindBuffer(GL_ARRAY_BUFFER, this->vb_id);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, this->ib_id);
     }
 }
 
-void push_vertices(const VertexBuffer* vb, f32* vertices, u32 count) {
-    const u32 mode = vb->flags & vb_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+void VertexBuffer::push_vertices(f32* vertices, u32 count) const {
+    const u32 mode = this->flags & vb_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
     glBufferData(GL_ARRAY_BUFFER, count * sizeof(f32), vertices, mode);
 }
 
-void push_indices(VertexBuffer* vb, u32* indices, u32 count) {
-    const u32 mode = vb->flags & vb_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+void VertexBuffer::push_indices(u32* indices, u32 count) {
+    const u32 mode = this->flags & vb_static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
-    vb->index_count = count;
+    this->index_count = count;
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(f32), indices, mode);
 }
 
-void update_vertices(const VertexBuffer* vb, f32* vertices, u32 offset, u32 count) { glBufferSubData(GL_ARRAY_BUFFER, offset * sizeof(f32), count * sizeof(f32), vertices); }
+void VertexBuffer::update_vertices(f32* vertices, u32 offset, u32 count) const { glBufferSubData(GL_ARRAY_BUFFER, offset * sizeof(f32), count * sizeof(f32), vertices); }
 
-void update_indices(VertexBuffer* vb, u32* indices, u32 offset, u32 count) {
-    vb->index_count = count;
+void VertexBuffer::update_indices(u32* indices, u32 offset, u32 count) {
+    this->index_count = count;
 
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, offset * sizeof(u32), count * sizeof(u32), indices);
 }
 
-void configure_vb(const VertexBuffer* vb, u32 index, u32 component_count, u32 stride, u32 offset) {
+void VertexBuffer::configure_vb(u32 index, u32 component_count, u32 stride, u32 offset) const {
 
     glVertexAttribPointer(index, component_count, GL_FLOAT, GL_FALSE, stride * sizeof(f32), (void*)(u64)(offset * sizeof(f32)));
     glEnableVertexAttribArray(index);
 }
 
-void draw_vb(const VertexBuffer* vb) {
+void VertexBuffer::draw_vb() const {
     u32 draw_type = GL_TRIANGLES;
-    if (vb->flags & vb_lines) {
+    if (this->flags & vb_lines) {
         draw_type = GL_LINES;
-    } else if (vb->flags & vb_line_strip) {
+    } else if (this->flags & vb_line_strip) {
         draw_type = GL_LINE_STRIP;
     }
 
-    glDrawElements(draw_type, vb->index_count, GL_UNSIGNED_INT, 0);
+    glDrawElements(draw_type, this->index_count, GL_UNSIGNED_INT, 0);
 }
 
-void draw_vb_n(const VertexBuffer* vb, u32 count) {
+void VertexBuffer::draw_vb_n(u32 count) const {
     u32 draw_type = GL_TRIANGLES;
-    if (vb->flags & vb_lines) {
+    if (this->flags & vb_lines) {
         draw_type = GL_LINES;
-    } else if (vb->flags & vb_line_strip) {
+    } else if (this->flags & vb_line_strip) {
         draw_type = GL_LINE_STRIP;
     }
 
     glDrawElements(draw_type, count, GL_UNSIGNED_INT, 0);
-}
-
-void init_texture(struct texture* texture, u8* data, u64 size, u32 flags) {
-    assert(size > sizeof(struct bmp_header));
-
-    if (*data != 'B' && *(data + 1) != 'M') {
-        fprintf(stderr, "Not a valid bitmap!\n");
-        return;
-    }
-
-    struct bmp_header* header = (struct bmp_header*)data;
-    u8* src = data + header->bmp_offset;
-
-    u32 mode = texture_rgba;
-    if (header->bits_per_pixel == 24) {
-        mode = texture_rgb;
-    } else if (header->bits_per_pixel == 8) {
-        mode = texture_mono;
-    }
-
-    init_texture_no_bmp(texture, src, header->w, header->h, flags | mode | texture_flip);
-}
-
-void init_texture_no_bmp(struct texture* texture, u8* src, u32 w, u32 h, u32 flags) {
-    glGenTextures(1, &texture->id);
-    glBindTexture(GL_TEXTURE_2D, texture->id);
-
-    GLenum wrap_mode = GL_REPEAT;
-    if (flags & texture_clamp) {
-        wrap_mode = GL_CLAMP_TO_EDGE;
-    }
-
-    GLenum filter_mode = GL_LINEAR;
-    if (flags & texture_filter_nearest) {
-        filter_mode = GL_NEAREST;
-    }
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_mode);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_mode);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter_mode);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter_mode);
-
-    GLenum format = GL_RGB;
-    u32 wf = 3;
-    if (flags & texture_rgba) {
-        format = GL_RGBA;
-        wf = 4;
-    } else if (flags & texture_mono) {
-        format = GL_RED;
-        wf = 1;
-    }
-
-    u8* dst = (u8*)mem_alloc(w * h * wf);
-    if (flags & texture_flip) {
-        for (u32 y = 0; y < h; y++) {
-            for (u32 x = 0; x < w; x++) {
-                if (!(flags & texture_mono)) {
-                    dst[((h - y - 1) * w + x) * wf + 0] = src[(y * w + x) * wf + 0];
-                    dst[((h - y - 1) * w + x) * wf + 1] = src[(y * w + x) * wf + 1];
-                    dst[((h - y - 1) * w + x) * wf + 2] = src[(y * w + x) * wf + 2];
-                }
-
-                if (flags & texture_rgba) {
-                    dst[((h - y - 1) * w + x) * wf + 3] = src[(y * w + x) * wf + 3];
-                } else if (flags & texture_mono) {
-                    dst[((h - y - 1) * w + x) * wf] = src[(y * w + x) * wf];
-                }
-            }
-        }
-    } else {
-        memcpy(dst, src, w * h * wf);
-    }
-
-    if (!(flags & texture_mono)) {
-        for (u32 i = 0; i < w * h * wf; i += wf) {
-            u8 r = dst[i + 2];
-            u8 g = dst[i + 1];
-            u8 b = dst[i + 0];
-
-            dst[i + 0] = r;
-            dst[i + 1] = g;
-            dst[i + 2] = b;
-        }
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, dst);
-
-    texture->width = w;
-    texture->height = h;
-
-    mem_free(dst);
-}
-
-void update_texture(struct texture* texture, u8* data, u64 size, u32 flags) {
-    assert(size > sizeof(struct bmp_header));
-
-    if (*data != 'B' && *(data + 1) != 'M') {
-        fprintf(stderr, "Not a valid bitmap!\n");
-        return;
-    }
-
-    struct bmp_header* header = (struct bmp_header*)data;
-    u8* src = data + header->bmp_offset;
-
-    u32 mode = texture_rgba;
-    if (header->bits_per_pixel == 24) {
-        mode = texture_rgb;
-    } else if (header->bits_per_pixel == 8) {
-        mode = texture_mono;
-    }
-
-    update_texture_no_bmp(texture, src, header->w, header->h, flags | mode | texture_flip);
-}
-
-void update_texture_no_bmp(struct texture* texture, u8* src, u32 w, u32 h, u32 flags) {
-    glBindTexture(GL_TEXTURE_2D, texture->id);
-
-    GLenum format = GL_RGB;
-    u32 wf = 3;
-    if (flags & texture_rgba) {
-        format = GL_RGBA;
-        wf = 4;
-    } else if (flags & texture_mono) {
-        format = GL_RED;
-        wf = 1;
-    }
-
-    u8* dst = (u8*)mem_alloc(w * h * wf);
-    if (flags & texture_flip) {
-        for (u32 y = 0; y < h; y++) {
-            for (u32 x = 0; x < w; x++) {
-                if (!(flags & texture_mono)) {
-                    dst[((h - y - 1) * w + x) * wf + 0] = src[(y * w + x) * wf + 0];
-                    dst[((h - y - 1) * w + x) * wf + 1] = src[(y * w + x) * wf + 1];
-                    dst[((h - y - 1) * w + x) * wf + 2] = src[(y * w + x) * wf + 2];
-                }
-
-                if (flags & texture_rgba) {
-                    dst[((h - y - 1) * w + x) * wf + 3] = src[(y * w + x) * wf + 3];
-                } else if (flags & texture_mono) {
-                    dst[((h - y - 1) * w + x) * wf + 0] = src[(y * w + x) * wf + 0];
-                }
-            }
-        }
-    } else {
-        memcpy(dst, src, w * h * wf);
-    }
-
-    if (!(flags & texture_mono)) {
-        for (u32 i = 0; i < w * h * wf; i += wf) {
-            dst[i + 0] = src[i + 2];
-            dst[i + 1] = src[i + 1];
-            dst[i + 2] = src[i + 0];
-        }
-    }
-
-    texture->width = w;
-    texture->height = h;
-
-    if (texture->width == w && texture->height == h) {
-        glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, dst);
-    } else {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, dst);
-    }
-
-    mem_free(dst);
-}
-
-void deinit_texture(struct texture* texture) { glDeleteTextures(1, &texture->id); }
-
-void bind_texture(const struct texture* texture, u32 unit) {
-    if (!texture) {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return;
-    }
-
-    glActiveTexture(GL_TEXTURE0 + unit);
-    glBindTexture(GL_TEXTURE_2D, texture->id);
 }
 
 void init_render_target(RenderTarget* target, u32 width, u32 height) {
@@ -474,17 +298,17 @@ QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions) {
 
     renderer->ambient_light = 1.0f;
 
-    init_vb(&renderer->vb, vb_dynamic | vb_tris);
-    bind_vb_for_edit(&renderer->vb);
-    push_vertices(&renderer->vb, NULL, els_per_vert * verts_per_quad * batch_size);
-    push_indices(&renderer->vb, NULL, indices_per_quad * batch_size);
-    configure_vb(&renderer->vb, 0, 2, els_per_vert, 0);  /* vec2 position */
-    configure_vb(&renderer->vb, 1, 2, els_per_vert, 2);  /* vec2 uv */
-    configure_vb(&renderer->vb, 2, 4, els_per_vert, 4);  /* vec4 color */
-    configure_vb(&renderer->vb, 3, 1, els_per_vert, 8);  /* f32 texture_id */
-    configure_vb(&renderer->vb, 4, 1, els_per_vert, 9);  /* f32 inverted */
-    configure_vb(&renderer->vb, 5, 1, els_per_vert, 10); /* f32 unlit */
-    bind_vb_for_edit(NULL);
+    renderer->vb.init_vb(vb_dynamic | vb_tris);
+    renderer->vb.bind_vb_for_edit(true);
+    renderer->vb.push_vertices(NULL, els_per_vert * verts_per_quad * batch_size);
+    renderer->vb.push_indices(NULL, indices_per_quad * batch_size);
+    renderer->vb.configure_vb(0, 2, els_per_vert, 0);  /* vec2 position */
+    renderer->vb.configure_vb(1, 2, els_per_vert, 2);  /* vec2 uv */
+    renderer->vb.configure_vb(2, 4, els_per_vert, 4);  /* vec4 color */
+    renderer->vb.configure_vb(3, 1, els_per_vert, 8);  /* f32 texture_id */
+    renderer->vb.configure_vb(4, 1, els_per_vert, 9);  /* f32 inverted */
+    renderer->vb.configure_vb(5, 1, els_per_vert, 10); /* f32 unlit */
+    renderer->vb.bind_vb_for_edit(NULL);
 
     renderer->clip_enable = false;
     renderer->camera_enable = false;
@@ -502,7 +326,7 @@ QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions) {
 }
 
 void free_renderer(QuadRenderer* renderer) {
-    deinit_vb(&renderer->vb);
+    renderer->vb.fini_vb();
 
     mem_free(renderer);
 }
@@ -522,7 +346,7 @@ void renderer_flush(QuadRenderer* renderer) {
     neko_bind_shader(renderer->shader.id);
 
     for (u32 i = 0; i < renderer->texture_count; i++) {
-        bind_texture(renderer->textures[i], i);
+        neko_bind_texture(renderer->textures[i], i);
 
         char name[32];
         sprintf(name, "textures[%u]", i);
@@ -556,14 +380,14 @@ void renderer_flush(QuadRenderer* renderer) {
         neko_shader_set_m4f(renderer->shader.id, "view", mat4_identity());
     }
 
-    bind_vb_for_edit(&renderer->vb);
-    update_vertices(&renderer->vb, renderer->verts, 0, renderer->quad_count * els_per_vert * verts_per_quad);
-    update_indices(&renderer->vb, renderer->indices, 0, renderer->quad_count * indices_per_quad);
-    bind_vb_for_edit(NULL);
+    renderer->vb.bind_vb_for_edit(true);
+    renderer->vb.update_vertices(renderer->verts, 0, renderer->quad_count * els_per_vert * verts_per_quad);
+    renderer->vb.update_indices(renderer->indices, 0, renderer->quad_count * indices_per_quad);
+    renderer->vb.bind_vb_for_edit(false);
 
-    bind_vb_for_draw(&renderer->vb);
-    draw_vb_n(&renderer->vb, renderer->quad_count * indices_per_quad);
-    bind_vb_for_draw(NULL);
+    renderer->vb.bind_vb_for_draw(true);
+    renderer->vb.draw_vb_n(renderer->quad_count * indices_per_quad);
+    renderer->vb.bind_vb_for_draw(false);
     neko_bind_shader(NULL);
 
     renderer->quad_count = 0;
@@ -698,20 +522,20 @@ PostProcessor* new_post_processor(AssetShader shader) {
 
     u32 indices[] = {3, 2, 1, 3, 1, 0};
 
-    init_vb(&p->vb, vb_static | vb_tris);
-    bind_vb_for_edit(&p->vb);
-    push_vertices(&p->vb, verts, 4 * 4);
-    push_indices(&p->vb, indices, 6);
-    configure_vb(&p->vb, 0, 2, 4, 0);
-    configure_vb(&p->vb, 1, 2, 4, 2);
-    bind_vb_for_edit(NULL);
+    p->vb.init_vb(vb_static | vb_tris);
+    p->vb.bind_vb_for_edit(true);
+    p->vb.push_vertices(verts, 4 * 4);
+    p->vb.push_indices(indices, 6);
+    p->vb.configure_vb(0, 2, 4, 0);
+    p->vb.configure_vb(1, 2, 4, 2);
+    p->vb.bind_vb_for_edit(false);
 
     return p;
 }
 
 void free_post_processor(PostProcessor* p) {
     deinit_render_target(&p->target);
-    deinit_vb(&p->vb);
+    p->vb.fini_vb();
 
     mem_free(p);
 }
@@ -747,415 +571,11 @@ void flush_post_processor(PostProcessor* p, bool default_rt) {
 
     bind_render_target_output(&p->target, 0);
 
-    bind_vb_for_draw(&p->vb);
-    draw_vb(&p->vb);
-    bind_vb_for_draw(NULL);
+    p->vb.bind_vb_for_draw(true);
+    p->vb.draw_vb();
+    p->vb.bind_vb_for_draw(false);
 
     neko_bind_shader(NULL);
-}
-
-struct glyph_set {
-    struct texture atlas;
-    stbtt_bakedchar glyphs[256];
-};
-
-struct font {
-    void* data;
-    stbtt_fontinfo info;
-    struct glyph_set* sets[MAX_GLYPHSET];
-    f32 size;
-    i32 height;
-};
-
-static const char* utf8_to_codepoint(const char* p, u32* dst) {
-    u32 res, n;
-    switch (*p & 0xf0) {
-        case 0xf0:
-            res = *p & 0x07;
-            n = 3;
-            break;
-        case 0xe0:
-            res = *p & 0x0f;
-            n = 2;
-            break;
-        case 0xd0:
-        case 0xc0:
-            res = *p & 0x1f;
-            n = 1;
-            break;
-        default:
-            res = *p;
-            n = 0;
-            break;
-    }
-    while (n--) {
-        res = (res << 6) | (*(++p) & 0x3f);
-    }
-    *dst = res;
-    return p + 1;
-}
-
-static struct glyph_set* load_glyph_set(struct font* font, i32 idx) {
-    i32 width, height, r, ascent, descent, linegap, scaled_ascent, i;
-    unsigned char n;
-    f32 scale, s;
-    struct glyph_set* set;
-
-    set = (struct glyph_set*)mem_calloc(1, sizeof(struct glyph_set));
-
-    width = 128;
-    height = 128;
-
-    Color256* pixels;
-
-retry:
-    pixels = (Color256*)mem_alloc(width * height * 4);
-
-    s = stbtt_ScaleForMappingEmToPixels(&font->info, 1) / stbtt_ScaleForPixelHeight(&font->info, 1);
-    r = stbtt_BakeFontBitmap((u8*)font->data, 0, font->size * s, (u8*)pixels, width, height, idx * 256, 256, set->glyphs);
-
-    if (r <= 0) {
-        width *= 2;
-        height *= 2;
-        mem_free(pixels);
-        goto retry;
-    }
-
-    stbtt_GetFontVMetrics(&font->info, &ascent, &descent, &linegap);
-    scale = stbtt_ScaleForMappingEmToPixels(&font->info, font->size);
-    scaled_ascent = (i32)(ascent * scale + 0.5);
-    for (i = 0; i < 256; i++) {
-        set->glyphs[i].yoff += scaled_ascent;
-        set->glyphs[i].xadvance = (f32)floor(set->glyphs[i].xadvance);
-    }
-
-    for (i = width * height - 1; i >= 0; i--) {
-        n = *((u8*)pixels + i);
-        pixels[i] = Color256{255, 255, 255, n};
-    }
-
-    init_texture_no_bmp(&set->atlas, (u8*)pixels, width, height, sprite_texture | texture_rgba);
-
-    mem_free(pixels);
-
-    return set;
-}
-
-static struct glyph_set* get_glyph_set(struct font* font, i32 code_poi32) {
-    i32 idx;
-
-    idx = (code_poi32 >> 8) % MAX_GLYPHSET;
-    if (!font->sets[idx]) {
-        font->sets[idx] = load_glyph_set(font, idx);
-    }
-    return font->sets[idx];
-}
-
-struct font* load_font_from_memory(void* data, u64 filesize, f32 size) {
-    struct font* font;
-    i32 r, ascent, descent, linegap;
-    f32 scale;
-
-    font = (struct font*)mem_calloc(1, sizeof(struct font));
-    font->data = data;
-
-    font->size = size;
-
-    r = stbtt_InitFont(&font->info, (u8*)font->data, 0);
-    if (!r) {
-        goto fail;
-    }
-
-    stbtt_GetFontVMetrics(&font->info, &ascent, &descent, &linegap);
-    scale = stbtt_ScaleForMappingEmToPixels(&font->info, size);
-    font->height = (i32)((ascent - descent + linegap) * scale + 0.5);
-
-    stbtt_bakedchar* g = get_glyph_set(font, '\n')->glyphs;
-    g['\t'].x1 = g['\t'].x0;
-    g['\n'].x1 = g['\n'].x0;
-
-    set_font_tab_size(font, 8);
-
-    return font;
-
-fail:
-    if (font) {
-        if (font->data) {
-            mem_free(font->data);
-        }
-        mem_free(font);
-    }
-    return NULL;
-}
-
-void free_font(struct font* font) {
-    i32 i;
-    struct glyph_set* set;
-
-    for (i = 0; i < MAX_GLYPHSET; i++) {
-        set = font->sets[i];
-        if (set) {
-            deinit_texture(&set->atlas);
-            mem_free(set);
-        }
-    }
-
-    mem_free(font->data);
-    mem_free(font);
-}
-
-void set_font_tab_size(struct font* font, i32 n) {
-    struct glyph_set* set;
-
-    set = get_glyph_set(font, '\t');
-    set->glyphs['\t'].xadvance = n * set->glyphs[' '].xadvance;
-}
-
-i32 get_font_tab_size(struct font* font) {
-    struct glyph_set* set;
-
-    set = get_glyph_set(font, '\t');
-    return (i32)(set->glyphs['\t'].xadvance / set->glyphs[' '].xadvance);
-}
-
-f32 get_font_size(struct font* font) { return font->size; }
-
-i32 font_height(struct font* font) { return font->height; }
-
-i32 text_width(struct font* font, const char* text) {
-    i32 x;
-    u32 codepoint;
-    const char* p;
-    struct glyph_set* set;
-    stbtt_bakedchar* g;
-
-    x = 0;
-    p = text;
-    while (*p) {
-        p = utf8_to_codepoint(p, &codepoint);
-
-        if (*p == '\n') {
-            x = 0;
-        }
-
-        set = get_glyph_set(font, codepoint);
-        g = &set->glyphs[codepoint & 0xff];
-        x += (i32)g->xadvance;
-    }
-    return x;
-}
-
-i32 char_width(struct font* font, char c) {
-    char p[2];
-    p[0] = c;
-
-    u32 codepoint;
-    utf8_to_codepoint(p, &codepoint);
-
-    struct glyph_set* set = get_glyph_set(font, codepoint);
-    stbtt_bakedchar* g = &set->glyphs[codepoint & 0xff];
-    return g->xadvance;
-}
-
-i32 text_height(struct font* font, const char* text) {
-    i32 height = font->height;
-
-    for (const char* c = text; *c; c++) {
-        if (*c == '\n') {
-            height += font->height;
-        }
-    }
-
-    return height;
-}
-
-i32 text_width_n(struct font* font, const char* text, u32 n) {
-    i32 x;
-    u32 codepoint;
-    const char* p;
-    struct glyph_set* set;
-    stbtt_bakedchar* g;
-
-    x = 0;
-    p = text;
-    u32 i = 0;
-    while (*p && i < n) {
-        p = utf8_to_codepoint(p, &codepoint);
-
-        if (*p == '\n') {
-            x = 0;
-        }
-
-        set = get_glyph_set(font, codepoint);
-        g = &set->glyphs[codepoint & 0xff];
-        x += (i32)g->xadvance;
-        i++;
-    }
-    return x;
-}
-
-i32 text_height_n(struct font* font, const char* text, u32 n) {
-    i32 height = font->height;
-
-    for (u32 i = 0; i < n; i++) {
-        if (text[i] == '\n') {
-            height += font->height;
-        }
-    }
-
-    return height;
-}
-
-i32 render_text(QuadRenderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color) {
-    const char* p;
-    u32 codepoint;
-    struct glyph_set* set;
-    stbtt_bakedchar* g;
-    i32 ori_x = x;
-
-    p = text;
-    while (*p) {
-        if (*p == '\n') {
-            x = ori_x;
-            y += font->height;
-
-            p++;
-            continue;
-        }
-
-        p = utf8_to_codepoint(p, &codepoint);
-
-        set = get_glyph_set(font, codepoint);
-        g = &set->glyphs[codepoint & 0xff];
-
-        f32 w = g->x1 - g->x0;
-        f32 h = g->y1 - g->y0;
-
-        TexturedQuad quad = {.texture = &set->atlas, .position = {x + g->xoff, y + g->yoff}, .dimentions = {w, h}, .rect = {(f32)g->x0, (f32)g->y0, w, h}, .color = color, .unlit = true};
-
-        renderer_push(renderer, &quad);
-        x += (i32)g->xadvance;
-    }
-
-    return x;
-}
-
-i32 render_text_n(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color) {
-    const char* p;
-    u32 codepoint;
-    struct glyph_set* set;
-    stbtt_bakedchar* g;
-    i32 ori_x = x;
-
-    p = text;
-    for (u32 i = 0; i < n && *p; i++) {
-        if (*p == '\n') {
-            x = ori_x;
-            y += font->height;
-
-            p++;
-            continue;
-        }
-
-        p = utf8_to_codepoint(p, &codepoint);
-
-        set = get_glyph_set(font, codepoint);
-        g = &set->glyphs[codepoint & 0xff];
-
-        f32 w = g->x1 - g->x0;
-        f32 h = g->y1 - g->y0;
-
-        TexturedQuad quad = {.texture = &set->atlas, .position = {x + g->xoff, y + g->yoff}, .dimentions = {w, h}, .rect = {(f32)g->x0, (f32)g->y0, w, h}, .color = color, .unlit = true};
-
-        renderer_push(renderer, &quad);
-        x += (i32)g->xadvance;
-    }
-
-    return x;
-}
-
-i32 render_text_fancy(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin) {
-    const char* p;
-    u32 codepoint;
-    struct glyph_set* set;
-    stbtt_bakedchar* g;
-
-    p = text;
-    for (u32 i = 0; i < n && *p; i++) {
-        if (*p == '%' && *(p + 1) == 'c') {
-            p += 2;
-
-            coin->position.x = x;
-            coin->position.y = y;
-            coin->color = color;
-            renderer_push(renderer, coin);
-
-            x += coin->dimentions.x;
-        } else {
-            p = utf8_to_codepoint(p, &codepoint);
-
-            set = get_glyph_set(font, codepoint);
-            g = &set->glyphs[codepoint & 0xff];
-
-            f32 w = g->x1 - g->x0;
-            f32 h = g->y1 - g->y0;
-
-            TexturedQuad quad = {.texture = &set->atlas, .position = {x + g->xoff, y + g->yoff}, .dimentions = {w, h}, .rect = {(f32)g->x0, (f32)g->y0, w, h}, .color = color};
-
-            renderer_push(renderer, &quad);
-            x += (i32)g->xadvance;
-        }
-    }
-
-    return x;
-}
-
-char* word_wrap(struct font* font, char* buffer, const char* string, i32 width) {
-    i32 i = 0;
-
-    u32 string_len = (u32)strlen(string);
-    i32 line_start = 0;
-
-    while (i < string_len) {
-        for (i32 c = 1; c < width - 8; c += char_width(font, string[i])) {
-            if (i >= string_len) {
-                buffer[i] = '\0';
-                return buffer;
-            }
-
-            buffer[i] = string[i];
-
-            if (string[i] == '\n') {
-                line_start = i;
-                c = 1;
-            }
-
-            i++;
-        }
-
-        if (isspace(string[i])) {
-            buffer[i++] = '\n';
-            line_start = i;
-        } else {
-            for (i32 c = i; c > 0; c--) {
-                if (isspace(string[c])) {
-                    buffer[c] = '\n';
-                    i = c + 1;
-                    line_start = i;
-                    break;
-                }
-
-                if (c <= line_start) {
-                    buffer[i++] = '\n';
-                    break;
-                }
-            }
-        }
-    }
-
-    buffer[i] = '\0';
-
-    return buffer;
 }
 
 void Renderer::InitOpenGL() {

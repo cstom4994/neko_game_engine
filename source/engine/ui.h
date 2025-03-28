@@ -9,6 +9,7 @@
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "base/scripting/lua_wrapper.hpp"
+#include "engine/renderer/renderer.h"
 
 // deps
 #include "extern/ui.h"
@@ -72,7 +73,7 @@ typedef struct engine_ui_renderer_t {
     u32 quad_count;
     u32 draw_call_count;
 
-    neko_vertex_buffer_t* vb;
+    VertexBuffer vb;
     u32 shader;
     u64 tex;  // 64bit
 
@@ -87,14 +88,14 @@ typedef struct engine_ui_renderer_t {
 
 engine_ui_renderer_t* neko_new_ui_renderer();
 void neko_free_ui_renderer(engine_ui_renderer_t* renderer);
-void engine_ui_renderer_push_quad(engine_ui_renderer_t* renderer, rect_t dst, rect_t src, neko_color_t color, float transparency, u32 mode);
+void engine_ui_renderer_push_quad(engine_ui_renderer_t* renderer, rect_t dst, rect_t src, u32 color, float transparency, u32 mode);
 void neko_begin_ui_renderer(engine_ui_renderer_t* renderer, u32 width, u32 height);
 void neko_end_ui_renderer(engine_ui_renderer_t* renderer);
 void neko_flush_ui_renderer(engine_ui_renderer_t* renderer);
 void neko_set_ui_renderer_clip(engine_ui_renderer_t* renderer, rect_t rect);
-float engine_ui_renderer_draw_text(engine_ui_renderer_t* renderer, const char* text, vec2 position, neko_color_t color, float transparency);
-void engine_ui_renderer_draw_rect(engine_ui_renderer_t* renderer, rect_t rect, neko_color_t color, float transparency);
-void engine_ui_renderer_draw_icon(engine_ui_renderer_t* renderer, u32 id, rect_t rect, neko_color_t color, float transparency);
+float engine_ui_renderer_draw_text(engine_ui_renderer_t* renderer, const char* text, vec2 position, u32 color, float transparency);
+void engine_ui_renderer_draw_rect(engine_ui_renderer_t* renderer, rect_t rect, u32 color, float transparency);
+void engine_ui_renderer_draw_icon(engine_ui_renderer_t* renderer, u32 id, rect_t rect, u32 color, float transparency);
 float engine_ui_text_width(engine_ui_renderer_t* rendere, const char* text);
 float engine_ui_tect_height(engine_ui_renderer_t* renderer);
 

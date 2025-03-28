@@ -1223,6 +1223,9 @@ function ns.edit.OnMouseUp(mouse)
 end
 
 function ns.edit.OnMouseScroll(scroll)
+    if neko.IsGuiCapturedEvent() then
+        return
+    end
     ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
 end
 

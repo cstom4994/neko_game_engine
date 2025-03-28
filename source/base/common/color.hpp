@@ -52,4 +52,24 @@ namespace Neko {
 
 inline Color256 color256_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }
 
+inline u32 color256_from_rgb(Color rgb) {
+    i8 r = (i8)(rgb.r * 255.0);
+    i8 g = (i8)(rgb.g * 255.0);
+    i8 b = (i8)(rgb.b * 255.0);
+
+    return ((r & 0xff) << 16) + ((g & 0xff) << 8) + (b & 0xff);
+}
+
+inline Color color256_to_rgb(u32 color) {
+    int r = (color >> 16) & 0xFF;
+    int g = (color >> 8) & 0xFF;
+    int b = color & 0xFF;
+
+    float rf = (float)r / 255.0f;
+    float gf = (float)g / 255.0f;
+    float bf = (float)b / 255.0f;
+
+    return Color{rf, gf, bf, 1.0f};
+}
+
 }  // namespace Neko

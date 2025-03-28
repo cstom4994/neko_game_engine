@@ -4,15 +4,16 @@
 #include "engine/graphics.h"
 #include "base/common/color.hpp"
 #include "base/common/math.hpp"
+#include "base/common/singleton.hpp"
 #include "engine/renderer/shader.h"
 
 #define max_lights 100
 
 enum { vt_clip = 0, vt_depth_test };
 
-NEKO_API() void draw_enable(u32 thing);
-NEKO_API() void draw_disable(u32 thing);
-NEKO_API() void draw_clip(rect_t rect);
+void draw_enable(u32 thing);
+void draw_disable(u32 thing);
+void draw_clip(rect_t rect);
 
 enum { vb_static = 1 << 0, vb_dynamic = 1 << 1, vb_lines = 1 << 2, vb_line_strip = 1 << 3, vb_tris = 1 << 4 };
 
@@ -23,44 +24,19 @@ struct VertexBuffer {
     u32 index_count;
 
     i32 flags;
+
+    void init_vb(const i32 flags);
+    void fini_vb();
+    void bind_vb_for_draw(bool bind) const;
+    void bind_vb_for_edit(bool bind) const;
+    void push_vertices(f32* vertices, u32 count) const;
+    void push_indices(u32* indices, u32 count);
+    void update_vertices(f32* vertices, u32 offset, u32 count) const;
+    void update_indices(u32* indices, u32 offset, u32 count);
+    void configure_vb(u32 index, u32 component_count, u32 stride, u32 offset) const;
+    void draw_vb() const;
+    void draw_vb_n(u32 count) const;
 };
-
-NEKO_API() void init_vb(VertexBuffer* vb, const i32 flags);
-NEKO_API() void deinit_vb(VertexBuffer* vb);
-NEKO_API() void bind_vb_for_draw(const VertexBuffer* vb);
-NEKO_API() void bind_vb_for_edit(const VertexBuffer* vb);
-NEKO_API() void push_vertices(const VertexBuffer* vb, f32* vertices, u32 count);
-NEKO_API() void push_indices(VertexBuffer* vb, u32* indices, u32 count);
-NEKO_API() void update_vertices(const VertexBuffer* vb, f32* vertices, u32 offset, u32 count);
-NEKO_API() void update_indices(VertexBuffer* vb, u32* indices, u32 offset, u32 count);
-NEKO_API() void configure_vb(const VertexBuffer* vb, u32 index, u32 component_count, u32 stride, u32 offset);
-NEKO_API() void draw_vb(const VertexBuffer* vb);
-NEKO_API() void draw_vb_n(const VertexBuffer* vb, u32 count);
-
-enum {
-    texture_filter_nearest = 1 << 0,
-    texture_filter_linear = 1 << 2,
-    texture_repeat = 1 << 3,
-    texture_clamp = 1 << 4,
-    texture_mono = 1 << 5,
-    texture_rgb = 1 << 6,
-    texture_rgba = 1 << 7,
-    texture_flip = 1 << 8
-};
-
-#define sprite_texture (texture_filter_nearest | texture_clamp)
-
-struct texture {
-    u32 id;
-    u32 width, height;
-};
-
-NEKO_API() void init_texture(struct texture* texture, u8* src, u64 size, u32 flags);
-NEKO_API() void init_texture_no_bmp(struct texture* texture, u8* src, u32 w, u32 h, u32 flags);
-NEKO_API() void update_texture(struct texture* texture, u8* data, u64 size, u32 flags);
-NEKO_API() void update_texture_no_bmp(struct texture* texture, u8* src, u32 w, u32 h, u32 flags);
-NEKO_API() void deinit_texture(struct texture* texture);
-NEKO_API() void bind_texture(const struct texture* texture, u32 unit);
 
 struct RenderTarget {
     u32 id;
@@ -69,16 +45,18 @@ struct RenderTarget {
     u32 output;
 };
 
-NEKO_API() void init_render_target(RenderTarget* target, u32 width, u32 height);
-NEKO_API() void deinit_render_target(RenderTarget* target);
-NEKO_API() void resize_render_target(RenderTarget* target, u32 width, u32 height);
-NEKO_API() void bind_render_target(RenderTarget* target);
-NEKO_API() void bind_render_target_output(RenderTarget* target, u32 unit);
+void init_render_target(RenderTarget* target, u32 width, u32 height);
+void deinit_render_target(RenderTarget* target);
+void resize_render_target(RenderTarget* target, u32 width, u32 height);
+void bind_render_target(RenderTarget* target);
+void bind_render_target_output(RenderTarget* target, u32 unit);
 
-NEKO_API() Color256 make_color(u32 rgb, u8 alpha);
+Color256 make_color(u32 rgb, u8 alpha);
+
+struct AssetTexture;
 
 struct TexturedQuad {
-    struct texture* texture;
+    AssetTexture* texture;
     vec2 position;
     vec2 dimentions;
     rect_t rect;
@@ -103,7 +81,7 @@ struct QuadRenderer {
 
     u32 quad_count;
 
-    struct texture* textures[32];
+    AssetTexture* textures[32];
     u32 texture_count;
 
     bool clip_enable;
@@ -126,15 +104,15 @@ struct QuadRenderer {
     u32 indices[100 * 6];
 };
 
-NEKO_API() QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions);
-NEKO_API() void free_renderer(QuadRenderer* renderer);
-NEKO_API() void renderer_flush(QuadRenderer* renderer);
-NEKO_API() void renderer_end_frame(QuadRenderer* renderer);
-NEKO_API() void renderer_push(QuadRenderer* renderer, TexturedQuad* quad);
-NEKO_API() void renderer_push_light(QuadRenderer* renderer, struct light light);
-NEKO_API() void renderer_clip(QuadRenderer* renderer, rect_t clip);
-NEKO_API() void renderer_resize(QuadRenderer* renderer, vec2 size);
-NEKO_API() void renderer_fit_to_main_window(QuadRenderer* renderer);
+QuadRenderer* new_renderer(AssetShader shader, vec2 dimentions);
+void free_renderer(QuadRenderer* renderer);
+void renderer_flush(QuadRenderer* renderer);
+void renderer_end_frame(QuadRenderer* renderer);
+void renderer_push(QuadRenderer* renderer, TexturedQuad* quad);
+void renderer_push_light(QuadRenderer* renderer, struct light light);
+void renderer_clip(QuadRenderer* renderer, rect_t clip);
+void renderer_resize(QuadRenderer* renderer, vec2 size);
+void renderer_fit_to_main_window(QuadRenderer* renderer);
 
 struct PostProcessor {
     RenderTarget target;
@@ -145,41 +123,14 @@ struct PostProcessor {
     vec2 dimentions;
 };
 
-NEKO_API() PostProcessor* new_post_processor(AssetShader shader);
-NEKO_API() void free_post_processor(PostProcessor* p);
-NEKO_API() void use_post_processor(PostProcessor* p);
-NEKO_API() void resize_post_processor(PostProcessor* p, vec2 dimentions);
-NEKO_API() void post_processor_fit_to_main_window(PostProcessor* p);
-NEKO_API() void flush_post_processor(PostProcessor* p, bool default_rt);
-
-struct font;
-
-NEKO_API() i32 render_text(QuadRenderer* renderer, struct font* font, const char* text, f32 x, f32 y, Color256 color);
-
-NEKO_API() i32 render_text_n(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color);
-
-NEKO_API() i32 render_text_fancy(QuadRenderer* renderer, struct font* font, const char* text, u32 n, f32 x, f32 y, Color256 color, TexturedQuad* coin);
-
-NEKO_API() struct font* load_font_from_memory(void* data, u64 filesize, f32 size);
-NEKO_API() void free_font(struct font* font);
-
-NEKO_API() void set_font_tab_size(struct font* font, i32 n);
-NEKO_API() i32 get_font_tab_size(struct font* font);
-
-NEKO_API() f32 get_font_size(struct font* font);
-
-NEKO_API() i32 font_height(struct font* font);
-
-NEKO_API() i32 text_width(struct font* font, const char* text);
-NEKO_API() i32 text_height(struct font* font, const char* text);
-NEKO_API() i32 char_width(struct font* font, char c);
-NEKO_API() i32 text_width_n(struct font* font, const char* text, u32 n);
-NEKO_API() i32 text_height_n(struct font* font, const char* text, u32 n);
-
-NEKO_API() char* word_wrap(struct font* font, char* buffer, const char* string, i32 width);
+PostProcessor* new_post_processor(AssetShader shader);
+void free_post_processor(PostProcessor* p);
+void use_post_processor(PostProcessor* p);
+void resize_post_processor(PostProcessor* p, vec2 dimentions);
+void post_processor_fit_to_main_window(PostProcessor* p);
+void flush_post_processor(PostProcessor* p, bool default_rt);
 
 class Renderer : public Neko::SingletonClass<Renderer> {
 public:
-
     void InitOpenGL();
 };

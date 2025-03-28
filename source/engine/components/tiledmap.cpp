@@ -618,7 +618,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         const_str tex_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, full_image_path, &len);
         neko_assert(tex_data);
 
-        neko_init_texture_from_memory(&tileset.texture, (u8 *)tex_data, len, neko_texture_flags_t(NEKO_TEXTURE_ALIASED | NEKO_TEXTURE_NO_FLIP_VERTICAL));
+        neko_init_texture_from_memory(&tileset.texture, (u8 *)tex_data, len, TextureFlags(TEXTURE_ALIASED | TEXTURE_NO_FLIP_VERTICAL));
 
         tileset.width = tileset.texture.width;
         tileset.height = tileset.texture.height;

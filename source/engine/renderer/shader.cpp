@@ -173,14 +173,14 @@ void neko_shader_set_float(u32 shader, const char* name, float v) {
     glUniform1f(location, v);
 }
 
-void neko_shader_set_color(u32 shader, const char* name, neko_color_t color) {
+void neko_shader_set_color(u32 shader, const char* name, u32 color) {
 
-    neko_rgb_color_t rgb = neko_rgb_color_from_color(color);
+    Color rgb = color256_to_rgb(color);
 
     neko_shader_set_v3f(shader, name, vec3{rgb.r, rgb.g, rgb.b});
 }
 
-void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color) { neko_shader_set_v3f(shader, name, vec3{color.r, color.g, color.b}); }
+void neko_shader_set_rgb_color(u32 shader, const char* name, Color color) { neko_shader_set_v3f(shader, name, vec3{color.r, color.g, color.b}); }
 
 void neko_shader_set_v2f(u32 shader, const char* name, vec2 v) {
 

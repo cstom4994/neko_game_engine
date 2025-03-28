@@ -541,7 +541,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         u8 *data = reinterpret_cast<u8 *>(image_data);
         // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
         AssetTexture tex{};
-        neko_init_texture_from_memory_uncompressed(&tex, data, width, height, 4, NEKO_TEXTURE_ALIASED);
+        neko_init_texture_from_memory_uncompressed(&tex, data, width, height, 4, TEXTURE_ALIASED);
 
         out->tex.id = tex.id;
         out->tex.width = width;
