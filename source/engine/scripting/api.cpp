@@ -503,7 +503,7 @@ static int neko_platform(lua_State *L) {
 }
 
 static int neko_dt(lua_State *L) {
-    lua_pushnumber(L, get_timing_instance().dt);
+    lua_pushnumber(L, the<CL>().get_timing_instance().dt);
     return 1;
 }
 
@@ -543,7 +543,7 @@ static int neko_difftime(lua_State *L) {
 }
 
 static int neko_elapsed(lua_State *L) {
-    lua_pushnumber(L, stm_sec(stm_now() - get_timing_instance().startup));
+    lua_pushnumber(L, stm_sec(stm_now() - the<CL>().get_timing_instance().startup));
     return 1;
 }
 
@@ -2613,26 +2613,26 @@ static int open_neko(lua_State *L) {
 
     X("timing_set_scale", [](lua_State *L) -> int {
         f32 v = lua_tonumber(L, 1);
-        timing_set_scale(v);
+        the<CL>().timing_set_scale(v);
         return 0;
     });
     X("timing_get_scale", [](lua_State *L) -> int {
-        f32 v = timing_get_scale();
+        f32 v = the<CL>().timing_get_scale();
         lua_pushnumber(L, v);
         return 1;
     });
     X("timing_get_elapsed", [](lua_State *L) -> int {
-        f32 v = timing_get_elapsed();
+        f32 v = the<CL>().timing_get_elapsed();
         lua_pushnumber(L, v);
         return 1;
     });
     X("timing_set_paused", [](lua_State *L) -> int {
         bool v = lua_toboolean(L, 1);
-        timing_set_paused(v);
+        the<CL>().timing_set_paused(v);
         return 0;
     });
     X("timing_get_paused", [](lua_State *L) -> int {
-        bool v = timing_get_paused();
+        bool v = the<CL>().timing_get_paused();
         lua_pushboolean(L, v);
         return 1;
     });

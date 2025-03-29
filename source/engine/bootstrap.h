@@ -37,6 +37,8 @@ using namespace Neko::ecs;
 
 extern CBase gBase;
 
+struct lua_State;
+
 namespace Neko {
 struct LuaInspector;
 }
@@ -51,16 +53,6 @@ struct AppTime {
     f32 dt;
     f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
 };
-
-void timing_set_scale(f32 s);
-f32 timing_get_scale();
-f32 timing_get_elapsed();
-void timing_set_paused(bool p);
-bool timing_get_paused();
-
-AppTime get_timing_instance();
-
-struct lua_State;
 
 // ECS_COMPONENT_EXTERN(pos_t);
 // ECS_COMPONENT_EXTERN(vel_t);
@@ -99,6 +91,8 @@ public:
     EcsWorld *&get_ecs() { return this->ECS; }
 
     void init();
+    void fini();
+
     void game_set_bg_color(Color c);
 
     // 屏幕空间坐标系:
@@ -112,8 +106,13 @@ public:
     void quit();
     void SplashScreen();
     int timing_update(Event evt);
-    void system_init();
-    void system_fini();
+
+    inline AppTime get_timing_instance() { return the<CL>().timing_instance; }
+    inline f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
+    inline void timing_set_scale(f32 s) { the<CL>().scale = s; }
+    inline f32 timing_get_scale() { return the<CL>().scale; }
+    inline void timing_set_paused(bool p) { the<CL>().paused = p; }  // 暂停将刻度设置为 0 并在恢复时恢复它
+    inline bool timing_get_paused() { return the<CL>().paused; }
 };
 
 inline lua_State *&ENGINE_LUA() { return the<CL>().get_lua(); }
