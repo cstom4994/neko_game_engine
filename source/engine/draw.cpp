@@ -479,8 +479,7 @@ bool FontFamily::load(String filepath) {
 
 void FontFamily::trash() {
     for (auto [k, v] : ranges) {
-        // gfx_fini会释放所有texture
-        // destroy_texture_handle(v->tex.id, NULL);
+        neko_deinit_texture(&v->tex);
     }
     sb.trash();
     ranges.trash();
@@ -521,27 +520,10 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     }
     neko_defer(mem_free(bitmap));
 
-    u8 *image_data = (u8 *)mem_alloc(width * height * 4);
-    neko_defer(mem_free(image_data));
-
-    {
-        PROFILE_BLOCK("convert rgba");
-
-        for (i32 i = 0; i < width * height * 4; i += 4) {
-            image_data[i + 0] = 255;
-            image_data[i + 1] = 255;
-            image_data[i + 2] = 255;
-            image_data[i + 3] = bitmap[i / 4];
-        }
-    }
-
     {
         PROFILE_BLOCK("make image");
-
-        u8 *data = reinterpret_cast<u8 *>(image_data);
-        // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
         AssetTexture tex{};
-        neko_init_texture_from_memory_uncompressed(&tex, data, width, height, 4, TEXTURE_ALIASED);
+        neko_init_texture_from_memory_uncompressed(&tex, bitmap, width, height, 1, TEXTURE_ALIASED);
 
         out->tex.id = tex.id;
         out->tex.width = width;
@@ -596,7 +578,7 @@ float FontFamily::width(float size, String text) {
 FontFamily *neko_default_font() {
     if (the<CL>().default_font == nullptr) {
         the<CL>().default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-        the<CL>().default_font->load(the<CL>().cfg.default_font);
+        the<CL>().default_font->load(the<CL>().state.default_font);
     }
     return the<CL>().default_font;
 }
@@ -616,7 +598,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
         glUniform1i(glGetUniformLocation(font_program, "mode"), 0);
     } else {
-        mat4 cam_mat = mat4_ortho(0.0f, (float)the<CL>().cfg.width, (float)the<CL>().cfg.height, 0.0f, -1.0f, 1.0f);
+        mat4 cam_mat = mat4_ortho(0.0f, (float)the<CL>().state.width, (float)the<CL>().state.height, 0.0f, -1.0f, 1.0f);
         glUniformMatrix4fv(glGetUniformLocation(font_program, "u_mvp"), 1, GL_FALSE, (const GLfloat *)cam_mat.elements);
         glUniform1i(glGetUniformLocation(font_program, "mode"), 1);
     }
@@ -735,240 +717,6 @@ void font_init() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
-
-namespace Neko::mt_font {
-
-static FontFamily &to(lua_State *L, int idx) { return luabind::checkudata<FontFamily>(L, idx); }
-
-static FontFamily &check_font_udata(lua_State *L, i32 arg) {
-    FontFamily &udata = to(L, arg);
-    return udata;
-}
-
-static int mt_font_gc(lua_State *L) {
-    FontFamily &font = check_font_udata(L, 1);
-
-    if (font.ttf != the<CL>().default_font->ttf) {
-        font.trash();
-    }
-    return 0;
-}
-
-static int mt_font_width(lua_State *L) {
-    FontFamily &font = check_font_udata(L, 1);
-
-    String text = luax_check_string(L, 2);
-    lua_Number size = luaL_checknumber(L, 3);
-
-    float w = font.width(size, text);
-
-    lua_pushnumber(L, w);
-    return 1;
-}
-
-static int mt_font_draw(lua_State *L) {
-    FontFamily &font = check_font_udata(L, 1);
-
-    String text = luax_check_string(L, 2);
-    lua_Number x = luaL_optnumber(L, 3, 0);
-    lua_Number y = luaL_optnumber(L, 4, 0);
-    lua_Number size = luaL_optnumber(L, 5, 12);
-    lua_Number wrap = luaL_optnumber(L, 6, -1);
-
-    float bottom = 0;
-    if (wrap < 0) {
-        bottom = draw_font(&font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
-    } else {
-        bottom = draw_font_wrapped(&font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
-    }
-
-    lua_pushnumber(L, bottom);
-    return 1;
-}
-
-int open_mt_font(lua_State *L) { return 0; }
-
-static int mt_close(lua_State *L) {
-    auto &self = to(L, 1);
-    return 0;
-}
-
-static void metatable(lua_State *L) {
-    static luaL_Reg lib[] = {
-            {"width", mt_font_width},
-            {"draw", mt_font_draw},
-            {nullptr, nullptr},
-    };
-    luaL_newlibtable(L, lib);
-    luaL_setfuncs(L, lib, 0);
-    lua_setfield(L, -2, "__index");
-    static luaL_Reg mt[] = {{"__close", mt_close}, {"__gc", mt_font_gc}, {NULL, NULL}};
-    luaL_setfuncs(L, mt, 0);
-}
-
-int neko_font_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    FontFamily &font = luabind::newudata<FontFamily>(L);
-    lua_pushstring(L, str.cstr());
-    lua_setiuservalue(L, -2, 1);
-
-    bool ok = font.load(str);
-    if (!ok) {
-        return 0;
-    }
-
-    return 1;
-}
-
-}  // namespace Neko::mt_font
-
-namespace Neko::mt_sprite {
-
-static AseSprite &to(lua_State *L, int idx) { return luabind::checkudata<AseSprite>(L, idx); }
-
-static AseSprite &check_sprite_udata(lua_State *L, i32 arg) {
-    AseSprite &udata = to(L, 1);
-    return udata;
-}
-
-static int mt_sprite_play(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    String tag = luax_check_string(L, 2);
-    bool restart = lua_toboolean(L, 3);
-
-    bool same = spr.play(tag);
-    if (!same || restart) {
-        spr.current_frame = 0;
-        spr.elapsed = 0;
-    }
-    return 0;
-}
-
-static int mt_sprite_update(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    lua_Number dt = luaL_checknumber(L, 2);
-
-    spr.update((float)dt);
-    return 0;
-}
-
-static int mt_sprite_draw(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    DrawDescription dd = draw_description_args(L, 2);
-
-    draw_sprite(&spr, &dd);
-    return 0;
-}
-
-static int mt_sprite_effect(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    int te = lua_type(L, 2);
-    if (te == LUA_TSTRING) {
-        const char *bits = lua_tostring(L, 2);
-        spr.effects = Neko::util::BitSet<SpriteEffectCounts>(bits);
-    } else if (te == LUA_TNUMBER) {
-        int bits = lua_tointeger(L, 2);
-        spr.effects = std::bitset<SpriteEffectCounts>(bits);
-    } else {
-        return luaL_error(L, "error mt_sprite_effect bitset type");
-    }
-    return 0;
-}
-
-static int mt_sprite_width(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
-
-    lua_pushnumber(L, (lua_Number)data.width);
-    return 1;
-}
-
-static int mt_sprite_height(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
-
-    lua_pushnumber(L, (lua_Number)data.height);
-    return 1;
-}
-
-static int mt_sprite_set_frame(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    lua_Integer frame = luaL_checknumber(L, 2);
-
-    spr.set_frame((i32)frame);
-    return 0;
-}
-
-static int mt_sprite_total_frames(lua_State *L) {
-    AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
-
-    lua_pushinteger(L, data.frames.len);
-    return 1;
-}
-
-int open_mt_sprite(lua_State *L) { return 0; }
-
-static int mt_close(lua_State *L) {
-    auto &self = to(L, 1);
-    return 0;
-}
-
-static int mt_sprite_gc(lua_State *L) {
-    auto &self = to(L, 1);
-    return 0;
-}
-
-static void metatable(lua_State *L) {
-    static luaL_Reg lib[] = {
-            {"play", mt_sprite_play},   {"update", mt_sprite_update}, {"draw", mt_sprite_draw},           {"effect", mt_sprite_effect},
-            {"width", mt_sprite_width}, {"height", mt_sprite_height}, {"set_frame", mt_sprite_set_frame}, {"total_frames", mt_sprite_total_frames},
-            {nullptr, nullptr},
-    };
-    luaL_newlibtable(L, lib);
-    luaL_setfuncs(L, lib, 0);
-    lua_setfield(L, -2, "__index");
-    static luaL_Reg mt[] = {{"__close", mt_close}, {"__gc", mt_sprite_gc}, {NULL, NULL}};
-    luaL_setfuncs(L, mt, 0);
-}
-
-int neko_sprite_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    Asset asset = {};
-    bool ok = asset_load_kind(AssetKind_AseSprite, str, &asset);
-    if (!ok) {
-        return 0;
-    }
-
-    AseSprite &spr = luabind::newudata<AseSprite>(L);
-    lua_pushstring(L, str.cstr());
-    lua_setiuservalue(L, -2, 1);
-
-    spr.sprite = asset.hash;
-    spr.make();
-
-    return 1;
-}
-
-}  // namespace Neko::mt_sprite
-
-namespace Neko::luabind {
-template <>
-struct udata<AseSprite> {
-    static inline int nupvalue = 1;
-    static inline auto metatable = Neko::mt_sprite::metatable;
-};
-}  // namespace Neko::luabind
-
-namespace Neko::luabind {
-template <>
-struct udata<FontFamily> {
-    static inline int nupvalue = 1;
-    static inline auto metatable = Neko::mt_font::metatable;
-};
-}  // namespace Neko::luabind
 
 static Asset batch_shader = {};
 

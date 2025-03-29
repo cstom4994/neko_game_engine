@@ -21,6 +21,7 @@
 #include "engine/bindata.h"
 #include "engine/window.h"
 #include "engine/scripting/lua_util.h"
+#include "engine/scripting/wrap_draw.h"
 
 // lua
 #include "lapi.h"
@@ -645,11 +646,6 @@ static int neko_scissor_rect(lua_State *L) {
 
     // sgl_scissor_rectf(x, y, w, h, true);
     return 0;
-}
-
-static int neko_draw_default_font(lua_State *L) {
-    luax_ptr_userdata(L, neko_default_font(), "mt_font");
-    return 1;
 }
 
 static int neko_set_master_volume(lua_State *L) {
@@ -2470,9 +2466,6 @@ static int open_neko(lua_State *L) {
             {"gui_has_focus", l_gui_has_focus},
             {"IsGuiCapturedEvent", l_gui_captured_event},
             {"transform_get_world_matrix", l_transform_get_world_matrix},
-
-            // draw
-            {"default_font", neko_draw_default_font},
 
             // audio
             {"set_master_volume", neko_set_master_volume},

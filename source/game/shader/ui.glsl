@@ -50,7 +50,7 @@ void main() {
 	if (mode == 1) {
 		texture_color = vec4(texture(atlas, fs_in.uv).r);
 	} else if (mode == 2 || mode == 3) {
-		texture_color = vec4(vec3(1.0), texture(font, fs_in.uv).a); 
+		texture_color = vec4(vec3(1.0), texture(font, fs_in.uv).r); 
 	}
 
 	color = texture_color * fs_in.color;

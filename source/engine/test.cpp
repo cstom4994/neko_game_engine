@@ -408,7 +408,7 @@ void draw_gui() {
             // bool lock = g_app->ui.mouse_pressed;
             // bool moved = neko_os_mouse_moved();
 
-            if (ui_begin_window(the<CL>().ui, "Game", neko_rect(the<CL>().cfg.width - 210, 30, 200, 200))) {
+            if (ui_begin_window(the<CL>().ui, "Game", neko_rect(the<CL>().state.width - 210, 30, 200, 200))) {
                 // l = g_app->ui->layout_stack[0];
                 ui_layout_row(the<CL>().ui, 1, ui_widths(-1), 0);
 
@@ -527,7 +527,7 @@ void draw_gui() {
 void draw_gui_auto_test() {
     ui_context_t *ui = the<CL>().ui;
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    ui_begin_window(the<CL>().ui, "GUI Test", neko_rect((the<CL>().cfg.width - ss_ws.x) * 0.5f, (the<CL>().cfg.height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+    ui_begin_window(the<CL>().ui, "GUI Test", neko_rect((the<CL>().state.width - ss_ws.x) * 0.5f, (the<CL>().state.height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
     {
 
         if (ui_header(ui, "1. String")) {

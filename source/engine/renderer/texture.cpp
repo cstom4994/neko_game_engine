@@ -427,7 +427,7 @@ void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned 
         format = GL_RGBA;
     } else if (texture->components == 1) {
         internal_format = GL_RED;
-        format = GL_RED;
+        format = GL_R8;  // OpenGL 3.0+
     }
 
     if (flags & TEXTURE_SUBTEX) {

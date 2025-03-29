@@ -68,7 +68,6 @@ public:
     batch_renderer *batch{};
     ui_context_t *ui{};
     bool win_console{};
-    engine_cfg_t cfg{};
     LuaInspector *inspector{};
     ImGuiID devui_vp{};
     FontFamily *default_font{};
@@ -76,6 +75,31 @@ public:
 
     f32 scale = 1.0f;
     bool paused = false;
+
+    struct State {
+        bool show_editor;
+        bool show_demo_window;
+        bool show_gui;
+        bool shader_inspect;
+        bool hello_ai_shit;
+        bool vsync;
+        bool is_hotfix;
+        String title;
+        String game_proxy;
+        String default_font;
+        bool hot_reload;
+        bool startup_load_scripts;
+        bool fullscreen;
+        bool debug_on;
+        f32 reload_interval;
+        f32 swap_interval;
+        f32 target_fps;
+        i32 batch_vertex_capacity;
+        bool dump_allocs_detailed;
+        f32 width;
+        f32 height;
+        f32 bg[3];  //
+    } state{};
 
 #if NEKO_AUDIO == 1
     void *miniaudio_vfs;

@@ -20,11 +20,12 @@ namespace Neko {
 
 namespace shader {
 
-enum class TokenType {
+enum TokenType {
     ATTRIBUTE,
     UNIFORM,
     VARYING,
     STRUCT,
+    RETURN,
     IDENTIFIER,
     TYPE,
     NUMBER,

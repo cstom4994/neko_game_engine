@@ -19,6 +19,7 @@ const static std::vector<std::variant<
     std::make_tuple("#nekoshader", TokenType::TAG),
     std::make_tuple("#begin", TokenType::BEGIN),
     std::make_tuple("#end", TokenType::END),
+    std::make_tuple("return", TokenType::RETURN),
     std::make_tuple("struct", TokenType::STRUCT),
     std::make_tuple("switch", TokenType::SWITCH),
     std::make_tuple("case", TokenType::CASE),
@@ -451,61 +452,6 @@ std::unordered_map<std::string, std::string> ShaderParse(String src) {
         LOG_ERROR("shader parser error: {}", e.what());
     }
     return {};
-#if 0
-    Lexer lexer(src.cstr());
-    try {
-        auto tokens = lexer.tokenize();
-        Parser parser(tokens);
-
-        std::cout << "Tokens:\n";
-        for (const auto& token : tokens) {
-            std::cout << "Type: " << static_cast<int>(token.type) << ", Value: \t" << token.value << "\n";
-        }
-
-        auto ast = parser.parse();
-
-        std::cout << "\nAST:\n";
-        for (const auto& shader_block : ast) {
-            std::cout << "=== " << shader_block.first << " SHADER AST ===\n";
-            for (const auto& node : shader_block.second) {
-                if (auto varDecl = std::dynamic_pointer_cast<VariableDeclaration>(node)) {
-                    std::string qualifier;
-                    switch (varDecl->qualifier) {
-                        case TokenType::ATTRIBUTE:
-                            qualifier = "attribute";
-                            break;
-                        case TokenType::UNIFORM:
-                            qualifier = "uniform";
-                            break;
-                        case TokenType::VARYING:
-                            qualifier = "varying";
-                            break;
-                        default:
-                            qualifier = "unknown";
-                            break;
-                    }
-                    std::cout << "VarDecl: " << qualifier << " " << varDecl->type << " " << varDecl->name << "\n";
-                } else if (auto funcDef = std::dynamic_pointer_cast<FunctionDefinition>(node)) {
-                    std::cout << "FuncDef: " << funcDef->name << "\nBody: ";
-                    for (const auto& line : funcDef->body) {
-                        std::cout << line.value << " ";
-                    }
-                    std::cout << "\n";
-                }
-            }
-            std::cout << "\n";
-        }
-
-        auto glsl = CodeGenerator::generate(ast);
-
-        std::cout << "Generated GLSL:\n";
-        for (const auto& [type, code] : glsl) {
-            std::cout << "==== " << type << " SHADER ====\n" << code << "\n\n";
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Compilation Error:\n" << e.what() << "\n";
-    }
-#endif
 }
 
 }  // namespace shader

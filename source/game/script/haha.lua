@@ -11,6 +11,8 @@ end
 function haha()
     LocalGame = {}
 
+    local default_font = neko.font_load("default")
+
     EcsWorld:register("test_component_1", {
         x = 0,
         y = 0
@@ -253,11 +255,11 @@ function haha()
         if not ns.edit.get_enabled() then
             cursor:draw()
         end
-
-        -- neko.default_font():draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
     end
 
     ns.gamelogic.OnDrawUI = function()
+        local dt = neko.dt()
+        default_font:draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
     end
 
     -- neko.before_quit = function()
