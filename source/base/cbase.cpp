@@ -20,6 +20,7 @@
 
 extern "C" void __cxa_pure_virtual() { abort(); }
 
+#if 0
 #ifdef HACK_MEM_CHECK
 void* HACK_CALL operator new(size_t size) { return ::Neko::g_allocator->alloc(size, "[operator new]", 0); }
 void* HACK_CALL operator new[](size_t size) { return ::Neko::g_allocator->alloc(size, "[operator new[]]", 0); }
@@ -32,6 +33,7 @@ void* HACK_CALL operator new[](size_t size) { return malloc(size); }
 void HACK_CALL operator delete(void* p) noexcept { free(p); }
 void HACK_CALL operator delete[](void* p) noexcept { free(p); }
 void HACK_CALL operator delete(void* p, size_t) { free(p); }
+#endif
 #endif
 
 namespace Neko {

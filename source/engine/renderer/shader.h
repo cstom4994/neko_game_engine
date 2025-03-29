@@ -18,7 +18,9 @@ typedef struct AssetShader {
 bool neko_load_shader(AssetShader* shader, String path);
 void neko_unload_shader(AssetShader* shader);
 
-int ShaderParse(String src);
+namespace shader {
+std::unordered_map<std::string, std::string> ShaderParse(String src);
+}
 
 NEKO_API() void neko_bind_shader(u32 shader);
 NEKO_API() void neko_shader_set_int(u32 shader, const char* name, i32 v);

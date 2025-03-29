@@ -11,62 +11,50 @@ bool neko_init_shader(AssetShader* shader, char* source) {
     neko_assert(shader);
 
     shader->panic_mode = false;
-
-    const u32 source_len = (u32)strlen(source);
-
-    char* vertex_source = (char*)mem_alloc(source_len);
-    char* fragment_source = (char*)mem_alloc(source_len);
-    char* geometry_source = (char*)mem_alloc(source_len);
-    neko_defer(mem_free(vertex_source));
-    neko_defer(mem_free(fragment_source));
-    neko_defer(mem_free(geometry_source));
-
-    memset(vertex_source, 0, source_len);
-    memset(fragment_source, 0, source_len);
-    memset(geometry_source, 0, source_len);
-
+    String src{source, strlen(source)};
+    std::unordered_map<std::string, std::string> glsl{};
     bool has_geometry = false;
 
-    u32 count = 0;
-    i32 adding_to = -1;
-    for (char* current = source; *current != '\0'; current++) {
-        if (*current == '\n' && *(current + 1) != '\0') {
-            i32 minus = 1;
-
-            current++;
-
-            char* line = current - count - minus;
-            line[count] = '\0';
-
-            if (strstr(line, "#begin VERTEX")) {
-                adding_to = 0;
-            } else if (strstr(line, "#begin FRAGMENT")) {
-                adding_to = 1;
-            } else if (strstr(line, "#begin GEOMETRY")) {
-                adding_to = 2;
-                has_geometry = true;
-            } else if (strstr(line, "#end VERTEX") || strstr(line, "#end FRAGMENT") || strstr(line, "#end GEOMETRY")) {
-                adding_to = -1;
-            } else if (adding_to == 0) {
-                strcat(vertex_source, line);
-                strcat(vertex_source, "\n");
-            } else if (adding_to == 1) {
-                strcat(fragment_source, line);
-                strcat(fragment_source, "\n");
-            } else if (adding_to == 2) {
-                strcat(geometry_source, line);
-                strcat(geometry_source, "\n");
+    if (src.starts_with("#nekoshader")) {  // 判断是否需要 parser
+        glsl = shader::ShaderParse(src);
+        has_geometry = (glsl.find("GEOMETRY") != glsl.end());
+    } else {
+        u32 count = 0;
+        i32 adding_to = -1;
+        for (char* current = source; *current != '\0'; current++) {
+            if (*current == '\n' && *(current + 1) != '\0') {
+                i32 minus = 1;
+                current++;
+                char* line = current - count - minus;
+                line[count] = '\0';
+                if (strstr(line, "#begin VERTEX")) {
+                    adding_to = 0;
+                } else if (strstr(line, "#begin FRAGMENT")) {
+                    adding_to = 1;
+                } else if (strstr(line, "#begin GEOMETRY")) {
+                    adding_to = 2;
+                    has_geometry = true;
+                } else if (strstr(line, "#end VERTEX") || strstr(line, "#end FRAGMENT") || strstr(line, "#end GEOMETRY")) {
+                    adding_to = -1;
+                } else if (adding_to == 0) {
+                    glsl["VERTEX"].append(line);
+                    glsl["VERTEX"].append("\n");
+                } else if (adding_to == 1) {
+                    glsl["FRAGMENT"].append(line);
+                    glsl["FRAGMENT"].append("\n");
+                } else if (adding_to == 2) {
+                    glsl["GEOMETRY"].append(line);
+                    glsl["GEOMETRY"].append("\n");
+                }
+                count = 0;
             }
-
-            count = 0;
+            count++;
         }
-
-        count++;
     }
 
-    const char* vsp = vertex_source;
-    const char* fsp = fragment_source;
-    const char* gsp = geometry_source;
+    const char* vsp = glsl["VERTEX"].c_str();
+    const char* fsp = glsl["FRAGMENT"].c_str();
+    const char* gsp = glsl["GEOMETRY"].c_str();
 
     i32 success;
     u32 v, f, g;

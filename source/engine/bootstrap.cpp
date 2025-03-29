@@ -1006,8 +1006,3 @@ Int32 Main(int argc, const char *argv[]) {
 
     return 0;
 }
-
-int main(int argc, const char *argv[]) {
-    Main(argc, argv);
-    return 0;
-}
