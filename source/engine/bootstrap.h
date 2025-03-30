@@ -99,6 +99,7 @@ public:
         f32 width;
         f32 height;
         f32 bg[3];  //
+        f32 posteffect_intensity = 2.0f;
     } state{};
 
 #if NEKO_AUDIO == 1

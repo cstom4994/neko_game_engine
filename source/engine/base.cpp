@@ -187,25 +187,6 @@ Color color_opaque(f32 r, f32 g, f32 b) { return color(r, g, b, 1); }
 Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 
 /*================================================================================
-// Reflection
-================================================================================*/
-
-REGISTER_TYPE_DF(i8)
-REGISTER_TYPE_DF(i16)
-REGISTER_TYPE_DF(i32)
-REGISTER_TYPE_DF(i64)
-REGISTER_TYPE_DF(u8)
-REGISTER_TYPE_DF(u16)
-REGISTER_TYPE_DF(u32)
-REGISTER_TYPE_DF(u64)
-REGISTER_TYPE_DF(bool)
-// REGISTER_TYPE_DF(b32)
-REGISTER_TYPE_DF(f32)
-REGISTER_TYPE_DF(f64)
-REGISTER_TYPE_DF(const_str)
-REGISTER_TYPE_DF(String)
-
-/*================================================================================
 // Deps
 ================================================================================*/
 

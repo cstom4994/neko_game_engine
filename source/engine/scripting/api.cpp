@@ -947,31 +947,6 @@ struct udata<neko_fontbatch_t> {
 
 #endif
 
-// 测试 luacstruct 用
-struct CGameObject {
-    int id;
-    bool active;
-    bool visible;
-    bool selected;
-};
-
-namespace Neko::reflection {
-template <>
-Type *type_of<CGameObject>() {
-    static Type type;
-    type.name = "CGameObject";
-    type.destroy = [](void *obj) { delete static_cast<CGameObject *>(obj); };
-    type.copy = [](const void *obj) { return (void *)(new CGameObject(*static_cast<const CGameObject *>(obj))); };
-    type.move = [](void *obj) { return (void *)(new CGameObject(std::move(*static_cast<CGameObject *>(obj)))); };
-    type.fields.insert({"id", {type_of<decltype(CGameObject::id)>(), offsetof(CGameObject, id)}});
-    type.fields.insert({"active", {type_of<decltype(CGameObject::active)>(), offsetof(CGameObject, active)}});
-    type.fields.insert({"visible", {type_of<decltype(CGameObject::visible)>(), offsetof(CGameObject, visible)}});
-    type.fields.insert({"selected", {type_of<decltype(CGameObject::selected)>(), offsetof(CGameObject, selected)}});
-    // type.methods.insert({"say", type_ensure<&Person::say>()});
-    return &type;
-};
-}  // namespace Neko::reflection
-
 #if 0
 
 DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
@@ -989,21 +964,6 @@ DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
 DEFINE_IMGUI_END();
 
 #endif
-
-LUA_FUNCTION(__neko_bind_gameobject_inspect) {
-
-    CGameObject *user_handle = (CGameObject *)lua_touserdata(L, 1);
-
-    if (user_handle == NULL) return 0;
-
-    // neko_println("gameobj %d %s %s %s", user_handle->id, NEKO_BOOL_STR(user_handle->active), NEKO_BOOL_STR(user_handle->visible), NEKO_BOOL_STR(user_handle->selected));
-
-    // ImGui::Text("GameObject_%d", user_handle->id);
-
-    // Neko::imgui::Auto(user_handle, "CGameObject");
-
-    return 0;
-}
 
 #if 0
 
@@ -2407,8 +2367,6 @@ static int open_neko(lua_State *L) {
             {"__cdata", open_cdata},
 
             {"ecs_f", __neko_bind_ecs_f},
-
-            {"gameobject_inspect", __neko_bind_gameobject_inspect},
 
             {"callback_save", __neko_bind_callback_save},
             {"callback_call", __neko_bind_callback_call},

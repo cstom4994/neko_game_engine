@@ -25,6 +25,7 @@
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
 #include "base/scripting/lua_wrapper.hpp"
+#include "base/scripting/reflection.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/renderer/renderer.h"
@@ -37,32 +38,31 @@
 // deps
 #include "extern/sokol_time.h"
 
-#define REFL_FIELDS(C, field) type.fields.insert({#field, {type_of<decltype(C::field)>(), offsetof(C, field)}})
-
 // clang-format off
 
-REGISTER_TYPE_DF(CL::State, 
-REFL_FIELDS(CL::State, show_editor); 
-REFL_FIELDS(CL::State, show_demo_window); 
-REFL_FIELDS(CL::State, show_gui); 
-REFL_FIELDS(CL::State, shader_inspect);
-REFL_FIELDS(CL::State, hello_ai_shit); 
-REFL_FIELDS(CL::State, vsync); 
-REFL_FIELDS(CL::State, is_hotfix); 
-REFL_FIELDS(CL::State, title); 
-REFL_FIELDS(CL::State, height);
-REFL_FIELDS(CL::State, width); 
-REFL_FIELDS(CL::State, game_proxy); 
-REFL_FIELDS(CL::State, default_font); 
-REFL_FIELDS(CL::State, dump_allocs_detailed);
-REFL_FIELDS(CL::State, hot_reload);
-REFL_FIELDS(CL::State, startup_load_scripts);
-REFL_FIELDS(CL::State, fullscreen);
-REFL_FIELDS(CL::State, debug_on);
-REFL_FIELDS(CL::State, reload_interval);
-REFL_FIELDS(CL::State, swap_interval);
-REFL_FIELDS(CL::State, target_fps);
-REFL_FIELDS(CL::State, batch_vertex_capacity);
+NEKO_STRUCT(CL::State, 
+_Fs(show_editor,""),
+_Fs(show_demo_window,""),
+_Fs(show_gui,""),
+_Fs(shader_inspect,""),
+_Fs(hello_ai_shit,""),
+_Fs(vsync,""),
+_Fs(is_hotfix,""),
+_Fs(game_proxy,""),
+_Fs(default_font,""),
+_Fs(title,""),
+_Fs(height,""),
+_Fs(width,""),
+_Fs(dump_allocs_detailed,""),
+_Fs(hot_reload,""),
+_Fs(startup_load_scripts,""),
+_Fs(fullscreen,""),
+_Fs(debug_on,""),
+_Fs(reload_interval,""),
+_Fs(swap_interval,""),
+_Fs(target_fps,""),
+_Fs(batch_vertex_capacity,""),
+_Fs(posteffect_intensity,"")
 );
 
 // clang-format on
@@ -89,10 +89,6 @@ static inline void perf() {
 
     Neko::imgui::OutlineText(draw_list, ImVec2(screenSize.x - 60, footer_pos.y + 3), "%.1f FPS", io.Framerate);
 }
-
-// ECS_COMPONENT_DECL(pos_t);
-// ECS_COMPONENT_DECL(vel_t);
-// ECS_COMPONENT_DECL(rect_t);
 
 unsigned int fbo;
 unsigned int rbo;
@@ -187,7 +183,16 @@ static void load_all_lua_scripts(lua_State *L) {
     }
 }
 
-float posteffect_intensity = 2.0f;
+DEFINE_IMGUI_BEGIN(template <>, String) { ImGui::Text("%s", var.cstr()); }
+DEFINE_IMGUI_END()
+
+void state_inspector(CL::State &cvar) {
+    auto func = []<typename S, typename Fields>(const char *name, auto &var, S &t, Fields &&fields) {
+        Neko::imgui::Auto(var, name);
+        ImGui::Text("    [%s]", std::get<0>(fields));
+    };
+    reflection::struct_foreach_rec(func, cvar);
+}
 
 int _game_draw(Event evt) {
 
@@ -257,7 +262,7 @@ int _game_draw(Event evt) {
 
         int posteffect_enable = !edit_get_enabled();
 
-        glUniform1f(glGetUniformLocation(sid, "intensity"), posteffect_intensity);
+        glUniform1f(glGetUniformLocation(sid, "intensity"), CLGame.state.posteffect_intensity);
         glUniform1i(glGetUniformLocation(sid, "enable"), posteffect_enable);
         glUniform1f(glGetUniformLocation(sid, "rt_w"), CLGame.state.width);
         glUniform1f(glGetUniformLocation(sid, "rt_h"), CLGame.state.height);
@@ -279,42 +284,19 @@ int _game_draw(Event evt) {
         }
         neko_render_ui(ui, CLGame.state.width, CLGame.state.height);
 
+        if (CLGame.state.show_demo_window) ImGui::ShowDemoWindow();
+
         ImGui::SetNextWindowViewport(CLGame.devui_vp);
         if (ImGui::Begin("Hello")) {
-
-            ImGui::InputFloat("posteffect_intensity", &posteffect_intensity);
 
             if (ImGui::Button("Test")) {
                 int Test123();
                 Test123();
             }
 
-#if 0
-            if (ImGui::Button("fgd")) {
-                Fgd fgd("neko_base.fgd");
-                bool ok = fgd.parse();
-                LOG_INFO("{}", ok);
-
-                FgdClass *game_lua = nullptr;
-
-                for (auto &[n, c] : fgd.classMap) {
-                    LOG_INFO("{} {}", n.c_str(), c);
-
-                    if (n == "game_lua") game_lua = c;
-                }
-
-                neko_assert(game_lua);
-
-                LOG_INFO("game_lua: {} {}", game_lua->classType, game_lua->name.c_str());
-
-                for (auto &keydef : game_lua->keyvalues) {
-                    LOG_INFO("{}: {}", keydef.name.c_str(), keydef.description.c_str());
-                }
-            }
-#endif
-
-            ImGui::End();
+            state_inspector(CLGame.state);
         }
+        ImGui::End();
 
         // gameconsole_draw();
 
@@ -512,7 +494,7 @@ function neko.conf(t)
         default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
         dump_allocs_detailed = true,
         swap_interval = 1,
-        target_fps = 120,
+        target_fps = 999,
         reload_interval = 1,
         debug_on = false,
         batch_vertex_capacity = 2048
@@ -534,9 +516,9 @@ end
 
     CLGame.win_console = CLGame.win_console || luax_boolean_field(L, -1, "win_console", true);
 
-    Neko::reflection::Any v = CL::State{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
-    checktable_refl(ENGINE_LUA(), "app", v);
-    CLGame.state = v.cast<CL::State>();
+    CL::State v{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
+    struct_foreach_luatable(ENGINE_LUA(), "app", v);
+    CLGame.state = v;
 
     LOG_INFO("load game: {} {} {}", CLGame.state.title.cstr(), CLGame.state.width, CLGame.state.height);
 
@@ -656,8 +638,8 @@ end
         EventMask evt;
         EventCallback cb;
     } evt_list[] = {
-            {EventMask::PreUpdate, assets_perform_hot_reload_changes},                           //
-            {EventMask::PreUpdate, edit_clear},                                                  //
+            {EventMask::PreUpdate, assets_perform_hot_reload_changes},                              //
+            {EventMask::PreUpdate, edit_clear},                                                     //
             {EventMask::PreUpdate, [](Event evt) -> int { return the<CL>().timing_update(evt); }},  //
             {EventMask::PreUpdate,
              [](Event) -> int {
@@ -890,7 +872,6 @@ int CL::timing_update(Event evt) {
     {
         AppTime *time = &CLGame.timing_instance;
 
-#if 0
         if (time->target_ticks > 0) {
             u64 TICK_MS = 1000000;
             u64 TICK_US = 1000;
@@ -930,7 +911,6 @@ int CL::timing_update(Event evt) {
                 }
             }
         }
-#endif
     }
 
     return 0;

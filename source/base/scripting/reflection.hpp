@@ -31,21 +31,24 @@ struct struct_transform_meta {
     using type = decltype(struct_apply(std::declval<T>(), __fake_applyer()));
 };
 
-template <typename T>
-inline constexpr auto __gen_struct_meta() {
-    return std::make_tuple();
-}
+template <class T>
+struct StructMetaData {
+    using U = std::void_t<>;
+    inline constexpr auto __gen_struct_meta() { return std::make_tuple(); }
+};
 
-#define NEKO_STRUCT(__struct, ...)                                          \
-    template <>                                                             \
-    inline constexpr auto Neko::reflection::__gen_struct_meta<__struct>() { \
-        using T = __struct;                                                 \
-        return std::make_tuple(__VA_ARGS__);                                \
+#define NEKO_STRUCT(__struct, ...)                                                         \
+    template <>                                                                            \
+    struct ::Neko::reflection::StructMetaData<__struct> {                                  \
+        using U = __struct;                                                                \
+        inline constexpr auto __gen_struct_meta() { return std::make_tuple(__VA_ARGS__); } \
     };
 
 // 这里_F*用于生成__gen_struct_meta内tuple叠入的tuple
-#define _F(field) (std::make_tuple(#field, &T::field))
-#define _Fs(field, ...) (std::make_tuple(#field, &T::field, std::make_tuple(__VA_ARGS__)))
+#define _F(field) (std::make_tuple(#field, &U::field))
+#define _Fs(field, ...) (std::make_tuple(#field, &U::field, std::make_tuple(__VA_ARGS__)))
+
+#define FIELD_TYPES() bool, i32, f32, f32 *, String
 
 template <typename T, typename Fields, typename F, size_t... Is>
 inline constexpr void struct_foreach_impl(T &&obj, Fields &&fields, F &&f, std::index_sequence<Is...>) {
@@ -66,10 +69,30 @@ inline constexpr void struct_foreach_impl(T &&obj, Fields &&fields, F &&f, std::
 template <typename T, typename F>
 inline constexpr void struct_foreach(T &&obj, F &&f) {
     // 获取宏生成的元数据 tuple
-    constexpr auto fields = __gen_struct_meta<std::decay_t<T>>();
+    constexpr auto fields = StructMetaData<std::decay_t<T>>{}.__gen_struct_meta();
     // 调用 neko_struct_foreach_impl 函数 并传递 obj/fields/f
     // std::make_index_sequence 来确认范围
     struct_foreach_impl(std::forward<T>(obj), fields, std::forward<F>(f), std::make_index_sequence<std::tuple_size_v<decltype(fields)>>{});
+}
+
+template <typename T>
+constexpr bool is_refl_struct = std::is_class_v<T> && requires {
+    typename StructMetaData<T>::U;                                   // 检查是否定义了 U
+    { StructMetaData<T>{}.__gen_struct_meta() };                     // 检查 __gen_struct_meta
+} && !std::is_same_v<typename StructMetaData<T>::U, std::void_t<>>;  // 确保 U 不为 std::void_t
+
+template <typename T, typename F, typename Fields = std::tuple<>>
+void struct_foreach_rec(F func, T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
+    if constexpr (reflection::is_refl_struct<std::decay_t<T>>) {
+        reflection::struct_foreach(obj, [&](auto &&fieldName, auto &&value, auto &&info) { struct_foreach_rec(func, value, depth + 1, fieldName, info); });
+    } else {
+        auto f = [&]<typename S>(const char *name, auto &var, S &t) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
+                func(name, var, t, fields);
+            }
+        };
+        std::apply([&](auto &&...args) { (f(fieldName, obj, args), ...); }, std::tuple<FIELD_TYPES()>());
+    }
 }
 
 }  // namespace Neko::reflection

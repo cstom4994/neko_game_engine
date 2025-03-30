@@ -9,8 +9,6 @@
 #include "base/common/logger.hpp"
 #include "base/common/vfs.hpp"
 
-
-
 NEKO_API() void script_run_string(const char *s);
 NEKO_API() void script_run_file(const char *filename);
 NEKO_API() void script_error(const char *s);
@@ -74,32 +72,20 @@ NEKO_API() void open_neko_api(lua_State *L);
 namespace Neko::luabind {
 
 template <typename T>
-void checktable_refl(lua_State *L, const_str tname, T &&v) {
-
-#define FUCK_TYPES() i32, u32, bool, f32, bool, const_str, String
-
+void struct_foreach_luatable(lua_State *L, const_str tname, T &&v) {
     if (lua_getfield(L, -1, tname) == LUA_TNIL) {
-        LOG_INFO("[exception] no {} table", tname);
+        LOG_ERROR("[exception] no {} table", tname);
     }
-    if (lua_istable(L, -1)) {
-        auto f = [&L](std::string_view name, Neko::reflection::Any &value) {
-            static_assert(std::is_lvalue_reference_v<decltype(value)>);
-            if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
-                auto ff = [&]<typename S>(const_str name, Neko::reflection::Any &var, S &t) {
-                    if (value.GetType() == Neko::reflection::type_of<S>()) {
-                        S s{};
-                        detail::LuaStack::Get(L, -1, s);
-                        value.cast<S>() = s;
-                    }
-                };
-                std::apply([&](auto &&...args) { (ff(std::string(name).c_str(), value, args), ...); }, std::tuple<FUCK_TYPES()>());
-            }
-            lua_pop(L, 1);
-        };
-        v.foreach (f);
-    } else {
-        LOG_INFO("[exception] no {} table", tname);
-    }
+    auto func = [&L]<typename S>(const char *name, auto &var, S &t, ...) {
+        if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
+            S s{};
+            luabind::detail::LuaStack::Get(L, -1, s);
+            var = s;
+            LOG_TRACE("{} : {}", name, var);
+        }
+        lua_pop(L, 1);
+    };
+    reflection::struct_foreach_rec(func, v);
     lua_pop(L, 1);
 }
 
