@@ -16,7 +16,13 @@
 
 #include "base/common/base.hpp"
 #include "base/common/reflection.hpp"
+#include "base/common/util.hpp"
 #include "luax.h"
+
+extern "C" {
+#include <lapi.h>
+#include <ltable.h>
+}
 
 namespace Neko {
 
@@ -403,12 +409,7 @@ auto Push(lua_State *L, T x)
     lua_pushnil(L);
 }
 
-template <typename T>
-auto Push(lua_State *L, T x)
-    requires std::is_same_v<T, lua_CFunction>
-{
-    lua_pushcfunction(L, x);
-}
+inline auto Push(lua_State *L, int (*f)(lua_State *)) { lua_pushcfunction(L, f); }
 
 template <typename T>
 auto Get(lua_State *L, int N, T &x)
@@ -487,6 +488,18 @@ auto Get(lua_State *L, int N, T &x)
     x = lua_tostring(L, N);
 }
 
+template <typename T>
+struct is_function_pointer : std::false_type {};
+
+template <typename Ret, typename... Args>
+struct is_function_pointer<Ret (*)(Args...)> : std::true_type {};
+
+template <typename T, typename = void>
+struct is_lambda : std::false_type {};
+
+template <typename T>
+struct is_lambda<T, std::void_t<decltype(&T::operator())>> : std::true_type {};
+
 template <typename>
 struct is_pointer_to_array : std::false_type {};
 
@@ -494,8 +507,13 @@ template <typename T, std::size_t N>
 struct is_pointer_to_array<T (*)[N]> : std::true_type {};
 
 template <typename T>
-auto Push(lua_State *L, T *x)
-    requires(!std::is_same_v<std::decay_t<T>, char> && !std::is_array_v<T> && !is_pointer_to_array<T *>::value)
+auto Push(lua_State *L, T x)
+    requires(std::is_pointer_v<T> &&                            //
+             !std::is_same_v<std::decay_t<T>, const char *> &&  //
+             !std::is_array_v<std::decay_t<T>> &&               //
+             !is_pointer_to_array<T>::value &&                  //
+             !is_function_pointer<T>::value &&                  //
+             !is_lambda<T>::value)                              //
 {
     lua_pushlightuserdata(L, reinterpret_cast<void *>(x));
 }
@@ -509,7 +527,7 @@ auto Get(lua_State *L, int index, T &x)
 
 template <typename T, std::size_t N>
 auto Push(lua_State *L, T (&arr)[N])
-    requires(std::is_array_v<T>)
+    requires(std::is_bounded_array_v<T[N]>)
 {
     lua_newtable(L);  // 创建 Lua 表
     int i = 0;
@@ -1729,26 +1747,22 @@ inline void LuaStructCreate(lua_State *L, const char *fieldName, const char *typ
     lua_pop(L, 1);
 }
 
+#if 0
 template <typename T, std::size_t I>
 int LuaStructField_w(lua_State *L, const char *typeName, const char *field, int set, T &v) {
-
     int index = 1;
-
     if constexpr (I < reflection::field_count<T>) {
         constexpr std::string_view name = reflection::field_name<T, I>;
         // lua_getfield(L, arg, name.data());
-
         if (name == field) {
             // printf("LUASTRUCT_FIELD_W %s.%s\n", typeName, field);
             auto &af = reflection::field_access<I>(v);
             return LuaStructAccess<reflection::field_type<T, I>>::Get(L, field, &af, index, set, index + 2);
         }
-
         // reflection::field_access<I>(v) = unpack<reflection::field_type<D, I>>(L, -1);
         // lua_pop(L, 1);
         return LuaStructField_w<T, I + 1>(L, typeName, field, set, v);
     }
-
     return luaL_error(L, "Invalid field %s.%s", typeName, field);
 };
 
@@ -1758,20 +1772,59 @@ void LuaStruct(lua_State *L, const char *fieldName = reflection::GetTypeName<T>(
     auto fieldaccess = [](lua_State *L) -> int {
         int index = 1;
         int set = lua_toboolean(L, lua_upvalueindex(1));
-
-        // printf("fieldaccess %d\n", set);
-
         const char *typeName = reflection::GetTypeName<T>();
         T *data = LuaStructTodata<T>(L, index);
         size_t length = 0;
         const char *field = LuaStructFieldname(L, index + 1, &length);
-
-        // printf("fieldaccess %s\n", field);
-
         return LuaStructField_w<T, 0>(L, typeName, field, set, *data);
     };
     LuaStructCreate(L, fieldName, reflection::GetTypeName<T>(), sizeof(T), fieldaccess);
-    // lua_setglobal(L, fieldName);
+    LuaStructAddType<T>(L, LuaType<T>(L));
+}
+#endif
+
+template <typename T, std::size_t... Is>
+int LuaStructField_w_impl(lua_State *L, const char *typeName, const char *field, int set, T &v, std::index_sequence<Is...>) {
+    int index = 1;
+    int result = -1;
+
+    // 使用折叠表达式展开所有字段检查，短路逻辑确保只处理第一个匹配项
+    bool found = (([&] {
+                      constexpr std::size_t I = Is;
+                      constexpr std::string_view name = reflection::field_name<T, I>;
+                      if (name == field) {
+                          auto &af = reflection::field_access<I>(v);
+                          result = LuaStructAccess<reflection::field_type<T, I>>::Get(L, field, &af, index, set, index + 2);
+                          return true;
+                      }
+                      return false;
+                  }()) ||
+                  ...);
+
+    if (found) {
+        return result;
+    }
+
+    return luaL_error(L, "Invalid field %s.%s", typeName, field);
+}
+
+template <typename T>
+int LuaStructField_w(lua_State *L, const char *typeName, const char *field, int set, T &v) {
+    return LuaStructField_w_impl(L, typeName, field, set, v, std::make_index_sequence<reflection::field_count<T>>{});
+}
+
+template <typename T>
+void LuaStruct(lua_State *L, const char *fieldName = reflection::GetTypeName<T>()) {
+    static_assert(std::is_standard_layout_v<T>);
+    auto fieldaccess = [](lua_State *L) -> int {
+        int set = lua_toboolean(L, lua_upvalueindex(1));
+        const char *typeName = reflection::GetTypeName<T>();
+        T *data = LuaStructTodata<T>(L, 1);  // 确保索引正确
+        size_t length = 0;
+        const char *field = LuaStructFieldname(L, 2, &length);  // index + 1 应为 2
+        return LuaStructField_w<T>(L, typeName, field, set, *data);
+    };
+    LuaStructCreate(L, fieldName, reflection::GetTypeName<T>(), sizeof(T), fieldaccess);
     LuaStructAddType<T>(L, LuaType<T>(L));
 }
 
@@ -2233,6 +2286,206 @@ R InvokeLua(lua_State *L, const char *name, Args... args) {
     lua_pop(L, 1);
     return ret;
 }
+
+static int FindKeyIndex(const Table *t, const char *key) {
+    int i;
+    for (i = 0; i < sizenode(t); i++) {
+        const Node *n = gnode(t, i);
+        if (!ttisnil(gval(n))) {  // 有效节点检查
+            const TValue tv{n->u.key_val, n->u.key_tt};
+            if (ttisstring(&tv) && strcmp(svalue(&tv), key) == 0) {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+#if 0
+static int FindKeyIndex(const Table *t, const char *key) {
+#define SAFE_STR_EQ(ts, str, len) ((ts)->shrlen == (len) && memcmp(getstr(ts), (str), (len)) == 0)
+    size_t key_len = strlen(key);
+    //for (int i = 0; i < t->alimit; i++) {
+    //    const TValue *arr_item = &t->array[i];
+    //    if (ttisstring(arr_item)) {
+    //        const TString *ts = tsvalue(arr_item);
+    //        if (SAFE_STR_EQ(ts, key, key_len)) {
+    //            return i;
+    //        }
+    //    }
+    //}
+    for (int i = 0; i < allocsizenode(t); i++) {
+        const Node *n = gnode(t, i);
+        if (!ttisnil(gval(n))) {  // 有效节点检查
+            const TValue tv{n->u.key_val, n->u.key_tt};
+            const TValue *k = &tv;
+            if (ttisstring(k)) {
+                const TString *ts = tsvalue(k);
+                if (SAFE_STR_EQ(ts, key, key_len)) {
+                    return t->alimit + i;  // 返回全局索引
+                }
+            }
+        }
+    }
+#undef SAFE_STR_EQ
+    return -1;
+}
+#endif
+
+template <typename T>
+struct LuaTableMeta {
+    using StructType = T;
+    std::unordered_map<std::string, size_t> field_offsets;
+    std::string magic_key;
+    lua_Number magic_value;
+
+    explicit LuaTableMeta(const char *magic, lua_Number val) : magic_key(magic), magic_value(val) {}
+};
+
+template <typename T>
+static lua_Number GenerateMagicValue() {
+    constexpr size_t seed = 0x9E3779B9;
+    auto h = std::hash<std::string_view>{}(reflection::GetTypeName<T>());
+    return static_cast<lua_Number>((h ^ seed) & 0xFFFFFFFF);
+}
+
+//
+// directly parse the raw data in the luavm
+// requires the internal API of the luavm
+// reference: https://blog.codingnow.com/2017/02/lua_direct_access_table.html
+//
+template <typename T>
+class LuaTableAccess {
+    static inline std::unique_ptr<LuaTableMeta<T>> meta;
+    static inline bool initialized = false;
+
+public:
+    static void Init(lua_State *L) {
+        if (initialized) return;
+        meta = std::make_unique<LuaTableMeta<T>>(reflection::GetTypeName<T>(), GenerateMagicValue<T>());
+        CreatePrototypeTable(L);
+        initialized = true;
+    }
+
+    template <typename T, std::size_t... Is>
+    static bool createprototype_w_impl(lua_State *L, T &v, std::index_sequence<Is...>) {
+        return !(([&] {
+                     constexpr std::string_view name = reflection::field_name<T, Is>;
+                     lua_pushnumber(L, 0);
+                     lua_setfield(L, -2, name.data());
+                     return false;
+                 }()) ||
+                 ...);
+    }
+
+    template <typename T, std::size_t... Is>
+    static bool createoffset_w_impl(const Table *t, T &v, std::index_sequence<Is...>) {
+        return !(([&] {
+                     constexpr std::string_view name = reflection::field_name<T, Is>;
+                     meta->field_offsets[name.data()] = FindKeyIndex(t, name.data());
+                     return false;
+                 }()) ||
+                 ...);
+    }
+
+    static void CreatePrototypeTable(lua_State *L) {
+        constexpr std::size_t I = reflection::field_count<T> + 1;
+        lua_createtable(L, 0, I);
+        createprototype_w_impl(L, T{}, std::make_index_sequence<I - 1>{});
+        lua_pushnumber(L, meta->magic_value);
+        lua_setfield(L, -2, meta->magic_key.c_str());
+        CacheFieldOffsets(L);
+    }
+
+    static void CacheFieldOffsets(lua_State *L) {
+        const Table *t = (Table *)lua_topointer(L, -1);
+        constexpr std::size_t I = reflection::field_count<T> + 1;
+        createoffset_w_impl(t, T{}, std::make_index_sequence<I - 1>{});
+        meta->field_offsets[meta->magic_key] = FindKeyIndex(t, meta->magic_key.c_str());
+        lua_pop(L, 1);
+    }
+
+    static LuaTableMeta<T> &GetMeta() { return *meta; }
+
+    static Table *GetTable(lua_State *L, int index) {
+        luaL_checktype(L, index, LUA_TTABLE);
+        Table *t = (Table *)lua_topointer(L, index);
+        auto &meta = GetMeta();
+        size_t magic_idx = meta.field_offsets[meta.magic_key];
+        const TValue *magic = gval(gnode(t, magic_idx));
+        if (!ttisfloat(magic) || fltvalue(magic) != meta.magic_value) {
+            index = lua_absindex(L, index);
+            T struct_instance;
+            constexpr std::size_t field_count = reflection::field_count<T>;
+            LoadStructFields(L, index, struct_instance, std::make_index_sequence<field_count>{});
+            ClearLuaTable(L, index);
+            luaH_resize(L, t, 0, field_count + 1);
+            SaveStructFields(L, index, struct_instance, std::make_index_sequence<field_count>{});
+            LuaPush(L, meta.magic_value);
+            lua_setfield(L, index, meta.magic_key.c_str());
+        }
+        return t;
+    }
+
+    template <typename T>
+    static auto &Fields(Table *t, const char *fieldname) {
+        auto &meta = GetMeta();
+        size_t field_idx = meta.field_offsets.at(fieldname);
+        TValue *tv = gval(gnode(t, field_idx));
+
+        if constexpr (std::is_same_v<T, lua_Number>) {
+            lua_assert(ttisfloat(tv));
+            return fltvalue(tv);
+        } else if constexpr (std::is_same_v<T, lua_Integer>) {
+            lua_assert(ttisinteger(tv));
+            return ivalue(tv);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            lua_assert(ttisboolean(tv));
+            return bvalue(tv);
+        } else if constexpr (std::is_convertible_v<T, const char *>) {
+            lua_assert(ttisstring(tv));
+            return tsvalue(tv)->contents;
+        } else if constexpr (std::is_same_v<T, void *>) {
+            lua_assert(ttislightuserdata(tv));
+            return pvalue(tv);
+        } else {
+            static_assert(dependent_false<T>::value, "Unsupported field type. Valid types: lua_Number, lua_Integer, bool, const char*, void*");
+        }
+    }
+
+private:
+    template <std::size_t... Is>
+    static void LoadStructFields(lua_State *L, int index, T &v, std::index_sequence<Is...>) {
+        (..., [&] {
+            constexpr auto field_name = reflection::field_name<T, Is>;
+            using field_type = typename reflection::field_type<T, Is>;
+            auto &af = reflection::field_access<Is>(v);
+            lua_getfield(L, index, field_name.data());
+            af = LuaGet<field_type>(L, -1);
+            lua_pop(L, 1);
+        }());
+    }
+
+    template <std::size_t... Is>
+    static void SaveStructFields(lua_State *L, int index, const T &v, std::index_sequence<Is...>) {
+        (..., [&] {
+            constexpr auto field_name = reflection::field_name<T, Is>;
+            using field_type = typename reflection::field_type<T, Is>;
+            LuaPush(L, reflection::field_access<Is>(v));
+            lua_setfield(L, index, field_name.data());
+        }());
+    }
+
+    static void ClearLuaTable(lua_State *L, int index) {
+        lua_pushnil(L);
+        while (lua_next(L, index) != 0) {
+            lua_pop(L, 1);
+            lua_pushvalue(L, -1);
+            lua_pushnil(L);
+            lua_rawset(L, index);
+        }
+    }
+};
 
 struct callfunc {
     template <typename F, typename... Args>

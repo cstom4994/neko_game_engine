@@ -2,8 +2,10 @@
 
 #include "base/scripting/lua_wrapper.hpp"
 
+extern "C" {
 #include "lapi.h"
 #include "ltable.h"
+}
 
 // 将TValue压入栈
 void PushTValue(lua_State *L, const TValue *v) {

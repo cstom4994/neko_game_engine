@@ -288,12 +288,6 @@ int _game_draw(Event evt) {
 
         ImGui::SetNextWindowViewport(CLGame.devui_vp);
         if (ImGui::Begin("Hello")) {
-
-            if (ImGui::Button("Test")) {
-                int Test123();
-                Test123();
-            }
-
             state_inspector(CLGame.state);
         }
         ImGui::End();

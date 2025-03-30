@@ -13,6 +13,8 @@ function haha()
 
     local default_font = neko.font_load("default")
 
+    neko.set_master_volume(0.2)
+
     EcsWorld:register("test_component_1", {
         x = 0,
         y = 0

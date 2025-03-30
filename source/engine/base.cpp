@@ -231,7 +231,6 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
-#if NEKO_AUDIO == 1
 #define MA_ENABLE_ONLY_SPECIFIC_BACKENDS
 #define MA_ENABLE_WASAPI
 #define MA_ENABLE_ALSA
@@ -239,8 +238,7 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #define MA_NO_ENCODING
 #define MA_NO_GENERATION
 #define MINIAUDIO_IMPLEMENTATION
-#include <miniaudio.h>
-#endif
+#include "extern/miniaudio.h"
 
 #ifdef __clang__
 #pragma clang diagnostic pop

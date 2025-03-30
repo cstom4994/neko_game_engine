@@ -141,7 +141,7 @@ function CPlayer:update(dt)
         -- 播放弓箭音效
         -- choose({sound_bow_1, sound_bow_2, sound_bow_3}):start()
 
-        audio_play_event(choose({"event:/Player/Bow/Bow1", "event:/Player/Bow/Bow2"}))
+        neko.sound_load(choose({"assets/sounds/attackBow01.wav", "assets/sounds/attackBow02.wav"})):start()
 
         local ox = self.x
         local oy = self.y

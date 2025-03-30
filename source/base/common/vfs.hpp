@@ -94,8 +94,6 @@ bool vfs_read_entire_file(String* out, String filepath);
 // bool vfs_write_entire_file(String fsname, String filepath, String contents);
 bool vfs_list_all_files(String fsname, Array<String>* files);
 
-void* vfs_for_miniaudio();
-
 typedef struct vfs_file {
     const_str data;
     size_t len;

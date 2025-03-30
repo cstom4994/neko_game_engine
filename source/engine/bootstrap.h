@@ -102,11 +102,9 @@ public:
         f32 posteffect_intensity = 2.0f;
     } state{};
 
-#if NEKO_AUDIO == 1
     void *miniaudio_vfs;
     ma_engine audio_engine;
     Array<Sound *> garbage_sounds;
-#endif
 
 public:
     CL();

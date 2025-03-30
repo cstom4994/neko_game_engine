@@ -12,9 +12,6 @@ disablewarnings {"4005", "4244", "4305", "4127", "4481", "4100", "4512", "4018",
 cppdialect "C++20"
 cdialect "C17"
 
-local FMOD_LIB_DIR = "C:/Program Files (x86)/FMOD SoundSystem/FMOD Studio API Windows"
-local ENABLE_FMOD = false
-
 local arch = "x86_64"
 
 characterset("Unicode")
@@ -37,12 +34,6 @@ defines {"GLFW_INCLUDE_NONE"}
 includedirs {"source", "source/extern", "source/extern/luaot", "source/extern/glfw/include"}
 
 libdirs {"source/extern/glfw/lib-vc2022"}
-
-if ENABLE_FMOD then
-    includedirs {FMOD_LIB_DIR .. "/api/core/inc", FMOD_LIB_DIR .. "/api/studio/inc"}
-    libdirs {"source/extern/libffi/lib", FMOD_LIB_DIR .. "/api/core/lib/x64", FMOD_LIB_DIR .. "/api/studio/lib/x64"}
-    defines {"NEKO_AUDIO=2"}
-end
 
 local function runlua(name)
     return function(config)
@@ -297,7 +288,8 @@ newaction {
     execute = function()
         local entries = {}
         -- local luaFiles = os.matchfiles("source/game/script/*.lua")
-        local luaFiles = os.matchfiles("./*.md")
+        -- local luaFiles = os.matchfiles("./*.md")
+        local luaFiles = os.matchfiles("./gamedir/**")
 
         local out = io.open("out.lua", "w")
         out:write("local F = function(x) return x end\n")
@@ -494,7 +486,7 @@ end
 
 project "engine"
 do
-    kind "ConsoleApp"
+    kind "StaticLib"
     language "C++"
     targetdir "./bin"
     debugdir "./bin"
@@ -511,17 +503,29 @@ do
     files {"source/gen/*_embedded.cpp"}
     -- files {"source/gen/*_luaot.c"}
 
-    links {"ws2_32", "wininet", "glfw3"}
-
-    links {"base"}
-
-    if ENABLE_FMOD then
-        links {"fmod_vc", "fmodstudio_vc"}
-    end
-
     files {"premake5.lua"}
 
     -- warnings "off"
+end
+
+project "sandbox"
+do
+    kind "ConsoleApp"
+    language "C++"
+    targetdir "./bin"
+    debugdir "./bin"
+
+    includedirs {"source", "source/extern/luaot"}
+
+    defines {"LUAOT_USE_GOTOS"}
+
+    files {"source/game/*.cpp"}
+
+    files {"premake5.lua"}
+
+    links {"base", "engine"}
+
+    links {"ws2_32", "wininet", "glfw3"}
 end
 
 project "luaot"
@@ -540,7 +544,26 @@ do
     files {"premake5.lua"}
 
     links {"base"}
+end
 
-    -- warnings "off"
+group "Tests"
+do
+    local function gen_test_proj(name, src)
+        project(name)
+        do
+            kind "ConsoleApp"
+            language "C++"
+            targetdir "./bin"
+            debugdir "./bin"
+            includedirs {"source", "source/extern/luaot"}
+            defines {"LUAOT_USE_GOTOS"}
+            files {src}
+            files {"premake5.lua"}
+            links {"base", "engine"}
+            links {"ws2_32", "wininet", "glfw3"}
+        end
+    end
 
+    gen_test_proj("test_shader", "source/test/test_shader.cpp")
+    gen_test_proj("test_luawrap", "source/test/test_luawrap.cpp")
 end

@@ -10,11 +10,15 @@
 #include "engine/event.h"
 #include "base/scripting/lua_wrapper.hpp"
 
-#if NEKO_AUDIO == 1
-
 #include <miniaudio.h>
 
 using namespace Neko::luabind;
+
+struct AudioFile {
+    u8 *buf;
+    u64 cursor;
+    u64 len;
+};
 
 struct Sound {
     ma_sound ma;
@@ -39,8 +43,6 @@ inline int neko_sound_load(lua_State *L) {
     luax_ptr_userdata(L, sound, "mt_sound");
     return 1;
 }
-
-#endif
 
 NEKO_API() void sound_init();
 NEKO_API() void sound_fini();

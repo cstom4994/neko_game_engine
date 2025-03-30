@@ -650,9 +650,7 @@ static int neko_scissor_rect(lua_State *L) {
 
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
-#if NEKO_AUDIO == 1
     ma_engine_set_volume(&the<CL>().audio_engine, (float)vol);
-#endif
     return 0;
 }
 
@@ -2447,7 +2445,7 @@ static int open_neko(lua_State *L) {
             {"make_channel", neko_make_channel},
             {"image_load", neko_image_load},
             {"font_load", mt_font::neko_font_load},
-            // {"sound_load", neko_sound_load},
+            {"sound_load", neko_sound_load},
             {"sprite_load", mt_sprite::neko_sprite_load},
             // {"atlas_load", neko_atlas_load},
             // {"tilemap_load", neko_tilemap_load},
@@ -3269,13 +3267,13 @@ void open_neko_api(lua_State *L) {
     lua_CFunction funcs[] = {
             open_mt_thread,
             open_mt_channel,
+            open_mt_sound,
 
             mt_font::open_mt_font,
             mt_sprite::open_mt_sprite,
             mt_bindata::open_mt_bindata,
 
     // open_mt_image,
-    // open_mt_sound,
     // open_mt_atlas_image,
     // open_mt_atlas,
     // open_mt_tilemap,
