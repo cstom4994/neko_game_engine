@@ -27,9 +27,6 @@
 #include "lapi.h"
 #include "ltable.h"
 
-// deps
-#include "extern/sokol_time.h"
-
 using namespace Neko::luabind;
 
 void open_luasocket(lua_State *L);
@@ -504,7 +501,7 @@ static int neko_platform(lua_State *L) {
 }
 
 static int neko_dt(lua_State *L) {
-    lua_pushnumber(L, the<CL>().get_timing_instance().dt);
+    lua_pushnumber(L, the<CL>().GetTimeInfo().dt);
     return 1;
 }
 
@@ -531,7 +528,7 @@ static int neko_window_height(lua_State *L) {
 }
 
 static int neko_time(lua_State *L) {
-    lua_pushinteger(L, stm_now());
+    lua_pushinteger(L, TimeUtil::now());
     return 1;
 }
 
@@ -539,12 +536,12 @@ static int neko_difftime(lua_State *L) {
     lua_Integer t2 = luaL_checkinteger(L, 1);
     lua_Integer t1 = luaL_checkinteger(L, 2);
 
-    lua_pushinteger(L, stm_diff(t2, t1));
+    lua_pushinteger(L, TimeUtil::difference(t2, t1));
     return 1;
 }
 
 static int neko_elapsed(lua_State *L) {
-    lua_pushnumber(L, stm_sec(stm_now() - the<CL>().get_timing_instance().startup));
+    lua_pushnumber(L, TimeUtil::to_seconds(TimeUtil::now() - the<CL>().GetTimeInfo().startup));
     return 1;
 }
 

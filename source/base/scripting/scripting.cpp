@@ -281,14 +281,6 @@ static void _forward_args() {
     lua_setglobal(L, "nekogame_args");
 }
 
-static void _set_paths() {
-    lua_State *L = ENGINE_LUA();
-    lua_pushstring(L, data_path(""));
-    lua_setglobal(L, "nekogame_data_path");
-    lua_pushstring(L, usr_path(""));
-    lua_setglobal(L, "nekogame_usr_path");
-}
-
 // LuaJIT FFI 解析器无法解析 'NEKO_EXPORT' -- 使其成为空白
 static void _fix_exports(char *s) {
     static const char keyword[] = NEKO_STR(NEKO_EXPORT);
@@ -362,7 +354,6 @@ void script_init() {
 
     _load_nekogame_ffi();
     _forward_args();
-    _set_paths();
 
     lua_channels_setup();
 

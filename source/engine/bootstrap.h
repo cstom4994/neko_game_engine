@@ -24,14 +24,6 @@
 // deps
 #include "extern/luaalloc.h"
 
-#define DATA_DIR "../gamedir/assets/data/"
-#define USR_DIR "../gamedir/usr/"
-
-#define data_path(path) (DATA_DIR path)
-#define usr_path(path) (USR_DIR path)
-
-#define default_font_size 22.f
-
 using namespace Neko;
 using namespace Neko::ecs;
 
@@ -43,26 +35,20 @@ namespace Neko {
 struct LuaInspector;
 }
 
-struct AppTime {
-    u64 startup;
-    u64 last;
-    u64 accumulator;
-    u64 target_ticks;
-    f64 delta;
-
-    f32 dt;
-    f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
-};
-
-// ECS_COMPONENT_EXTERN(pos_t);
-// ECS_COMPONENT_EXTERN(vel_t);
-// ECS_COMPONENT_EXTERN(rect_t);
-
 class CL : public Neko::SingletonClass<CL> {
 public:
     bool g_quit = false;  // 如果为 true 则退出主循环
     Mutex g_init_mtx;
-    AppTime timing_instance{};
+    struct TimeInfo {
+        u64 startup;
+        u64 last;
+        u64 accumulator;
+        u64 target_ticks;
+        f64 delta;
+
+        f32 dt;
+        f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
+    } time{};
     lua_State *L{};
     EcsWorld *ECS{};
     batch_renderer *batch{};
@@ -128,14 +114,16 @@ public:
     vec2 pixels_to_unit(vec2 p);
     void quit();
     void SplashScreen();
-    int timing_update(Event evt);
 
-    inline AppTime get_timing_instance() { return the<CL>().timing_instance; }
+    inline CL::TimeInfo GetTimeInfo() const { return the<CL>().time; }
     inline f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
     inline void timing_set_scale(f32 s) { the<CL>().scale = s; }
     inline f32 timing_get_scale() { return the<CL>().scale; }
     inline void timing_set_paused(bool p) { the<CL>().paused = p; }  // 暂停将刻度设置为 0 并在恢复时恢复它
     inline bool timing_get_paused() { return the<CL>().paused; }
+
+private:
+    int update_time(Event evt);
 };
 
 inline lua_State *&ENGINE_LUA() { return the<CL>().get_lua(); }

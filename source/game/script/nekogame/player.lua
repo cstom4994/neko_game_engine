@@ -612,8 +612,8 @@ function Target:draw()
     -- x, y = camera:to_world_space(x, y)
 
     local ox = self.sprite:width() / 2
-    local oy = self.sprite:height()
-    self.sprite:draw(self.x, self.y, self.angle, 1, 1, ox, oy)
+    local oy = self.sprite:height() / 2
+    self.sprite:draw(self.x, self.y + 20, self.angle, 1, -1, ox, oy)
 
     if draw_fixtures then
         self.body:draw_fixtures()

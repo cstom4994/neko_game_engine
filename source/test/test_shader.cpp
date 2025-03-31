@@ -25,6 +25,17 @@ int main() {
 @uniform mat4 projection;
 @uniform mat4 transform;
 
+//@varying VS_OUT {
+//	vec4 color;
+//	vec2 uv;
+//	float use_texture;
+//} vs_out;
+
+struct MyStruct {
+    vec2 uv;
+    float f;
+} myStruct;
+
 int myfunc(float f, mat3 m3) {
 	return 114514;
 }

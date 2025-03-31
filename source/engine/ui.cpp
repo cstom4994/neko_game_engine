@@ -119,10 +119,14 @@ void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, re
 
     Color col = color256_to_rgb(color);
 
-    float verts[] = {dst.x,         dst.y,         tx,      ty,      col.r, col.g, col.b, transparency, (float)mode,   //
-                     dst.x + dst.w, dst.y,         tx + tw, ty,      col.r, col.g, col.b, transparency, (float)mode,   //
-                     dst.x + dst.w, dst.y + dst.h, tx + tw, ty + th, col.r, col.g, col.b, transparency, (float)mode,   //
-                     dst.x,         dst.y + dst.h, tx,      ty + th, col.r, col.g, col.b, transparency, (float)mode};  //
+    // clang-format off
+    float verts[] = {
+        dst.x,         dst.y,         tx,      ty,      col.r, col.g, col.b, transparency, (float)mode,   //
+        dst.x + dst.w, dst.y,         tx + tw, ty,      col.r, col.g, col.b, transparency, (float)mode,   //
+        dst.x + dst.w, dst.y + dst.h, tx + tw, ty + th, col.r, col.g, col.b, transparency, (float)mode,   //
+        dst.x,         dst.y + dst.h, tx,      ty + th, col.r, col.g, col.b, transparency, (float)mode    //
+    };
+    // clang-format on
 
     const u32 index_offset = renderer->quad_count * 4;
 

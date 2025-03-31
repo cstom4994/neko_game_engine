@@ -12,7 +12,6 @@ uniform float scale;
 
 void main() {
     vec2 position = a_position * 1.0; // 应用缩放因子
-    // position.y = -position.y;
     gl_Position = vec4(inverse_view_matrix * vec3(position, 1.0), 1.0);
     v_texindex = a_texindex;
 }

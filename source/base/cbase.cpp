@@ -9,9 +9,6 @@
 
 #include <cstdlib>
 
-// deps
-#include "extern/sokol_time.h"
-
 #ifdef NEKO_IS_WIN32
 #define HACK_CALL __cdecl
 #else
@@ -51,7 +48,7 @@ void CBase::SetArgs(int argc, const char** argv) {
 void CBase::Init() {
 
     os_high_timer_resolution();
-    stm_setup();
+    TimeUtil::initialize();
 
     Logger::init();
 

@@ -194,9 +194,6 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #pragma comment(lib, "ws2_32")
 #endif
 
-#define SOKOL_TIME_IMPL
-#include "extern/sokol_time.h"
-
 #define STBI_MALLOC(sz) mem_alloc(sz)
 #define STBI_REALLOC(p, newsz) mem_realloc(p, newsz)
 #define STBI_FREE(p) mem_free(p)

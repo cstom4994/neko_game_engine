@@ -486,6 +486,94 @@ static std::string get_error_description() noexcept {
 }
 #endif
 
+TimeUtil::PlatformData TimeUtil::platform_data_{};
+const std::array<std::array<uint64_t, 2>, 10> TimeUtil::refresh_rates_ = {{
+        {16666667, 1000000},  // 60Hz
+        {13888889, 250000},   // 72Hz
+        {13333333, 250000},   // 75Hz
+        {11764706, 250000},   // 85Hz
+        {11111111, 250000},   // 90Hz
+        {10000000, 500000},   // 100Hz
+        {8333333, 500000},    // 120Hz
+        {6944445, 500000},    // 144Hz
+        {4166667, 1000000},   // 240Hz
+        {0, 0}                // Sentinel
+}};
+
+void TimeUtil::initialize() {
+    assert(!platform_data_.initialized);
+
+#if defined(NEKO_IS_WIN32)
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    LARGE_INTEGER start;
+    QueryPerformanceCounter(&start);
+
+    platform_data_.frequency = freq.QuadPart;
+    platform_data_.start_counter = start.QuadPart;
+#else
+    timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    platform_data_.start_ns = static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000 + static_cast<uint64_t>(ts.tv_nsec);
+#endif
+
+    platform_data_.initialized = true;
+}
+
+uint64_t TimeUtil::now() noexcept {
+    assert(platform_data_.initialized);
+
+#if defined(NEKO_IS_WIN32)
+    LARGE_INTEGER counter;
+    QueryPerformanceCounter(&counter);
+    const int64_t diff = counter.QuadPart - platform_data_.start_counter;
+    return static_cast<uint64_t>(mul_div(diff, 1'000'000'000, platform_data_.frequency));
+#else
+    timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    const uint64_t current_ns = static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000 + static_cast<uint64_t>(ts.tv_nsec);
+    return current_ns - platform_data_.start_ns;
+#endif
+}
+
+uint64_t TimeUtil::difference(uint64_t new_ticks, uint64_t old_ticks) noexcept { return (new_ticks > old_ticks) ? (new_ticks - old_ticks) : 1; }
+
+uint64_t TimeUtil::since(uint64_t start_ticks) noexcept { return difference(now(), start_ticks); }
+
+uint64_t TimeUtil::lap_time(uint64_t *last_time) noexcept {
+    assert(last_time);
+    const uint64_t current = now();
+    const uint64_t delta = (*last_time != 0) ? difference(current, *last_time) : 0;
+    *last_time = current;
+    return delta;
+}
+
+uint64_t TimeUtil::round_to_common_refresh_rate(uint64_t frame_ticks) noexcept {
+    for (const auto &[duration, tolerance] : refresh_rates_) {
+        if (duration == 0) break;
+        if (frame_ticks > (duration - tolerance) && frame_ticks < (duration + tolerance)) {
+            return duration;
+        }
+    }
+    return frame_ticks;
+}
+
+double TimeUtil::to_seconds(uint64_t ticks) noexcept { return static_cast<double>(ticks) / 1'000'000'000.0; }
+
+double TimeUtil::to_milliseconds(uint64_t ticks) noexcept { return static_cast<double>(ticks) / 1'000'000.0; }
+
+double TimeUtil::to_microseconds(uint64_t ticks) noexcept { return static_cast<double>(ticks) / 1'000.0; }
+
+double TimeUtil::to_nanoseconds(uint64_t ticks) noexcept { return static_cast<double>(ticks); }
+
+#if defined(NEKO_IS_WIN32)
+int64_t TimeUtil::mul_div(int64_t value, int64_t numerator, int64_t denominator) noexcept {
+    const int64_t quotient = value / denominator;
+    const int64_t remainder = value % denominator;
+    return quotient * numerator + remainder * numerator / denominator;
+}
+#endif
+
 }  // namespace Neko
 
 #if defined(NEKO_IS_WIN32)

@@ -35,9 +35,6 @@
 #include "engine/window.h"
 #include "engine/renderer/shader.h"
 
-// deps
-#include "extern/sokol_time.h"
-
 // clang-format off
 
 NEKO_STRUCT(CL::State, 
@@ -201,7 +198,7 @@ int _game_draw(Event evt) {
     lua_State *L = ENGINE_LUA();
 
     luax_neko_get(L, "__timer_update");
-    lua_pushnumber(L, CLGame.get_timing_instance().delta);
+    lua_pushnumber(L, CLGame.GetTimeInfo().delta);
     luax_pcall(L, 1, 0);
 
     if (!gBase.error_mode.load()) {
@@ -218,8 +215,8 @@ int _game_draw(Event evt) {
             ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), CLGame.get_timing_instance().true_dt * 1000.f,
-                        1.f / CLGame.get_timing_instance().true_dt);
+            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), CLGame.GetTimeInfo().true_dt * 1000.f,
+                        1.f / CLGame.GetTimeInfo().true_dt);
 
             ImGui::EndMainMenuBar();
         }
@@ -459,11 +456,11 @@ void CL::init() {
     the<EventHandler>().init();
 
     // random seed
-    srand(time(NULL));
+    srand(::time(NULL));
 
     // time set
-    CLGame.timing_instance.startup = stm_now();
-    CLGame.timing_instance.last = stm_now();
+    CLGame.time.startup = TimeUtil::now();
+    CLGame.time.last = TimeUtil::now();
 
     // init systems
     console_puts("welcome to neko!");
@@ -603,7 +600,7 @@ end
     input_add_scroll_callback(_scroll);
 
     if (CLGame.state.target_fps != 0) {
-        CLGame.timing_instance.target_ticks = 1000000000 / CLGame.state.target_fps;
+        CLGame.time.target_ticks = 1000000000 / CLGame.state.target_fps;
     }
 
 #ifdef NEKO_IS_WIN32
@@ -632,9 +629,9 @@ end
         EventMask evt;
         EventCallback cb;
     } evt_list[] = {
-            {EventMask::PreUpdate, assets_perform_hot_reload_changes},                              //
-            {EventMask::PreUpdate, edit_clear},                                                     //
-            {EventMask::PreUpdate, [](Event evt) -> int { return the<CL>().timing_update(evt); }},  //
+            {EventMask::PreUpdate, assets_perform_hot_reload_changes},                            //
+            {EventMask::PreUpdate, edit_clear},                                                   //
+            {EventMask::PreUpdate, [](Event evt) -> int { return the<CL>().update_time(evt); }},  //
             {EventMask::PreUpdate,
              [](Event) -> int {
                  the<EventHandler>().EventPushLuaType(OnPreUpdate);
@@ -848,7 +845,7 @@ void CL::fini() {
     Neko::modules::shutdown<EventHandler>();
 }
 
-int CL::timing_update(Event evt) {
+int CL::update_time(Event evt) {
     auto &CLGame = the<CL>();
 
     // update dt
@@ -859,12 +856,12 @@ int CL::timing_update(Event evt) {
     if (last_time < 0) last_time = glfwGetTime();
 
     curr_time = glfwGetTime();
-    CLGame.timing_instance.true_dt = curr_time - last_time;
-    CLGame.timing_instance.dt = CLGame.paused ? 0.0f : CLGame.scale * get_timing_instance().true_dt;
+    CLGame.time.true_dt = curr_time - last_time;
+    CLGame.time.dt = CLGame.paused ? 0.0f : CLGame.scale * GetTimeInfo().true_dt;
     last_time = curr_time;
 
     {
-        AppTime *time = &CLGame.timing_instance;
+        TimeInfo *time = &CLGame.time;
 
         if (time->target_ticks > 0) {
             u64 TICK_MS = 1000000;
@@ -882,15 +879,15 @@ int CL::timing_update(Event evt) {
                 {
                     PROFILE_BLOCK("spin loop");
 
-                    u64 lap = stm_laptime(&time->last);
-                    time->delta += stm_sec(lap);
+                    u64 lap = TimeUtil::lap_time(&time->last);
+                    time->delta += TimeUtil::to_seconds(lap);
                     time->accumulator += lap;
 
                     while (time->accumulator < target) {
                         os_yield();
 
-                        u64 lap = stm_laptime(&time->last);
-                        time->delta += stm_sec(lap);
+                        u64 lap = TimeUtil::lap_time(&time->last);
+                        time->delta += TimeUtil::to_seconds(lap);
                         time->accumulator += lap;
                     }
                 }

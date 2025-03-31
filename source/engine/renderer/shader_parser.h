@@ -100,7 +100,8 @@ struct StructMember {
 struct StructDefinition final : ASTNode {
     std::string name;
     std::vector<StructMember> members;
-    StructDefinition(std::string n, std::vector<StructMember> m) : name(std::move(n)), members(std::move(m)) {}
+    std::optional<std::string> valName;
+    StructDefinition(std::string n, std::vector<StructMember> m, std::optional<std::string> v) : name(std::move(n)), members(std::move(m)), valName(std::move(v)) {}
 };
 
 struct Parameter {
@@ -137,7 +138,7 @@ class Parser {
 
     Token consumeType();
 
-    bool match(TokenType type);
+    bool match(TokenType type, bool increase = true);
 
 public:
     explicit Parser(std::vector<Token> toks) : tokens(std::move(toks)) {}

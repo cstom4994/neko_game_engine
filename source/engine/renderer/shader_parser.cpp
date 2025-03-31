@@ -211,9 +211,9 @@ Token Parser::consumeType() {
     return tokens[index++];
 }
 
-bool Parser::match(TokenType type) {
+bool Parser::match(TokenType type, bool increase) {
     if (index < tokens.size() && tokens[index].type == type) {
-        index++;
+        if (increase) index++;
         return true;
     }
     return false;
@@ -294,6 +294,7 @@ std::shared_ptr<StructDefinition> Parser::parseStruct() {
     consume(TokenType::LEFT_BRACE, "Expected '{' after struct name");
 
     std::vector<StructMember> members;
+    std::optional<std::string> valName = std::nullopt;
     while (!match(TokenType::RIGHT_BRACE)) {
         Token typeToken = consumeType();
         Token nameToken = consume(TokenType::IDENTIFIER, "Expected member name");
@@ -307,8 +308,12 @@ std::shared_ptr<StructDefinition> Parser::parseStruct() {
         consume(TokenType::SEMICOLON, "Expected ';' after struct member");
         members.push_back({typeToken.value, nameToken.value, arraySize});
     }
+    if (match(TokenType::IDENTIFIER, false)) {
+        Token nameToken = consume(TokenType::IDENTIFIER, "Expected struct definition name");
+        valName = nameToken.value;
+    }
     consume(TokenType::SEMICOLON, "Expected ';' after struct definition");
-    return std::make_shared<StructDefinition>(StructDefinition{nameToken.value, members});
+    return std::make_shared<StructDefinition>(StructDefinition{nameToken.value, members, valName});
 }
 
 std::shared_ptr<FunctionDefinition> Parser::parseFunction() {
@@ -402,13 +407,15 @@ std::unordered_map<std::string, std::string> CodeGenerator::generate(const std::
                 generateVarDecl(oss, *var, attrLoc, shaderType);
             }
             if (auto s = std::dynamic_pointer_cast<StructDefinition>(node)) {  // 处理结构体
-                oss << "struct " << s->name << " {\n";
+                oss << "\nstruct " << s->name << " {\n";
                 for (const auto& m : s->members) {
                     oss << "    " << m.type << " " << m.name;
                     if (!m.arraySize.empty()) oss << "[" << m.arraySize << "]";
                     oss << ";\n";
                 }
-                oss << "};\n\n";
+                oss << "}";
+                if (s->valName.has_value()) oss << " " << s->valName.value();
+                oss << ";\n\n";
             }
             if (auto func = std::dynamic_pointer_cast<FunctionDefinition>(node)) {  // 处理函数体
                 oss << "\n" << func->returnType << " " << func->name << "(";

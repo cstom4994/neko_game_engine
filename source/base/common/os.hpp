@@ -66,6 +66,41 @@ void neko_os_library_unload(void *lib);
 void *neko_os_library_proc_address(void *lib, const char *func);
 int neko_os_chdir(const char *path);
 
+class TimeUtil {
+public:
+    static void initialize();
+    static uint64_t now() noexcept;
+
+    static uint64_t difference(uint64_t new_ticks, uint64_t old_ticks) noexcept;
+    static uint64_t since(uint64_t start_ticks) noexcept;
+    static uint64_t lap_time(uint64_t *last_time) noexcept;
+
+    static uint64_t round_to_common_refresh_rate(uint64_t frame_ticks) noexcept;
+
+    static double to_seconds(uint64_t ticks) noexcept;
+    static double to_milliseconds(uint64_t ticks) noexcept;
+    static double to_microseconds(uint64_t ticks) noexcept;
+    static double to_nanoseconds(uint64_t ticks) noexcept;
+
+private:
+    struct PlatformData {
+#if defined(NEKO_IS_WIN32)
+        int64_t frequency;
+        int64_t start_counter;
+#else
+        uint64_t start_ns;
+#endif
+        bool initialized = false;
+    };
+
+    static PlatformData platform_data_;
+    static const std::array<std::array<uint64_t, 2>, 10> refresh_rates_;
+
+#if defined(NEKO_IS_WIN32)
+    static int64_t mul_div(int64_t value, int64_t numerator, int64_t denominator) noexcept;
+#endif
+};
+
 #if defined(NEKO_IS_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
 #define neko_fseek(file, offset, whence) fseeko(file, offset, whence)
@@ -118,7 +153,5 @@ std::wstring a2w(std::string_view str) noexcept;
 std::string w2a(std::wstring_view wstr) noexcept;
 std::string a2u(std::string_view str) noexcept;
 std::string u2a(std::string_view str) noexcept;
-
-BOOL EnumerateExports(HMODULE hModule, BOOL (*Callback)(LPCSTR pszFuncName, PVOID pFuncAddr));
 
 }  // namespace Neko::win

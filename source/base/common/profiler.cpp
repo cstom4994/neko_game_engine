@@ -9,8 +9,6 @@ void profile_shutdown() {}
 
 #ifdef USE_PROFILER
 
-#include "extern/sokol_time.h"
-
 struct Profile {
     Queue<TraceEvent> events;
     Thread recv_thread;
@@ -37,7 +35,7 @@ static void profile_recv_thread(void *) {
         fprintf(f,
                 R"({"name":"%s","cat":"%s","ph":"%c","ts":%.3f,"pid":0,"tid":%hu},)"
                 "\n",
-                e.name, e.cat, e.ph, stm_us(e.ts), e.tid);
+                e.name, e.cat, e.ph, TimeUtil::to_microseconds(e.ts), e.tid);
     }
 }
 
@@ -58,7 +56,7 @@ Instrument::Instrument(const char *cat, const char *name) : cat(cat), name(name)
     e.cat = cat;
     e.name = name;
     e.ph = 'B';
-    e.ts = stm_now();
+    e.ts = TimeUtil::now();
     e.tid = tid;
 
     g_profile.events.enqueue(e);
@@ -69,7 +67,7 @@ Instrument::~Instrument() {
     e.cat = cat;
     e.name = name;
     e.ph = 'E';
-    e.ts = stm_now();
+    e.ts = TimeUtil::now();
     e.tid = tid;
 
     g_profile.events.enqueue(e);

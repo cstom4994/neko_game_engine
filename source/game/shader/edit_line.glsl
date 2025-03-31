@@ -1,15 +1,15 @@
-
+#nekoshader version 1
 #begin VERTEX
 
-#version 150
+@version 330
 
-in vec2 position;
-in float point_size;
-in vec4 color;
+@attribute vec2 position;
+@attribute float point_size;
+@attribute vec4 color;
 
-out vec4 color_;
+@varying vec4 color_;
 
-uniform mat3 inverse_view_matrix;
+@uniform mat3 inverse_view_matrix;
 
 void main()
 {
@@ -18,22 +18,19 @@ void main()
     color_ = color;
 }
 
-
 #end VERTEX
 
 #begin FRAGMENT
 
-#version 150
+@version 330
 
-in vec4 color_;
+@varying vec4 color_;
 
-out vec4 outColor;
+@out vec4 outColor;
 
 void main()
 {
     outColor = color_;
 }
-
-
 
 #end FRAGMENT
