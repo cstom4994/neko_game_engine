@@ -3214,6 +3214,15 @@ static int open_neko(lua_State *L) {
         return 1;
     });
 
+    X("draw_line", [](lua_State *L) {
+        vec2 *a = LuaGet<vec2>(L, 1);
+        vec2 *b = LuaGet<vec2>(L, 2);
+        f32 p = lua_tonumber(L, 3);
+        Color *col = LuaGet<Color>(L, 4);
+        debug_draw_add(*a, *b, p, *col);
+        return 0;
+    });
+
     X("traceback", [](lua_State *L) -> int {
         lua_State *LD = L;
         if (lua_isthread(L, 1)) {

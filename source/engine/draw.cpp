@@ -862,3 +862,140 @@ void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, floa
             .texcoord = {u, v},
     };
 }
+
+#define MAX_VERTS 3 * 2048
+
+struct LineVertex {
+    union {
+        struct {
+            vec3 pos;
+            float width;
+        };
+        vec4 pos_width;
+    };
+    Color col;
+};
+
+struct DebugRenderer {
+    Asset lines_shader = {};
+
+    GLuint program_id;
+    GLuint vao;
+    GLuint vbo;
+
+    GLuint view;
+    GLuint viewport_size;
+    GLuint aa_radius;
+
+    GLuint pos_width;
+    GLuint col;
+
+    u32 buf_cap;
+    u32 buf_len;
+    LineVertex *buf;
+};
+
+DebugRenderer *debug_renderer;
+
+void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
+    if (debug_renderer->buf_cap - debug_renderer->buf_len >= 2) {
+        LineVertex *dst = debug_renderer->buf + debug_renderer->buf_len;  // 从 buf_len 偏移出正确的写入位置
+        *dst++ = LineVertex{{a.x, a.y, 0.0, line_width}, color};
+        *dst++ = LineVertex{{b.x, b.y, 0.0, line_width}, color};
+        debug_renderer->buf_len += 2;  // 更新已使用的缓冲区长度
+    } else {
+        // printf("Buffer full: buf_cap=%d, buf_len=%d\n", debug_renderer->buf_cap, debug_renderer->buf_len);
+    }
+}
+
+void debug_draw_init() {
+    debug_renderer = mem_new<DebugRenderer>();
+
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/lines.glsl", &debug_renderer->lines_shader);
+    error_assert(ok);
+
+    debug_renderer->program_id = debug_renderer->lines_shader.shader.id;
+
+    debug_renderer->pos_width = glGetAttribLocation(debug_renderer->program_id, "pos_width");
+    debug_renderer->col = glGetAttribLocation(debug_renderer->program_id, "col");
+
+    debug_renderer->view = glGetUniformLocation(debug_renderer->program_id, "inverse_view_matrix");
+    debug_renderer->viewport_size = glGetUniformLocation(debug_renderer->program_id, "u_viewport_size");
+    debug_renderer->aa_radius = glGetUniformLocation(debug_renderer->program_id, "u_aa_radius");
+
+    GLuint binding_idx = 0;
+    glCreateVertexArrays(1, &debug_renderer->vao);
+    glCreateBuffers(1, &debug_renderer->vbo);
+    glNamedBufferStorage(debug_renderer->vbo, MAX_VERTS * sizeof(LineVertex), NULL, GL_DYNAMIC_STORAGE_BIT);
+
+    glVertexArrayVertexBuffer(debug_renderer->vao, binding_idx, debug_renderer->vbo, 0, sizeof(LineVertex));
+
+    glEnableVertexArrayAttrib(debug_renderer->vao, debug_renderer->pos_width);
+    glEnableVertexArrayAttrib(debug_renderer->vao, debug_renderer->col);
+
+    glVertexArrayAttribFormat(debug_renderer->vao, debug_renderer->pos_width, 4, GL_FLOAT, GL_FALSE, offsetof(LineVertex, pos_width));
+    glVertexArrayAttribFormat(debug_renderer->vao, debug_renderer->col, 4, GL_FLOAT, GL_FALSE, offsetof(LineVertex, col));
+
+    glVertexArrayAttribBinding(debug_renderer->vao, debug_renderer->pos_width, binding_idx);
+    glVertexArrayAttribBinding(debug_renderer->vao, debug_renderer->col, binding_idx);
+
+    debug_renderer->buf_cap = MAX_VERTS / 3;
+    debug_renderer->buf_len = 0;
+    debug_renderer->buf = (LineVertex *)mem_alloc(debug_renderer->buf_cap * sizeof(LineVertex));
+}
+
+void debug_draw_fini() {
+    // glDeleteProgram(device->program_id);
+    glDeleteBuffers(1, &debug_renderer->vbo);
+    glDeleteVertexArrays(1, &debug_renderer->vao);
+
+    mem_free(debug_renderer->buf);
+
+    mem_del(debug_renderer);
+    debug_renderer = nullptr;
+}
+
+u32 draw_line_update(const void *data, i32 n_elems, i32 elem_size) {
+    glNamedBufferSubData(debug_renderer->vbo, 0, n_elems * elem_size, data);
+    return n_elems;
+}
+
+void debug_draw_all() {
+
+    debug_draw_circle({100.0f, 100.0f}, 10.0f, 32, 2.0, color_red);
+
+    const i32 count = draw_line_update(debug_renderer->buf, debug_renderer->buf_len, sizeof(LineVertex));
+
+    glUseProgram(debug_renderer->program_id);
+
+    const mat3 *mat = camera_get_inverse_view_matrix_ptr();
+    glUniformMatrix3fv(debug_renderer->view, 1, GL_FALSE, (const GLfloat *)mat);
+
+    const mat3 view_mat = mat3_inverse(camera_get_inverse_view_matrix());
+    glUniformMatrix3fv(glGetUniformLocation(debug_renderer->program_id, "view_matrix"), 1, GL_FALSE, (const GLfloat *)&view_mat);
+
+    vec2 viewport{the<CL>().state.width, the<CL>().state.height};
+    vec2 aa_radii{2.0f, 2.0f};
+    glUniform2fv(debug_renderer->viewport_size, 1, reinterpret_cast<float *>(&viewport));
+    glUniform2fv(debug_renderer->aa_radius, 1, reinterpret_cast<float *>(&aa_radii));
+
+    glBindVertexArray(debug_renderer->vao);
+    glDrawArrays(GL_LINES, 0, count);
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+
+    debug_renderer->buf_len = 0;
+}
+
+void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color) {
+    f32 angle_step = 2.0f * neko_pi / segment_count;
+    vec2 prev_point = {center.x + radius, center.y};  // 起始点
+    for (int i = 1; i <= segment_count; i++) {
+        f32 angle = i * angle_step;
+        vec2 next_point = {center.x + radius * cos(angle), center.y + radius * sin(angle)};
+        debug_draw_add_line(prev_point, next_point, line_width, color);
+        prev_point = next_point;
+    }
+    debug_draw_add_line(prev_point, {center.x + radius, center.y}, line_width, color);
+}

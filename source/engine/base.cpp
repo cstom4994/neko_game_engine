@@ -138,7 +138,13 @@ vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.v[0] * v.x + m.v[3] * v.y
 
 // 按顺序应用 scale rot 和 trans 的矩阵
 mat3 mat3_scaling_rotation_translation(vec2 scale, f32 rot, vec2 trans) {
-    return luamat3(scale.x * float_cos(rot), scale.x * float_sin(rot), 0.0f, scale.y * -float_sin(rot), scale.y * float_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
+    // clang-format off
+    return luamat3(
+        scale.x *  float_cos(rot),  scale.x * float_sin(rot), 0.0f,
+        scale.y * -float_sin(rot),  scale.y * float_cos(rot), 0.0f,
+        trans.x,                    trans.y,                  1.0f
+    );
+    // clang-format on
 }
 
 vec2 mat3_get_translation(mat3 m) { return luavec2(m.v[6], m.v[7]); }

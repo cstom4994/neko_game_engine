@@ -183,6 +183,9 @@ static void load_all_lua_scripts(lua_State *L) {
 DEFINE_IMGUI_BEGIN(template <>, String) { ImGui::Text("%s", var.cstr()); }
 DEFINE_IMGUI_END()
 
+DEFINE_IMGUI_BEGIN(template <>, mat3) { ImGui::Text("%f %f %f\n%f %f %f\n%f %f %f\n", var.v[0], var.v[1], var.v[2], var.v[3], var.v[4], var.v[5], var.v[6], var.v[7], var.v[8]); }
+DEFINE_IMGUI_END()
+
 void state_inspector(CL::State &cvar) {
     auto func = []<typename S, typename Fields>(const char *name, auto &var, S &t, Fields &&fields) {
         Neko::imgui::Auto(var, name);
@@ -232,6 +235,7 @@ int _game_draw(Event evt) {
         batch_draw_all(CLGame.batch);
         edit_draw_all();
         physics_draw_all();
+        debug_draw_all();
 
         TexturedQuad quad = {
                 .texture = NULL,
@@ -286,6 +290,9 @@ int _game_draw(Event evt) {
         ImGui::SetNextWindowViewport(CLGame.devui_vp);
         if (ImGui::Begin("Hello")) {
             state_inspector(CLGame.state);
+
+            mat3 view = camera_get_inverse_view_matrix();
+            imgui::Auto(view);
         }
         ImGui::End();
 
@@ -318,15 +325,17 @@ int _game_draw(Event evt) {
                 y = draw_font(font, false, font_size, x, y, gBase.traceback, NEKO_COLOR_WHITE);
                 y += (font_size * 2);
 
-                draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息\n按下 Ctrl+R 忽视本次问题", NEKO_COLOR_WHITE);
+                y += draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
 
                 if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
                     CLGame.window->SetClipboard(gBase.traceback.cstr());
                 }
+            }
 
-                if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_R)) {
-                    gBase.error_mode.store(false);
-                }
+            y += draw_font(font, false, font_size, x, y, "按下 Ctrl+R 忽视本次问题", NEKO_COLOR_WHITE);
+
+            if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_R)) {
+                gBase.error_mode.store(false);
             }
         }
     }
@@ -546,6 +555,7 @@ end
     sound_init();
     physics_init();
     edit_init();
+    debug_draw_init();
 
     gBase.reload_interval.store(CLGame.state.reload_interval);
 
@@ -795,6 +805,7 @@ void CL::fini() {
     delete CLGame.inspector;
     CLGame.inspector = nullptr;
 
+    debug_draw_fini();
     edit_fini();
     script_fini();
     physics_fini();

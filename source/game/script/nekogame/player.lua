@@ -177,10 +177,8 @@ function CPlayer:draw()
             -- pass
         elseif cos < 0 then
             sx = -1
-            self.sprite:effect("1100")
         elseif cos > 0 then
             sx = 1
-            self.sprite:effect(0)
         end
     end
 
@@ -613,11 +611,12 @@ function Target:draw()
 
     local ox = self.sprite:width() / 2
     local oy = self.sprite:height() / 2
-    self.sprite:draw(self.x, self.y + 20, self.angle, 1, -1, ox, oy)
 
     if draw_fixtures then
         self.body:draw_fixtures()
     end
+
+    local highlight = false
 
     -- local enemy_mt = _G["Npc"]
     -- local enemy_tb = LocalGame.world.by_mt[enemy_mt]
@@ -631,9 +630,12 @@ function Target:draw()
                 if local_pos:distance(enemy_pos) <= 100 then
                     -- neko.draw_line(self.x, self.y - 40, v.x, v.y)
 
-                    local a = ng.Vec2(self.x, self.y - 40)
+                    highlight = true
+
+                    local a = ng.Vec2(self.x, self.y)
                     local b = ng.Vec2(v.x, v.y)
-                    ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
+                    -- ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
+                    neko.draw_line(a, b, 2.0, ng.color(1, 1, 1, 1))
 
                     if enemy_mt == CEnemy then
                         v:hit(self, 30)
@@ -644,6 +646,15 @@ function Target:draw()
             end
         end
     end
+
+    if highlight then
+        self.sprite:effect("1100")
+    else
+        self.sprite:effect(0)
+    end
+
+    self.sprite:draw(self.x, self.y + 65, self.angle, 1, -1, ox, oy)
+
 end
 
 function Target.begin_contact(a, b)

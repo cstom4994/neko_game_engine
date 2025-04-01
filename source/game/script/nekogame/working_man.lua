@@ -127,8 +127,8 @@ function WorkingMan:draw()
 
     sx = self.facing_left and -sx or sx
 
-    local ox = sx * self.sprite:width() / 2
-    local oy = -self.sprite:height() / 2
+    local ox = self.sprite:width() - 8
+    local oy = -self.sprite:height()
     self.sprite:draw(self.x, self.y, 0, sx * 1.5, -1.5, ox, oy)
 
     self.hpbar:draw(self.x + 3, self.y - 15)

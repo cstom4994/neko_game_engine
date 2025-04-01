@@ -228,7 +228,7 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
             case b2Shape::e_circle: {
                 b2CircleShape *circle = (b2CircleShape *)f->GetShape();
                 b2Vec2 pos = body->GetWorldPoint(circle->m_p);
-                // draw_line_circle(pos.x * meter, pos.y * meter, circle->m_radius * meter);
+                debug_draw_circle({pos.x * meter, pos.y * meter}, circle->m_radius * meter, 16, 2, color_red);
                 break;
             }
             case b2Shape::e_polygon: {

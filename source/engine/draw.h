@@ -153,4 +153,10 @@ NEKO_API() void batch_flush(batch_renderer* renderer);
 NEKO_API() void batch_texture(batch_renderer* renderer, GLuint id);
 NEKO_API() void batch_push_vertex(batch_renderer* renderer, float x, float y, float u, float v);
 
+void debug_draw_all();
+void debug_draw_init();
+void debug_draw_fini();
+void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color);
+void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color);
+
 #endif
