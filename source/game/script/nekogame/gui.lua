@@ -277,6 +277,10 @@ function ns.gui_test.OnDrawUI()
 end
 
 draw_imgui = function(dt)
+    if not ns.edit.get_enabled() then
+        return
+    end
+
     local ImGui = imgui
 
     local window<close> = ImGuiWindow("Demo")

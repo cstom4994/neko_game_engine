@@ -40,19 +40,17 @@ typedef struct layer_t {
     Color256 tint;
 } layer_t;
 
+struct object_property_t {
+    String key;
+    String value;
+};
+
 typedef struct object_t {
     u32 id;
     String name;
     String class_name;
     i32 x, y, width, height;
-    HashMap<String> defs;
-    // LuaRef defs_luatb;
-    //   C2_TYPE phy_type;
-    //   c2AABB aabb;
-    //   union {
-    //       c2AABB box;
-    //       c2Poly poly;
-    //   } phy;
+    Array<object_property_t> properties;
 } object_t;
 
 typedef struct object_group_t {

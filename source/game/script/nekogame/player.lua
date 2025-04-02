@@ -12,10 +12,12 @@ function CPlayer:new(x, y)
     self.shoot_cooldown = 0
     self.shoot_angle = 0
 
-    -- self.hpbar = Hpbar(self)
+    self.hpbar = Hpbar(self)
 
     self.hp = 100
     self.hp_max = 100
+
+    self.type = "player"
 end
 
 function CPlayer:on_create()
@@ -106,7 +108,7 @@ end
 
 function CPlayer:update(dt)
     self.sprite:update(dt)
-    -- self.hpbar:update(dt)
+    self.hpbar:update(dt)
 
     self.x, self.y = self.body:position()
 
@@ -193,7 +195,7 @@ function CPlayer:draw()
         bow:draw(self.x, self.y, self.shoot_angle, sx * 1, -1, ox, oy)
     end
 
-    -- self.hpbar:draw(self.x, self.y - 40)
+    self.hpbar:draw(self.x + 3, self.y + 15)
 
     if draw_fixtures then
         self.body:draw_fixtures()
@@ -346,9 +348,9 @@ function CEnemy.begin_contact(a, b)
 
     local mt = getmetatable(other)
 
-    if mt == Player then
-        LocalGame.world:kill(self)
-        -- hit_player(20)
+    if mt == CPlayer then
+        -- LocalGame.world:kill(self)
+        hit_player(choose {4, 5, 6})
     elseif mt == Arrow then
         self:hit(other, 50)
     end
@@ -427,7 +429,7 @@ function Coin:co_update(dt)
         self, dt = coroutine.yield()
     until dist < 8
 
-    -- score = score + 1
+    LocalGame.score = LocalGame.score + 1
 
     LocalGame.world:kill(self)
 end
@@ -623,24 +625,32 @@ function Target:draw()
     local enemy_tb = LocalGame.world.by_id
     if enemy_tb ~= nil then
         for k, v in pairs(enemy_tb) do
-            if v.type ~= nil and v.type == "enemy" then
+            if v.type ~= nil then
                 local local_pos = vec2(self.x, self.y)
                 local enemy_pos = vec2(v.x, v.y)
                 local enemy_mt = getmetatable(v)
-                if local_pos:distance(enemy_pos) <= 100 then
-                    -- neko.draw_line(self.x, self.y - 40, v.x, v.y)
-
+                if local_pos:distance(enemy_pos) <= 100 and v.type == "enemy" then
                     highlight = true
-
                     local a = ng.Vec2(self.x, self.y)
                     local b = ng.Vec2(v.x, v.y)
-                    -- ns.edit.line_add(a, b, 0, ng.color(1, 0, 1, 0.6))
                     neko.draw_line(a, b, 2.0, ng.color(1, 1, 1, 1))
-
                     if enemy_mt == CEnemy then
                         v:hit(self, 30)
                     else
                         v:hit(self)
+                    end
+                end
+                if local_pos:distance(enemy_pos) <= 100 and v.type == "player" then
+                    highlight = true
+                    local a = ng.Vec2(self.x, self.y)
+                    local b = ng.Vec2(v.x, v.y)
+                    neko.draw_line(a, b, 2.0, ng.color(0.75, 0, 0, 1))
+                    if enemy_mt == CPlayer then
+                        if v.hp < 200 then
+                            v.hp = v.hp + 1
+                        end
+                    else
+                        -- v:hit(self)
                     end
                 end
             end
@@ -667,8 +677,7 @@ function Target.begin_contact(a, b)
 
     local mt = getmetatable(other)
 
-    if mt == Player then
-        -- world:kill(self)
+    if mt == CPlayer then
         -- hit_player(20)
     elseif mt == Arrow then
         self:hit(other)

@@ -237,13 +237,13 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
                 if (poly->m_count > 0) {
                     for (i32 i = 0; i < poly->m_count; i++) {
                         b2Vec2 pos1 = body->GetWorldPoint(poly->m_vertices[i]);
-                        edit_line_add_xy(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
+                        debug_draw_add_line(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
                         if (i + 1 < poly->m_count) {
                             b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[i + 1]);
-                            edit_line_add_xy(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+                            debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
                         } else {
                             b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[0]);
-                            edit_line_add_xy(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+                            debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
                         }
                     }
                 }

@@ -897,6 +897,16 @@ struct DebugRenderer {
 
 DebugRenderer *debug_renderer;
 
+void debug_draw_add_line(vec2 a, f32 line_width, Color color) {
+    if (debug_renderer->buf_cap - debug_renderer->buf_len >= 1) {
+        LineVertex *dst = debug_renderer->buf + debug_renderer->buf_len;
+        *dst++ = LineVertex{{a.x, a.y, 0.0, line_width}, color};
+        debug_renderer->buf_len += 1;
+    } else {
+        // printf("Buffer full: buf_cap=%d, buf_len=%d\n", debug_renderer->buf_cap, debug_renderer->buf_len);
+    }
+}
+
 void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
     if (debug_renderer->buf_cap - debug_renderer->buf_len >= 2) {
         LineVertex *dst = debug_renderer->buf + debug_renderer->buf_len;  // 从 buf_len 偏移出正确的写入位置
@@ -911,7 +921,7 @@ void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
 void debug_draw_init() {
     debug_renderer = mem_new<DebugRenderer>();
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/lines.glsl", &debug_renderer->lines_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/debug_line.glsl", &debug_renderer->lines_shader);
     error_assert(ok);
 
     debug_renderer->program_id = debug_renderer->lines_shader.shader.id;
@@ -971,9 +981,6 @@ void debug_draw_all() {
     const mat3 *mat = camera_get_inverse_view_matrix_ptr();
     glUniformMatrix3fv(debug_renderer->view, 1, GL_FALSE, (const GLfloat *)mat);
 
-    const mat3 view_mat = mat3_inverse(camera_get_inverse_view_matrix());
-    glUniformMatrix3fv(glGetUniformLocation(debug_renderer->program_id, "view_matrix"), 1, GL_FALSE, (const GLfloat *)&view_mat);
-
     vec2 viewport{the<CL>().state.width, the<CL>().state.height};
     vec2 aa_radii{2.0f, 2.0f};
     glUniform2fv(debug_renderer->viewport_size, 1, reinterpret_cast<float *>(&viewport));
@@ -998,4 +1005,39 @@ void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_widt
         prev_point = next_point;
     }
     debug_draw_add_line(prev_point, {center.x + radius, center.y}, line_width, color);
+}
+
+void debug_draw_manifold(vec2 *points, u32 point_count, f32 line_width, Color color) {
+    for (u32 i = 0; i < point_count - 1; ++i) {
+        debug_draw_add_line(points[i], points[i + 1], line_width, color);
+    }
+}
+
+void debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment_count, f32 line_width, Color color) {
+    f32 angle_step = neko_pi / segment_count;                               // 半圆分段
+    vec2 perpendicular = {-direction.y, direction.x};                       // 垂直于方向向量
+    vec2 prev_point = vec2_add(center, vec2_scale(perpendicular, radius));  // 半圆起点
+    for (u32 i = 1; i <= segment_count; ++i) {
+        f32 angle = i * angle_step;
+        vec2 next_point = {center.x + radius * (cosf(angle) * perpendicular.x + sinf(angle) * direction.x), center.y + radius * (cosf(angle) * perpendicular.y + sinf(angle) * direction.y)};
+        debug_draw_add_line(prev_point, next_point, line_width, color);
+        prev_point = next_point;
+    }
+}
+
+void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color) {
+    vec2 dir = vec2_normalize(vec2_sub(b, a));
+    vec2 perpendicular = {-dir.y, dir.x};
+    vec2 p1 = vec2_add(a, vec2_scale(perpendicular, radius));
+    vec2 p2 = vec2_sub(a, vec2_scale(perpendicular, radius));
+    vec2 p3 = vec2_add(b, vec2_scale(perpendicular, radius));
+    vec2 p4 = vec2_sub(b, vec2_scale(perpendicular, radius));
+
+    // 绘制中间的矩形部分
+    debug_draw_add_line(p1, p3, line_width, color);
+    debug_draw_add_line(p2, p4, line_width, color);
+
+    // 绘制两端的半圆
+    debug_draw_half_circle(a, radius, dir, segment_count, line_width, color);
+    debug_draw_half_circle(b, radius, vec2_neg(dir), segment_count, line_width, color);
 }

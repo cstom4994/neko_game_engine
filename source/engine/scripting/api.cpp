@@ -2498,6 +2498,11 @@ static int open_neko(lua_State *L) {
         tiled_map_edit(*ent, layer, x, y, t);
         return 0;
     });
+    X("tiled_get_obj", [](lua_State *L) -> int {
+        CEntity *ent = LuaGet<CEntity>(L, 1);
+        tiled_get_object_groups(*ent, L);
+        return 1;
+    });
 
     X("EntityCreate", [](lua_State *L) -> int {
         String name = luax_opt_string(L, 1, "something_unknown_from_lua");
@@ -2612,6 +2617,11 @@ static int open_neko(lua_State *L) {
     X("window_scale", [](lua_State *L) -> int {
         f64 v = the<Window>().Scale();
         lua_pushnumber(L, v);
+        return 1;
+    });
+    X("window_size", [](lua_State *L) -> int {
+        vec2 v = luavec2(the<CL>().state.width, the<CL>().state.height);
+        LuaPush<vec2>(L, v);
         return 1;
     });
 
@@ -3219,7 +3229,7 @@ static int open_neko(lua_State *L) {
         vec2 *b = LuaGet<vec2>(L, 2);
         f32 p = lua_tonumber(L, 3);
         Color *col = LuaGet<Color>(L, 4);
-        debug_draw_add(*a, *b, p, *col);
+        debug_draw_add_line(*a, *b, p, *col);
         return 0;
     });
 

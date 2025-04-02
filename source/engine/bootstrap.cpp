@@ -264,7 +264,7 @@ int _game_draw(Event evt) {
         int posteffect_enable = !edit_get_enabled();
 
         glUniform1f(glGetUniformLocation(sid, "intensity"), CLGame.state.posteffect_intensity);
-        glUniform1i(glGetUniformLocation(sid, "enable"), posteffect_enable);
+        glUniform1i(glGetUniformLocation(sid, "enable"), 0);
         glUniform1f(glGetUniformLocation(sid, "rt_w"), CLGame.state.width);
         glUniform1f(glGetUniformLocation(sid, "rt_h"), CLGame.state.height);
 
@@ -287,14 +287,16 @@ int _game_draw(Event evt) {
 
         if (CLGame.state.show_demo_window) ImGui::ShowDemoWindow();
 
-        ImGui::SetNextWindowViewport(CLGame.devui_vp);
-        if (ImGui::Begin("Hello")) {
-            state_inspector(CLGame.state);
+        if (edit_get_enabled()) {
+            ImGui::SetNextWindowViewport(CLGame.devui_vp);
+            if (ImGui::Begin("Hello")) {
+                state_inspector(CLGame.state);
 
-            mat3 view = camera_get_inverse_view_matrix();
-            imgui::Auto(view);
+                mat3 view = camera_get_inverse_view_matrix();
+                imgui::Auto(view);
+            }
+            ImGui::End();
         }
-        ImGui::End();
 
         // gameconsole_draw();
 

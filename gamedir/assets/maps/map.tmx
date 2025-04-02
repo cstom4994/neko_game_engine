@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="43">
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="44">
  <editorsettings>
-  <export target="map.tmj" format="json"/>
+  <export target="map.lua" format="lua"/>
  </editorsettings>
  <tileset firstgid="1" source="tileset.tsx"/>
  <tileset firstgid="257" source="tx_grass.tsx"/>
@@ -85,13 +85,19 @@
    <properties>
     <property name="lua_func" value="test_func"/>
     <property name="lua_path" value="any.lua"/>
+    <property name="test_bool" type="bool" value="true"/>
     <property name="test_float" type="float" value="1.44"/>
     <property name="test_obj" type="object" value="34"/>
    </properties>
   </object>
-  <object id="41" name="test_obj2" type="game_ent" x="94.6364" y="84.1818" width="44" height="10.8182">
+  <object id="41" name="test_obj2" type="game_ent" x="190.886" y="32.1818" width="44" height="10.8182">
    <properties>
     <property name="ent_name" value="WorkingMan"/>
+   </properties>
+  </object>
+  <object id="43" name="test_obj3" type="game_ent" x="74.75" y="139.841" width="10" height="10">
+   <properties>
+    <property name="ent_name" value="Target"/>
    </properties>
   </object>
  </objectgroup>

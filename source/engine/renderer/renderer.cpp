@@ -489,18 +489,12 @@ void QuadRenderer::renderer_resize(vec2 size) {
     this->camera = mat4_ortho(0.0f, (f32)size.x, (f32)size.y, 0.0f, -1.0f, 1.0f);
 }
 
-void QuadRenderer::renderer_fit_to_main_window() {
-    i32 win_w, win_h;
-    the<Window>().Query(0, &win_w, &win_h);
-
-    renderer_resize(neko_v2(win_w, win_h));
-}
+void QuadRenderer::renderer_fit_to_main_window() { renderer_resize(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
 
 PostProcessor* new_post_processor(AssetShader shader) {
     PostProcessor* p = (PostProcessor*)mem_calloc(1, sizeof(PostProcessor));
 
-    i32 win_w, win_h;
-    the<Window>().Query(0, &win_w, &win_h);
+    i32 win_w = the<CL>().state.width, win_h = the<CL>().state.height;
 
     init_render_target(&p->target, win_w, win_h);
 
@@ -543,12 +537,7 @@ void resize_post_processor(PostProcessor* p, vec2 dimentions) {
     resize_render_target(&p->target, dimentions.x, dimentions.y);
 }
 
-void post_processor_fit_to_main_window(PostProcessor* p) {
-    i32 win_w, win_h;
-    the<Window>().Query(0, &win_w, &win_h);
-
-    resize_post_processor(p, neko_v2(win_w, win_h));
-}
+void post_processor_fit_to_main_window(PostProcessor* p) { resize_post_processor(p, neko_v2(the<CL>().state.width, the<CL>().state.height)); }
 
 void flush_post_processor(PostProcessor* p, bool default_rt) {
     if (default_rt) {

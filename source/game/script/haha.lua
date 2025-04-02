@@ -76,7 +76,9 @@ function haha()
 
     local game_tick = 0
 
-    draw_fixtures = true
+    draw_fixtures = false
+
+    player = {}
 
     local ttttttttt = ng.add {
         -- gui_test = {}
@@ -113,7 +115,7 @@ function haha()
             local mt = _G[v.id]
             if mt ~= nil then
                 local obj = LocalGame.world:add(mt(v.x, v.y, choose({"chort", "skel", "zb"})))
-                if v.id == "Player" then
+                if v.id == "CPlayer" then
                     player = obj
                 end
                 -- print(v.id, v.x, v.y)
@@ -171,6 +173,10 @@ function haha()
 
     LocalGame.level_1 = level_1
 
+    LocalGame.level_1_obj = ns["tiled"].get_obj(LocalGame.level_1)
+
+    print(LocalGame.level_1_obj)
+
     local bg = {
         r = neko.ui.ref(90),
         g = neko.ui.ref(95),
@@ -187,7 +193,14 @@ function haha()
 
     local checks = map({true, false, true}, neko.ui.ref)
 
+    function hit_player(demage)
+        player.hp = player.hp - demage
+    end
+
     ns.gamelogic.init = function()
+
+        LocalGame.score = 0
+        LocalGame.win_size = neko.window_size()
 
         LocalGame.b2 = neko.b2_world {
             gx = 0,
@@ -201,19 +214,46 @@ function haha()
 
         LocalGame.world:add(player)
         LocalGame.world:add(CEnemy(20, 20))
-        LocalGame.world:add(WorkingMan(50, -50))
-        LocalGame.world:add(Target(50, -100))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
         bow_img = neko.sprite_load "assets/bow.ase"
         arrow_img = neko.sprite_load "assets/arrow.ase"
+
+        local objs = LocalGame.level_1_obj
+        for object_group_name, object_groups in pairs(objs) do
+            for object_name, objects in pairs(object_groups) do
+                local OBJ = objs[object_group_name][object_name]
+                -- print(OBJ)
+                if type(OBJ) == "table" then
+                    local x = OBJ.x
+                    local y = -OBJ.y
+                    local class_name = OBJ.class_name
+                    if class_name == "game_ent" then
+                        local properties = OBJ.properties
+                        if properties.ent_name ~= nil then
+                            local mt = _G[properties.ent_name]
+                            if mt ~= nil then
+                                local new_obj = LocalGame.world:add(mt(x, y))
+                                print("spawn " .. properties.ent_name .. " at " .. x .. "," .. y)
+                            else
+                                print("no " .. properties.ent_name .. " class exists")
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- LocalGame.world:add(WorkingMan(50, -50))
     end
 
     ns.gamelogic.fini = function()
     end
 
     ns.gamelogic.OnPreUpdate = function()
+        LocalGame.win_size = neko.window_size()
+
         if ns.edit.get_enabled() then
             return
         end
@@ -240,6 +280,8 @@ function haha()
     ns.gamelogic.OnUpdate = function()
         local dt = neko.dt()
 
+        draw_fixtures = ns.edit.get_enabled()
+
         if not ns.edit.get_enabled() then
 
             LocalGame.b2:step(dt)
@@ -261,7 +303,9 @@ function haha()
 
     ns.gamelogic.OnDrawUI = function()
         local dt = neko.dt()
-        default_font:draw(("fps: %.2f (%.4f)"):format(1 / dt, dt * 1000), 300, 0, 24)
+        -- default_font:draw(("fps: %.2f (%.4f) 分数: %d"):format(1 / dt, dt * 1000, LocalGame.score), 300, 0, 24)
+
+        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.hp), 40, LocalGame.win_size.y - 60, 36)
     end
 
     -- neko.before_quit = function()
@@ -697,7 +741,7 @@ local function load_world()
 
         if mt ~= nil then
             local obj = world:add(mt(v.x, v.y, v.id))
-            if v.id == "Player" then
+            if v.id == "CPlayer" then
                 player = obj
             end
             -- print(v.id, v.x, v.y)

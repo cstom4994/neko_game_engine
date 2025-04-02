@@ -151,6 +151,8 @@ void tiled_fini();
 int tiled_update_all(Event evt);
 void tiled_draw_all();
 
+int tiled_get_object_groups(CEntity ent, lua_State* L);
+
 class CTiledMap : public CEntityBase {
 public:
     tiled_renderer* render;

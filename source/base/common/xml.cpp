@@ -59,180 +59,177 @@ String XMLDoc::ProcessText(const_str start, u32 length) {
 
 // 解析XML块 返回块中的节点数组
 Array<XMLNode> XMLDoc::ParseBlock(const_str start, u32 length) {
-
-#define XMLExpectNotEnd(c_)                       \
-    if (!*(c_)) {                                 \
-        throw("xml_parse_block: Unexpected end"); \
-        return {};                                \
-    }
-
     Array<XMLNode> root = {};
-    bool is_inside = false;
-    for (const_str c = start; *c && c < start + length; c++) {
+    const_str end = start + length;
+
+    for (const_str c = start; c < end && *c;) {
         if (*c == '<') {
             c++;
-            XMLExpectNotEnd(c);
-            if (*c == '?')  // 跳过XML头
-            {
-                c++;
-                XMLExpectNotEnd(c);
-                while (*c != '>') {
-                    c++;
-                    XMLExpectNotEnd(c);
-                }
-                continue;
-            } else if (StringEqualN(c, 3, "!--"))  // 跳过注释
-            {
-                c++;
-                XMLExpectNotEnd(c);
-                c++;
-                XMLExpectNotEnd(c);
-                c++;
-                XMLExpectNotEnd(c);
-                while (!StringEqualN(c, 3, "-->")) {
-                    c++;
-                    XMLExpectNotEnd(c);
-                }
+            if (c >= end || !*c) break;
 
+            // 处理XML声明
+            if (*c == '?') {
+                while (c < end && *c && *c != '>') c++;
+                if (c < end && *c == '>') c++;
                 continue;
             }
 
-            if (is_inside && *c == '/')
-                is_inside = false;
-            else
-                is_inside = true;
+            // 处理注释
+            if (StringEqualN(c, 3, "!--")) {
+                c += 3;
+                while (c + 3 <= end && !StringEqualN(c, 3, "-->")) c++;
+                if (c + 3 <= end) c += 3;
+                continue;
+            }
 
+            // 处理结束标签
+            if (*c == '/') {
+                c++;
+                while (c < end && *c && *c != '>') c++;
+                if (c < end && *c == '>') c++;
+                continue;
+            }
+
+            // 开始解析新节点
+            XMLNode current_node = {};
             const_str node_name_start = c;
             u32 node_name_len = 0;
 
-            XMLNode current_node = {};
+            // 获取节点名称
+            while (c < end && *c && !is_whitespace(*c) && *c != '>' && *c != '/') {
+                node_name_len++;
+                c++;
+            }
 
-            if (is_inside) {
-                for (; *c != '>' && *c != ' ' && *c != '/'; c++) node_name_len++;
+            current_node.name = StringCopy(node_name_start, node_name_len);
 
-                if (*c != '>') {
-                    while (*c != '>' && *c != '/') {
-                        while (is_whitespace(*c)) c++;
+            // 解析属性
+            while (c < end && *c && *c != '>' && *c != '/') {
+                // 跳过空白
+                while (c < end && *c && is_whitespace(*c)) c++;
+                if (c >= end || !*c || *c == '>' || *c == '/') break;
 
-                        const_str attrib_name_start = c;
-                        u32 attrib_name_len = 0;
-
-                        while (is_alpha(*c) || is_digit(*c) || *c == '_') {
-                            c++;
-                            attrib_name_len++;
-                            XMLExpectNotEnd(c);
-                        }
-
-                        while (*c != '"') {
-                            c++;
-                            XMLExpectNotEnd(c);
-                        }
-
-                        c++;
-                        XMLExpectNotEnd(c);
-
-                        const_str attrib_text_start = c;
-                        u32 attrib_text_len = 0;
-
-                        while (*c != '"') {
-                            c++;
-                            attrib_text_len++;
-                            XMLExpectNotEnd(c);
-                        }
-
-                        c++;
-                        XMLExpectNotEnd(c);
-
-                        XMLAttribute attrib = {};
-                        attrib.name = StringCopy(attrib_name_start, attrib_name_len);
-
-                        if (neko_string_is_decimal(attrib_text_start, attrib_text_len)) {
-                            attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_NUMBER;
-                            attrib.value = strtod(attrib_text_start, NULL);
-                        } else if (StringEqualN(attrib_text_start, attrib_text_len, "true")) {
-                            attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_BOOLEAN;
-                            attrib.value = true;
-                        } else if (StringEqualN(attrib_text_start, attrib_text_len, "false")) {
-                            attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_BOOLEAN;
-                            attrib.value = false;
-                        } else {
-                            attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_STRING;
-                            attrib.value = XMLDoc::ProcessText(attrib_text_start, attrib_text_len);
-                        }
-
-                        current_node.attributes[fnv1a(attrib_name_start, attrib_name_len)] = attrib;
-                    }
+                // 获取属性名
+                const_str attrib_name_start = c;
+                u32 attrib_name_len = 0;
+                while (c < end && *c && (is_alpha(*c) || is_digit(*c) || *c == '_' || *c == '-')) {
+                    attrib_name_len++;
+                    c++;
                 }
 
-                if (*c == '/')  // 对于没有任何文本的节点
-                {
+                // 跳过等号
+                while (c < end && *c && *c != '=') c++;
+                if (c < end && *c == '=') c++;
+
+                // 跳过引号前的空白
+                while (c < end && *c && is_whitespace(*c)) c++;
+
+                // 获取属性值
+                char quote = *c;
+                if (quote != '"' && quote != '\'') break;
+                c++;
+
+                const_str attrib_value_start = c;
+                u32 attrib_value_len = 0;
+                while (c < end && *c && *c != quote) {
+                    attrib_value_len++;
                     c++;
-                    XMLExpectNotEnd(c);
-                    current_node.name = StringCopy(node_name_start, node_name_len);
+                }
+                if (c < end && *c == quote) c++;
+
+                // 处理属性值
+                XMLAttribute attrib = {};
+                attrib.name = StringCopy(attrib_name_start, attrib_name_len);
+
+                // 处理 value 属性
+                if (neko_string_is_decimal(attrib_value_start, attrib_value_len)) {
+                    attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_NUMBER;
+                    attrib.value = strtod(attrib_value_start, NULL);
+                } else if (StringEqualN(attrib_value_start, attrib_value_len, "true")) {
+                    attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_BOOLEAN;
+                    attrib.value = true;
+                } else if (StringEqualN(attrib_value_start, attrib_value_len, "false")) {
+                    attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_BOOLEAN;
+                    attrib.value = false;
+                } else {
+                    attrib.type = XMLAttribute::NEKO_XML_ATTRIBUTE_STRING;
+                    attrib.value = ProcessText(attrib_value_start, attrib_value_len);
+                }
+
+                current_node.attributes[fnv1a(attrib_name_start, attrib_name_len)] = attrib;
+            }
+
+            // 处理自闭合标签
+            if (c < end && *c == '/') {
+                c++;
+                if (c < end && *c == '>') {
+                    c++;
                     root.push(current_node);
-                    is_inside = false;
-                }
-            } else {
-                while (*c != '>') {
-                    c++;
-                    XMLExpectNotEnd(c);
+                    continue;
                 }
             }
 
-            c++;
-            XMLExpectNotEnd(c);
+            // 处理常规标签内容
+            if (c < end && *c == '>') {
+                c++;
+                const_str content_start = c;
+                u32 content_len = 0;
 
-            if (is_inside) {
-                const_str text_start = c;
-                u32 text_len = 0;
+                // 查找结束标签
+                while (c < end && *c) {
+                    if (*c == '<' && (c + 1) < end && *(c + 1) == '/') {
+                        // 检查是否匹配当前节点名
+                        const_str tag_end = c + 2;
+                        const_str node_name_ptr = current_node.name.data;
 
-                const_str end_start = c;
-                u32 end_len = 0;
-
-                current_node.name = StringCopy(node_name_start, node_name_len);
-
-                for (u32 i = 0; i < length; i++) {
-                    if (*c == '<' && *(c + 1) == '/') {
-                        c++;
-                        XMLExpectNotEnd(c);
-                        c++;
-                        XMLExpectNotEnd(c);
-                        end_start = c;
-                        end_len = 0;
-                        while (*c != '>') {
-                            end_len++;
-                            c++;
-                            XMLExpectNotEnd(c);
+                        while (tag_end < end && *tag_end && *node_name_ptr && *tag_end == *node_name_ptr) {
+                            tag_end++;
+                            node_name_ptr++;
                         }
 
-                        if (StringEqualN(end_start, end_len, current_node.name.data)) {
+                        if (*node_name_ptr == '\0' && tag_end < end && *tag_end == '>') {
+                            // 匹配成功
+                            content_len = c - content_start;
+                            c = tag_end + 1;  // 跳过结束标签
                             break;
-                        } else {
-                            text_len += end_len + 2;
-                            continue;
+                        }
+                    }
+                    c++;
+                }
+
+                // 处理内容
+                if (content_len > 0) {
+                    // 检查内容中是否包含子节点
+                    bool has_children = false;
+                    for (const_str p = content_start; p < content_start + content_len; p++) {
+                        if (*p == '<') {
+                            has_children = true;
+                            break;
                         }
                     }
 
-                    c++;
-                    text_len++;
+                    if (has_children) {
+                        current_node.children = ParseBlock(content_start, content_len);
+                    } else {
+                        // 去除前后空白
+                        const_str text_start = content_start;
+                        const_str text_end = content_start + content_len;
 
-                    XMLExpectNotEnd(c);
+                        while (text_start < text_end && is_whitespace(*text_start)) text_start++;
+                        while (text_end > text_start && is_whitespace(*(text_end - 1))) text_end--;
+
+                        if (text_end > text_start) {
+                            current_node.text = ProcessText(text_start, text_end - text_start);
+                        }
+                    }
                 }
-
-                current_node.children = ParseBlock(text_start, text_len);
-                if (current_node.children.len == 0)
-                    current_node.text = XMLDoc::ProcessText(text_start, text_len);
-                else
-                    current_node.text = StringCopy(text_start, text_len);
 
                 root.push(current_node);
-
-                c--;
             }
+        } else {
+            c++;
         }
     }
-
-#undef XMLExpectNotEnd
 
     return root;
 }

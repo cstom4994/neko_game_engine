@@ -29,13 +29,6 @@ public:
     double Scale();
     void SetFramebufferSizeCallback(GLFWframebuffersizefun func);
     void SwapBuffer();
-
-    inline void Query(int idx, i32 *width, i32 *height) {
-        int w, h;
-        glfwGetWindowSize(window, &w, &h);
-        *width = w;
-        *height = h;
-    }
 };
 
 #endif

@@ -741,21 +741,6 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
                 object.height = 1;
             }
 
-#if 0
-            object.phy_type = C2_TYPE_POLY;
-
-            object.aabb = (c2AABB){c2V(object.x, object.y), c2V(object.width, object.height)};
-
-            if (object.phy_type == C2_TYPE_POLY) {
-                object.phy.poly.verts[0] = (top_left(object.aabb));
-                object.phy.poly.verts[1] = (bottom_left(object.aabb));
-                object.phy.poly.verts[2] = (bottom_right(object.aabb));
-                object.phy.poly.verts[3] = c2Add(top_right(object.aabb), c2Mulvs(bottom_right(object.aabb), 0.5f));
-                object.phy.poly.count = 4;
-                c2Norms(object.phy.poly.verts, object.phy.poly.norms, object.phy.poly.count);
-            }
-#endif
-
             if ((attrib = object_node->FindAttribute("name"))) {
                 object.name = std::get<String>(attrib->value);
             } else {
@@ -772,27 +757,31 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
             XMLNode *properties = object_node->FindChild("properties");
             if (properties) {
-                // auto L = ENGINE_LUA();
-                // object.defs_luatb = LuaRef::NewTable(L);
                 for (auto it = properties->MakeChildIter("property"); it.Next();) {
                     XMLNode *object_node = it.current;
                     String property_name = std::get<String>(object_node->FindAttribute("name")->value);
                     XMLAttribute *type_attr = object_node->FindAttribute("type");
-
+                    XMLAttribute *value_attr = object_node->FindAttribute("value");
+                    String type_name{};
                     if (type_attr) {
-                        String type_name = std::get<String>(type_attr->value);
-                    } else {
-
-                        XMLAttribute *value_attr = object_node->FindAttribute("value");
-
-                        if (!value_attr) continue;
-
-                        // lua表
-                        // object.defs_luatb[property_name.cstr()] = std::get<String>(value_attr->value).cstr();
-
-                        object.defs[fnv1a(property_name)] = std::get<String>(value_attr->value);
-
-                        LOG_INFO("{}={}", property_name.cstr(), object.defs[fnv1a(property_name)].cstr());
+                        type_name = std::get<String>(type_attr->value);
+                    }
+                    if (value_attr) {
+                        try {
+                            String type_value{};
+                            if (type_name == "float" || type_name == "int") {
+                                type_value = std::to_string(std::get<double>(value_attr->value));
+                            } else if (type_name == "bool") {
+                                type_value = NEKO_BOOL_STR(std::get<bool>(value_attr->value));
+                            } else if (type_name == "object") {
+                                type_value = std::get<String>(value_attr->value);
+                            } else {  // 字符串
+                                type_value = std::get<String>(value_attr->value);
+                            }
+                            object.properties.push({property_name, type_value});
+                            LOG_INFO("{}={}", property_name.cstr(), type_value);
+                        } catch (...) {
+                        }
                     }
                 }
             }
@@ -823,7 +812,7 @@ void tiled_unload(TiledMap *map) {
 
     for (u32 i = 0; i < map->object_groups.len; i++) {
         for (u32 j = 0; j < map->object_groups[i].objects.len; j++) {
-            map->object_groups[i].objects[j].defs.trash();
+            map->object_groups[i].objects[j].properties.trash();
         }
         map->object_groups[i].objects.trash();
     }
@@ -1215,7 +1204,7 @@ const char *tiled_get_map(CEntity ent) {
     return tiled->map_name.cstr();
 }
 
-void tiled_loadlua(CEntity ent) {
+int tiled_get_object_groups(CEntity ent, lua_State *L) {
     CTiledMap *tiled = Tiled__pool->Get(ent);
     error_assert(tiled);
 
@@ -1225,11 +1214,41 @@ void tiled_loadlua(CEntity ent) {
 
     TiledMap map = asset.tiledmap;
 
-    // LuaRef &table = map.object_groups;
-
-    for (auto &obj_group : map.object_groups)
+    lua_createtable(L, 0, 0);
+    for (auto &obj_group : map.object_groups) {
+        lua_pushstring(L, obj_group.name.cstr());
+        lua_createtable(L, 0, 0);
         for (object_t &obj : obj_group.objects) {
-        }
 
-    return;
+            lua_createtable(L, 0, 7);
+
+            lua_pushstring(L, obj.name.cstr());
+            lua_setfield(L, -2, "name");
+            lua_pushstring(L, obj.class_name.cstr());
+            lua_setfield(L, -2, "class_name");
+            lua_pushinteger(L, obj.id);
+            lua_setfield(L, -2, "id");
+            lua_pushinteger(L, obj.x);
+            lua_setfield(L, -2, "x");
+            lua_pushinteger(L, obj.y);
+            lua_setfield(L, -2, "y");
+            lua_pushinteger(L, obj.width);
+            lua_setfield(L, -2, "width");
+            lua_pushinteger(L, obj.height);
+            lua_setfield(L, -2, "height");
+
+            lua_createtable(L, 0, 0);
+            for (int i = 0; i < obj.properties.len; ++i) {
+                const object_property_t &property = obj.properties[i];
+                lua_pushstring(L, property.value.cstr());
+                lua_setfield(L, -2, property.key.cstr());
+            }
+            lua_setfield(L, -2, "properties");
+
+            lua_setfield(L, -2, obj.name.cstr());
+        }
+        lua_settable(L, -3);
+    }
+
+    return 1;
 }
