@@ -544,7 +544,7 @@ static FontRange *get_range(FontFamily *font, FontKey key) {
     return range;
 }
 
-stbtt_aligned_quad FontFamily::quad(u32 *img, float *x, float *y, float size, i32 ch) {
+stbtt_aligned_quad FontFamily::quad(u32 *img, float *x, float *y, float size, i32 ch, float xscale) {
 
     FontRange *range = get_range(this, font_key(size, ch));
     assert(range != nullptr);
@@ -558,7 +558,7 @@ stbtt_aligned_quad FontFamily::quad(u32 *img, float *x, float *y, float size, i3
 
     stbtt_bakedchar *baked = range->chars + ch;
     *img = range->tex.id;
-    *x = *x + baked->xadvance;
+    *x = *x + baked->xadvance * xscale;
     return q;
 }
 
@@ -583,7 +583,7 @@ FontFamily *neko_default_font() {
     return the<CL>().default_font;
 }
 
-static void draw_font_line(FontFamily *font, bool draw_in_world, float size, float *start_x, float *start_y, String line, Color256 col) {
+static void draw_font_line(FontFamily *font, bool draw_in_world, float size, float *start_x, float *start_y, String line, Color256 col, f32 scale) {
     float x = *start_x;
     float y = *start_y;
 
@@ -609,28 +609,26 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         u32 tex_id = 0;
         float xx = x;
         float yy = y;
-        stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode());
+        stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode(), scale);
 
         GLuint gl_tex_id = tex_id;
 
-        // float x1 = x + q.x0;
-        // float y1 = y + q.y0;
-        // float x2 = x + q.x1;
-        // float y2 = y + q.y1;
+        float xpos = x + q.x0 * scale;
+        float ypos = y + q.y0 * scale;
 
-        // float u1 = q.s0;
-        // float v1 = q.t0;
-        // float u2 = q.s1;
-        // float v2 = q.t1;
+        float w = (q.x1 - q.x0) * scale;
+        float h = (q.y1 - q.y0) * scale;
 
-        float xpos = x + q.x0;
-        float ypos = y + q.y0;
-
-        float w = q.x1 - q.x0;
-        float h = q.y1 - q.y0;
-
-        float vertices[6][4] = {{xpos, ypos + h, q.s0, q.t1}, {xpos, ypos, q.s0, q.t0},     {xpos + w, ypos, q.s1, q.t0},
-                                {xpos, ypos + h, q.s0, q.t1}, {xpos + w, ypos, q.s1, q.t0}, {xpos + w, ypos + h, q.s1, q.t1}};
+        // clang-format off
+        float vertices[6][4] = {
+            {xpos,      ypos + h,   q.s0, q.t1}, 
+            {xpos,      ypos,       q.s0, q.t0},     
+            {xpos + w,  ypos,       q.s1, q.t0},
+            {xpos,      ypos + h,   q.s0, q.t1}, 
+            {xpos + w,  ypos,       q.s1, q.t0}, 
+            {xpos + w,  ypos + h,   q.s1, q.t1}
+        };
+        // clang-format on
 
         glBindTexture(GL_TEXTURE_2D, gl_tex_id);
         glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
@@ -643,25 +641,25 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         y = yy;
     }
 
-    *start_y += size;
+    *start_y += size * scale;
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-float draw_font(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col) {
+float draw_font(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col, f32 scale) {
     PROFILE_FUNC();
 
     y += size;
 
     for (String line : SplitLines(text)) {
-        draw_font_line(font, draw_in_world, size, &x, &y, line, col);
+        draw_font_line(font, draw_in_world, size, &x, &y, line, col, scale);
     }
 
     return y - size;
 }
 
-float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit) {
+float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit, f32 scale) {
     PROFILE_FUNC();
 
     y += size;
@@ -683,13 +681,13 @@ float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float 
             font->sb.len -= word.len;
             font->sb.data[font->sb.len] = '\0';
 
-            draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col);
+            draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col, scale);
 
             font->sb.clear();
             font->sb << word << " ";
         }
 
-        draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col);
+        draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col, scale);
     }
 
     return y - size;

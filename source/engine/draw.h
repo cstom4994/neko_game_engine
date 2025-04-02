@@ -95,14 +95,14 @@ struct FontFamily {
     bool load(String filepath);
     void trash();
 
-    stbtt_aligned_quad quad(u32* img, float* x, float* y, float size, i32 ch);
+    stbtt_aligned_quad quad(u32* img, float* x, float* y, float size, i32 ch, float xscale = 1.0f);
     float width(float size, String text);
 };
 
 FontFamily* neko_default_font();
 
-float draw_font(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col);
-float draw_font_wrapped(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit);
+float draw_font(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, f32 scale = 1.0f);
+float draw_font_wrapped(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit, f32 scale = 1.0f);
 
 void font_init();
 

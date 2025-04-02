@@ -11,7 +11,7 @@ end
 function haha()
     LocalGame = {}
 
-    local default_font = neko.font_load("default")
+    default_font = neko.font_load("default")
 
     neko.set_master_volume(0.2)
 
@@ -148,8 +148,8 @@ function haha()
 
         self.facing_left = prefab_tb[2]["facing_left"]
         self.was_hit = prefab_tb[2]["was_hit"]
-        self.hp = prefab_tb[2]["hp"]
-        self.hp_max = prefab_tb[2]["hp_max"]
+        self.health = prefab_tb[2]["health"]
+        self.health_max = prefab_tb[2]["health_max"]
 
         -- if prefab_tb[2]["spring"] then
         --     self.spring = Spring()
@@ -194,7 +194,7 @@ function haha()
     local checks = map({true, false, true}, neko.ui.ref)
 
     function hit_player(demage)
-        player.hp = player.hp - demage
+        player.health = player.health - demage
     end
 
     ns.gamelogic.init = function()
@@ -213,7 +213,7 @@ function haha()
         player = CPlayer(0, 0)
 
         LocalGame.world:add(player)
-        LocalGame.world:add(CEnemy(20, 20))
+        LocalGame.world:add(CEnemy(100, 100, "chort", true))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
@@ -268,8 +268,8 @@ function haha()
             -- end)
             -- text = text .. "]"
             -- print(text)
-            random_spawn_npc()
-            print("生成怪物")
+            -- random_spawn_npc()
+            -- print("生成怪物")
         end
 
         if game_tick % 40 == 1 then
@@ -305,7 +305,8 @@ function haha()
         local dt = neko.dt()
         -- default_font:draw(("fps: %.2f (%.4f) 分数: %d"):format(1 / dt, dt * 1000, LocalGame.score), 300, 0, 24)
 
-        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.hp), 40, LocalGame.win_size.y - 60, 36)
+        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.health), 40, LocalGame.win_size.y - 60,
+            36)
     end
 
     -- neko.before_quit = function()

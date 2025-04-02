@@ -5,8 +5,8 @@ function WorkingMan:new(x, y)
     self.sprite = neko.sprite_load "assets/workingman.ase"
     self.facing_left = false
     self.hit_cooldown = 0
-    self.hp = 100
-    self.hp_max = 100
+    self.health = 100
+    self.health_max = 100
     self.spring = Spring()
     self.update_thread = coroutine.create(self.co_update)
     self.hpbar = Hpbar(self)
@@ -51,8 +51,8 @@ function WorkingMan:hit(other, damage)
         return
     end
 
-    self.hp = self.hp - damage
-    if self.hp <= 0 then
+    self.health = self.health - damage
+    if self.health <= 0 then
         LocalGame.world:kill(self)
     end
 

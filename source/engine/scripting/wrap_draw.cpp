@@ -39,13 +39,15 @@ static int mt_font_draw(lua_State *L) {
     lua_Number x = luaL_optnumber(L, 3, 0);
     lua_Number y = luaL_optnumber(L, 4, 0);
     lua_Number size = luaL_optnumber(L, 5, 12);
-    lua_Number wrap = luaL_optnumber(L, 6, -1);
+    bool draw_in_world = luaL_optnumber(L, 6, 0);
+    lua_Number scale = luaL_optnumber(L, 7, 1);
+    lua_Number wrap = luaL_optnumber(L, 8, -1);
 
     float bottom = 0;
     if (wrap < 0) {
-        bottom = draw_font(&font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
+        bottom = draw_font(&font, draw_in_world, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, scale);
     } else {
-        bottom = draw_font_wrapped(&font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
+        bottom = draw_font_wrapped(&font, draw_in_world, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap, scale);
     }
 
     lua_pushnumber(L, bottom);

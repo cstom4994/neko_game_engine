@@ -14,8 +14,8 @@ function CPlayer:new(x, y)
 
     self.hpbar = Hpbar(self)
 
-    self.hp = 100
-    self.hp_max = 100
+    self.health = 100
+    self.health_max = 100
 
     self.type = "player"
 end
@@ -48,7 +48,7 @@ function CPlayer:idle(dt)
     self.sprite:play "Idle"
 
     while true do
-        -- if player.hp > 0 then
+        -- if player.health > 0 then
         if neko.key_down "w" or neko.key_down "s" or neko.key_down "a" or neko.key_down "d" then
             self:run(dt)
             self.sprite:play "Idle"
@@ -67,7 +67,7 @@ function CPlayer:run(dt)
 
         local mag = 100
 
-        -- if player.hp > 0 then
+        -- if player.health > 0 then
         if neko.key_down "w" then
             vy = vy + 1
         end
@@ -204,13 +204,13 @@ end
 
 class "CEnemy"
 
-function CEnemy:new(x, y, name)
+function CEnemy:new(x, y, name, brain)
     self.x, self.y = x, y
     self.sprite = neko.sprite_load "assets/enemy.ase"
     self.facing_left = false
     self.hit_cooldown = 0
-    self.hp = 100
-    self.hp_max = 100
+    self.health = 100
+    self.health_max = 100
     self.spring = Spring()
     self.update_thread = coroutine.create(self.co_update)
     self.hpbar = Hpbar(self)
@@ -219,6 +219,12 @@ function CEnemy:new(x, y, name)
     self.name = name or "chort"
 
     self.CEntity = ns.entity.create(name)
+
+    if brain then
+        self.brain = EnemyAI(self.x, self.y, self)
+    else
+        self.brain = nil
+    end
 end
 
 function CEnemy:on_create()
@@ -259,8 +265,8 @@ function CEnemy:hit(other, damage)
         return
     end
 
-    self.hp = self.hp - damage
-    if self.hp <= 0 then
+    self.health = self.health - damage
+    if self.health <= 0 then
         LocalGame.world:kill(self)
     end
 
@@ -285,14 +291,34 @@ function CEnemy:co_update(dt)
 
     self.sprite:play(self.name .. "_run")
     while true do
-        if self.hit_cooldown < 0 then
-            local dx = player.x - self.x
-            local dy = player.y - self.y
+
+        if self.brain ~= nil then
+
+            self.brain:update_player_position(player.x, player.y)
+            local reward = self.brain:update()
+
+            -- self.body:set_position(self.brain.x, self.brain.y)
+
+            local dx = self.brain.x - self.x
+            local dy = self.brain.y - self.y
             dx, dy = normalize(dx, dy)
             self.facing_left = dx < 0
 
-            local mag = 40
+            local mag = 50
             self.body:set_velocity(dx * mag, dy * mag)
+
+        else
+
+            if self.hit_cooldown < 0 then
+                local dx = player.x - self.x
+                local dy = player.y - self.y
+                dx, dy = normalize(dx, dy)
+                self.facing_left = dx < 0
+
+                local mag = 40
+                self.body:set_velocity(dx * mag, dy * mag)
+            end
+
         end
 
         self, dt = coroutine.yield()
@@ -336,6 +362,10 @@ function CEnemy:draw()
     if draw_fixtures then
         self.body:draw_fixtures()
     end
+
+    local detailed = ns.edit.get_enabled() or true
+    local info = self.brain:info(1)
+    default_font:draw(info, self.x + 8, -(self.y + 14), 16, 1, 0.25)
 end
 
 function CEnemy.begin_contact(a, b)
@@ -518,7 +548,7 @@ function Hpbar:new(father)
     self.father = father
     self.sprite = neko.sprite_load "assets/hpbar.ase"
     self.angle = 0
-    self.hp = 10
+    self.health = 10
 end
 
 function Hpbar:on_create()
@@ -526,14 +556,14 @@ function Hpbar:on_create()
 end
 
 function Hpbar:update(dt)
-    if self.father.hp ~= nil then
-        self.hp = math.floor((self.father.hp / self.father.hp_max) * 10)
-        self.sprite:play(tostring(self.hp))
+    if self.father.health ~= nil then
+        self.health = math.floor((self.father.health / self.father.health_max) * 10)
+        self.sprite:play(tostring(self.health))
     end
 end
 
 function Hpbar:draw(x, y)
-    if self.hp < 10 then
+    if self.health < 10 then
         local x = x or self.father.x
         local y = y or self.father.y - 20
 
@@ -646,8 +676,8 @@ function Target:draw()
                     local b = ng.Vec2(v.x, v.y)
                     neko.draw_line(a, b, 2.0, ng.color(0.75, 0, 0, 1))
                     if enemy_mt == CPlayer then
-                        if v.hp < 200 then
-                            v.hp = v.hp + 1
+                        if v.health < 200 then
+                            v.health = v.health + 1
                         end
                     else
                         -- v:hit(self)
