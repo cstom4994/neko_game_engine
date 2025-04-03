@@ -213,7 +213,7 @@ function haha()
         player = CPlayer(0, 0)
 
         LocalGame.world:add(player)
-        LocalGame.world:add(CEnemy(100, 100, "chort", true))
+        -- LocalGame.world:add(CEnemy(100, 100, "chort", true))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
 
@@ -268,8 +268,8 @@ function haha()
             -- end)
             -- text = text .. "]"
             -- print(text)
-            -- random_spawn_npc()
-            -- print("生成怪物")
+            random_spawn_npc()
+            print("生成怪物")
         end
 
         if game_tick % 40 == 1 then

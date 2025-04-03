@@ -90,7 +90,7 @@ function WorkingMan:co_update(dt)
         local dist = distance(self.x, self.y, LocalGame.mouse_pos.x, LocalGame.mouse_pos.y)
 
         if dist < 20 then
-            self.sprite:effect("110")
+            self.sprite:effect("100")
         else
             self.sprite:effect(0)
         end

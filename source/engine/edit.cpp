@@ -1,18 +1,5 @@
 #include "engine/edit.h"
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <inttypes.h>
-#include <math.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -96,12 +83,27 @@ static int find_lastrow(unsigned char *data, int w, int h) {
     return 0;
 }
 
-static int limgcrop(lua_State *L) {
-    const char *filename = luaL_checkstring(L, 1);  // todo : UTF-8 support
+int spritepack_bake(lua_State *L) {
+    const char *filename = luaL_checkstring(L, 1);
     int w, h, n;
-    unsigned char *data = stbi_load(filename, &w, &h, &n, 0);
+    // unsigned char *data = stbi_load(filename, &w, &h, &n, 0);
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+    if (!ok) {
+        return luaL_error(L, "vfs can't open file %s", filename);
+    }
+    neko_defer(mem_free(contents.data));
+
+    u8 *data = nullptr;
+    {
+        PROFILE_BLOCK("stb_image load");
+        stbi_set_flip_vertically_on_load(false);
+        data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &w, &h, &n, 0);
+    }
+
     if (data == NULL) {
-        return luaL_error(L, "Can't parse %s", filename);
+        return luaL_error(L, "can't parse %s", filename);
     }
     if (n != 4) {
         stbi_image_free(data);
@@ -216,13 +218,27 @@ static unsigned char *read_img(lua_State *L, int *w, int *h, int *x, int *y, int
     *py = geti_field(L, "y");
 
     int width, height, comp;
-    unsigned char *img = stbi_load(filename, &width, &height, &comp, 0);
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+    if (!ok) {
+        luaL_error(L, "load %s failed", filename);
+    }
+    neko_defer(mem_free(contents.data));
+
+    u8 *data = nullptr;
+    {
+        PROFILE_BLOCK("stb_image load");
+        stbi_set_flip_vertically_on_load(false);
+        data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &width, &height, &comp, 0);
+    }
+
     if (comp != 4 || rect_invalid(*w, *h, *x, *y, width, height)) {
-        stbi_image_free(img);
+        stbi_image_free(data);
         luaL_error(L, "Load %s failed", filename);
     }
     *stride = width;
-    return img;
+    return data;
 }
 
 static void copy_img(lua_State *L, int index, int id, unsigned char *canvas, int canvas_w, int canvas_h) {
@@ -261,7 +277,7 @@ static int limgpack(lua_State *L) {
 int open_tools_spritepack(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
-            {"imginfo", limginfo}, {"imgcrop", limgcrop}, {"rectpack", lrectpack}, {"imgpack", limgpack}, {NULL, NULL},
+            {"imginfo", limginfo}, {"imgcrop", spritepack_bake}, {"rectpack", lrectpack}, {"imgpack", limgpack}, {NULL, NULL},
     };
     luaL_newlib(L, l);
     return 1;
@@ -275,17 +291,8 @@ bool console_get_visible() {
     return false;
 }
 
-void console_puts(const char *s) {
+void console_puts(const char *s) { LOG_INFO("{}", s); }
 
-    LOG_INFO("{}", s);
-
-    // gameconsole_print(s);
-}
-
-void console_init() {
-    PROFILE_FUNC();
-
-    // gameconsole_init();
-}
+void console_init() { PROFILE_FUNC(); }
 
 void console_fini() {}

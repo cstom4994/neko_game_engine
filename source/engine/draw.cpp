@@ -766,16 +766,20 @@ int batch_update_all(Event evt) {
 
     auto &game = the<CL>();
 
+    // clang-format off
     struct {
         float x, y, w, h;
     } alien_uvs[] = {
-            {2, 2, 24, 24}, {58, 2, 24, 24}, {114, 2, 24, 24}, {170, 2, 24, 24}, {2, 30, 24, 24},
+        {2,     2,  24, 24}, 
+        {58,    2,  24, 24}, 
+        {114,   2,  24, 24}, 
+        {170,   2,  24, 24}, 
+        {2,     30, 24, 24},
     };
+    // clang-format on
 
     struct {
-        // position
         float px, py;
-        // texcoords
         float tx, ty, tw, th;
     } ch = {
             .px = 0,
@@ -798,13 +802,13 @@ int batch_update_all(Event evt) {
     float u2 = (ch.tx + ch.tw) / tex_aliens.width;
     float v2 = (ch.ty + ch.th) / tex_aliens.height;
 
-    batch_push_vertex(game.batch, x1, y1, u1, v1);
-    batch_push_vertex(game.batch, x2, y2, u2, v2);
-    batch_push_vertex(game.batch, x1, y2, u1, v2);
+    batch_push_vertex(game.batch, x1, y1, u1, v2);
+    batch_push_vertex(game.batch, x2, y2, u2, v1);
+    batch_push_vertex(game.batch, x1, y2, u1, v1);
 
-    batch_push_vertex(game.batch, x1, y1, u1, v1);
-    batch_push_vertex(game.batch, x2, y1, u2, v1);
-    batch_push_vertex(game.batch, x2, y2, u2, v2);
+    batch_push_vertex(game.batch, x1, y1, u1, v2);
+    batch_push_vertex(game.batch, x2, y1, u2, v2);
+    batch_push_vertex(game.batch, x2, y2, u2, v1);
 
     return 0;
 }
@@ -970,8 +974,6 @@ u32 draw_line_update(const void *data, i32 n_elems, i32 elem_size) {
 
 void debug_draw_all() {
 
-    debug_draw_circle({100.0f, 100.0f}, 10.0f, 32, 2.0, color_red);
-
     const i32 count = draw_line_update(debug_renderer->buf, debug_renderer->buf_len, sizeof(LineVertex));
 
     glUseProgram(debug_renderer->program_id);
@@ -1038,4 +1040,16 @@ void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_
     // 绘制两端的半圆
     debug_draw_half_circle(a, radius, dir, segment_count, line_width, color);
     debug_draw_half_circle(b, radius, vec2_neg(dir), segment_count, line_width, color);
+}
+
+void debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color) {
+    vec2 top_left = {min.x, max.y};
+    vec2 top_right = {max.x, max.y};
+    vec2 bottom_left = {min.x, min.y};
+    vec2 bottom_right = {max.x, min.y};
+
+    debug_draw_add_line(top_left, top_right, line_width, color);        // 上边
+    debug_draw_add_line(top_right, bottom_right, line_width, color);    // 右边
+    debug_draw_add_line(bottom_right, bottom_left, line_width, color);  // 下边
+    debug_draw_add_line(bottom_left, top_left, line_width, color);      // 左边
 }

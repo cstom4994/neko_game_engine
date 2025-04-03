@@ -72,21 +72,6 @@ CBase gBase;
 
 #if 1
 
-static inline void perf() {
-    ImGuiIO &io = ImGui::GetIO();
-    const ImVec2 screenSize = io.DisplaySize;
-
-    ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-
-    const ImVec2 footer_size(20, 20);
-    const ImVec2 footer_pos(screenSize.x - footer_size.x - 20, 20);
-    const ImU32 background_color = IM_COL32(0, 0, 0, 102);
-
-    draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
-
-    Neko::imgui::OutlineText(draw_list, ImVec2(screenSize.x - 60, footer_pos.y + 3), "%.1f FPS", io.Framerate);
-}
-
 unsigned int fbo;
 unsigned int rbo;
 unsigned int fbo_tex;
@@ -222,8 +207,6 @@ void CL::game_draw() {
             ImGui::EndMainMenuBar();
         }
 
-        perf();
-
         // script_draw_all();
         tiled_draw_all();
 
@@ -234,20 +217,6 @@ void CL::game_draw() {
         edit_draw_all();
         physics_draw_all();
         debug_draw_all();
-
-        TexturedQuad quad = {
-                .texture = NULL,
-                .position = {0, 20},
-                .dimentions = {180, 20},
-                .rect = {0},
-                .color = make_color(0x0000000, 100),
-        };
-
-        quadrenderer.renderer_push(&quad);
-
-        NEKO_INVOKE_ONCE(quadrenderer.renderer_push_light(light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
-
-        quadrenderer.renderer_flush();
 
         // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -270,7 +239,34 @@ void CL::game_draw() {
         glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        f32 fy = draw_font(default_font, false, 16.f, 0.f, 20.f, "Neko build " __DATE__, NEKO_COLOR_WHITE);
+        {
+            ImGuiIO &io = ImGui::GetIO();
+            const ImVec2 screenSize = io.DisplaySize;
+            ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+            const ImVec2 footer_size(60, 20);
+            const ImVec2 footer_pos(screenSize.x - footer_size.x - 20, 20);
+            const ImU32 background_color = IM_COL32(0, 0, 0, 102);
+
+            // f32 fy = draw_font(default_font, false, 16.f, 0.f, 20.f, "Neko build " __DATE__, NEKO_COLOR_WHITE);
+
+            // TexturedQuad quad = {
+            //         .texture = NULL,
+            //         .position = {0, 20},
+            //         .dimentions = {180, 20},
+            //         .rect = {0},
+            //         .color = make_color(0x0000000, 100),
+            // };
+
+            // quadrenderer.renderer_push(&quad);
+
+            // NEKO_INVOKE_ONCE(quadrenderer.renderer_push_light(light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
+
+            // quadrenderer.renderer_flush();
+
+            draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
+
+            Neko::imgui::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
+        }
 
         auto ui = this->ui;
         neko_update_ui(ui);
@@ -342,66 +338,58 @@ void CL::game_draw() {
 }
 
 void CL::SplashScreen() {
+    AssetTexture splash_texture = neko_aseprite_simple("assets/cat.ase");
+    Asset splash_shader = {};
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
+    error_assert(ok);
+    GLuint sid = splash_shader.shader.id;
 
-    if (1) {
-
-        AssetTexture splash_texture = neko_aseprite_simple("assets/cat.ase");
-
-        Asset splash_shader = {};
-
-        bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
-        error_assert(ok);
-
-        GLuint sid = splash_shader.shader.id;
-
-        // position uv
-        // clang-format off
+    // position uv
+    // clang-format off
         float verts[] = {
-            0.5f,   0.5f,   1.0f,   0.0f, 
-            0.5f,   -0.5f,  1.0f,   1.0f, 
-            -0.5f,  -0.5f,  0.0f,   1.0f, 
-            -0.5f,  0.5f,   0.0f,   0.0f
+            0.5f,  0.5f,  1.0f,  0.0f, 
+            0.5f, -0.5f,  1.0f,  1.0f, 
+           -0.5f, -0.5f,  0.0f,  1.0f, 
+           -0.5f,  0.5f,  0.0f,  0.0f
         };
-        // clang-format on
+    // clang-format on
 
-        u32 indices[] = {0, 1, 3, 1, 2, 3};
+    u32 indices[] = {0, 1, 3, 1, 2, 3};
 
-        VertexBuffer quad;
-        quad.init_vb(vb_static | vb_tris);
+    VertexBuffer quad;
+    quad.init_vb(vb_static | vb_tris);
 
-        quad.bind_vb_for_edit(true);
-        quad.push_vertices(verts, sizeof(verts) / sizeof(float));
-        quad.push_indices(indices, sizeof(indices) / sizeof(u32));
-        quad.configure_vb(0, 2, 4, 0);
-        quad.configure_vb(1, 2, 4, 2);
+    quad.bind_vb_for_edit(true);
+    quad.push_vertices(verts, sizeof(verts) / sizeof(float));
+    quad.push_indices(indices, sizeof(indices) / sizeof(u32));
+    quad.configure_vb(0, 2, 4, 0);
+    quad.configure_vb(1, 2, 4, 2);
 
-        mat4 projection = mat4_ortho(-((float)state.width / 24.0f), (float)state.width / 24.0f, (float)state.height / 24.0f, -((float)state.height / 24.0f), -1.0f, 1.0f);
-        mat4 model = mat4_scalev(vec3{splash_texture.width / 2.0f, splash_texture.height / 2.0f, 0.0f});
+    mat4 projection = mat4_ortho(-((float)state.width / 24.0f), (float)state.width / 24.0f, (float)state.height / 24.0f, -((float)state.height / 24.0f), -1.0f, 1.0f);
+    mat4 model = mat4_scalev(vec3{splash_texture.width / 2.0f, splash_texture.height / 2.0f, 0.0f});
 
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-        neko_bind_shader(sid);
-        neko_bind_texture(&splash_texture, 0);
-        neko_shader_set_int(sid, "image", 0);
-        neko_shader_set_m4f(sid, "transform", model);
-        neko_shader_set_m4f(sid, "projection", projection);
+    neko_bind_shader(sid);
+    neko_bind_texture(&splash_texture, 0);
+    neko_shader_set_int(sid, "image", 0);
+    neko_shader_set_m4f(sid, "transform", model);
+    neko_shader_set_m4f(sid, "projection", projection);
 
-        quad.bind_vb_for_draw(true);
-        quad.draw_vb();
+    quad.bind_vb_for_draw(true);
+    quad.draw_vb();
 
-        // auto font = neko_default_font();
-        // char background_text[64] = "Project: unknown";
-        // f32 td = font->width(22.f, background_text);
-        // draw_font(font, false, 16.f, (state.width - td) * 0.5f, (state.height) * 0.5f + splash_texture.height / 2.f - 100.f, background_text, NEKO_COLOR_WHITE);
+    // auto font = neko_default_font();
+    // char background_text[64] = "Project: unknown";
+    // f32 td = font->width(22.f, background_text);
+    // draw_font(font, false, 16.f, (state.width - td) * 0.5f, (state.height) * 0.5f + splash_texture.height / 2.f - 100.f, background_text, NEKO_COLOR_WHITE);
 
-        window->SwapBuffer();
+    window->SwapBuffer();
 
-        quad.fini_vb();
-
-        neko_release_texture(&splash_texture);
-    }
+    quad.fini_vb();
+    neko_release_texture(&splash_texture);
 }
 
 void CL::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
@@ -955,11 +943,7 @@ Int32 Main(int argc, const char *argv[]) {
     GLFWwindow *window = game.window->glfwWindow();
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        // Game *app = gApp;
         auto &eh = Neko::the<EventHandler>();
-        // if (glfwWindowShouldClose(the<Game>().window)) {
-        //     game.quit();
-        // }
         eh.Pump();
         eh.Dispatch(Event{.type = OnPreUpdate});
         if (!gBase.error_mode.load()) {
@@ -967,7 +951,6 @@ Int32 Main(int argc, const char *argv[]) {
         }
         eh.Dispatch(Event{.type = OnPostUpdate});
         eh.Dispatch(Event{.type = OnDraw});
-        // eh.Dispatch(Event{.type = OnDrawUI});
     }
 
     game.fini();

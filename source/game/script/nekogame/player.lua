@@ -225,6 +225,9 @@ function CEnemy:new(x, y, name, brain)
     else
         self.brain = nil
     end
+
+    self.draw_info_on_world = {}
+
 end
 
 function CEnemy:on_create()
@@ -364,19 +367,22 @@ function CEnemy:draw()
     end
 
     local detailed = ns.edit.get_enabled() or true
-    local info = self.brain:info(1)
 
-    default_font:draw(info, self.x + 8, -(self.y + 14), 16, 1, 0.25)
+    if self.brain ~= nil then
+        local info = self.brain:info(1)
 
-    -- local ImGui = neko.imgui_obsolete
-    -- local window<close> = ImGuiWindow("EnemyAI")
-    -- local draw_info_on_world = {}
-    -- if window then
-    --     -- if ImGui.Checkbox("绘制到世界", draw_info_on_world) then
-    --     --     default_font:draw(self.brain:info(0), self.x + 8, -(self.y + 14), 16, 1, 0.25)
-    --     -- end
-    --     ImGui.Text(info)
-    -- end
+        local ImGui = neko.imgui_obsolete
+        local window<close> = ImGuiWindow("EnemyAI")
+        if window then
+            if ImGui.Checkbox("绘制到世界", self.draw_info_on_world) then
+            end
+            ImGui.Text(info)
+        end
+
+        if self.draw_info_on_world[1] then
+            default_font:draw(self.brain:info(0), self.x + 8, -(self.y + 14), 16, 1, 0.25)
+        end
+    end
 end
 
 function CEnemy.begin_contact(a, b)

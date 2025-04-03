@@ -44,6 +44,139 @@ static int __luainspector_gc(lua_State* L) {
 
 namespace Neko {
 
+struct ConsoleLogEntry {
+    std::string message;
+    Logger::Level level;
+    float alpha;         // 当前透明度 (0.0-1.0)
+    float duration;      // 总显示时间
+    float fadeDuration;  // 淡出持续时间
+    float slideOffset;   // 滑动动画偏移量
+    float scale;         // 缩放动画 (1.0为正常大小)
+    std::chrono::steady_clock::time_point startTime;
+    float height;  // 该条日志的显示高度
+    bool isNew;    // 是否是新添加的日志
+
+    ConsoleLogEntry(const std::string& msg, Logger::Level lvl, float dur, float fadeDur)
+        : message(msg), level(lvl), alpha(0.0f), duration(dur), fadeDuration(fadeDur), slideOffset(20.0f), scale(1.05f), startTime(std::chrono::steady_clock::now()), height(0.0f), isNew(true) {}
+};
+
+std::vector<ConsoleLogEntry> consolelogEntries;
+const size_t MAX_LOG_ENTRIES = 50;       // 内存中最大日志条数
+const size_t MAX_VISIBLE_LOGS = 10;      // 屏幕上最多显示10条日志
+const float LOG_PADDING = 8.0f;          // 日志之间的间距
+const float LOG_MARGIN_X = 15.0f;        // 左侧边距
+const float LOG_MARGIN_Y = 15.0f;        // 顶部边距
+const float ENTRY_ANIM_DURATION = 0.3f;  // 入场动画持续时间
+
+void ConsoleLogAdd(const std::string& message, Logger::Level level) {
+    if (consolelogEntries.size() >= MAX_LOG_ENTRIES) {
+        consolelogEntries.erase(consolelogEntries.begin());
+    }
+
+    consolelogEntries.emplace_back(message, level, 3.0f, 0.8f);
+}
+
+float SmoothStep(float edge0, float edge1, float x) {
+    x = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+    return x * x * (3.0f - 2.0f * x);
+}
+
+float CalculateTextHeight(const std::string& text, float wrapWidth) {
+    if (text.empty()) return 0.0f;
+    ImFont* font = ImGui::GetFont();
+    float fontSize = ImGui::GetFontSize();
+    if (wrapWidth <= 0) {
+        return fontSize;
+    }
+    ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, wrapWidth, text.c_str());
+    return textSize.y;
+}
+
+void RenderLogs() {
+    const ImVec2 initialPos(LOG_MARGIN_X, LOG_MARGIN_Y);
+    ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+    auto now = std::chrono::steady_clock::now();
+
+    ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+    float wrapWidth = screenSize.x - 2 * LOG_MARGIN_X;
+
+    ImVec2 currentPos = initialPos;
+    size_t visibleCount = 0;
+
+    for (auto it = consolelogEntries.rbegin(); it != consolelogEntries.rend() && visibleCount < MAX_VISIBLE_LOGS; ++it) {
+        auto& entry = *it;
+        float elapsed = std::chrono::duration<float>(now - entry.startTime).count();
+
+        // 处理入场动画
+        if (entry.isNew) {
+            float animProgress = std::min(elapsed / ENTRY_ANIM_DURATION, 1.0f);
+            entry.alpha = SmoothStep(0.0f, 1.0f, animProgress);
+            entry.slideOffset = 20.0f * (1.0f - animProgress);
+            entry.scale = 1.0f + 0.05f * (1.0f - animProgress);
+
+            if (animProgress >= 1.0f) {
+                entry.isNew = false;
+            }
+        }
+
+        // 处理淡出动画
+        if (elapsed > entry.duration) {
+            float fadeProgress = (elapsed - entry.duration) / entry.fadeDuration;
+            entry.alpha = 1.0f - SmoothStep(0.0f, 1.0f, fadeProgress);
+        }
+
+        if (entry.alpha <= 0.0f) {
+            continue;
+        }
+
+        if (entry.height <= 0.0f) {
+            entry.height = CalculateTextHeight(entry.message, wrapWidth) + LOG_PADDING;
+        }
+
+        if (currentPos.y + entry.height > screenSize.y) {
+            break;
+        }
+
+        ImVec4 baseColor;
+        switch (entry.level) {
+            case Logger::Level::WARNING:
+                baseColor = ImVec4(1.0f, 0.8f, 0.0f, entry.alpha);
+                break;
+            case Logger::Level::ERR:
+                baseColor = ImVec4(1.0f, 0.3f, 0.3f, entry.alpha);
+                break;
+            case Logger::Level::INFO:
+                baseColor = ImVec4(0.3f, 0.7f, 1.0f, entry.alpha);
+                break;
+            case Logger::Level::TRACE:
+                baseColor = ImVec4(1.0f, 1.0f, 1.0f, entry.alpha);
+                break;
+        }
+
+        ImVec2 textPos = currentPos;
+        textPos.x += entry.slideOffset;
+
+        if (entry.alpha > 0.3f) {
+            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize() * entry.scale, FLT_MAX, wrapWidth, entry.message.c_str());
+
+            ImVec4 bgColor = baseColor;
+            bgColor.w *= 0.15f;  // 背景透明度较低
+            draw_list->AddRectFilled(ImVec2(textPos.x - 4.0f, textPos.y - 2.0f), ImVec2(textPos.x + textSize.x + 4.0f, textPos.y + entry.height - 2.0f), ImGui::ColorConvertFloat4ToU32(bgColor),
+                                     4.0f  // 圆角
+            );
+        }
+
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, entry.alpha);
+        Neko::imgui::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
+        ImGui::PopStyleVar();
+
+        currentPos.y += entry.height;
+        visibleCount++;
+    }
+
+    consolelogEntries.erase(std::remove_if(consolelogEntries.begin(), consolelogEntries.end(), [](const ConsoleLogEntry& entry) { return entry.alpha <= 0.0f; }), consolelogEntries.end());
+}
+
 std::string LuaInspector::Hints::clean_table_list(const std::string& str) {
     std::string ret;
     bool got_dot = false, got_white = false;
@@ -286,7 +419,12 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     return inputbuffer;
 }
 
-void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) { appendMessage(msg, logtype); }
+void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) {
+    if (messageLog.size() >= 64) {
+        messageLog.pop_front();
+    }
+    messageLog.push_back(msg);
+}
 
 // void Neko::luainspector::set_print_eval_prettifier(lua_State* L) {
 //     if (lua_gettop(L) == 0) return;
@@ -495,7 +633,7 @@ void Neko::LuaInspector::show_autocomplete() noexcept {
 }
 
 Neko::LuaInspector::LuaInspector() {
-    callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { this->print(msg, level); });
+    callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { ConsoleLogAdd(msg, level); });
 }
 
 Neko::LuaInspector::~LuaInspector() { Logger::getInstance()->unregisterCallback(callbackId); }
@@ -510,24 +648,11 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
     if (ImGui::BeginChild("##LOG_INFO", size)) {
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
 
-        forEachMessages([](const std::pair<std::string, Logger::Level>& msg) {
+        for (auto& msg : messageLog) {
             ImVec4 colour;
-            switch (msg.second) {
-                case Logger::Level::WARNING:
-                    colour = {1.0f, 1.0f, 0.0f, 1.0f};
-                    break;
-                case Logger::Level::ERR:
-                    colour = {1.0f, 0.0f, 0.0f, 1.0f};
-                    break;
-                case Logger::Level::INFO:
-                    colour = {0.13f, 0.44f, 0.61f, 1.0f};
-                    break;
-                case Logger::Level::TRACE:
-                    colour = {1.0f, 1.0f, 1.0f, 1.0f};
-                    break;
-            }
-            ImGui::TextColored(colour, "%s", msg.first.c_str());
-        });
+            colour = {0.13f, 0.44f, 0.61f, 1.0f};
+            ImGui::TextColored(colour, "%s", msg.c_str());
+        }
 
         ImGui::PopTextWrapPos();
 
@@ -795,6 +920,8 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
 }
 
 int Neko::LuaInspector::luainspector_draw(lua_State* L) {
+
+    RenderLogs();
 
     if (!visible) {
         return 0;

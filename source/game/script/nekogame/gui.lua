@@ -384,6 +384,31 @@ draw_imgui = function(dt)
 
         end
 
+        if ImGui.Button("spritepack") then
+
+            local tools = require("__neko.spritepack")
+            local function image(filename)
+                return {
+                    filename = filename,
+                    tools.imgcrop(filename)
+                }
+            end
+            local function dump(rect)
+                print(string.format("[%s] %dx%d+%d+%d -> (%d, %d)", rect.filename, rect[1], rect[2], rect[3], rect[4],
+                    rect.x, rect.y))
+            end
+            local rects = {
+                -- image "assets/aliens.png", 
+                image "assets/maps/dungeon_tiles.png",
+                image "assets/maps/tx_grass.png"
+            }
+            tools.rectpack(4096, 4096, rects)
+            dump(rects[1])
+            dump(rects[2])
+            tools.imgpack("pack_output.png", 4096, 4096, rects)
+
+        end
+
         -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)
 
         ImGui.Separator()

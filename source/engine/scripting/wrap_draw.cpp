@@ -219,3 +219,73 @@ int neko_sprite_load(lua_State *L) {
 }
 
 }  // namespace Neko::mt_sprite
+
+int wrap_batch_push_vertex(lua_State *L) {
+    lua_Number x = luaL_checknumber(L, 1);
+    lua_Number y = luaL_checknumber(L, 2);
+    lua_Number u = luaL_checknumber(L, 3);
+    lua_Number v = luaL_checknumber(L, 4);
+    batch_push_vertex(the<CL>().batch, x, y, u, v);
+    return 0;
+}
+
+int wrap_batch_texture(lua_State *L) {
+    int id = lua_tointeger(L, 1);
+    batch_texture(the<CL>().batch, id);
+    return 0;
+}
+
+int wrap_batch_flush(lua_State *L) {
+    batch_flush(the<CL>().batch);
+    return 0;
+}
+
+int wrap_draw_line(lua_State *L) {
+    vec2 *a = LuaGet<vec2>(L, 1);
+    vec2 *b = LuaGet<vec2>(L, 2);
+    f32 p = lua_tonumber(L, 3);
+    Color *col = LuaGet<Color>(L, 4);
+    debug_draw_add_line(*a, *b, p, *col);
+    return 0;
+}
+
+int wrap_draw_circle(lua_State *L) {
+    vec2 *a = LuaGet<vec2>(L, 1);
+    f32 r = lua_tonumber(L, 2);
+    int s = lua_tointeger(L, 3);
+    f32 p = lua_tonumber(L, 4);
+    Color *col = LuaGet<Color>(L, 5);
+    debug_draw_circle(*a, r, s, p, *col);
+    return 0;
+}
+
+int wrap_draw_capsule(lua_State *L) {
+    vec2 *a = LuaGet<vec2>(L, 1);
+    vec2 *b = LuaGet<vec2>(L, 2);
+    f32 r = lua_tonumber(L, 3);
+    int s = lua_tointeger(L, 4);
+    f32 p = lua_tonumber(L, 5);
+    Color *col = LuaGet<Color>(L, 6);
+    debug_draw_capsule(*a, *b, r, s, p, *col);
+    return 0;
+}
+
+int wrap_draw_aabb(lua_State *L) {
+    vec2 *a = LuaGet<vec2>(L, 1);
+    vec2 *b = LuaGet<vec2>(L, 2);
+    f32 p = lua_tonumber(L, 3);
+    Color *col = LuaGet<Color>(L, 4);
+    debug_draw_aabb(*a, *b, p, *col);
+    return 0;
+}
+
+int wrap_draw_half_circle(lua_State *L) {
+    vec2 *a = LuaGet<vec2>(L, 1);
+    f32 r = lua_tonumber(L, 2);
+    vec2 *d = LuaGet<vec2>(L, 3);
+    int s = lua_tointeger(L, 4);
+    f32 p = lua_tonumber(L, 5);
+    Color *col = LuaGet<Color>(L, 6);
+    debug_draw_half_circle(*a, r, *d, s, p, *col);
+    return 0;
+}

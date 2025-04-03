@@ -87,7 +87,7 @@ public:
     };
 
 private:
-    lua_State* L;
+    lua_State* L{};
     std::vector<std::string> m_history;
     std::size_t m_hindex;
 
@@ -102,8 +102,8 @@ private:
     std::vector<luainspector_property> m_property_map;
     std::vector<void*> m_variable_pool;
 
-    std::deque<std::pair<std::string, Logger::Level>> messageLog;
-    std::mutex logMutex;
+    std::deque<std::string> messageLog;
+
     int callbackId;
 
 private:
@@ -136,22 +136,6 @@ public:
     void print(std::string msg, Logger::Level logtype = Logger::Level::INFO);
     void print_luastack(int first, int last, Logger::Level logtype);
     bool try_eval(std::string m_buffcmd, bool addreturn);
-
-    void appendMessage(const std::string& message, const Logger::Level& logtype) {
-        std::lock_guard<std::mutex> lock(logMutex);
-        if (messageLog.size() >= 64) {
-            messageLog.pop_front();
-        }
-        messageLog.push_back(std::make_pair(message, logtype));
-    }
-
-    template <class F>
-    void forEachMessages(F f) {
-        std::lock_guard<std::mutex> lock(logMutex);
-        for (const auto& message : messageLog) {
-            f(message);
-        }
-    }
 
     inline void variable_pool_free() {
         for (const auto& var : this->m_variable_pool) {
