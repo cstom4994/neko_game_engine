@@ -322,4 +322,103 @@ function nn:learn(input, expected_output)
     return self:MSE(real_output, expected_output)
 end
 
+function nn:inspect()
+    local report = {}
+
+    table.insert(report, "===== 神经网络 =====")
+    table.insert(report, "")
+
+    -- 网络基本信息
+    table.insert(report, "1. 网络基本信息:")
+    table.insert(report, string.format("   - 学习率: %.4f", self.learning_rate))
+    table.insert(report, string.format("   - 动量系数: %.4f", self.momentum_multiplier))
+    table.insert(report, string.format("   - 网络层数: %d (输入层 + %d隐藏层 + 输出层)", #self.structure,
+        #self.structure - 2))
+    table.insert(report, "")
+
+    -- 网络层结构
+    table.insert(report, "2. 网络层结构:")
+    for i, v in ipairs(self.structure) do
+        local layer_type
+        if i == 1 then
+            layer_type = "输入层"
+        elseif i == #self.structure then
+            layer_type = "输出层"
+        else
+            layer_type = "隐藏层 " .. (i - 1)
+        end
+        table.insert(report, string.format("   - %s: %d 个神经元", layer_type, v))
+    end
+    table.insert(report, "")
+
+    -- 权重信息
+    table.insert(report, "3. 突触权重信息:")
+    for i, layer in ipairs(self.synapses) do
+        table.insert(report, string.format("   - 突触层 %d (连接层 %d → 层 %d):", i, i, i + 1))
+        table.insert(report, string.format("     - 权重矩阵尺寸: %d × %d", #layer[1], #layer))
+
+        -- 计算权重统计信息
+        local min, max, avg = math.huge, -math.huge, 0
+        local count = 0
+        for _, neuron in ipairs(layer) do
+            for _, weight in ipairs(neuron) do
+                min = math.min(min, weight)
+                max = math.max(max, weight)
+                avg = avg + weight
+                count = count + 1
+            end
+        end
+        avg = avg / count
+
+        table.insert(report, string.format("     - 权重范围: [%.4f, %.4f]", min, max))
+        table.insert(report, string.format("     - 平均权重: %.4f", avg))
+    end
+    table.insert(report, "")
+
+    -- 节点信息
+    if self.nodes and #self.nodes > 0 then
+        table.insert(report, "4. 最近一次前向传播节点值:")
+        for i, layer in ipairs(self.nodes) do
+            local layer_type
+            if i == 1 then
+                layer_type = "输入层"
+            elseif i == #self.nodes then
+                layer_type = "输出层"
+            else
+                layer_type = "隐藏层 " .. (i - 1)
+            end
+
+            table.insert(report, string.format("   - %s:", layer_type))
+            for j, val in ipairs(layer) do
+                table.insert(report, string.format("     - 节点 %d: %.4f", j, val))
+            end
+        end
+        table.insert(report, "")
+    end
+
+    -- 梯度信息
+    if self.gamma and #self.gamma > 0 then
+        table.insert(report, "5. 最近一次反向传播梯度信息:")
+        for i = #self.gamma, 1, -1 do
+            local layer_type
+            if i == #self.gamma then
+                layer_type = "输出层"
+            elseif i == 1 then
+                layer_type = "输入层后梯度"
+            else
+                layer_type = "隐藏层 " .. (i - 1)
+            end
+
+            table.insert(report, string.format("   - %s:", layer_type))
+            if self.gamma[i] then
+                for j, val in ipairs(self.gamma[i]) do
+                    table.insert(report, string.format("     - 节点 %d 梯度: %.4f", j, val))
+                end
+            end
+        end
+    end
+
+    return table.concat(report, "\n")
+end
+
 return nn

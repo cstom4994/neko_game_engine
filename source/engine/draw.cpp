@@ -479,7 +479,7 @@ bool FontFamily::load(String filepath) {
 
 void FontFamily::trash() {
     for (auto [k, v] : ranges) {
-        neko_deinit_texture(&v->tex);
+        neko_release_texture(&v->tex);
     }
     sb.trash();
     ranges.trash();

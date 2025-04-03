@@ -151,26 +151,7 @@ static void ase_default_blend_bind(ase_t* ase) {
     }
 }
 
-u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
-    (void)udata;
-    GLuint location;
-    glGenTextures(1, &location);
-    glBindTexture(GL_TEXTURE_2D, location);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return (u64)location;
-}
-
-void destroy_texture_handle(u64 texture_id, void* udata) {
-    (void)udata;
-    GLuint id = (GLuint)texture_id;
-    glDeleteTextures(1, &id);
-}
-
 bool texture_update_data(AssetTexture* tex, u8* data) {
-
     LockGuard<Mutex> lock{gBase.gpu_mtx};
 
     // 如果存在 则释放旧的 GL 纹理
@@ -191,7 +172,6 @@ bool texture_update_data(AssetTexture* tex, u8* data) {
     }
 
     // 将纹理数据复制到 GL
-
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -439,7 +419,7 @@ void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned 
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void neko_deinit_texture(AssetTexture* texture) {
+void neko_release_texture(AssetTexture* texture) {
     assert(texture);
     glDeleteTextures(1, &texture->id);
 }
@@ -447,7 +427,7 @@ void neko_deinit_texture(AssetTexture* texture) {
 void neko_free_texture(AssetTexture* texture) {
     assert(texture);
 
-    neko_deinit_texture(texture);
+    neko_release_texture(texture);
 
     mem_free(texture);
 }

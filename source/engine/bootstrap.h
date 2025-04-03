@@ -113,6 +113,7 @@ public:
     vec2 unit_to_pixels(vec2 p);
     vec2 pixels_to_unit(vec2 p);
     void quit();
+    void game_draw();
     void SplashScreen();
 
     inline CL::TimeInfo GetTimeInfo() const { return the<CL>().time; }

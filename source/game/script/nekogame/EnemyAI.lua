@@ -2,12 +2,36 @@ local nn = hot_require("nn")
 
 class "EnemyAI"
 
-function EnemyAI:new(x, y)
+local function draw_simple_plot(data, min_val, max_val)
+
+    local plot = {}
+
+    local height = 10
+    local range = max_val - min_val
+
+    for h = height, 1, -1 do
+        local line = ""
+        local threshold = min_val + (range * (h - 1) / height)
+
+        for _, v in ipairs(data) do
+            line = line .. (v >= threshold and "■" or " ")
+        end
+
+        table.insert(plot, string.format("%5.1f | ", threshold) .. line)
+    end
+    table.insert(plot, "       |" .. string.rep("-", #data))
+
+    return table.concat(plot, "\n")
+end
+
+function EnemyAI:new(x, y, host)
+
+    self.host = host
 
     -- 敌人属性
     self.x = x or math.random(-100, 100)
     self.y = y or math.random(-100, 100)
-    self.health = 100
+
     self.attack_cooldown = 0
     self.random_move_timer = 0
 
@@ -16,11 +40,11 @@ function EnemyAI:new(x, y)
     self.player_y = 0
 
     -- 神经网络结构
-    self.nn = nn:new_network({6, 12, 8, 3}, 0.1, 0.9) -- 输入6，隐藏层12和8，输出3
+    self.nn = nn:new_network({6, 12, 3}, 0.05, 0.9)
 
     -- 经验回放
     self.memory = {}
-    self.memory_size = 200
+    self.memory_size = 64
     self.batch_size = 32
 
     -- 训练参数
@@ -28,10 +52,18 @@ function EnemyAI:new(x, y)
     self.min_exploration = 0.05
     self.exploration_decay = 0.9998
 
-    -- 新增参数
     self.last_distance = 100
     self.safe_distance = 15
     self.optimal_attack_distance = 8
+
+    self.reward = 0
+
+    -- 统计数据
+    self.stats = {
+        steps = 0,
+        distances = {},
+        rewards = {}
+    }
 end
 
 function EnemyAI:update_player_position(x, y)
@@ -60,16 +92,16 @@ function EnemyAI:random_move()
     return 0, 0
 end
 
+-- 使用sigmoid函数归一化坐标到0-1范围
+function EnemyAI:normalize(v)
+    return 1 / (1 + math.exp(-v * 0.01)) -- 缩放因子0.01使大多数值在合理范围内
+end
+
 function EnemyAI:get_nn_action()
     local random_factor = math.random() * 2 - 1
 
-    -- 使用sigmoid函数归一化坐标到0-1范围
-    local function normalize(v)
-        return 1 / (1 + math.exp(-v * 0.01)) -- 缩放因子0.01使大多数值在合理范围内
-    end
-
-    local input = {normalize(self.player_x), normalize(self.player_y), normalize(self.x), normalize(self.y),
-                   self.health / 100, random_factor}
+    local input = {self:normalize(self.player_x), self:normalize(self.player_y), self:normalize(self.x),
+                   self:normalize(self.y), self.host.health / self.host.health_max, random_factor}
     local output = self.nn:forward(input)
     return output[1] * 2 - 1, output[2] * 2 - 1, output[3] -- 将输出从[0,1]映射到[-1,1]
 end
@@ -92,11 +124,11 @@ function EnemyAI:calculate_reward(distance, attacked)
 
     -- 危险惩罚
     if distance < 5 then
-        reward = reward - 40 * (6 - distance)
+        reward = reward - 20 * (6 - distance)
     end
 
     -- 健康状态奖励
-    reward = reward + self.health * 0.2
+    reward = reward + (self.host.health / self.host.health_max) * 2
 
     self.last_distance = distance
     return reward
@@ -117,7 +149,7 @@ function EnemyAI:decide_action()
                 dx = dx / length
                 dy = dy / length
             else
-                dx, dy = 1, 0 -- 默认向右移动
+                dx, dy = 1, 0 -- 脖子右拧🤣
             end
 
             local rnd = math.random() * 0.5
@@ -176,12 +208,12 @@ function EnemyAI:update()
 
     -- 被攻击检测
     if distance < 5 and self:is_attacked_by_player() then
-        self.health = self.health - 10
+        self.host.health = self.host.health - 10
         reward = reward - 30
     end
 
     -- 死亡检测
-    if self.health <= 0 then
+    if self.host.health <= 0 then
         reward = reward - 100
     end
 
@@ -204,8 +236,8 @@ function EnemyAI:update()
     end
 
     -- 加入经验回放
-    local input = {self.player_x / 100, self.player_y / 100, self.x / 100, self.y / 100, self.health / 100,
-                   math.random() * 2 - 1}
+    local input = {self:normalize(self.player_x), self:normalize(self.player_y / 100), self:normalize(self.x / 100),
+                   self:normalize(self.y / 100), self.host.health / self.host.health_max, math.random() * 2 - 1}
 
     table.insert(self.memory, {
         input = input,
@@ -229,112 +261,41 @@ function EnemyAI:update()
     -- 衰减探索率
     self.exploration_rate = math.max(self.min_exploration, self.exploration_rate * self.exploration_decay)
 
+    self.reward = reward
+
+    table.insert(self.stats.distances, distance)
+    table.insert(self.stats.rewards, reward)
+
+    self.stats.steps = self.stats.steps + 1
+
     return reward
 end
 
 function EnemyAI:is_attacked_by_player()
-    -- 10%概率被攻击
     return math.random() < 0.1
 end
 
-function EnemyAI:draw()
-end
-
-function EnemyAI:info()
+function EnemyAI:info(detail)
     local distance = self:distance_to_player()
-    local info = string.format("Enemy at (%.1f, %.1f) HP: %d\nDecision: Dist=%.1f\nStrategy: %s\nAttack: %s", self.x,
-        self.y, self.health, distance, distance > self.safe_distance and "Approaching" or "Maneuvering",
-        self.attack_cooldown > 0 and "On Cooldown" or "Ready")
+    local info = string.format(
+        "坐标 (%.1f, %.1f) 生命值: %d\n决策: Dist=%.1f\n战略: %s\n攻击: %s\n目标: (%.1f, %.1f)", self.x,
+        self.y, self.host.health, distance, distance > self.safe_distance and "接近" or "机动",
+        self.attack_cooldown > 0 and "冷却" or "准备", self.player_x, self.player_y)
+
+    info = info .. string.format("\n奖励值: %f\n探索值: %f", self.reward, self.exploration_rate)
+
+    local detail = detail or 0
+    if detail == 1 then
+        info = info .. "\n\n" .. self.nn:inspect()
+    elseif detail == 2 then
+        local last_distances = {}
+        for i = math.max(1, #self.stats.distances - 99), #self.stats.distances do
+            table.insert(last_distances, self.stats.distances[i])
+        end
+        info = info .. "\n\n" .. string.format("=== Step %d ===", self.stats.steps)
+        info = info .. "\n\n" .. draw_simple_plot(last_distances, 0, 100)
+    end
+
     return info
 end
 
--- 主模拟函数
-local function Test()
-    -- 初始化
-    math.randomseed(os.time())
-    local player_x, player_y = 50, 50
-    local enemy = EnemyAI:new(math.random(1, 100), math.random(1, 100))
-
-    -- 统计数据
-    local stats = {
-        steps = 30000,
-        distances = {},
-        rewards = {}
-    }
-
-    -- 模拟循环
-    for step = 1, stats.steps do
-        print(string.format("\n=== Step %d/%d ===", step, stats.steps))
-
-        -- 玩家移动
-        if step % 100 == 0 then
-            player_x, player_y = math.random(1, 100), math.random(1, 100)
-            print(string.format("Player jumped to (%d, %d)", player_x, player_y))
-        else
-            player_x = player_x + math.random(-1, 1)
-            player_y = player_y + math.random(-1, 1)
-            player_x = math.max(1, math.min(100, player_x))
-            player_y = math.max(1, math.min(100, player_y))
-        end
-
-        -- 更新敌人
-        enemy:update_player_position(player_x, player_y)
-        local reward = enemy:update()
-
-        -- 记录数据
-        table.insert(stats.distances, enemy:distance_to_player())
-        table.insert(stats.rewards, reward)
-
-        -- 显示状态
-        print(string.format("Player: (%d, %d)", player_x, player_y))
-        enemy:draw()
-        enemy:explain_decision()
-        print(string.format("Reward: %.2f", reward))
-        print(string.format("Explore: %.4f", enemy.exploration_rate))
-
-        -- 重生逻辑
-        if enemy.health <= 0 then
-            print("Enemy died! Respawning...")
-            enemy = EnemyAI:new(math.random(1, 100), math.random(1, 100))
-        end
-    end
-
-    -- 分析结果
-    local function average(t)
-        local sum = 0
-        for _, v in ipairs(t) do
-            sum = sum + v
-        end
-        return sum / #t
-    end
-
-    print("\n=== 最终结果 ===")
-    print(string.format("平均距离: %.2f", average(stats.distances)))
-    print(string.format("平均奖励: %.2f", average(stats.rewards)))
-
-    -- 绘制最后100步的距离趋势
-    print("\nLast 100 Steps Distance Trend:")
-    local last_distances = {}
-    for i = math.max(1, #stats.distances - 99), #stats.distances do
-        table.insert(last_distances, stats.distances[i])
-    end
-    draw_simple_plot(last_distances, 0, 100)
-end
-
--- 绘制简易ASCII图表
-local function draw_simple_plot(data, min_val, max_val)
-    local height = 10
-    local range = max_val - min_val
-
-    for h = height, 1, -1 do
-        local line = ""
-        local threshold = min_val + (range * (h - 1) / height)
-
-        for _, v in ipairs(data) do
-            line = line .. (v >= threshold and "■" or " ")
-        end
-
-        print(string.format("%5.1f | ", threshold) .. line)
-    end
-    print("       |" .. string.rep("-", #data))
-end

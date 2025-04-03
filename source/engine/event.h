@@ -12,7 +12,7 @@ struct lua_State;
 
 #define EVENT_TYPES   \
     X(None)           \
-    X(Quit)           \
+    X(Exit)           \
     X(KeyDown)        \
     X(KeyUp)          \
     X(MouseDown)      \

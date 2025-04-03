@@ -58,21 +58,16 @@ void imgui_init(GLFWwindow* window) {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
 
-#if 0
-    CVAR_REF(conf_imgui_font, String);
-
-    if (neko_strlen(conf_imgui_font.data.str) > 0) {
-        auto &io = ImGui::GetIO();
+#if defined(DEBUG)
+    if (the<CL>().state.default_font.len > 0) {
+        auto& io = ImGui::GetIO();
 
         ImFontConfig config;
         // config.PixelSnapH = 1;
 
         String ttf_file;
-        vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
-        // neko_defer(mem_free(ttf_file.data));
-        // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
-        // memcpy(ttf_data, ttf_file.data, ttf_file.len);
-        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        vfs_read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
+        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 16.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     }
 #endif
 

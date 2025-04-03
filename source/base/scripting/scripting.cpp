@@ -358,7 +358,7 @@ void script_init() {
     lua_channels_setup();
 
     auto &eh = Neko::the<EventHandler>();
-    eh.Register(Quit, (EventCallback)app_stop, NULL);
+    eh.Register(Exit, (EventCallback)app_stop, NULL);
 
     luax_run_bootstrap(L);
 
@@ -386,7 +386,7 @@ void script_fini() {
         }
 
         auto &eh = Neko::the<EventHandler>();
-        eh.Dispatch(Event{.type = OnQuit, .p0 = {.v = 199.14f}});
+        eh.Dispatch(Event{.type = OnExit, .p0 = {.v = 199.14f}});
     }
 
     the<EventHandler>().EventPushLua("fini");
