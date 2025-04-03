@@ -865,7 +865,7 @@ void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, floa
     };
 }
 
-#define MAX_VERTS 3 * 2048
+#define MAX_VERTS 3 * 2048 * 16
 
 struct LineVertex {
     union {

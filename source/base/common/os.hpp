@@ -84,21 +84,12 @@ public:
 
 private:
     struct PlatformData {
-#if defined(NEKO_IS_WIN32)
-        int64_t frequency;
-        int64_t start_counter;
-#else
         uint64_t start_ns;
-#endif
         bool initialized = false;
     };
 
     static PlatformData platform_data_;
     static const std::array<std::array<uint64_t, 2>, 10> refresh_rates_;
-
-#if defined(NEKO_IS_WIN32)
-    static int64_t mul_div(int64_t value, int64_t numerator, int64_t denominator) noexcept;
-#endif
 };
 
 #if defined(NEKO_IS_APPLE)

@@ -19,10 +19,12 @@ struct PhysicsUserData {
 };
 
 struct PhysicsContactListener;
+struct Box2DDebugDraw;
 struct Physics {
     b2World *world;
     PhysicsContactListener *contact_listener;
     f32 meter;
+    Box2DDebugDraw *debugDraw;
 
     union {
         b2Body *body;

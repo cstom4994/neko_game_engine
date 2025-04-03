@@ -503,37 +503,16 @@ const std::array<std::array<uint64_t, 2>, 10> TimeUtil::refresh_rates_ = {{
 void TimeUtil::initialize() {
     assert(!platform_data_.initialized);
 
-#if defined(NEKO_IS_WIN32)
-    LARGE_INTEGER freq;
-    QueryPerformanceFrequency(&freq);
-    LARGE_INTEGER start;
-    QueryPerformanceCounter(&start);
-
-    platform_data_.frequency = freq.QuadPart;
-    platform_data_.start_counter = start.QuadPart;
-#else
-    timespec ts{};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    platform_data_.start_ns = static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000 + static_cast<uint64_t>(ts.tv_nsec);
-#endif
-
+    // 使用steady_clock作为单调时钟
+    platform_data_.start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     platform_data_.initialized = true;
 }
 
 uint64_t TimeUtil::now() noexcept {
     assert(platform_data_.initialized);
 
-#if defined(NEKO_IS_WIN32)
-    LARGE_INTEGER counter;
-    QueryPerformanceCounter(&counter);
-    const int64_t diff = counter.QuadPart - platform_data_.start_counter;
-    return static_cast<uint64_t>(mul_div(diff, 1'000'000'000, platform_data_.frequency));
-#else
-    timespec ts{};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    const uint64_t current_ns = static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000 + static_cast<uint64_t>(ts.tv_nsec);
-    return current_ns - platform_data_.start_ns;
-#endif
+    auto current_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    return static_cast<uint64_t>(current_ns - platform_data_.start_ns);
 }
 
 uint64_t TimeUtil::difference(uint64_t new_ticks, uint64_t old_ticks) noexcept { return (new_ticks > old_ticks) ? (new_ticks - old_ticks) : 1; }
@@ -565,14 +544,6 @@ double TimeUtil::to_milliseconds(uint64_t ticks) noexcept { return static_cast<d
 double TimeUtil::to_microseconds(uint64_t ticks) noexcept { return static_cast<double>(ticks) / 1'000.0; }
 
 double TimeUtil::to_nanoseconds(uint64_t ticks) noexcept { return static_cast<double>(ticks); }
-
-#if defined(NEKO_IS_WIN32)
-int64_t TimeUtil::mul_div(int64_t value, int64_t numerator, int64_t denominator) noexcept {
-    const int64_t quotient = value / denominator;
-    const int64_t remainder = value % denominator;
-    return quotient * numerator + remainder * numerator / denominator;
-}
-#endif
 
 }  // namespace Neko
 

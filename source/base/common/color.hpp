@@ -2,12 +2,14 @@
 
 #include "base/common/base.hpp"
 
-typedef struct Color Color;
+#include <stdexcept>
+#include <sstream>
+#include <iomanip>
+
 struct Color {
     f32 r, g, b, a;
 };
 
-typedef struct Color256 Color256;
 struct Color256 {
     union {
         uint8_t rgba[4];
@@ -70,6 +72,36 @@ inline Color color256_to_rgb(u32 color) {
     float bf = (float)b / 255.0f;
 
     return Color{rf, gf, bf, 1.0f};
+}
+
+inline Color256 ParseHexColor(const std::string& hex) {
+    if (hex.empty() || hex[0] != '#') {
+        throw std::invalid_argument("Invalid hex color string: must start with '#'");
+    }
+
+    std::string hex_code = hex.substr(1);
+
+    if (hex_code.length() == 8) {
+        uint32_t value;
+        std::istringstream(hex_code) >> std::hex >> value;
+        return Color256{
+                static_cast<uint8_t>((value >> 24) & 0xFF),  // r
+                static_cast<uint8_t>((value >> 16) & 0xFF),  // g
+                static_cast<uint8_t>((value >> 8) & 0xFF),   // b
+                static_cast<uint8_t>(value & 0xFF)           // a
+        };
+    } else if (hex_code.length() == 6) {
+        uint32_t value;
+        std::istringstream(hex_code) >> std::hex >> value;
+        return Color256{
+                static_cast<uint8_t>((value >> 16) & 0xFF),  // r
+                static_cast<uint8_t>((value >> 8) & 0xFF),   // g
+                static_cast<uint8_t>(value & 0xFF),          // b
+                static_cast<uint8_t>(0xFF)                   // a
+        };
+    } else {
+        throw std::invalid_argument("Invalid hex color string length: must be 6 or 8 characters after '#'");
+    }
 }
 
 }  // namespace Neko

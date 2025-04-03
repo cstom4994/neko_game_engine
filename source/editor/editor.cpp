@@ -44,6 +44,14 @@ static int __luainspector_gc(lua_State* L) {
 
 namespace Neko {
 
+const size_t MAX_LOG_ENTRIES = 50;       // 内存中最大日志条数
+const size_t MAX_VISIBLE_LOGS = 10;      // 屏幕上最多显示10条日志
+const size_t MAX_MESSAGE_LENGTH = 1024;  // 单条日志最大长度
+const float LOG_PADDING = 8.0f;          // 日志之间的间距
+const float LOG_MARGIN_X = 15.0f;        // 左侧边距
+const float LOG_MARGIN_Y = 15.0f;        // 顶部边距
+const float ENTRY_ANIM_DURATION = 0.3f;  // 入场动画持续时间
+
 struct ConsoleLogEntry {
     std::string message;
     Logger::Level level;
@@ -56,24 +64,35 @@ struct ConsoleLogEntry {
     float height;  // 该条日志的显示高度
     bool isNew;    // 是否是新添加的日志
 
-    ConsoleLogEntry(const std::string& msg, Logger::Level lvl, float dur, float fadeDur)
-        : message(msg), level(lvl), alpha(0.0f), duration(dur), fadeDuration(fadeDur), slideOffset(20.0f), scale(1.05f), startTime(std::chrono::steady_clock::now()), height(0.0f), isNew(true) {}
+    ConsoleLogEntry(std::string_view msg, Logger::Level lvl, float dur, float fadeDur)
+        : message(msg.substr(0, MAX_MESSAGE_LENGTH)),
+          level(lvl),
+          alpha(0.0f),
+          duration(dur),
+          fadeDuration(fadeDur),
+          slideOffset(20.0f),
+          scale(1.05f),
+          startTime(std::chrono::steady_clock::now()),
+          height(0.0f),
+          isNew(true) {}
 };
 
 std::vector<ConsoleLogEntry> consolelogEntries;
-const size_t MAX_LOG_ENTRIES = 50;       // 内存中最大日志条数
-const size_t MAX_VISIBLE_LOGS = 10;      // 屏幕上最多显示10条日志
-const float LOG_PADDING = 8.0f;          // 日志之间的间距
-const float LOG_MARGIN_X = 15.0f;        // 左侧边距
-const float LOG_MARGIN_Y = 15.0f;        // 顶部边距
-const float ENTRY_ANIM_DURATION = 0.3f;  // 入场动画持续时间
+std::mutex logMutex;
 
-void ConsoleLogAdd(const std::string& message, Logger::Level level) {
-    if (consolelogEntries.size() >= MAX_LOG_ENTRIES) {
-        consolelogEntries.erase(consolelogEntries.begin());
+void ConsoleLogAdd(std::string_view message, Logger::Level level) noexcept {
+    try {
+        if (message.empty()) return;
+        std::lock_guard<std::mutex> lock(logMutex);
+        if (consolelogEntries.size() >= MAX_LOG_ENTRIES) {
+            consolelogEntries.erase(std::remove_if(consolelogEntries.begin(), consolelogEntries.end(), [](const ConsoleLogEntry& entry) { return entry.alpha <= 0.0f; }), consolelogEntries.end());
+            if (consolelogEntries.size() >= MAX_LOG_ENTRIES) {
+                consolelogEntries.erase(consolelogEntries.begin());
+            }
+        }
+        consolelogEntries.emplace_back(message, level, 3.0f, 0.8f);
+    } catch (...) {
     }
-
-    consolelogEntries.emplace_back(message, level, 3.0f, 0.8f);
 }
 
 float SmoothStep(float edge0, float edge1, float x) {
@@ -92,89 +111,97 @@ float CalculateTextHeight(const std::string& text, float wrapWidth) {
     return textSize.y;
 }
 
-void RenderLogs() {
-    const ImVec2 initialPos(LOG_MARGIN_X, LOG_MARGIN_Y);
-    ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
-    auto now = std::chrono::steady_clock::now();
+void RenderConsoleLogs() noexcept {
+    try {
+        std::lock_guard<std::mutex> lock(logMutex);
 
-    ImVec2 screenSize = ImGui::GetIO().DisplaySize;
-    float wrapWidth = screenSize.x - 2 * LOG_MARGIN_X;
+        const ImVec2 initialPos(LOG_MARGIN_X, LOG_MARGIN_Y);
+        ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
+        auto now = std::chrono::steady_clock::now();
 
-    ImVec2 currentPos = initialPos;
-    size_t visibleCount = 0;
+        ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+        float wrapWidth = screenSize.x - 2 * LOG_MARGIN_X;
 
-    for (auto it = consolelogEntries.rbegin(); it != consolelogEntries.rend() && visibleCount < MAX_VISIBLE_LOGS; ++it) {
-        auto& entry = *it;
-        float elapsed = std::chrono::duration<float>(now - entry.startTime).count();
+        ImVec2 currentPos = initialPos;
+        size_t visibleCount = 0;
 
-        // 处理入场动画
-        if (entry.isNew) {
-            float animProgress = std::min(elapsed / ENTRY_ANIM_DURATION, 1.0f);
-            entry.alpha = SmoothStep(0.0f, 1.0f, animProgress);
-            entry.slideOffset = 20.0f * (1.0f - animProgress);
-            entry.scale = 1.0f + 0.05f * (1.0f - animProgress);
+        for (auto it = consolelogEntries.rbegin(); it != consolelogEntries.rend() && visibleCount < MAX_VISIBLE_LOGS; ++it) {
+            auto& entry = *it;
+            float elapsed = std::chrono::duration<float>(now - entry.startTime).count();
 
-            if (animProgress >= 1.0f) {
-                entry.isNew = false;
+            // 处理入场动画
+            if (entry.isNew) {
+                float animProgress = std::min(elapsed / ENTRY_ANIM_DURATION, 1.0f);
+                entry.alpha = SmoothStep(0.0f, 1.0f, animProgress);
+                entry.slideOffset = 20.0f * (1.0f - animProgress);
+                entry.scale = 1.0f + 0.05f * (1.0f - animProgress);
+
+                if (animProgress >= 1.0f) {
+                    entry.isNew = false;
+                }
             }
-        }
 
-        // 处理淡出动画
-        if (elapsed > entry.duration) {
-            float fadeProgress = (elapsed - entry.duration) / entry.fadeDuration;
-            entry.alpha = 1.0f - SmoothStep(0.0f, 1.0f, fadeProgress);
-        }
+            // 处理淡出动画
+            if (elapsed > entry.duration) {
+                float fadeProgress = (elapsed - entry.duration) / entry.fadeDuration;
+                entry.alpha = 1.0f - SmoothStep(0.0f, 1.0f, fadeProgress);
+            }
 
-        if (entry.alpha <= 0.0f) {
-            continue;
-        }
+            if (entry.alpha <= 0.0f) {
+                continue;
+            }
 
-        if (entry.height <= 0.0f) {
-            entry.height = CalculateTextHeight(entry.message, wrapWidth) + LOG_PADDING;
-        }
+            if (entry.height <= 0.0f) {
+                entry.height = CalculateTextHeight(entry.message, wrapWidth) + LOG_PADDING;
+            }
 
-        if (currentPos.y + entry.height > screenSize.y) {
-            break;
-        }
-
-        ImVec4 baseColor;
-        switch (entry.level) {
-            case Logger::Level::WARNING:
-                baseColor = ImVec4(1.0f, 0.8f, 0.0f, entry.alpha);
+            if (currentPos.y + entry.height > screenSize.y) {
                 break;
-            case Logger::Level::ERR:
-                baseColor = ImVec4(1.0f, 0.3f, 0.3f, entry.alpha);
-                break;
-            case Logger::Level::INFO:
-                baseColor = ImVec4(0.3f, 0.7f, 1.0f, entry.alpha);
-                break;
-            case Logger::Level::TRACE:
-                baseColor = ImVec4(1.0f, 1.0f, 1.0f, entry.alpha);
-                break;
+            }
+
+            ImVec4 baseColor;
+            switch (entry.level) {
+                case Logger::Level::WARNING:
+                    baseColor = ImVec4(1.0f, 0.8f, 0.0f, entry.alpha);
+                    break;
+                case Logger::Level::ERR:
+                    baseColor = ImVec4(1.0f, 0.3f, 0.3f, entry.alpha);
+                    break;
+                case Logger::Level::INFO:
+                    baseColor = ImVec4(0.3f, 0.7f, 1.0f, entry.alpha);
+                    break;
+                case Logger::Level::TRACE:
+                    baseColor = ImVec4(1.0f, 1.0f, 1.0f, entry.alpha);
+                    break;
+                default:
+                    baseColor = ImVec4(1.0f, 1.0f, 1.0f, entry.alpha);
+                    break;
+            }
+
+            ImVec2 textPos = currentPos;
+            textPos.x += entry.slideOffset;
+
+            if (entry.alpha > 0.3f) {
+                ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize() * entry.scale, FLT_MAX, wrapWidth, entry.message.c_str());
+
+                ImVec4 bgColor = baseColor;
+                bgColor.w *= 0.15f;  // 背景透明度较低
+                draw_list->AddRectFilled(ImVec2(textPos.x - 4.0f, textPos.y - 2.0f), ImVec2(textPos.x + textSize.x + 4.0f, textPos.y + entry.height - 2.0f), ImGui::ColorConvertFloat4ToU32(bgColor),
+                                         4.0f  // 圆角
+                );
+            }
+
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, entry.alpha);
+            Neko::imgui::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
+            ImGui::PopStyleVar();
+
+            currentPos.y += entry.height;
+            visibleCount++;
         }
 
-        ImVec2 textPos = currentPos;
-        textPos.x += entry.slideOffset;
-
-        if (entry.alpha > 0.3f) {
-            ImVec2 textSize = ImGui::GetFont()->CalcTextSizeA(ImGui::GetFontSize() * entry.scale, FLT_MAX, wrapWidth, entry.message.c_str());
-
-            ImVec4 bgColor = baseColor;
-            bgColor.w *= 0.15f;  // 背景透明度较低
-            draw_list->AddRectFilled(ImVec2(textPos.x - 4.0f, textPos.y - 2.0f), ImVec2(textPos.x + textSize.x + 4.0f, textPos.y + entry.height - 2.0f), ImGui::ColorConvertFloat4ToU32(bgColor),
-                                     4.0f  // 圆角
-            );
-        }
-
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, entry.alpha);
-        Neko::imgui::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
-        ImGui::PopStyleVar();
-
-        currentPos.y += entry.height;
-        visibleCount++;
+        consolelogEntries.erase(std::remove_if(consolelogEntries.begin(), consolelogEntries.end(), [](const ConsoleLogEntry& entry) { return entry.alpha <= 0.0f; }), consolelogEntries.end());
+    } catch (...) {
     }
-
-    consolelogEntries.erase(std::remove_if(consolelogEntries.begin(), consolelogEntries.end(), [](const ConsoleLogEntry& entry) { return entry.alpha <= 0.0f; }), consolelogEntries.end());
 }
 
 std::string LuaInspector::Hints::clean_table_list(const std::string& str) {
@@ -921,7 +948,7 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
 
 int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
-    RenderLogs();
+    RenderConsoleLogs();
 
     if (!visible) {
         return 0;

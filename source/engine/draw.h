@@ -156,8 +156,8 @@ NEKO_API() void batch_push_vertex(batch_renderer* renderer, float x, float y, fl
 void debug_draw_all();
 void debug_draw_init();
 void debug_draw_fini();
-void debug_draw_add_line(vec2 a, f32 line_width, Color color);
-void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color);
+void debug_draw_add_line(vec2 a, f32 line_width, Color color);          // 只添加一个顶点
+void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color);  // 添加线段
 void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color);
 void debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color);
 void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color);
