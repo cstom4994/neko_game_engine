@@ -8,6 +8,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/renderer/shader.h"
+#include "engine/physics.h"
 
 // deps
 #include <box2d/box2d.h>
@@ -714,9 +715,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         XMLAttribute *color_attrib = object_group_node->FindAttribute("color");
         if (color_attrib) {
             String hexstring = std::get<String>(color_attrib->value);
-            u32 *cols = (u32 *)object_group.color.rgba;
-            *cols = (u32)strtol(hexstring.data + 1, NULL, 16);
-            object_group.color.a = 128;
+            object_group.color = ParseHexColor(hexstring.cstr());
         }
 
         // 对象
@@ -864,7 +863,7 @@ void tiled_render_deinit(tiled_renderer *renderer) {
 
     for (auto kv : renderer->quad_table) {
         u32 k = kv.key;
-        tiled_quad_list_t *quad_list = kv.value;
+        TiledQuadList *quad_list = kv.value;
 
         quad_list->quad_list.trash();
     }
@@ -910,7 +909,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
     renderer->quad_count = 0;
 }
 
-void tiled_render_push(tiled_renderer *renderer, tiled_quad_t quad) {
+void tiled_render_push(tiled_renderer *renderer, TiledQuad quad) {
 
     // PROFILE_FUNC();
 
@@ -922,10 +921,10 @@ void tiled_render_push(tiled_renderer *renderer, tiled_quad_t quad) {
 
     //
 
-    tiled_quad_list_t *quad_list = renderer->quad_table.get(quad.tileset_id);
+    TiledQuadList *quad_list = renderer->quad_table.get(quad.tileset_id);
     if (NULL == quad_list) {
         // *quad_list = tiled_quad_list_t{0};
-        renderer->quad_table[quad.tileset_id] = tiled_quad_list_t{0};
+        renderer->quad_table[quad.tileset_id] = TiledQuadList{0};
 
         quad_list = renderer->quad_table.get(quad.tileset_id);
     }
@@ -944,11 +943,11 @@ void tiled_render_draw(tiled_renderer *renderer) {
     // iterate quads hash table
     for (auto kv : renderer->quad_table) {
         u32 k = kv.key;
-        tiled_quad_list_t *quad_list = kv.value;
+        TiledQuadList *quad_list = kv.value;
 
         for (u32 i = 0; i < quad_list->quad_list.len; i++) {
 
-            tiled_quad_t *quad = &quad_list->quad_list[i];
+            TiledQuad *quad = &quad_list->quad_list[i];
 
             f32 tx = 0.f, ty = 0.f, tw = 0.f, th = 0.f;
 
@@ -1053,7 +1052,6 @@ int tiled_render(CTiledMap *tiled) {
 
     PROFILE_FUNC();
 
-    // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
     vec2 xform = tiled->pos;
 
     tiled->render->camera_mat = camera_get_inverse_view_matrix();
@@ -1078,7 +1076,7 @@ int tiled_render(CTiledMap *tiled) {
                         tileset_t *tileset = &map.tilesets[tile->tileset_id];
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
-                        tiled_quad_t quad = {.tileset_id = tile->tileset_id,
+                        TiledQuad quad = {.tileset_id = tile->tileset_id,
                                              .texture = tileset->texture,
                                              .texture_size = {(f32)tileset->width, (f32)tileset->height},
                                              .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
@@ -1093,11 +1091,11 @@ int tiled_render(CTiledMap *tiled) {
             tiled_render_draw(tiled->render);  // 一层渲染一次
         }
 
-        for (u32 i = 0; i < map.object_groups.len; i++) {
+        for (u32 i = 0; tiled->draw_object_groups_rect && i < map.object_groups.len; i++) {
             object_group_t *group = &map.object_groups[i];
             for (u32 ii = 0; ii < map.object_groups[i].objects.len; ii++) {
                 object_t *object = &group->objects[ii];
-                tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
+                TiledQuad quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
                                      .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
                                      .color = group->color,
                                      .use_texture = false};
@@ -1105,25 +1103,6 @@ int tiled_render(CTiledMap *tiled) {
             }
             tiled_render_draw(tiled->render);  // 一层渲染一次
         }
-
-        // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
-        //     object_group_t *group = map.object_groups + i;
-        //     for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
-        //         object_t *object = group->objects + ii;
-        //         auto draw_poly = [sprite_batch](c2Poly poly) {
-        //             c2v *verts = poly.verts;
-        //             int count = poly.count;
-        //             for (int i = 0; i < count; ++i) {
-        //                 int iA = i;
-        //                 int iB = (i + 1) % count;
-        //                 c2v a = verts[iA];
-        //                 c2v b = verts[iB];
-        //                 gl_line(sprite_batch, a.x, a.y, 0, b.x, b.y, 0);
-        //             }
-        //         };
-        //         draw_poly(object->phy.poly);
-        //     }
-        // }
     }
 
     return 0;
@@ -1147,7 +1126,7 @@ void tiled_remove(CEntity ent) { Tiled__pool->Remove(ent); }
 
 bool tiled_has(CEntity ent) { return Tiled__pool->Get(ent) != NULL; }
 
-void tiled_init() {
+void Tiled::tiled_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
@@ -1160,7 +1139,7 @@ void tiled_init() {
     error_assert(ok);
 }
 
-void tiled_fini() {
+void Tiled::tiled_fini() {
 
     Tiled__pool->ForEach([](CTiledMap *tiled) {
         // tiled_unload(&tiled->render->map);
@@ -1172,16 +1151,19 @@ void tiled_fini() {
     entitypool_free(Tiled__pool);
 }
 
-int tiled_update_all(Event evt) {
+int Tiled::tiled_update_all(Event evt) {
 
     entitypool_remove_destroyed(Tiled__pool, tiled_remove);
 
-    Tiled__pool->ForEach([](CTiledMap *tiled) { tiled->pos = transform_get_position(tiled->ent); });
+    Tiled__pool->ForEach([](CTiledMap *tiled) {
+        tiled->pos = transform_get_position(tiled->ent);
+        tiled->draw_object_groups_rect = edit_get_enabled();
+    });
 
     return 0;
 }
 
-void tiled_draw_all() {
+void Tiled::tiled_draw_all() {
 
     Tiled__pool->ForEach([](CTiledMap *tiled) { tiled_render(tiled); });
 }
@@ -1251,4 +1233,46 @@ int tiled_get_object_groups(CEntity ent, lua_State *L) {
     }
 
     return 1;
+}
+
+b2Body *create_collision(b2World *world, const std::vector<TiledMapWall> &walls, float meterPerPixel, bool fix_y = true) {
+    b2BodyDef bodyDef;
+    bodyDef.type = b2_staticBody;
+    bodyDef.position.Set(0.0f, 0.0f);
+    bodyDef.fixedRotation = true;
+    bodyDef.allowSleep = true;
+    bodyDef.awake = false;
+    bodyDef.gravityScale = 0.0f;
+
+    b2Body *body = world->CreateBody(&bodyDef);
+
+    for (TiledMapWall wall : walls) {
+        b2PolygonShape boxShape;
+
+        if (fix_y) {
+            wall.y *= -1.0f;
+            wall.y -= wall.height;
+        };
+
+        // 将左上角坐标转换为中心点坐标
+        float centerX = (wall.x + wall.width * 0.5f) / meterPerPixel;
+        float centerY = (wall.y + wall.height * 0.5f) / meterPerPixel;
+        float halfWidth = wall.width * 0.5f / meterPerPixel;
+        float halfHeight = wall.height * 0.5f / meterPerPixel;
+
+        boxShape.SetAsBox(halfWidth, halfHeight, b2Vec2(centerX, centerY), 0.0f);
+
+        b2FixtureDef fixtureDef;
+        fixtureDef.shape = &boxShape;
+        fixtureDef.friction = 0.0f;
+
+        body->CreateFixture(&fixtureDef);
+    }
+
+    return body;
+}
+
+b2Body *tiled_make_collision(Physics *physics, const std::vector<TiledMapWall> &walls) {
+    b2Body *collisionBody = create_collision(physics->world, walls, physics->meter);
+    return collisionBody;
 }

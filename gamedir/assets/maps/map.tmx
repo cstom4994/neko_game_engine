@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="44">
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="50">
  <editorsettings>
   <export target="map.lua" format="lua"/>
  </editorsettings>
@@ -78,7 +78,10 @@
 </data>
  </layer>
  <objectgroup color="#64ffffff" id="3" name="collisions">
-  <object id="34" name="col1" x="424.318" y="470.318" width="59.9397" height="29.8783"/>
+  <object id="34" name="col3" x="-4.932" y="-37.0153" width="521.773" height="42.2116"/>
+  <object id="45" name="col4" x="-30.3448" y="-16.5225" width="37.6897" height="546.087"/>
+  <object id="46" name="col1" x="-0.8865" y="508.228" width="521.773" height="42.2116"/>
+  <object id="47" name="col2" x="501.155" y="-17.0435" width="37.6897" height="546.087"/>
  </objectgroup>
  <objectgroup color="#ff0000" id="6" name="object_goood">
   <object id="39" name="test_obj" type="game_lua" x="93.9773" y="58.7727" width="20" height="15.5">
@@ -98,6 +101,17 @@
   <object id="43" name="test_obj3" type="game_ent" x="74.75" y="139.841" width="10" height="10">
    <properties>
     <property name="ent_name" value="Target"/>
+   </properties>
+  </object>
+  <object id="44" name="test_obj_tree" type="game_ent" x="228.5" y="198" width="10" height="10">
+   <properties>
+    <property name="ent_name" value="EntImage"/>
+    <property name="image" value="assets/maps/tree4.png"/>
+   </properties>
+  </object>
+  <object id="49" name="PlayerSpawn" type="game_ent" x="288" y="64.5909" width="10" height="10">
+   <properties>
+    <property name="ent_name" value="PlayerSpawn"/>
    </properties>
   </object>
  </objectgroup>

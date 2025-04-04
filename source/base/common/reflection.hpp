@@ -107,7 +107,7 @@ void guess_enum_bit_range(HashMap<String>& values, const std::integer_sequence<i
 }
 
 template <typename T>
-auto GetTypeName() {
+constexpr auto GetTypeName() {
     return reflection::name_v<T>.data();
 }
 

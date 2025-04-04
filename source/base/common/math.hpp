@@ -924,3 +924,19 @@ inline rect_t rect_ctor(f32 _x, f32 _y, f32 _w, f32 _h) {
     v.h = _h;
     return v;
 }
+
+struct BBox {
+    vec2 min;
+    vec2 max;
+};
+
+BBox bbox(vec2 min, vec2 max);
+
+BBox bbox_bound(vec2 a, vec2 b);
+
+BBox bbox_merge(BBox a, BBox b);
+
+bool bbox_contains(BBox b, vec2 p);
+
+// 返回 bbox 围绕改造后的盒子
+BBox bbox_transform(mat3 m, BBox b);

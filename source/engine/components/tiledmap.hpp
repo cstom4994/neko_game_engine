@@ -90,7 +90,7 @@ struct MapLdtk {
 bool tiled_load(TiledMap* map, const_str tmx_path, const_str res_path);
 void tiled_unload(TiledMap* map);
 
-typedef struct tiled_quad_t {
+typedef struct TiledQuad {
     u32 tileset_id;
     AssetTexture texture;
     vec2 texture_size;
@@ -108,23 +108,18 @@ typedef struct tiled_quad_t {
 #define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
 #define FLOATS_PER_VERT 9  // 每个verts数据的大小
 
-typedef struct tiled_quad_list_t {
-    Array<tiled_quad_t> quad_list;  // quad 绘制队列
+typedef struct TiledQuadList {
+    Array<TiledQuad> quad_list;  // quad 绘制队列
 } tiled_quad_list_t;
 
 typedef struct tiled_renderer {
-
     GLuint vao;
     GLuint vbo;
     GLuint ib;
-
-    AssetTexture batch_texture;             // 当前绘制所用贴图
-    HashMap<tiled_quad_list_t> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
-
+    AssetTexture batch_texture;         // 当前绘制所用贴图
+    HashMap<TiledQuadList> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
     u32 quad_count;
-
     u64 map_asset;  // tiled data
-
     mat3 camera_mat;
 } tiled_renderer;
 
@@ -132,10 +127,11 @@ void tiled_render_init(tiled_renderer* renderer);
 void tiled_render_deinit(tiled_renderer* renderer);
 void tiled_render_begin(tiled_renderer* renderer);
 void tiled_render_flush(tiled_renderer* renderer);
-void tiled_render_push(tiled_renderer* renderer, tiled_quad_t quad);
+void tiled_render_push(tiled_renderer* renderer, TiledQuad quad);
 void tiled_render_draw(tiled_renderer* renderer);
 
 struct CTiledMap;
+struct Physics;
 
 int tiled_render(CTiledMap* tiled);
 
@@ -146,18 +142,30 @@ void tiled_set_map(CEntity ent, const char* str);
 const char* tiled_get_map(CEntity ent);
 void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
 
-void tiled_init();
-void tiled_fini();
-int tiled_update_all(Event evt);
-void tiled_draw_all();
+class Tiled : public SingletonClass<Tiled> {
+public:
+    void tiled_init();
+    void tiled_fini();
+    int tiled_update_all(Event evt);
+    void tiled_draw_all();
+};
+
+struct TiledMapWall {
+    float x;       // 左上角x坐标
+    float y;       // 左上角y坐标
+    float width;   // 宽度
+    float height;  // 高度
+};
 
 int tiled_get_object_groups(CEntity ent, lua_State* L);
+b2Body* tiled_make_collision(Physics* physics, const std::vector<TiledMapWall>& walls);
 
 class CTiledMap : public CEntityBase {
 public:
     tiled_renderer* render;
     vec2 pos;
     String map_name;
+    bool draw_object_groups_rect;
 
 public:
     static Asset tiled_shader;

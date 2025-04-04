@@ -2395,6 +2395,49 @@ int wrap_tiled_get_obj(lua_State *L) {
     return 1;
 }
 
+std::vector<TiledMapWall> GetWalls(lua_State *L, int index) {
+    std::vector<TiledMapWall> walls;
+    if (!lua_istable(L, index)) {
+        luaL_error(L, "Expected a table at index %d", index);
+        return walls;
+    }
+    lua_pushnil(L);  // 初始 key
+    while (lua_next(L, index) != 0) {
+        if (lua_istable(L, -1)) {
+            TiledMapWall wall;
+
+            lua_getfield(L, -1, "x");
+            if (lua_isnumber(L, -1)) wall.x = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "y");
+            if (lua_isnumber(L, -1)) wall.y = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "width");
+            if (lua_isnumber(L, -1)) wall.width = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "height");
+            if (lua_isnumber(L, -1)) wall.height = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            walls.push_back(wall);
+        }
+        lua_pop(L, 1);  // 弹出 value
+    }
+
+    return walls;
+}
+
+int wrap_tiled_make_collision(lua_State *L) {
+    // return tiled_make_collision(L);
+    Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
+    std::vector<TiledMapWall> walls = GetWalls(L, 2);
+    tiled_make_collision(physics, walls);
+    return 0;
+}
+
 int wrap_EntityCreate(lua_State *L) {
     String name = luax_opt_string(L, 1, "something_unknown_from_lua");
     CEntity ent = entity_create(name);
@@ -3226,6 +3269,7 @@ static int open_neko(lua_State *L) {
             {"tiled_get_map", wrap_tiled_get_map},
             {"tiled_map_edit", wrap_tiled_map_edit},
             {"tiled_get_obj", wrap_tiled_get_obj},
+            {"tiled_make_collision", wrap_tiled_make_collision},
 
             {"EntityCreate", wrap_EntityCreate},
             {"EntityDestroy", wrap_EntityDestroy},

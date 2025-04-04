@@ -299,11 +299,24 @@ static lua_Number getfield(lua_State *L, int index, const char *key) {
     return v;
 }
 
+template <typename T, std::size_t... Is>
+static void TestReflection_field_name(T &v, std::index_sequence<Is...>) {
+    (..., [&] {
+        constexpr auto field_name = reflection::field_name<T, Is>;
+        using field_type = typename reflection::field_type<T, Is>;
+        auto &af = reflection::field_access<Is>(v);
+        std::cout << "field_name " << field_name.data() << '\n';
+    }());
+}
+
 int main() {
 
     // std::cout << neko::reflection::field_count<TestStruct_RawArr> << std::endl;
     // std::cout << memberCount<TestStruct3>() << std::endl;
     // std::cout << neko::reflection::counting_fields::num_aggregate_unique_fields_v<TestStruct3> << std::endl;
+
+    constexpr std::size_t field_count = reflection::field_count<TestStruct_FAST>;
+    TestReflection_field_name(TestStruct_FAST{}, std::make_index_sequence<field_count>{});
 
     LuaVM vm;
 

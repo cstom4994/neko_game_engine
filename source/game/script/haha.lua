@@ -175,7 +175,7 @@ function haha()
 
     LocalGame.level_1_obj = ns["tiled"].get_obj(LocalGame.level_1)
 
-    print(LocalGame.level_1_obj)
+    -- print(LocalGame.level_1_obj)
 
     local bg = {
         r = neko.ui.ref(90),
@@ -210,9 +210,7 @@ function haha()
 
         LocalGame.world = World()
 
-        player = CPlayer(0, 0)
 
-        LocalGame.world:add(player)
         -- LocalGame.world:add(CEnemy(100, 100, "chort", true))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
@@ -222,6 +220,8 @@ function haha()
 
         local objs = LocalGame.level_1_obj
         for object_group_name, object_groups in pairs(objs) do
+            if object_group_name == "collisions" then
+            end
             for object_name, objects in pairs(object_groups) do
                 local OBJ = objs[object_group_name][object_name]
                 -- print(OBJ)
@@ -232,6 +232,11 @@ function haha()
                     if class_name == "game_ent" then
                         local properties = OBJ.properties
                         if properties.ent_name ~= nil then
+                            if properties.ent_name == "PlayerSpawn" then
+                                player = CPlayer(x, y)
+                                LocalGame.world:add(player)
+                                goto continue
+                            end
                             local mt = _G[properties.ent_name]
                             if mt ~= nil then
                                 local new_obj = LocalGame.world:add(mt(x, y))
@@ -242,8 +247,13 @@ function haha()
                         end
                     end
                 end
+                ::continue::
             end
         end
+
+        print(LocalGame.level_1_obj["collisions"])
+
+        neko.tiled_make_collision(LocalGame.b2, LocalGame.level_1_obj["collisions"])
 
         -- LocalGame.world:add(WorkingMan(50, -50))
     end
@@ -269,7 +279,7 @@ function haha()
             -- text = text .. "]"
             -- print(text)
             random_spawn_npc()
-            print("生成怪物")
+            print("生成怪物 tick=" .. tostring(game_tick))
         end
 
         if game_tick % 40 == 1 then
@@ -296,6 +306,8 @@ function haha()
 
         LocalGame.world:draw()
 
+        LocalGame.b2:debugdraw()
+
         if not ns.edit.get_enabled() then
             cursor:draw()
         end
@@ -305,8 +317,8 @@ function haha()
         local dt = neko.dt()
         -- default_font:draw(("fps: %.2f (%.4f) 分数: %d"):format(1 / dt, dt * 1000, LocalGame.score), 300, 0, 24)
 
-        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.health), 40, LocalGame.win_size.y - 60,
-            36)
+        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.health), 40,
+            LocalGame.win_size.y - 60, 36)
     end
 
     -- neko.before_quit = function()

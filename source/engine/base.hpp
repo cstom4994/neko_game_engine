@@ -294,22 +294,6 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-typedef struct BBox {
-    vec2 min;
-    vec2 max;
-} BBox;
-
-BBox bbox(vec2 min, vec2 max);
-
-BBox bbox_bound(vec2 a, vec2 b);
-
-BBox bbox_merge(BBox a, BBox b);
-
-bool bbox_contains(BBox b, vec2 p);
-
-// 返回 bbox 围绕改造后的盒子
-BBox bbox_transform(mat3 m, BBox b);
-
 #endif
 
 #if !defined(NEKO_BASE_HPP)
