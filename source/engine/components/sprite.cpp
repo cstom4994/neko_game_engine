@@ -4,6 +4,7 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
+#include "engine/scripting/lua_util.h"
 
 static char *atlas = NULL;
 
@@ -99,7 +100,7 @@ int sprite_get_depth(CEntity ent) {
     return sprite->depth;
 }
 
-void sprite_init() {
+void Sprite::sprite_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
@@ -127,9 +128,25 @@ void sprite_init() {
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", CSprite, size);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texcell", CSprite, texcell);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texsize", CSprite, texsize);
+
+    auto type = BUILD_TYPE(Sprite)
+                        .Method("sprite_set_atlas", &sprite_set_atlas)      //
+                        .Method("sprite_get_atlas", &sprite_get_atlas)      //
+                        .Method("sprite_add", &sprite_add)                  //
+                        .Method("sprite_remove", &sprite_remove)            //
+                        .Method("sprite_has", &sprite_has)                  //
+                        .Method("sprite_set_size", &sprite_set_size)        //
+                        .Method("sprite_get_size", &sprite_get_size)        //
+                        .Method("sprite_set_texcell", &sprite_set_texcell)  //
+                        .Method("sprite_get_texcell", &sprite_get_texcell)  //
+                        .Method("sprite_set_texsize", &sprite_set_texsize)  //
+                        .Method("sprite_get_texsize", &sprite_get_texsize)  //
+                        .Method("sprite_set_depth", &sprite_set_depth)      //
+                        .Method("sprite_get_depth", &sprite_get_depth)      //
+                        .Build();
 }
 
-void sprite_fini() {
+void Sprite::sprite_fini() {
 
     glDeleteBuffers(1, &sprite_vbo);
     glDeleteVertexArrays(1, &sprite_vao);
@@ -139,7 +156,7 @@ void sprite_fini() {
     mem_free(atlas);
 }
 
-int sprite_update_all(Event evt) {
+int Sprite::sprite_update_all(Event evt) {
 
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
@@ -161,7 +178,7 @@ static int _depth_compare(const void *a, const void *b) {
     return sb->depth - sa->depth;
 }
 
-void sprite_draw_all() {
+void Sprite::sprite_draw_all() {
     unsigned int nsprites;
 
     entitypool_sort(Sprite__pool, _depth_compare);

@@ -212,11 +212,11 @@ void CL::game_draw() {
 
         the<EventHandler>().EventPushLuaType(OnDraw);
 
-        sprite_draw_all();
+        the<Sprite>().sprite_draw_all();
         batch_draw_all(batch);
-        edit_draw_all();
+        the<Edit>().edit_draw_all();
         physics_draw_all();
-        debug_draw_all();
+        the<DebugDraw>().debug_draw_all();
 
         // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -516,21 +516,27 @@ end
     auto &input = Neko::the<Input>();
     input.init();
 
+    Neko::modules::initialize<Entity>();
+    Neko::modules::initialize<Transform>();
+    Neko::modules::initialize<Camera>();
+    Neko::modules::initialize<Sprite>();
     Neko::modules::initialize<Tiled>();
+    Neko::modules::initialize<Edit>();
+    Neko::modules::initialize<DebugDraw>();
 
-    entity_init();
-    transform_init();
-    camera_init();
+    the<Entity>().entity_init();
+    the<Transform>().transform_init();
+    the<Camera>().camera_init();
     batch = batch_init(state.batch_vertex_capacity);
-    sprite_init();
+    the<Sprite>().sprite_init();
     the<Tiled>().tiled_init();
     font_init();
     imgui_init(window->glfwWindow());
     console_init();
     sound_init();
     physics_init();
-    edit_init();
-    debug_draw_init();
+    the<Edit>().edit_init();
+    the<DebugDraw>().debug_draw_init();
 
     gBase.reload_interval.store(state.reload_interval);
 
@@ -630,14 +636,14 @@ end
                  return 0;
              }},
             {EventMask::Update, physics_update_all},
-            {EventMask::Update, transform_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Transform>().transform_update_all(evt); }},
 
-            {EventMask::Update, camera_update_all},
-            {EventMask::Update, sprite_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
             {EventMask::Update, batch_update_all},
             {EventMask::Update, sound_update_all},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
-            {EventMask::Update, edit_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Edit>().edit_update_all(evt); }},
 
             {EventMask::PostUpdate,
              [](Event) -> int {
@@ -646,7 +652,7 @@ end
              }},
             {EventMask::PostUpdate, physics_post_update_all},
             {EventMask::PostUpdate, sound_postupdate},
-            {EventMask::PostUpdate, entity_update_all},
+            {EventMask::PostUpdate, [](Event evt) -> int { return the<Entity>().entity_update_all(evt); }},
 
             {EventMask::Draw,
              [](Event) -> int {
@@ -781,18 +787,18 @@ void CL::fini() {
     delete inspector;
     inspector = nullptr;
 
-    debug_draw_fini();
-    edit_fini();
+    the<DebugDraw>().debug_draw_fini();
+    the<Edit>().edit_fini();
     script_fini();
     physics_fini();
     sound_fini();
     console_fini();
     the<Tiled>().tiled_fini();
-    sprite_fini();
+    the<Sprite>().sprite_fini();
     batch_fini(batch);
-    camera_fini();
-    transform_fini();
-    entity_fini();
+    the<Camera>().camera_fini();
+    the<Transform>().transform_fini();
+    the<Entity>().entity_fini();
     imgui_fini();
     auto &input = Neko::the<Input>();
     input.fini();

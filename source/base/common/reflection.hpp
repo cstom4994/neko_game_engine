@@ -290,31 +290,48 @@ template <typename T, std::size_t I>
     requires std::is_aggregate_v<T>
 static constexpr auto field_name = field_name_impl<T, I>();
 
+// 主模板声明
 template <typename T>
 struct function_traits;
 
-// 普通函数指针
-template <typename Ret, typename... Args>
-struct function_traits<Ret (*)(Args...)> {
-    using return_type = Ret;
+// 普通函数特化
+template <typename R, typename... Args>
+struct function_traits<R(Args...)> {
+    using return_type = R;
     using args_type = std::tuple<Args...>;
     static constexpr size_t arity = sizeof...(Args);
-    using pointer = Ret (*)(Args...);
-    using std_function = std::function<Ret(Args...)>;
+    using std_function = std::function<R(Args...)>;
 };
 
-// 函数对象 如lambda
-template <typename T>
-struct function_traits : function_traits<decltype(&T::operator())> {};
+// 函数指针特化
+template <typename R, typename... Args>
+struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {};
 
-template <typename ClassType, typename Ret, typename... Args>
-struct function_traits<Ret (ClassType::*)(Args...) const> {
-    using return_type = Ret;
+// 成员函数指针特化
+template <typename T, typename R, typename... Args>
+struct function_traits<R (T::*)(Args...)> {
+    using return_type = R;
     using args_type = std::tuple<Args...>;
+    using class_type = T;
     static constexpr size_t arity = sizeof...(Args);
-    using pointer = Ret (*)(Args...);
-    using std_function = std::function<Ret(Args...)>;
+    using std_function = std::function<R (T::*)(Args...)>;
 };
+
+// const成员函数特化
+template <typename T, typename R, typename... Args>
+struct function_traits<R (T::*)(Args...) const> : function_traits<R (T::*)(Args...)> {};
+
+// 仿函数lambda
+template <typename Functor>
+struct function_traits : function_traits<decltype(&Functor::operator())> {};
+
+// noexcept限定符
+template <typename R, typename... Args>
+struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {};
+
+// std::function
+template <typename R, typename... Args>
+struct function_traits<std::function<R(Args...)>> : function_traits<R(Args...)> {};
 
 template <typename F>
 typename function_traits<F>::std_function to_function(F &lambda) {

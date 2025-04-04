@@ -5,6 +5,7 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
+#include "engine/scripting/lua_util.h"
 
 static CEntity curr_camera;
 static CEntity edit_camera;
@@ -80,7 +81,7 @@ vec2 camera_unit_to_world(vec2 p) {
 
 // -------------------------------------------------------------------------
 
-void camera_init() {
+void Camera::camera_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
@@ -92,11 +93,29 @@ void camera_init() {
     curr_camera = entity_nil;
     edit_camera = entity_nil;
     inverse_view_matrix = mat3_identity();
+
+    auto type = BUILD_TYPE(Camera)
+                        .Method("camera_world_to_pixels", &camera_world_to_pixels)                  //
+                        .Method("camera_world_to_unit", &camera_world_to_unit)                      //
+                        .Method("camera_pixels_to_world", &camera_pixels_to_world)                  //
+                        .Method("camera_unit_to_world", &camera_unit_to_world)                      //
+                        .Method("camera_add", &camera_add)                                          //
+                        .Method("camera_remove", &camera_remove)                                    //
+                        .Method("camera_has", &camera_has)                                          //
+                        .Method("camera_set_edit_camera", &camera_set_edit_camera)                  //
+                        .Method("camera_set_current", &camera_set_current)                          //
+                        .Method("camera_get_current", &camera_get_current)                          //
+                        .Method("camera_set_current_camera", &camera_set_current_camera)            //
+                        .Method("camera_get_current_camera", &camera_get_current_camera)            //
+                        .Method("camera_set_viewport_height", &camera_set_viewport_height)          //
+                        .Method("camera_get_viewport_height", &camera_get_viewport_height)          //
+                        .Method("camera_get_inverse_view_matrix", &camera_get_inverse_view_matrix)  //
+                        .Build();
 }
 
-void camera_fini() { entitypool_free(CCamera__pool); }
+void Camera::camera_fini() { entitypool_free(CCamera__pool); }
 
-int camera_update_all(Event evt) {
+int Camera::camera_update_all(Event evt) {
     vec2 win_size;
     f32 aspect;
     CCamera *camera;

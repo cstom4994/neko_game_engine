@@ -46,6 +46,13 @@ public:
         return *this;
     }
 
+    template <typename FUNC>
+    ClassBindBuilder& MemberMethod(const String& name, T* obj, FUNC ptr) {
+        register_member_function(L, name.cstr(), obj, ptr);
+        lua_setfield(L, -2, name.cstr());
+        return *this;
+    }
+
     ClassBindBuilder& CClosure(const std::vector<luaL_Reg>& list) {
         for (auto& r : list) {
             lua_pushcclosure(L, r.func, 0);

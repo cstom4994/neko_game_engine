@@ -5,6 +5,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/edit.h"
+#include "engine/scripting/lua_util.h"
 
 // -------------------------------------------------------------------------
 
@@ -284,13 +285,66 @@ void transform_set_save_filter_rec(CEntity ent, bool filter) {
 
 // -------------------------------------------------------------------------
 
+int wrap_transform_add(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    transform_add(*ent);
+    return 0;
+}
+int wrap_transform_remove(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    transform_remove(*ent);
+    return 0;
+}
+int wrap_transform_has(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    bool v = transform_has(*ent);
+    lua_pushboolean(L, v);
+    return 1;
+}
+int wrap_transform_set_parent(lua_State *L) {
+    CEntity *a = LuaGet<CEntity>(L, 1);
+    CEntity *b = LuaGet<CEntity>(L, 2);
+    transform_set_parent(*a, *b);
+    return 0;
+}
+int wrap_transform_get_parent(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    CEntity ret = transform_get_parent(*ent);
+    LuaPush<CEntity>(L, ret);
+    return 1;
+}
+int wrap_transform_get_num_children(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    EcsId v = transform_get_num_children(*ent);
+    lua_pushinteger(L, v);
+    return 1;
+}
+int wrap_transform_get_children(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    CEntity *v = transform_get_children(*ent);
+    lua_pushinteger(L, v->id);
+    return 1;
+}
+int wrap_transform_detach_all(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    transform_detach_all(*ent);
+    return 0;
+}
+int wrap_transform_destroy_rec(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    transform_destroy_rec(*ent);
+    return 0;
+}
+
+// -------------------------------------------------------------------------
+
 static void _free_children_arrays() {
     CTransform *transform;
 
     entitypool_foreach(transform, CTransform__pool) if (transform->children.len) transform->children.trash();
 }
 
-void transform_init() {
+void Transform::transform_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
@@ -298,14 +352,42 @@ void transform_init() {
     type_transform = EcsRegisterCType<CTransform>(L);
 
     CTransform__pool = EcsProtoGetCType<CTransform>(L);
+
+    auto type = BUILD_TYPE(Transform)
+                        .Method("transform_set_position", &transform_set_position)                //
+                        .Method("transform_get_position", &transform_get_position)                //
+                        .Method("transform_translate", &transform_translate)                      //
+                        .Method("transform_set_rotation", &transform_set_rotation)                //
+                        .Method("transform_get_rotation", &transform_get_rotation)                //
+                        .Method("transform_rotate", &transform_rotate)                            //
+                        .Method("transform_set_scale", &transform_set_scale)                      //
+                        .Method("transform_get_scale", &transform_get_scale)                      //
+                        .Method("transform_get_world_position", &transform_get_world_position)    //
+                        .Method("transform_get_world_rotation", &transform_get_world_rotation)    //
+                        .Method("transform_get_world_scale", &transform_get_world_scale)          //
+                        .Method("transform_get_matrix", &transform_get_matrix)                    //
+                        .Method("transform_local_to_world", &transform_local_to_world)            //
+                        .Method("transform_world_to_local", &transform_world_to_local)            //
+                        .Method("transform_get_dirty_count", &transform_get_dirty_count)          //
+                        .Method("transform_set_save_filter_rec", &transform_set_save_filter_rec)  //
+                        .CClosure({{"transform_add", wrap_transform_add},
+                                   {"transform_remove", wrap_transform_remove},
+                                   {"transform_has", wrap_transform_has},
+                                   {"transform_set_parent", wrap_transform_set_parent},
+                                   {"transform_get_parent", wrap_transform_get_parent},
+                                   {"transform_get_num_children", wrap_transform_get_num_children},
+                                   {"transform_get_children", wrap_transform_get_children},
+                                   {"transform_detach_all", wrap_transform_detach_all},
+                                   {"transform_destroy_rec", wrap_transform_destroy_rec}})
+                        .Build();
 }
 
-void transform_fini() {
+void Transform::transform_fini() {
     _free_children_arrays();
     entitypool_free(CTransform__pool);
 }
 
-int transform_update_all(Event evt) {
+int Transform::transform_update_all(Event evt) {
     CTransform *transform;
     static BBox bbox = {{0, 0}, {0, 0}};
 

@@ -22,7 +22,7 @@ public:
             int32 next = (i + 1) % vertexCount;
             vec2 a = ToVec2(vertices[i]);
             vec2 b = ToVec2(vertices[next]);
-            debug_draw_add_line(a, b, m_lineWidth, drawColor);
+            the<DebugDraw>().debug_draw_add_line(a, b, m_lineWidth, drawColor);
         }
     }
 
@@ -32,17 +32,19 @@ public:
             int32 next = (i + 1) % vertexCount;
             vec2 a = ToVec2(vertices[i]);
             vec2 b = ToVec2(vertices[next]);
-            debug_draw_add_line(a, b, m_lineWidth, drawColor);
+            the<DebugDraw>().debug_draw_add_line(a, b, m_lineWidth, drawColor);
         }
 
         DrawPolygon(vertices, vertexCount, color);
     }
 
-    void DrawCircle(const b2Vec2 &center, float radius, const b2Color &color) override { debug_draw_circle(ToVec2(center), radius * m_scale, m_circleSegments, m_lineWidth, ToColor(color)); }
+    void DrawCircle(const b2Vec2 &center, float radius, const b2Color &color) override {
+        the<DebugDraw>().debug_draw_circle(ToVec2(center), radius * m_scale, m_circleSegments, m_lineWidth, ToColor(color));
+    }
 
     void DrawSolidCircle(const b2Vec2 &center, float radius, const b2Vec2 &axis, const b2Color &color) override {
         Color drawColor = ToColor(color, 0.5f);
-        debug_draw_circle(ToVec2(center), radius * m_scale, m_circleSegments, m_lineWidth, drawColor);
+        the<DebugDraw>().debug_draw_circle(ToVec2(center), radius * m_scale, m_circleSegments, m_lineWidth, drawColor);
 
         DrawCircle(center, radius, color);
 
@@ -50,7 +52,7 @@ public:
         DrawSegment(center, p, color);
     }
 
-    void DrawSegment(const b2Vec2 &p1, const b2Vec2 &p2, const b2Color &color) override { debug_draw_add_line(ToVec2(p1), ToVec2(p2), m_lineWidth, ToColor(color)); }
+    void DrawSegment(const b2Vec2 &p1, const b2Vec2 &p2, const b2Color &color) override { the<DebugDraw>().debug_draw_add_line(ToVec2(p1), ToVec2(p2), m_lineWidth, ToColor(color)); }
 
     void DrawTransform(const b2Transform &xf) override {
         const float k_axisScale = 0.4f;
@@ -64,7 +66,7 @@ public:
         DrawSegment(p1, p2, b2Color(0.0f, 1.0f, 0.0f));
     }
 
-    void DrawPoint(const b2Vec2 &p, float size, const b2Color &color) override { debug_draw_circle(ToVec2(p), size * 0.5f * m_scale, 8, m_lineWidth, ToColor(color)); }
+    void DrawPoint(const b2Vec2 &p, float size, const b2Color &color) override { the<DebugDraw>().debug_draw_circle(ToVec2(p), size * 0.5f * m_scale, 8, m_lineWidth, ToColor(color)); }
 
     void SetLineWidth(float width) { m_lineWidth = width; }
     void SetCircleSegments(uint32_t segments) { m_circleSegments = segments; }
@@ -305,33 +307,33 @@ void physics_push_userdata(lua_State *L, u64 ptr) {
 
 void draw_fixtures_for_body(b2Body *body, f32 meter) {
     for (b2Fixture *f = body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
-        //switch (f->GetType()) {
-        //    case b2Shape::e_circle: {
-        //        b2CircleShape *circle = (b2CircleShape *)f->GetShape();
-        //        b2Vec2 pos = body->GetWorldPoint(circle->m_p);
-        //        debug_draw_circle({pos.x * meter, pos.y * meter}, circle->m_radius * meter, 16, 2, color_red);
-        //        break;
-        //    }
-        //    case b2Shape::e_polygon: {
-        //        b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
-        //        if (poly->m_count > 0) {
-        //            for (i32 i = 0; i < poly->m_count; i++) {
-        //                b2Vec2 pos1 = body->GetWorldPoint(poly->m_vertices[i]);
-        //                debug_draw_add_line(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
-        //                if (i + 1 < poly->m_count) {
-        //                    b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[i + 1]);
-        //                    debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
-        //                } else {
-        //                    b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[0]);
-        //                    debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
-        //                }
-        //            }
-        //        }
-        //        break;
-        //    }
-        //    default:
-        //        break;
-        //}
+        // switch (f->GetType()) {
+        //     case b2Shape::e_circle: {
+        //         b2CircleShape *circle = (b2CircleShape *)f->GetShape();
+        //         b2Vec2 pos = body->GetWorldPoint(circle->m_p);
+        //         debug_draw_circle({pos.x * meter, pos.y * meter}, circle->m_radius * meter, 16, 2, color_red);
+        //         break;
+        //     }
+        //     case b2Shape::e_polygon: {
+        //         b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
+        //         if (poly->m_count > 0) {
+        //             for (i32 i = 0; i < poly->m_count; i++) {
+        //                 b2Vec2 pos1 = body->GetWorldPoint(poly->m_vertices[i]);
+        //                 debug_draw_add_line(luavec2(pos1.x * meter, pos1.y * meter), 1.f, color_red);
+        //                 if (i + 1 < poly->m_count) {
+        //                     b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[i + 1]);
+        //                     debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+        //                 } else {
+        //                     b2Vec2 pos2 = body->GetWorldPoint(poly->m_vertices[0]);
+        //                     debug_draw_add_line(luavec2(pos2.x * meter, pos2.y * meter), 1.f, color_red);
+        //                 }
+        //             }
+        //         }
+        //         break;
+        //     }
+        //     default:
+        //         break;
+        // }
     }
 }
 

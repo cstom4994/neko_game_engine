@@ -29,9 +29,12 @@ void entity_destroy(CEntity ent);
 void entity_destroy_all();
 bool entity_destroyed(CEntity ent);
 
-NEKO_API() void entity_init();
-NEKO_API() void entity_fini();
-NEKO_API() int entity_update_all(Event evt);
+class Entity : public SingletonClass<Entity> {
+public:
+    void entity_init();
+    void entity_fini();
+    int entity_update_all(Event evt);
+};
 
 inline bool CEntityEq(CEntity e, CEntity f) { return e.id == f.id; }
 

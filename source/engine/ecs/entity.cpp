@@ -36,7 +36,7 @@ CEntity entity_create(const String& name) {
     LuaRef table = LuaRef::NewTable(L);
     table["name"] = name.cstr();
 
-    Entity* e = EcsEntityNew(L, table, NULL);
+    EntityData* e = EcsEntityNew(L, table, NULL);
     ent.id = e - ENGINE_ECS()->entity_buf;
     return ent;
 }
@@ -50,7 +50,7 @@ void entity_destroy_all() {}
 
 bool entity_destroyed(CEntity ent) { return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id); }
 
-void entity_init() {
+void Entity::entity_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
@@ -75,7 +75,7 @@ void entity_init() {
     //    LuaRef table = LuaRef::NewTable(L);
     //    table["testing"] = "Test fucking CTransform";
 
-    //    Entity* e = EcsEntityNew(L, table, NULL);
+    //    EntityData* e = EcsEntityNew(L, table, NULL);
 
     //    LuaRef tb = LuaRef::NewTable(L);
     //    tb["testing"] = "i'm CTransform haha";
@@ -90,9 +90,9 @@ void entity_init() {
     //}
 }
 
-void entity_fini() {}
+void Entity::entity_fini() {}
 
-int entity_update_all(Event evt) {
+int Entity::entity_update_all(Event evt) {
     // EcsId i;
     // DestroyEntry* entry;
 

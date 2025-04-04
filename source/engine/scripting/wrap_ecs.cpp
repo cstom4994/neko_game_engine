@@ -166,7 +166,7 @@ struct EcsLuaWrap {
     static int l_ecs_new_entity(lua_State* L) {
         int components, proto_id;
         EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-        Entity* e = EcsEntityAlloc(w);
+        EntityData* e = EcsEntityAlloc(w);
         int eid = e - w->entity_buf;
         lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
         components = lua_gettop(L);
@@ -207,7 +207,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_del_entity(lua_State* L) {
         struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-        Entity* e = EcsGetEnt_i(L, w, 2);
+        EntityData* e = EcsGetEnt_i(L, w, 2);
         EcsEntityDead(w, e);
         return 0;
     }
@@ -215,7 +215,7 @@ struct EcsLuaWrap {
     static int l_ecs_get_component(lua_State* L) {
         int i, top, proto_id, components;
         struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-        Entity* e = EcsGetEnt_i(L, w, 2);
+        EntityData* e = EcsGetEnt_i(L, w, 2);
         top = lua_gettop(L);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         proto_id = top + 1;
@@ -238,7 +238,7 @@ struct EcsLuaWrap {
     static int l_ecs_add_component(lua_State* L) {
         int tid, cid;
         struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-        Entity* e = EcsGetEnt_i(L, w, 2);
+        EntityData* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         tid = EcsGetTid_w(L, 3, lua_gettop(L));
         cid = EcsComponentAlloc(w, e, tid);
@@ -254,7 +254,7 @@ struct EcsLuaWrap {
         int i, proto_id;
         int tid, cid;
         EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-        Entity* e = EcsGetEnt_i(L, w, 2);
+        EntityData* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         proto_id = lua_gettop(L);
         for (i = 3; i <= (proto_id - 1); i++) {
@@ -280,7 +280,7 @@ struct EcsLuaWrap {
         tid = luaL_checkinteger(L, -1);
         luaL_argcheck(L, tid >= TYPE_MIN_ID && tid <= TYPE_MAX_ID, 2, "invalid component");
 
-        Entity* e = &w->entity_buf[eid];
+        EntityData* e = &w->entity_buf[eid];
         cid = EcsEntityGetCid(e, tid);
         EcsComponentDirty(w, tid, cid);
         return 0;
@@ -289,15 +289,15 @@ struct EcsLuaWrap {
     // MatchFunc::*(MatchCtx *mctx, nil)
     struct MatchFunc {
 
-        static Entity* restrict_component(Entity* ebuf, Component* c, int* keys, int kn) {
-            Entity* e = &ebuf[c->eid];
+        static EntityData* restrict_component(EntityData* ebuf, Component* c, int* keys, int kn) {
+            EntityData* e = &ebuf[c->eid];
             for (int i = 1; i < kn; i++) {
                 if (!EcsComponentHas(e, keys[i])) return NULL;
             }
             return e;
         }
 
-        static void push_result(lua_State* L, int* keys, int kn, Entity* e) {
+        static void push_result(lua_State* L, int* keys, int kn, EntityData* e) {
             int i;
             if (e != NULL) {  // match one
                 int components;
@@ -319,11 +319,11 @@ struct EcsLuaWrap {
 
         static int match_all(lua_State* L) {
             int* keys;
-            Entity* e = NULL;
+            EntityData* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
             EcsWorld* w = mctx->world;
-            Entity* entity_buf = w->entity_buf;
+            EntityData* entity_buf = w->entity_buf;
             int kn = mctx->kn;
             keys = mctx->keys;
             cp = &w->component_pool[mctx->keys[0]];
@@ -344,11 +344,11 @@ struct EcsLuaWrap {
         static int match_dirty(lua_State* L) {
             int next;
             int kn, *keys;
-            Entity* e = NULL;
+            EntityData* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
             EcsWorld* w = mctx->world;
-            Entity* entity_buf = w->entity_buf;
+            EntityData* entity_buf = w->entity_buf;
             keys = mctx->keys;
             kn = mctx->kn;
             next = mctx->i;
@@ -369,11 +369,11 @@ struct EcsLuaWrap {
         static int match_dead(lua_State* L) {
             int next;
             int kn, *keys;
-            Entity* e = NULL;
+            EntityData* e = NULL;
             ComponentPool* cp;
             MatchCtx* mctx = (MatchCtx*)lua_touserdata(L, 1);
             EcsWorld* w = mctx->world;
-            Entity* entity_buf = w->entity_buf;
+            EntityData* entity_buf = w->entity_buf;
             keys = mctx->keys;
             kn = mctx->kn;
             next = mctx->i;
@@ -454,10 +454,10 @@ struct EcsLuaWrap {
         EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
         // 清除死亡实体
-        Entity* entity_buf = w->entity_buf;
+        EntityData* entity_buf = w->entity_buf;
         int next = w->entity_dead_id;
         while (next != LINK_NIL) {
-            Entity* e;
+            EntityData* e;
             e = &entity_buf[next];
             e->components_count = -1;
             next = e->next;
@@ -482,7 +482,7 @@ struct EcsLuaWrap {
                 c->dirty_next = LINK_NONE;
                 if (c->dead_next == LINK_NONE) {  // 如果存活
                     if (w != r) {
-                        Entity* e = &entity_buf[c->eid];
+                        EntityData* e = &entity_buf[c->eid];
                         buf[w] = *c;
                         lua_rawgeti(L, -1, r);          // N = WORLD_COMPONENTS[tid][r]
                         lua_rawseti(L, -2, w);          // WORLD_COMPONENTS[tid][w] = N
@@ -490,7 +490,7 @@ struct EcsLuaWrap {
                     }
                     w++;
                 } else {  // 否则为标记的死组件
-                    Entity* e = &entity_buf[c->eid];
+                    EntityData* e = &entity_buf[c->eid];
                     if (e->next == LINK_NONE) EcsComponentClear(e, tid);
                 }
             }

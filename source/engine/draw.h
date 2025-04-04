@@ -153,14 +153,57 @@ NEKO_API() void batch_flush(batch_renderer* renderer);
 NEKO_API() void batch_texture(batch_renderer* renderer, GLuint id);
 NEKO_API() void batch_push_vertex(batch_renderer* renderer, float x, float y, float u, float v);
 
-void debug_draw_all();
-void debug_draw_init();
-void debug_draw_fini();
-void debug_draw_add_line(vec2 a, f32 line_width, Color color);          // 只添加一个顶点
-void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color);  // 添加线段
-void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color);
-void debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color);
-void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color);
-void debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment_count, f32 line_width, Color color);
+#define MAX_VERTS 3 * 2048 * 16
+
+struct LineVertex {
+    union {
+        struct {
+            vec3 pos;
+            float width;
+        };
+        vec4 pos_width;
+    };
+    Color col;
+};
+
+struct DebugRenderer {
+    Asset lines_shader = {};
+
+    GLuint program_id;
+    GLuint vao;
+    GLuint vbo;
+
+    GLuint view;
+    GLuint viewport_size;
+    GLuint aa_radius;
+
+    GLuint pos_width;
+    GLuint col;
+
+    u32 buf_cap;
+    u32 buf_len;
+    LineVertex* buf;
+};
+
+class DebugDraw : public SingletonClass<DebugDraw> {
+private:
+    DebugRenderer* debug_renderer;
+
+public:
+    void debug_draw_all();
+    void debug_draw_init();
+    void debug_draw_fini();
+
+    void debug_draw_add_point(vec2 a, f32 line_width, Color color);         // 只添加一个顶点
+    void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color);  // 添加线段
+    void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color);
+    void debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color);
+    void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color);
+    void debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment_count, f32 line_width, Color color);
+    void debug_draw_manifold(vec2* points, u32 point_count, f32 line_width, Color color);
+
+private:
+    u32 draw_line_update(const void* data, i32 n_elems, i32 elem_size);
+};
 
 #endif

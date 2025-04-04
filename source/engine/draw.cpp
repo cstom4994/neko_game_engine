@@ -10,6 +10,7 @@
 #include "base/scripting/lua_wrapper.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/edit.h"
+#include "engine/scripting/lua_util.h"
 
 // deps
 #include "extern/cute_aseprite.h"
@@ -865,41 +866,7 @@ void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, floa
     };
 }
 
-#define MAX_VERTS 3 * 2048 * 16
-
-struct LineVertex {
-    union {
-        struct {
-            vec3 pos;
-            float width;
-        };
-        vec4 pos_width;
-    };
-    Color col;
-};
-
-struct DebugRenderer {
-    Asset lines_shader = {};
-
-    GLuint program_id;
-    GLuint vao;
-    GLuint vbo;
-
-    GLuint view;
-    GLuint viewport_size;
-    GLuint aa_radius;
-
-    GLuint pos_width;
-    GLuint col;
-
-    u32 buf_cap;
-    u32 buf_len;
-    LineVertex *buf;
-};
-
-DebugRenderer *debug_renderer;
-
-void debug_draw_add_line(vec2 a, f32 line_width, Color color) {
+void DebugDraw::debug_draw_add_point(vec2 a, f32 line_width, Color color) {
     if (debug_renderer->buf_cap - debug_renderer->buf_len >= 1) {
         LineVertex *dst = debug_renderer->buf + debug_renderer->buf_len;
         *dst++ = LineVertex{{a.x, a.y, 0.0, line_width}, color};
@@ -909,7 +876,7 @@ void debug_draw_add_line(vec2 a, f32 line_width, Color color) {
     }
 }
 
-void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
+void DebugDraw::debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
     if (debug_renderer->buf_cap - debug_renderer->buf_len >= 2) {
         LineVertex *dst = debug_renderer->buf + debug_renderer->buf_len;  // 从 buf_len 偏移出正确的写入位置
         *dst++ = LineVertex{{a.x, a.y, 0.0, line_width}, color};
@@ -920,7 +887,7 @@ void debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color) {
     }
 }
 
-void debug_draw_init() {
+void DebugDraw::debug_draw_init() {
     debug_renderer = mem_new<DebugRenderer>();
 
     bool ok = asset_load_kind(AssetKind_Shader, "shader/debug_line.glsl", &debug_renderer->lines_shader);
@@ -954,9 +921,17 @@ void debug_draw_init() {
     debug_renderer->buf_cap = MAX_VERTS / 3;
     debug_renderer->buf_len = 0;
     debug_renderer->buf = (LineVertex *)mem_alloc(debug_renderer->buf_cap * sizeof(LineVertex));
+
+    auto type = BUILD_TYPE(DebugDraw)
+                        .MemberMethod("draw_line", this, &DebugDraw::debug_draw_add_line)            //
+                        .MemberMethod("draw_capsule", this, &DebugDraw::debug_draw_capsule)          //
+                        .MemberMethod("draw_circle", this, &DebugDraw::debug_draw_circle)            //
+                        .MemberMethod("draw_half_circle", this, &DebugDraw::debug_draw_half_circle)  //
+                        .MemberMethod("draw_aabb", this, &DebugDraw::debug_draw_aabb)                //
+                        .Build();
 }
 
-void debug_draw_fini() {
+void DebugDraw::debug_draw_fini() {
     // glDeleteProgram(device->program_id);
     glDeleteBuffers(1, &debug_renderer->vbo);
     glDeleteVertexArrays(1, &debug_renderer->vao);
@@ -967,12 +942,12 @@ void debug_draw_fini() {
     debug_renderer = nullptr;
 }
 
-u32 draw_line_update(const void *data, i32 n_elems, i32 elem_size) {
+u32 DebugDraw::draw_line_update(const void *data, i32 n_elems, i32 elem_size) {
     glNamedBufferSubData(debug_renderer->vbo, 0, n_elems * elem_size, data);
     return n_elems;
 }
 
-void debug_draw_all() {
+void DebugDraw::debug_draw_all() {
 
     const i32 count = draw_line_update(debug_renderer->buf, debug_renderer->buf_len, sizeof(LineVertex));
 
@@ -995,7 +970,7 @@ void debug_draw_all() {
     debug_renderer->buf_len = 0;
 }
 
-void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color) {
+void DebugDraw::debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_width, Color color) {
     f32 angle_step = 2.0f * neko_pi / segment_count;
     vec2 prev_point = {center.x + radius, center.y};  // 起始点
     for (int i = 1; i <= segment_count; i++) {
@@ -1007,13 +982,13 @@ void debug_draw_circle(vec2 center, f32 radius, int segment_count, f32 line_widt
     debug_draw_add_line(prev_point, {center.x + radius, center.y}, line_width, color);
 }
 
-void debug_draw_manifold(vec2 *points, u32 point_count, f32 line_width, Color color) {
+void DebugDraw::debug_draw_manifold(vec2 *points, u32 point_count, f32 line_width, Color color) {
     for (u32 i = 0; i < point_count - 1; ++i) {
         debug_draw_add_line(points[i], points[i + 1], line_width, color);
     }
 }
 
-void debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment_count, f32 line_width, Color color) {
+void DebugDraw::debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment_count, f32 line_width, Color color) {
     f32 angle_step = neko_pi / segment_count;                               // 半圆分段
     vec2 perpendicular = {-direction.y, direction.x};                       // 垂直于方向向量
     vec2 prev_point = vec2_add(center, vec2_scale(perpendicular, radius));  // 半圆起点
@@ -1025,7 +1000,7 @@ void debug_draw_half_circle(vec2 center, f32 radius, vec2 direction, u32 segment
     }
 }
 
-void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color) {
+void DebugDraw::debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_width, Color color) {
     vec2 dir = vec2_normalize(vec2_sub(b, a));
     vec2 perpendicular = {-dir.y, dir.x};
     vec2 p1 = vec2_add(a, vec2_scale(perpendicular, radius));
@@ -1042,7 +1017,7 @@ void debug_draw_capsule(vec2 a, vec2 b, f32 radius, u32 segment_count, f32 line_
     debug_draw_half_circle(b, radius, vec2_neg(dir), segment_count, line_width, color);
 }
 
-void debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color) {
+void DebugDraw::debug_draw_aabb(vec2 min, vec2 max, f32 line_width, Color color) {
     vec2 top_left = {min.x, max.y};
     vec2 top_right = {max.x, max.y};
     vec2 bottom_left = {min.x, min.y};

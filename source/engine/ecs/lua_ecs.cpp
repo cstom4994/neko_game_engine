@@ -7,9 +7,9 @@ namespace ecs {
 
 using namespace luabind;
 
-int EcsComponentHas(Entity* e, int tid) { return e->components[tid] < ENTITY_MAX_COMPONENTS; }
+int EcsComponentHas(EntityData* e, int tid) { return e->components[tid] < ENTITY_MAX_COMPONENTS; }
 
-void EcsComponentClear(Entity* e, int tid) {
+void EcsComponentClear(EntityData* e, int tid) {
     int i = e->components[tid];
     if (i < ENTITY_MAX_COMPONENTS) {                 // 组件存在
         e->components[tid] = ENTITY_MAX_COMPONENTS;  // 移除组件
@@ -18,7 +18,7 @@ void EcsComponentClear(Entity* e, int tid) {
     }
 }
 
-int EcsComponentAlloc(EcsWorld* world, Entity* e, int tid) {
+int EcsComponentAlloc(EcsWorld* world, EntityData* e, int tid) {
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {  // 组件已存在
         LOG_WARN("CEntity({}) already exist component({})", e - world->entity_buf, tid);
         return -1;
@@ -87,15 +87,15 @@ void EcsComponentDirty(EcsWorld* world, int tid, int cid) {
     return;
 }
 
-Entity* EcsEntityAlloc(EcsWorld* world) {
-    Entity* e{};
+EntityData* EcsEntityAlloc(EcsWorld* world) {
+    EntityData* e{};
     int eid = world->entity_free_id;
     if (eid < 0) {  // 如果 entity_free 是负值 表示当前没有可用的实体位
         int i = 0;
         int oldcap = world->entity_cap;  // 原实体容量
         int newcap = oldcap * 2;         // 现实体容量为两倍
         world->entity_cap = newcap;
-        world->entity_buf = (Entity*)mem_realloc(world->entity_buf, newcap * sizeof(world->entity_buf[0]));
+        world->entity_buf = (EntityData*)mem_realloc(world->entity_buf, newcap * sizeof(world->entity_buf[0]));
         world->entity_free_id = oldcap + 1;  // 更新闲置实体id
 
         e = &world->entity_buf[oldcap];  // 可用实体位
@@ -118,7 +118,7 @@ Entity* EcsEntityAlloc(EcsWorld* world) {
     return e;
 }
 
-void EcsEntityDead(EcsWorld* world, Entity* e) {
+void EcsEntityDead(EcsWorld* world, EntityData* e) {
     if (e->components_count < 0) {  // 检查实体组件数量components_count是否小于0 如果是则表示该实体已经被标记为死亡或无效
         assert(e->next != LINK_NONE);
         return;
@@ -134,7 +134,7 @@ void EcsEntityDead(EcsWorld* world, Entity* e) {
     world->entity_dead_id = e - world->entity_buf;
 }
 
-void EcsEntityFree(EcsWorld* world, Entity* e) {
+void EcsEntityFree(EcsWorld* world, EntityData* e) {
     assert(e->components_count == -1);  //
     e->next = world->entity_free_id;
     world->entity_free_id = e - world->entity_buf;
@@ -171,15 +171,15 @@ int EcsGetTid(lua_State* L, const char* name) {
     return id;
 }
 
-Entity* EcsGetEnt(lua_State* L, EcsWorld* w, int eid) {
+EntityData* EcsGetEnt(lua_State* L, EcsWorld* w, int eid) {
     neko_assert(eid < w->entity_cap && "eid is invalid");
-    Entity* e = &w->entity_buf[eid];
+    EntityData* e = &w->entity_buf[eid];
     neko_assert(e->components_count >= 0 && "entity is dead");
     return e;
 }
 
-Entity* EcsGetEnt_i(lua_State* L, EcsWorld* w, int stk) {
-    Entity* e;
+EntityData* EcsGetEnt_i(lua_State* L, EcsWorld* w, int stk) {
+    EntityData* e;
     int eid = luaL_checkinteger(L, stk);
     luaL_argcheck(L, eid < w->entity_cap, 2, "eid is invalid");
     e = &w->entity_buf[eid];
@@ -187,13 +187,13 @@ Entity* EcsGetEnt_i(lua_State* L, EcsWorld* w, int stk) {
     return e;
 }
 
-int EcsEntityGetCid(Entity* e, int tid) {
+int EcsEntityGetCid(EntityData* e, int tid) {
     int i = e->components[tid];
     if (i >= ENTITY_MAX_COMPONENTS) return -1;
     return e->components_index[i];
 }
 
-void EcsEntityUpdateCid(Entity* e, int tid, int cid) {
+void EcsEntityUpdateCid(EntityData* e, int tid, int cid) {
     int i = e->components[tid];
     assert(i < ENTITY_MAX_COMPONENTS);
     e->components_index[i] = cid;
@@ -206,7 +206,7 @@ void EcsWorldInit_i(EcsWorld* world) {
     world->entity_free_id = 0;
     world->entity_dead_id = LINK_NIL;
     world->type_idx = 0;
-    world->entity_buf = (Entity*)mem_alloc(world->entity_cap * sizeof(world->entity_buf[0]));
+    world->entity_buf = (EntityData*)mem_alloc(world->entity_cap * sizeof(world->entity_buf[0]));
     for (int i = 0; i < world->entity_cap - 1; i++) {  // 更新 entity_buf 的初始状态
         world->entity_buf[i].components_count = -1;
         world->entity_buf[i].next = i + 1;
@@ -270,14 +270,14 @@ int EcsRegister(lua_State* L, const_str name) {
     return tid;
 }
 
-Entity* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
+EntityData* EcsEntityNew(lua_State* L, const LuaRef& ref, lua_CFunction gc) {
 
     lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
 
     EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
 
-    Entity* e = EcsEntityAlloc(w);
+    EntityData* e = EcsEntityAlloc(w);
     int eid = e - w->entity_buf;
     lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
     int components = lua_gettop(L);
@@ -353,19 +353,19 @@ void EcsEntityDel(lua_State* L, int eid) {
     int ecs_ud = lua_gettop(L);
 
     EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
-    Entity* e = EcsGetEnt(L, w, eid);
+    EntityData* e = EcsGetEnt(L, w, eid);
     EcsEntityDead(w, e);
 
     lua_pop(L, 1);
 }
 
-int EcsComponentSet(lua_State* L, Entity* e, const char* name, const LuaRef& ref) {
+int EcsComponentSet(lua_State* L, EntityData* e, const char* name, const LuaRef& ref) {
     int tid = EcsGetTid(L, name);
     neko_assert(tid >= TYPE_MIN_ID);
     return EcsComponentSet(L, e, tid, ref);
 }
 
-int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref) {
+int EcsComponentSet(lua_State* L, EntityData* e, int tid, const LuaRef& ref) {
     lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
     EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
@@ -404,12 +404,12 @@ int EcsComponentSet(lua_State* L, Entity* e, int tid, const LuaRef& ref) {
     return cid;
 }
 
-LuaRef EcsComponentGet(lua_State* L, Entity* e, const char* name) {
+LuaRef EcsComponentGet(lua_State* L, EntityData* e, const char* name) {
     int tid = EcsGetTid(L, name);
     return EcsComponentGet(L, e, tid);
 }
 
-LuaRef EcsComponentGet(lua_State* L, Entity* e, int tid) {
+LuaRef EcsComponentGet(lua_State* L, EntityData* e, int tid) {
 
     lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
     int ecs_ud = lua_gettop(L);
