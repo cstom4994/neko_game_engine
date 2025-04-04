@@ -1266,7 +1266,7 @@ using Value = std::variant<std::monostate,  // LUA_TNIL
                            std::string,     // LUA_TSTRING
                            lua_CFunction    // LUA_TFUNCTION
                            >;
-using Table = std::map<std::string, Value>;
+using LuaValueTable = std::map<std::string, Value>;
 
 inline void Set(lua_State *L, int idx, Value &v) {
     switch (lua_type(L, idx)) {
@@ -1306,7 +1306,7 @@ inline void Set(lua_State *L, int idx, Value &v) {
     }
 }
 
-inline void Set(lua_State *L, int idx, Table &t) {
+inline void Set(lua_State *L, int idx, LuaValueTable &t) {
     luaL_checktype(L, idx, LUA_TTABLE);
     lua_pushnil(L);
     while (lua_next(L, idx)) {
@@ -1345,7 +1345,7 @@ inline void Get(lua_State *L, const Value &v) {
             v);
 }
 
-inline void Get(lua_State *L, const Table &t) {
+inline void Get(lua_State *L, const LuaValueTable &t) {
     lua_createtable(L, 0, static_cast<int>(t.size()));
     for (const auto &[k, v] : t) {
         lua_pushlstring(L, k.data(), k.size());

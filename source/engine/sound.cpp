@@ -3,7 +3,7 @@
 
 #include "base/common/profiler.hpp"
 #include "base/common/vfs.hpp"
-#include "base/scripting/reflection.hpp"
+#include "base/common/reflection.hpp"
 #include "engine/bootstrap.h"
 
 void *vfs_for_miniaudio();

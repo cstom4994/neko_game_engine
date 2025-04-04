@@ -7,6 +7,8 @@ extern "C" {
 #include "ltable.h"
 }
 
+namespace Neko {
+
 // 将TValue压入栈
 void PushTValue(lua_State *L, const TValue *v) {
     int t = ttype(v);                   // 获取值的类型
@@ -59,3 +61,5 @@ int LuaTableHashNext(const Table *t, int index) {
     }
     return 0;
 }
+
+}  // namespace Neko

@@ -2351,93 +2351,6 @@ static void typeclosure(lua_State *L) {
 
 #endif
 
-int wrap_tiled_add(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    tiled_add(*ent);
-    return 0;
-}
-
-int wrap_tiled_remove(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    tiled_remove(*ent);
-    return 0;
-}
-int wrap_tiled_has(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    bool has = tiled_has(*ent);
-    lua_pushboolean(L, has);
-    return 1;
-}
-int wrap_tiled_set_map(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    const_str name = lua_tostring(L, 2);
-    tiled_set_map(*ent, name);
-    return 0;
-}
-int wrap_tiled_get_map(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    const_str name = tiled_get_map(*ent);
-    lua_pushstring(L, name);
-    return 1;
-}
-int wrap_tiled_map_edit(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    u32 layer = lua_tointeger(L, 2);
-    u32 x = lua_tointeger(L, 3);
-    u32 y = lua_tointeger(L, 4);
-    u32 t = lua_tointeger(L, 5);
-    tiled_map_edit(*ent, layer, x, y, t);
-    return 0;
-}
-int wrap_tiled_get_obj(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    tiled_get_object_groups(*ent, L);
-    return 1;
-}
-
-std::vector<TiledMapWall> GetWalls(lua_State *L, int index) {
-    std::vector<TiledMapWall> walls;
-    if (!lua_istable(L, index)) {
-        luaL_error(L, "Expected a table at index %d", index);
-        return walls;
-    }
-    lua_pushnil(L);  // 初始 key
-    while (lua_next(L, index) != 0) {
-        if (lua_istable(L, -1)) {
-            TiledMapWall wall;
-
-            lua_getfield(L, -1, "x");
-            if (lua_isnumber(L, -1)) wall.x = (float)lua_tonumber(L, -1);
-            lua_pop(L, 1);
-
-            lua_getfield(L, -1, "y");
-            if (lua_isnumber(L, -1)) wall.y = (float)lua_tonumber(L, -1);
-            lua_pop(L, 1);
-
-            lua_getfield(L, -1, "width");
-            if (lua_isnumber(L, -1)) wall.width = (float)lua_tonumber(L, -1);
-            lua_pop(L, 1);
-
-            lua_getfield(L, -1, "height");
-            if (lua_isnumber(L, -1)) wall.height = (float)lua_tonumber(L, -1);
-            lua_pop(L, 1);
-
-            walls.push_back(wall);
-        }
-        lua_pop(L, 1);  // 弹出 value
-    }
-
-    return walls;
-}
-
-int wrap_tiled_make_collision(lua_State *L) {
-    // return tiled_make_collision(L);
-    Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
-    std::vector<TiledMapWall> walls = GetWalls(L, 2);
-    tiled_make_collision(physics, walls);
-    return 0;
-}
-
 int wrap_EntityCreate(lua_State *L) {
     String name = luax_opt_string(L, 1, "something_unknown_from_lua");
     CEntity ent = entity_create(name);
@@ -2866,6 +2779,7 @@ int wrap_camera_get_inverse_view_matrix(lua_State *L) {
     return 1;
 }
 
+#if 1
 int wrap_transform_set_position(lua_State *L) {
     CEntity *ent = LuaGet<CEntity>(L, 1);
     vec2 *v = LuaGet<vec2>(L, 2);
@@ -2970,6 +2884,7 @@ int wrap_transform_set_save_filter_rec(lua_State *L) {
     transform_set_save_filter_rec(*ent, v);
     return 0;
 }
+#endif
 
 int wrap_luamat3(lua_State *L) {
     f32 v1 = LuaGet<f32>(L, 1);
@@ -3261,16 +3176,6 @@ static int open_neko(lua_State *L) {
             {"b2_world", neko_b2_world},
 #endif
 
-            {"tiled_add", wrap_tiled_add},
-
-            {"tiled_remove", wrap_tiled_remove},
-            {"tiled_has", wrap_tiled_has},
-            {"tiled_set_map", wrap_tiled_set_map},
-            {"tiled_get_map", wrap_tiled_get_map},
-            {"tiled_map_edit", wrap_tiled_map_edit},
-            {"tiled_get_obj", wrap_tiled_get_obj},
-            {"tiled_make_collision", wrap_tiled_make_collision},
-
             {"EntityCreate", wrap_EntityCreate},
             {"EntityDestroy", wrap_EntityDestroy},
             {"EntityDestroyAll", wrap_EntityDestroyAll},
@@ -3357,6 +3262,7 @@ static int open_neko(lua_State *L) {
             {"camera_get_viewport_height", wrap_camera_get_viewport_height},
             {"camera_get_inverse_view_matrix", wrap_camera_get_inverse_view_matrix},
 
+#if 1
             {"transform_set_position", wrap_transform_set_position},
             {"transform_get_position", wrap_transform_get_position},
             {"transform_translate", wrap_transform_translate},
@@ -3368,12 +3274,12 @@ static int open_neko(lua_State *L) {
             {"transform_get_world_position", wrap_transform_get_world_position},
             {"transform_get_world_rotation", wrap_transform_get_world_rotation},
             {"transform_get_world_scale", wrap_transform_get_world_scale},
-
             {"transform_get_matrix", wrap_transform_get_matrix},
             {"transform_local_to_world", wrap_transform_local_to_world},
             {"transform_world_to_local", wrap_transform_world_to_local},
             {"transform_get_dirty_count", wrap_transform_get_dirty_count},
             {"transform_set_save_filter_rec", wrap_transform_set_save_filter_rec},
+#endif
 
             {"luamat3", wrap_luamat3},
             {"mat3_identity", wrap_mat3_identity},

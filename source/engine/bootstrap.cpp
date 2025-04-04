@@ -25,7 +25,7 @@
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
 #include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/reflection.hpp"
+#include "base/common/reflection.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/renderer/renderer.h"
@@ -208,7 +208,7 @@ void CL::game_draw() {
         }
 
         // script_draw_all();
-        tiled_draw_all();
+        the<Tiled>().tiled_draw_all();
 
         the<EventHandler>().EventPushLuaType(OnDraw);
 
@@ -516,12 +516,14 @@ end
     auto &input = Neko::the<Input>();
     input.init();
 
+    Neko::modules::initialize<Tiled>();
+
     entity_init();
     transform_init();
     camera_init();
     batch = batch_init(state.batch_vertex_capacity);
     sprite_init();
-    tiled_init();
+    the<Tiled>().tiled_init();
     font_init();
     imgui_init(window->glfwWindow());
     console_init();
@@ -634,7 +636,7 @@ end
             {EventMask::Update, sprite_update_all},
             {EventMask::Update, batch_update_all},
             {EventMask::Update, sound_update_all},
-            {EventMask::Update, tiled_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
             {EventMask::Update, edit_update_all},
 
             {EventMask::PostUpdate,
@@ -785,7 +787,7 @@ void CL::fini() {
     physics_fini();
     sound_fini();
     console_fini();
-    tiled_fini();
+    the<Tiled>().tiled_fini();
     sprite_fini();
     batch_fini(batch);
     camera_fini();

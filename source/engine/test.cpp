@@ -21,7 +21,7 @@
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/reflection.hpp"
+#include "base/common/reflection.hpp"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
 

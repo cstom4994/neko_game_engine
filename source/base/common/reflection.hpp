@@ -19,7 +19,7 @@ namespace reflection {
 template <unsigned short N>
 struct cstring {
     constexpr explicit cstring(std::string_view str) noexcept : cstring{str, std::make_integer_sequence<unsigned short, N>{}} {}
-    constexpr const char* data() const noexcept { return chars_; }
+    constexpr const char *data() const noexcept { return chars_; }
     constexpr unsigned short size() const noexcept { return N; }
     constexpr operator std::string_view() const noexcept { return {data(), size()}; }
     template <unsigned short... I>
@@ -29,7 +29,7 @@ struct cstring {
 template <>
 struct cstring<0> {
     constexpr explicit cstring(std::string_view) noexcept {}
-    constexpr const char* data() const noexcept { return nullptr; }
+    constexpr const char *data() const noexcept { return nullptr; }
     constexpr unsigned short size() const noexcept { return 0; }
     constexpr operator std::string_view() const noexcept { return {}; }
 };
@@ -63,7 +63,7 @@ constexpr auto name_v = name<T>();
 
 struct DummyFlag {};
 template <typename Enum, typename T, Enum enumValue>
-inline int get_enum_value(HashMap<String>& values) {
+inline int get_enum_value(HashMap<String> &values) {
 #if defined _MSC_VER && !defined __clang__
     std::string func(__FUNCSIG__);
     std::string mark = "DummyFlag";
@@ -97,12 +97,12 @@ inline int get_enum_value(HashMap<String>& values) {
 }
 
 template <typename Enum, int min_value, int... ints>
-void guess_enum_range(HashMap<String>& values, const std::integer_sequence<int, ints...>&) {
+void guess_enum_range(HashMap<String> &values, const std::integer_sequence<int, ints...> &) {
     auto dummy = {get_enum_value<Enum, DummyFlag, (Enum)(ints + min_value)>(values)...};
 }
 
 template <typename Enum, int... ints>
-void guess_enum_bit_range(HashMap<String>& values, const std::integer_sequence<int, ints...>&) {
+void guess_enum_bit_range(HashMap<String> &values, const std::integer_sequence<int, ints...> &) {
     auto dummy = {get_enum_value<Enum, DummyFlag, (Enum)0>(values), get_enum_value<Enum, DummyFlag, (Enum)(1 << (int)ints)>(values)...};
 }
 
@@ -157,10 +157,10 @@ struct __Any {
     constexpr __Any(int) {}
     template <typename T>
         requires std::is_copy_constructible_v<T>
-    constexpr operator T&() const;
+    constexpr operator T &() const;
     template <typename T>
         requires std::is_move_constructible_v<T>
-    constexpr operator T&&() const;
+    constexpr operator T &&() const;
     template <typename T>
         requires(!std::is_copy_constructible_v<T> && !std::is_move_constructible_v<T>)
     constexpr operator T() const;
@@ -170,7 +170,7 @@ struct __Any {
 #if !defined(_MSC_VER) || 0  // 我不知道为什么 if constexpr (!requires { T{Args...}; }) {...} 方法会导致目前版本的vs代码感知非常卡
 
 template <typename T>
-consteval size_t struct_size(auto&&... Args) {
+consteval size_t struct_size(auto &&...Args) {
     if constexpr (!requires { T{Args...}; }) {
         return sizeof...(Args) - 1;
     } else {
@@ -258,15 +258,15 @@ constexpr auto field_type_impl(T object) {
 
 #define STRUCT_FIELD_ACCESS_DEF(N)                                                                          \
     template <std::size_t I>                                                                                \
-    constexpr auto&& __struct_field_access_impl(auto&& my_struct, std::integral_constant<std::size_t, N>) { \
-        auto&& [NEKO_PP_PARAMS(x, N)] = std::forward<decltype(my_struct)>(my_struct);                       \
+    constexpr auto &&__struct_field_access_impl(auto &&my_struct, std::integral_constant<std::size_t, N>) { \
+        auto &&[NEKO_PP_PARAMS(x, N)] = std::forward<decltype(my_struct)>(my_struct);                       \
         return std::get<I>(std::forward_as_tuple(NEKO_PP_PARAMS(x, N)));                                    \
     }
 
 NEKO_PP_FOR_EACH(STRUCT_FIELD_ACCESS_DEF, 63)
 
 template <std::size_t I>
-constexpr auto&& field_access(auto&& object) {
+constexpr auto &&field_access(auto &&object) {
     using T = std::remove_cvref_t<decltype(object)>;
     constexpr auto N = field_count<T>;
     return __struct_field_access_impl<I>(object, std::integral_constant<std::size_t, N>{});
@@ -289,6 +289,127 @@ using field_type = typename decltype(field_type_impl<T, I>(std::declval<T>()))::
 template <typename T, std::size_t I>
     requires std::is_aggregate_v<T>
 static constexpr auto field_name = field_name_impl<T, I>();
+
+template <typename T>
+struct function_traits;
+
+// 普通函数指针
+template <typename Ret, typename... Args>
+struct function_traits<Ret (*)(Args...)> {
+    using return_type = Ret;
+    using args_type = std::tuple<Args...>;
+    static constexpr size_t arity = sizeof...(Args);
+    using pointer = Ret (*)(Args...);
+    using std_function = std::function<Ret(Args...)>;
+};
+
+// 函数对象 如lambda
+template <typename T>
+struct function_traits : function_traits<decltype(&T::operator())> {};
+
+template <typename ClassType, typename Ret, typename... Args>
+struct function_traits<Ret (ClassType::*)(Args...) const> {
+    using return_type = Ret;
+    using args_type = std::tuple<Args...>;
+    static constexpr size_t arity = sizeof...(Args);
+    using pointer = Ret (*)(Args...);
+    using std_function = std::function<Ret(Args...)>;
+};
+
+template <typename F>
+typename function_traits<F>::std_function to_function(F &lambda) {
+    return typename function_traits<F>::std_function(lambda);
+}
+
+#define STRUCT_APPLYER_DEF(N)                                                              \
+    template <class T, class F>                                                            \
+    auto __struct_apply_impl(T &&my_struct, F f, std::integral_constant<std::size_t, N>) { \
+        auto &&[NEKO_PP_PARAMS(x, N)] = std::forward<T>(my_struct);                        \
+        return std::invoke(f, NEKO_PP_PARAMS(x, N));                                       \
+    }
+
+NEKO_PP_FOR_EACH(STRUCT_APPLYER_DEF, 63)
+
+// struct_apply 把结构体解包为变长参数调用可调用对象ApplyFunc
+template <class T, class F>
+auto struct_apply(T &&_struct, F f) {
+    constexpr auto N = field_count<typename std::decay<T>::type>;
+    return __struct_apply_impl(std::forward<T>(_struct), f, std::integral_constant<std::size_t, N>{});
+}
+
+// StructTransformMeta 把结构体各成员的类型作为变长参数调用元函数 F
+template <class T, template <class...> class F>
+struct struct_transform_meta {
+    struct __fake_applyer {
+        template <class... Args>
+        auto operator()(Args... args) -> F<decltype(args)...>;
+    };
+    using type = decltype(struct_apply(std::declval<T>(), __fake_applyer()));
+};
+
+template <class T>
+struct StructMetaData {
+    using U = std::void_t<>;
+    inline constexpr auto __gen_struct_meta() { return std::make_tuple(); }
+};
+
+#define NEKO_STRUCT(__struct, ...)                                                         \
+    template <>                                                                            \
+    struct ::Neko::reflection::StructMetaData<__struct> {                                  \
+        using U = __struct;                                                                \
+        inline constexpr auto __gen_struct_meta() { return std::make_tuple(__VA_ARGS__); } \
+    };
+
+// 这里_F*用于生成__gen_struct_meta内tuple叠入的tuple
+#define _F(field) (std::make_tuple(#field, &U::field))
+#define _Fs(field, ...) (std::make_tuple(#field, &U::field, std::make_tuple(__VA_ARGS__)))
+
+#define FIELD_TYPES() bool, i32, f32, f32 *, String
+
+template <typename T, typename Fields, typename F, size_t... Is>
+inline constexpr void struct_foreach_impl(T &&obj, Fields &&fields, F &&f, std::index_sequence<Is...>) {
+    auto ff = [&](auto index) {
+        auto &t = std::get<index>(fields);
+        constexpr static std::size_t t_size = std::tuple_size_v<std::decay_t<decltype(t)>>;
+        if constexpr (t_size == 3)
+            std::apply([&](auto &&arg1, auto &&arg2, auto &&info) { f(arg1, obj.*arg2, info); }, t);
+        else if constexpr (t_size == 2)
+            std::apply([&](auto &&arg1, auto &&arg2) { f(arg1, obj.*arg2, std::make_tuple("default")); }, t);
+        // std::cout << "^^ 傻逼 " << std::tuple_size_v<std::decay_t<decltype(fields)>> << std::endl;
+    };
+    // 逗号双层表达式 因为ff没有返回值则Is作为里层逗号表达式的结果
+    auto _ = ((ff(std::integral_constant<size_t, Is>{}), Is), ...);
+    std::ignore = _;
+}
+
+template <typename T, typename F>
+inline constexpr void struct_foreach(T &&obj, F &&f) {
+    // 获取宏生成的元数据 tuple
+    constexpr auto fields = StructMetaData<std::decay_t<T>>{}.__gen_struct_meta();
+    // 调用 neko_struct_foreach_impl 函数 并传递 obj/fields/f
+    // std::make_index_sequence 来确认范围
+    struct_foreach_impl(std::forward<T>(obj), fields, std::forward<F>(f), std::make_index_sequence<std::tuple_size_v<decltype(fields)>>{});
+}
+
+template <typename T>
+constexpr bool is_refl_struct = std::is_class_v<T> && requires {
+    typename StructMetaData<T>::U;                                   // 检查是否定义了 U
+    { StructMetaData<T>{}.__gen_struct_meta() };                     // 检查 __gen_struct_meta
+} && !std::is_same_v<typename StructMetaData<T>::U, std::void_t<>>;  // 确保 U 不为 std::void_t
+
+template <typename T, typename F, typename Fields = std::tuple<>>
+void struct_foreach_rec(F func, T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
+    if constexpr (reflection::is_refl_struct<std::decay_t<T>>) {
+        reflection::struct_foreach(obj, [&](auto &&fieldName, auto &&value, auto &&info) { struct_foreach_rec(func, value, depth + 1, fieldName, info); });
+    } else {
+        auto f = [&]<typename S>(const char *name, auto &var, S &t) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
+                func(name, var, t, fields);
+            }
+        };
+        std::apply([&](auto &&...args) { (f(fieldName, obj, args), ...); }, std::tuple<FIELD_TYPES()>());
+    }
+}
 
 }  // namespace reflection
 

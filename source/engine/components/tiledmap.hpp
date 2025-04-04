@@ -133,8 +133,6 @@ void tiled_render_draw(tiled_renderer* renderer);
 struct CTiledMap;
 struct Physics;
 
-int tiled_render(CTiledMap* tiled);
-
 void tiled_add(CEntity ent);
 void tiled_remove(CEntity ent);
 bool tiled_has(CEntity ent);
@@ -148,6 +146,9 @@ public:
     void tiled_fini();
     int tiled_update_all(Event evt);
     void tiled_draw_all();
+
+private:
+    int RenderMap(CTiledMap* tiled);
 };
 
 struct TiledMapWall {
@@ -159,6 +160,9 @@ struct TiledMapWall {
 
 int tiled_get_object_groups(CEntity ent, lua_State* L);
 b2Body* tiled_make_collision(Physics* physics, const std::vector<TiledMapWall>& walls);
+
+int wrap_tiled_make_collision(lua_State* L);
+int wrap_tiled_get_obj(lua_State* L);
 
 class CTiledMap : public CEntityBase {
 public:

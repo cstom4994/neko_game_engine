@@ -9,6 +9,7 @@
 #include "engine/ecs/entitybase.hpp"
 #include "engine/renderer/shader.h"
 #include "engine/physics.h"
+#include "engine/scripting/lua_util.h"
 
 // deps
 #include <box2d/box2d.h>
@@ -1048,7 +1049,7 @@ void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
     tiled_map_edit_w(tiled, layer_idx, x, y, id);
 }
 
-int tiled_render(CTiledMap *tiled) {
+int Tiled::RenderMap(CTiledMap *tiled) {
 
     PROFILE_FUNC();
 
@@ -1077,13 +1078,13 @@ int tiled_render(CTiledMap *tiled) {
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
                         TiledQuad quad = {.tileset_id = tile->tileset_id,
-                                             .texture = tileset->texture,
-                                             .texture_size = {(f32)tileset->width, (f32)tileset->height},
-                                             .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
-                                             .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
-                                             .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
-                                             .color = layer->tint,
-                                             .use_texture = true};
+                                          .texture = tileset->texture,
+                                          .texture_size = {(f32)tileset->width, (f32)tileset->height},
+                                          .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
+                                          .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
+                                          .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
+                                          .color = layer->tint,
+                                          .use_texture = true};
                         tiled_render_push(tiled->render, quad);
                     }
                 }
@@ -1096,9 +1097,9 @@ int tiled_render(CTiledMap *tiled) {
             for (u32 ii = 0; ii < map.object_groups[i].objects.len; ii++) {
                 object_t *object = &group->objects[ii];
                 TiledQuad quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
-                                     .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
-                                     .color = group->color,
-                                     .use_texture = false};
+                                  .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+                                  .color = group->color,
+                                  .use_texture = false};
                 tiled_render_push(tiled->render, quad);
             }
             tiled_render_draw(tiled->render);  // 一层渲染一次
@@ -1137,6 +1138,17 @@ void Tiled::tiled_init() {
 
     bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &CTiledMap::tiled_shader);
     error_assert(ok);
+
+    auto type = BUILD_TYPE(Tiled)
+                        .Method("tiled_add", &tiled_add)                   //
+                        .Method("tiled_remove", &tiled_remove)             //
+                        .Method("tiled_has", &tiled_has)                   //
+                        .Method("tiled_set_map", &tiled_set_map)           //
+                        .Method("tiled_get_map", &tiled_get_map)           //
+                        .Method("tiled_map_edit", &tiled_map_edit)         //
+                        .CClosure({{"tiled_get_obj", wrap_tiled_get_obj},  //
+                                   {"tiled_make_collision", wrap_tiled_make_collision}})
+                        .Build();  //
 }
 
 void Tiled::tiled_fini() {
@@ -1165,7 +1177,7 @@ int Tiled::tiled_update_all(Event evt) {
 
 void Tiled::tiled_draw_all() {
 
-    Tiled__pool->ForEach([](CTiledMap *tiled) { tiled_render(tiled); });
+    Tiled__pool->ForEach([this](CTiledMap *tiled) { this->RenderMap(tiled); });
 }
 
 void tiled_set_map(CEntity ent, const char *str) {
@@ -1275,4 +1287,53 @@ b2Body *create_collision(b2World *world, const std::vector<TiledMapWall> &walls,
 b2Body *tiled_make_collision(Physics *physics, const std::vector<TiledMapWall> &walls) {
     b2Body *collisionBody = create_collision(physics->world, walls, physics->meter);
     return collisionBody;
+}
+
+int wrap_tiled_get_obj(lua_State *L) {
+    CEntity *ent = LuaGet<CEntity>(L, 1);
+    tiled_get_object_groups(*ent, L);
+    return 1;
+}
+
+std::vector<TiledMapWall> GetWalls(lua_State *L, int index) {
+    std::vector<TiledMapWall> walls;
+    if (!lua_istable(L, index)) {
+        luaL_error(L, "Expected a table at index %d", index);
+        return walls;
+    }
+    lua_pushnil(L);  // 初始 key
+    while (lua_next(L, index) != 0) {
+        if (lua_istable(L, -1)) {
+            TiledMapWall wall;
+
+            lua_getfield(L, -1, "x");
+            if (lua_isnumber(L, -1)) wall.x = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "y");
+            if (lua_isnumber(L, -1)) wall.y = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "width");
+            if (lua_isnumber(L, -1)) wall.width = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "height");
+            if (lua_isnumber(L, -1)) wall.height = (float)lua_tonumber(L, -1);
+            lua_pop(L, 1);
+
+            walls.push_back(wall);
+        }
+        lua_pop(L, 1);  // 弹出 value
+    }
+
+    return walls;
+}
+
+int wrap_tiled_make_collision(lua_State *L) {
+    // return tiled_make_collision(L);
+    Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
+    std::vector<TiledMapWall> walls = GetWalls(L, 2);
+    tiled_make_collision(physics, walls);
+    return 0;
 }
