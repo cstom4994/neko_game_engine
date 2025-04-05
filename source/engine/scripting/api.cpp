@@ -945,7 +945,7 @@ struct udata<neko_fontbatch_t> {
 #if 0
 
 DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
-    // Neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { Neko::imgui::Auto(value, std::string(field.name)); });
+    // Neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { Neko::ImGuiWrap::Auto(value, std::string(field.name)); });
     Neko::reflection::Any v = var;
     v.foreach ([](std::string_view name, Neko::reflection::Any &value) {
         // if (value.GetType() == Neko::reflection::type_of<std::string_view>()) {
@@ -953,7 +953,7 @@ DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
         // } else if (value.GetType() == Neko::reflection::type_of<std::size_t>()) {
         //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
         // }
-        Neko::imgui::Auto(value, std::string(name));
+        Neko::ImGuiWrap::Auto(value, std::string(name));
     });
 }
 DEFINE_IMGUI_END();
@@ -2225,18 +2225,6 @@ static int l_transform_get_world_matrix(lua_State *L) {
     return 1;
 }
 
-static int l_gui_has_focus(lua_State *L) {
-    bool has = gui_has_focus();
-    lua_pushboolean(L, has);
-    return 1;
-}
-
-static int l_gui_captured_event(lua_State *L) {
-    bool has = gui_captured_event();
-    lua_pushboolean(L, has);
-    return 1;
-}
-
 void inspector_set_visible(bool visible) { the<CL>().inspector->visible = visible; }
 bool inspector_get_visible() { return the<CL>().inspector->visible; }
 
@@ -2725,8 +2713,6 @@ static int open_neko(lua_State *L) {
             {"bbox_contains", l_bbox_contains},
             {"bbox_contains2", l_bbox_contains2},
             {"bbox_transform", l_bbox_transform},
-            {"gui_has_focus", l_gui_has_focus},
-            {"IsGuiCapturedEvent", l_gui_captured_event},
             {"transform_get_world_matrix", l_transform_get_world_matrix},
 
             // audio
@@ -2934,9 +2920,6 @@ void open_neko_api(lua_State *L) {
 
     open_db(L);
     lua_setfield(L, -2, "db");
-
-    open_imgui(L);
-    lua_setfield(L, -2, "imgui_obsolete");
 
     lua_pop(L, 1);
 

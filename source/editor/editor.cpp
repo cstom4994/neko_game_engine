@@ -18,7 +18,7 @@
 #include "engine/graphics.h"
 #include "engine/window.h"
 
-using namespace Neko::imgui;
+using namespace Neko::ImGuiWrap;
 
 template <>
 struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
@@ -192,7 +192,7 @@ void RenderConsoleLogs() noexcept {
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, entry.alpha);
-            Neko::imgui::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
+            Neko::ImGuiWrap::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
             ImGui::PopStyleVar();
 
             currentPos.y += entry.height;

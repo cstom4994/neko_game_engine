@@ -371,7 +371,7 @@ function CEnemy:draw()
     if self.brain ~= nil then
         local info = self.brain:info(1)
 
-        local ImGui = neko.imgui_obsolete
+        local ImGui = neko.imgui
         local window<close> = ImGuiWindow("EnemyAI")
         if window then
             if ImGui.Checkbox("绘制到世界", self.draw_info_on_world) then

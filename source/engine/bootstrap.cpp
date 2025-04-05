@@ -173,7 +173,7 @@ DEFINE_IMGUI_END()
 
 void state_inspector(CL::State &cvar) {
     auto func = []<typename S, typename Fields>(const char *name, auto &var, S &t, Fields &&fields) {
-        Neko::imgui::Auto(var, name);
+        Neko::ImGuiWrap::Auto(var, name);
         ImGui::Text("    [%s]", std::get<0>(fields));
     };
     reflection::struct_foreach_rec(func, cvar);
@@ -265,7 +265,7 @@ void CL::game_draw() {
 
             draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
 
-            Neko::imgui::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
+            Neko::ImGuiWrap::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
         }
 
         auto ui = this->ui;
@@ -285,7 +285,7 @@ void CL::game_draw() {
                 state_inspector(state);
 
                 mat3 view = camera_get_inverse_view_matrix();
-                imgui::Auto(view);
+                ImGuiWrap::Auto(view);
             }
             ImGui::End();
         }
@@ -332,7 +332,7 @@ void CL::game_draw() {
         }
     }
 
-    imgui_draw_post();
+    the<ImGuiRender>().imgui_draw_post();
 
     window->SwapBuffer();
 }
@@ -519,6 +519,7 @@ end
     Neko::modules::initialize<Batch>();
     Neko::modules::initialize<Sprite>();
     Neko::modules::initialize<Tiled>();
+    Neko::modules::initialize<ImGuiRender>();
     Neko::modules::initialize<Edit>();
     Neko::modules::initialize<DebugDraw>();
 
@@ -529,7 +530,7 @@ end
     the<Sprite>().sprite_init();
     the<Tiled>().tiled_init();
     font_init();
-    imgui_init(window->glfwWindow());
+    the<ImGuiRender>().imgui_init(window->glfwWindow());
     sound_init();
     physics_init();
     the<Edit>().edit_init();
@@ -624,8 +625,8 @@ end
              [](Event) -> int {
                  the<EventHandler>().EventPushLuaType(OnPreUpdate);
                  return 0;
-             }},                                         //
-            {EventMask::PreUpdate, gui_pre_update_all},  //
+             }},  //
+            {EventMask::PreUpdate, [](Event evt) -> int { return the<ImGuiRender>().imgui_draw_pre(); }},
 
             {EventMask::Update,
              [](Event) -> int {
@@ -795,7 +796,7 @@ void CL::fini() {
     the<Camera>().camera_fini();
     the<Transform>().transform_fini();
     the<Entity>().entity_fini();
-    imgui_fini();
+    the<ImGuiRender>().imgui_fini();
     auto &input = Neko::the<Input>();
     input.fini();
 

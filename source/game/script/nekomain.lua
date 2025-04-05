@@ -2,7 +2,7 @@
 -- hot_require 'nekogame'
 mu = neko.ui
 db = neko.db
-imgui = neko.imgui_obsolete
+imgui = neko.imgui
 
 function neko.__define_default_callbacks()
     neko.before_quit = function()
@@ -15,20 +15,20 @@ end
 -- misc
 ns.app = {}
 function ns.app.OnKeyDown(key)
-    if neko.gui_has_focus() then
+    if key == "KC_F1" then
+        ns.timing.set_paused(not ns.edit.get_enabled())
+        ns.edit.set_enabled(not ns.edit.get_enabled())
+        neko.show_mouse(ns.edit.get_enabled())
+    end
+
+    if neko.imgui.IsCapturedEvent() then
         return
     end
 
     local keyname = key
 
-    if keyname == "KC_F1" then
-
-    elseif keyname == "KC_F2" then
+    if keyname == "KC_F2" then
         ns.inspector.set_visible(not ns.inspector.get_visible())
-    elseif keyname == "KC_E" then
-        ns.timing.set_paused(not ns.edit.get_enabled())
-        ns.edit.set_enabled(not ns.edit.get_enabled())
-        neko.show_mouse(ns.edit.get_enabled())
     end
 
     if ns.edit.get_enabled() then

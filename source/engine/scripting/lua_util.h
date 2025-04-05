@@ -22,11 +22,14 @@ int LuaTableHashNext(const Table* t, int index);
 template <typename T>
 class ClassBindBuilder {
     String name;
+    String subname;
 
     lua_State* L;
 
+    bool is_sub_system{};
+
 public:
-    explicit ClassBindBuilder(String name_) : name(name_) {
+    explicit ClassBindBuilder(String name_) : name(name_), is_sub_system(false) {
         L = ENGINE_LUA();
         lua_getglobal(L, "neko");
         if (!lua_istable(L, -1)) {
@@ -34,7 +37,19 @@ public:
         }
     }
 
+    explicit ClassBindBuilder(String name_, String subname_) : name(name_), subname(subname_), is_sub_system(true) {
+        L = ENGINE_LUA();
+        lua_getglobal(L, "neko");
+        if (!lua_istable(L, -1)) {
+            error_assert("no neko table");
+        }
+        lua_createtable(L, 0, 0);
+    }
+
     bool Build() {
+        if (is_sub_system) {
+            lua_setfield(L, -2, subname.cstr());
+        }
         lua_pop(L, 1);
         return true;
     }
@@ -60,11 +75,17 @@ public:
         }
         return *this;
     }
+
+    ClassBindBuilder& CustomBind(const String& name, lua_CFunction func) {
+        func(L);
+        return *this;
+    }
 };
 
 }  // namespace Neko
 
 // #define REGISTER_TYPE(Type) TypeRegistry::Instance().RegisterType<Type>(#Type)
 #define BUILD_TYPE(Type) ClassBindBuilder<Type>(#Type)
+#define BUILD_TYPE_SUB(Type, Subname) ClassBindBuilder<Type>(#Type, Subname)
 
 #endif

@@ -4,113 +4,21 @@
 #include "base/common/profiler.hpp"
 #include "base/common/string.hpp"
 #include "engine/bootstrap.h"
+#include "engine/scripting/lua_util.h"
+
+using namespace Neko::luabind;
 
 // imgui
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color256 outline_col) {
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImDrawList* draw_list = ImGui::GetBackgroundDrawList(viewport);
-
-    if (outline) {
-
-        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
-
-        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.cstr());  // up
-        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.cstr());  // down
-        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.cstr());  // right
-        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.cstr());  // left
-
-        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.cstr());  // down-right
-        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.cstr());  // down-left
-
-        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.cstr());  // up-right
-        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.cstr());  // up-left
-    }
-
-    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
-}
-
-void imgui_init(GLFWwindow* window) {
-    PROFILE_FUNC();
-
-    ImGui::SetAllocatorFunctions(+[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-    ImGui::StyleColorsDark();
-
-    ImGuiStyle& style = ImGui::GetStyle();
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
-
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init();
-
-#if defined(DEBUG)
-    if (the<CL>().state.default_font.len > 0) {
-        auto& io = ImGui::GetIO();
-
-        ImFontConfig config;
-        // config.PixelSnapH = 1;
-
-        String ttf_file;
-        vfs_read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
-        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 16.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-    }
-#endif
-
-    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-
-    the<CL>().devui_vp = ImGui::GetMainViewport()->ID;
-}
-
-void imgui_fini() {
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
-
-void imgui_draw_pre() {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
-
-void imgui_draw_post() {
-    ImGui::Render();
-
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    ImGuiIO& io = ImGui::GetIO();
-
-    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-        GLFWwindow* backup_current_context = glfwGetCurrentContext();
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-        glfwMakeContextCurrent(backup_current_context);
-    }
-}
-
 #if 1
 
-namespace Neko::imgui::wrap_ImGuiInputTextCallbackData {
+namespace Neko::ImGuiWrap::wrap_ImGuiInputTextCallbackData {
 void pointer(lua_State* L, ImGuiInputTextCallbackData& v);
 }
 
-namespace Neko::imgui::util {
+namespace Neko::ImGuiWrap::util {
 
 static lua_CFunction str_format = NULL;
 
@@ -362,6 +270,541 @@ void init(lua_State* L) {
     lua_pop(L, 2);
 }
 
-}  // namespace Neko::imgui::util
+}  // namespace Neko::ImGuiWrap::util
 
 #endif
+
+namespace Neko {
+
+namespace ImGuiWrap {
+
+static int Begin(lua_State* L) {
+    auto* label = LuaGet<const char*>(L, 1);
+    ImGuiWindowFlags flags = 0;
+    bool open = true;
+    bool has_open = false;
+    if (lua_gettop(L) > 1) {
+        open = LuaGet<bool>(L, 2);
+        has_open = true;
+    }
+    if (lua_gettop(L) > 2) {
+        flags = LuaGet<int>(L, 3);
+    }
+    bool res = ImGui::Begin(label, has_open ? &open : nullptr, flags);
+    lua_pushboolean(L, res);
+    if (has_open) lua_pushboolean(L, open);
+    return has_open ? 2 : 1;
+}
+
+static int Button(lua_State* L) {
+    auto* label = LuaGet<const char*>(L, 1);
+    ImVec2 size(0, 0);
+    if (lua_gettop(L) > 2) {
+        size.x = LuaGet<float>(L, 2);
+        size.y = LuaGet<float>(L, 3);
+    }
+    bool clicked = ImGui::Button(label, size);
+    lua_pushboolean(L, clicked);
+    return 1;
+}
+
+static int SameLine(lua_State* L) {
+    float pos_x = 0;
+    if (lua_gettop(L) > 0) {
+        pos_x = LuaGet<float>(L, 1);
+    }
+    ImGui::SameLine(pos_x);
+    return 0;
+}
+
+static int Text(lua_State* L) {
+    const char* fmt = util::format(L, 1);
+    ImGui::Text("%s", fmt);
+    return 0;
+}
+
+static int TextUnformatted(lua_State* L) {
+    auto* text = LuaGet<const char*>(L, 1);
+    ImGui::TextUnformatted(text);
+    return 0;
+}
+
+static int Checkbox(lua_State* L) {
+    auto* label = LuaGet<const char*>(L, 1);
+    bool b = LuaGet<bool>(L, 2);
+    bool clicked = ImGui::Checkbox(label, &b);
+    lua_pushboolean(L, clicked);
+    lua_pushboolean(L, b);
+    return 2;
+}
+
+bool IsCapturedEvent() {
+    return ImGui::IsAnyItemHovered() ||                            //
+           ImGui::IsAnyItemFocused() ||                            //
+           ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) ||  //
+           ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow);
+}
+
+static int InputText(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto _strbuf = util::strbuf_get(L, 2);
+    auto flags = (ImGuiInputTextFlags)luaL_optinteger(L, 3, lua_Integer(ImGuiInputTextFlags_None));
+    auto&& _retval = ImGui::InputText(label, _strbuf->data, _strbuf->size, flags);
+    lua_pushboolean(L, _retval);
+    return 1;
+}
+
+static int InputTextEx(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto _strbuf = util::strbuf_get(L, 2);
+    auto flags = (ImGuiInputTextFlags)luaL_optinteger(L, 3, lua_Integer(ImGuiInputTextFlags_None));
+    util::input_context _ctx{L, 4};
+    auto _top = lua_gettop(L);
+    auto&& _retval = ImGui::InputText(label, _strbuf->data, _strbuf->size, flags, util::input_callback, &_ctx);
+    lua_pushboolean(L, _retval);
+    if (lua_gettop(L) != _top + 1) {
+        lua_pop(L, 1);
+        lua_error(L);
+    }
+    return 1;
+}
+
+static int InputTextMultiline(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto _strbuf = util::strbuf_get(L, 2);
+    auto&& _retval = ImGui::InputTextMultiline(label, _strbuf->data, _strbuf->size);
+    lua_pushboolean(L, _retval);
+    return 1;
+}
+
+static int InputTextMultilineEx(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto _strbuf = util::strbuf_get(L, 2);
+    auto size = ImVec2{
+            (float)luaL_optnumber(L, 3, 0),
+            (float)luaL_optnumber(L, 4, 0),
+    };
+    auto flags = (ImGuiInputTextFlags)luaL_optinteger(L, 5, lua_Integer(ImGuiInputTextFlags_None));
+    util::input_context _ctx{L, 6};
+    auto _top = lua_gettop(L);
+    auto&& _retval = ImGui::InputTextMultiline(label, _strbuf->data, _strbuf->size, size, flags, util::input_callback, &_ctx);
+    lua_pushboolean(L, _retval);
+    if (lua_gettop(L) != _top + 1) {
+        lua_pop(L, 1);
+        lua_error(L);
+    }
+    return 1;
+}
+
+static int InputTextWithHint(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto hint = luaL_checkstring(L, 2);
+    auto _strbuf = util::strbuf_get(L, 3);
+    auto flags = (ImGuiInputTextFlags)luaL_optinteger(L, 4, lua_Integer(ImGuiInputTextFlags_None));
+    auto&& _retval = ImGui::InputTextWithHint(label, hint, _strbuf->data, _strbuf->size, flags);
+    lua_pushboolean(L, _retval);
+    return 1;
+}
+
+static int InputTextWithHintEx(lua_State* L) {
+    auto label = luaL_checkstring(L, 1);
+    auto hint = luaL_checkstring(L, 2);
+    auto _strbuf = util::strbuf_get(L, 3);
+    auto flags = (ImGuiInputTextFlags)luaL_optinteger(L, 4, lua_Integer(ImGuiInputTextFlags_None));
+    util::input_context _ctx{L, 5};
+    auto _top = lua_gettop(L);
+    auto&& _retval = ImGui::InputTextWithHint(label, hint, _strbuf->data, _strbuf->size, flags, util::input_callback, &_ctx);
+    lua_pushboolean(L, _retval);
+    if (lua_gettop(L) != _top + 1) {
+        lua_pop(L, 1);
+        lua_error(L);
+    }
+    return 1;
+}
+
+namespace wrap_ImGuiInputTextCallbackData {
+
+static int DeleteChars(lua_State* L) {
+    auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+    auto pos = (int)luaL_checkinteger(L, 1);
+    auto bytes_count = (int)luaL_checkinteger(L, 2);
+    OBJ.DeleteChars(pos, bytes_count);
+    return 0;
+}
+
+static int InsertChars(lua_State* L) {
+    auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+    auto pos = (int)luaL_checkinteger(L, 1);
+    auto text = luaL_checkstring(L, 2);
+    auto text_end = luaL_optstring(L, 3, NULL);
+    OBJ.InsertChars(pos, text, text_end);
+    return 0;
+}
+
+static int SelectAll(lua_State* L) {
+    auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+    OBJ.SelectAll();
+    return 0;
+}
+
+static int ClearSelection(lua_State* L) {
+    auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+    OBJ.ClearSelection();
+    return 0;
+}
+
+static int HasSelection(lua_State* L) {
+    auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+    auto&& _retval = OBJ.HasSelection();
+    lua_pushboolean(L, _retval);
+    return 1;
+}
+
+struct EventFlag {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.EventFlag);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.EventFlag = (ImGuiInputTextFlags)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct Flags {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.Flags);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.Flags = (ImGuiInputTextFlags)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct UserData {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushlightuserdata(L, OBJ.UserData);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+        OBJ.UserData = (void*)lua_touserdata(L, 1);
+        return 0;
+    }
+};
+
+struct EventChar {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.EventChar);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.EventChar = (ImWchar)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct EventKey {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.EventKey);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.EventKey = (ImGuiKey)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct BufTextLen {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.BufTextLen);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.BufTextLen = (int)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct BufSize {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.BufSize);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.BufSize = (int)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct BufDirty {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushboolean(L, OBJ.BufDirty);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.BufDirty = (bool)!!lua_toboolean(L, 1);
+        return 0;
+    }
+};
+
+struct CursorPos {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.CursorPos);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.CursorPos = (int)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct SelectionStart {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.SelectionStart);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.SelectionStart = (int)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+struct SelectionEnd {
+    static int getter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        lua_pushinteger(L, OBJ.SelectionEnd);
+        return 1;
+    }
+
+    static int setter(lua_State* L) {
+        auto& OBJ = **(ImGuiInputTextCallbackData**)lua_touserdata(L, lua_upvalueindex(1));
+        OBJ.SelectionEnd = (int)luaL_checkinteger(L, 1);
+        return 0;
+    }
+};
+
+static luaL_Reg funcs[] = {
+        {"DeleteChars", DeleteChars}, {"InsertChars", InsertChars}, {"SelectAll", SelectAll}, {"ClearSelection", ClearSelection}, {"HasSelection", HasSelection},
+};
+
+static luaL_Reg setters[] = {
+        {"EventFlag", EventFlag::setter},       {"Flags", Flags::setter},     {"UserData", UserData::setter}, {"EventChar", EventChar::setter}, {"EventKey", EventKey::setter},
+        {"BufTextLen", BufTextLen::setter},     {"BufSize", BufSize::setter}, {"BufDirty", BufDirty::setter}, {"CursorPos", CursorPos::setter}, {"SelectionStart", SelectionStart::setter},
+        {"SelectionEnd", SelectionEnd::setter},
+};
+
+static luaL_Reg getters[] = {
+        {"EventFlag", EventFlag::getter},       {"Flags", Flags::getter},     {"UserData", UserData::getter}, {"EventChar", EventChar::getter}, {"EventKey", EventKey::getter},
+        {"BufTextLen", BufTextLen::getter},     {"BufSize", BufSize::getter}, {"BufDirty", BufDirty::getter}, {"CursorPos", CursorPos::getter}, {"SelectionStart", SelectionStart::getter},
+        {"SelectionEnd", SelectionEnd::getter},
+};
+
+static int tag_pointer = 0;
+
+void pointer(lua_State* L, ImGuiInputTextCallbackData& v) {
+    lua_rawgetp(L, LUA_REGISTRYINDEX, &tag_pointer);
+    auto** ptr = (ImGuiInputTextCallbackData**)lua_touserdata(L, -1);
+    *ptr = &v;
+}
+
+static void init(lua_State* L) {
+    util::struct_gen(L, "ImGuiInputTextCallbackData", funcs, setters, getters);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, &tag_pointer);
+}
+
+}  // namespace wrap_ImGuiInputTextCallbackData
+
+static int StringBuf(lua_State* L) {
+    util::strbuf_create(L, 1);
+    return 1;
+}
+
+static int BindUtils(lua_State* L) {
+    util::init(L);
+
+    return 1;
+}
+
+static int BindFlags(lua_State* L) {
+
+#define X(prefix, name) {#name, prefix##_##name}
+
+    static util::TableInteger InputTextFlags[] = {
+            X(ImGuiInputTextFlags, None),
+            X(ImGuiInputTextFlags, CharsDecimal),
+            X(ImGuiInputTextFlags, CharsHexadecimal),
+            X(ImGuiInputTextFlags, CharsScientific),
+            X(ImGuiInputTextFlags, CharsUppercase),
+            X(ImGuiInputTextFlags, CharsNoBlank),
+            X(ImGuiInputTextFlags, AllowTabInput),
+            X(ImGuiInputTextFlags, EnterReturnsTrue),
+            X(ImGuiInputTextFlags, EscapeClearsAll),
+            X(ImGuiInputTextFlags, CtrlEnterForNewLine),
+            X(ImGuiInputTextFlags, ReadOnly),
+            X(ImGuiInputTextFlags, Password),
+            X(ImGuiInputTextFlags, AlwaysOverwrite),
+            X(ImGuiInputTextFlags, AutoSelectAll),
+            X(ImGuiInputTextFlags, ParseEmptyRefVal),
+            X(ImGuiInputTextFlags, DisplayEmptyRefVal),
+            X(ImGuiInputTextFlags, NoHorizontalScroll),
+            X(ImGuiInputTextFlags, NoUndoRedo),
+            X(ImGuiInputTextFlags, CallbackCompletion),
+            X(ImGuiInputTextFlags, CallbackHistory),
+            X(ImGuiInputTextFlags, CallbackAlways),
+            X(ImGuiInputTextFlags, CallbackCharFilter),
+            X(ImGuiInputTextFlags, CallbackResize),
+            X(ImGuiInputTextFlags, CallbackEdit),
+    };
+
+#undef X
+
+#define GEN_FLAGS(name)                  \
+    {                                    \
+        #name, +[](lua_State* L) {       \
+            util::create_table(L, name); \
+            util::flags_gen(L, #name);   \
+        }                                \
+    }
+    static util::TableAny flags[] = {GEN_FLAGS(InputTextFlags)};
+#undef GEN_FLAGS
+
+    util::set_table(L, flags);
+
+    wrap_ImGuiInputTextCallbackData::init(L);
+
+    return 1;
+}
+
+void ImGuiRender::imgui_init(GLFWwindow* window) {
+    PROFILE_FUNC();
+
+    ImGui::SetAllocatorFunctions(+[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
+    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+    ImGui::StyleColorsDark();
+
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init();
+
+#if defined(DEBUG)
+    if (the<CL>().state.default_font.len > 0) {
+        auto& io = ImGui::GetIO();
+
+        ImFontConfig config;
+        // config.PixelSnapH = 1;
+
+        String ttf_file;
+        vfs_read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
+        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 16.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    }
+#endif
+
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+
+    the<CL>().devui_vp = ImGui::GetMainViewport()->ID;
+
+    auto type = BUILD_TYPE_SUB(ImGuiRender, "imgui")
+                        .Method("AlignTextToFramePadding", &ImGui::AlignTextToFramePadding)          //
+                        .Method("End", &ImGui::End)                                                  //
+                        .Method("Separator", &ImGui::Separator)                                      //
+                        .Method("SeparatorText", &ImGui::SeparatorText)                              //
+                        .Method("IsItemHovered", &ImGui::IsItemHovered)                              //
+                        .Method("Indent", &ImGui::Indent)                                            //
+                        .Method("Unindent", &ImGui::Unindent)                                        //
+                        .Method("IsMouseDown", [](int b) -> bool { return ImGui::IsMouseDown(b); })  //
+                        .Method("IsCapturedEvent", &IsCapturedEvent)                                 //
+                        .CClosure({{"Begin", Begin},                                                 //
+                                   {"Button", Button},
+                                   {"Text", Text},
+                                   {"TextUnformatted", TextUnformatted},
+                                   {"Checkbox", Checkbox},
+                                   {"SameLine", SameLine},
+                                   {"InputText", InputText},
+                                   {"InputTextEx", InputTextEx},
+                                   {"InputTextMultiline", InputTextMultiline},
+                                   {"InputTextMultilineEx", InputTextMultilineEx},
+                                   {"InputTextWithHint", InputTextWithHint},
+                                   {"InputTextWithHintEx", InputTextWithHintEx},
+                                   {"StringBuf", StringBuf}})
+                        .CustomBind("Utils", &BindUtils)
+                        //.CustomBind("Flags", &BindFlags)
+                        .Build();
+}
+
+void ImGuiRender::imgui_fini() {
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+int ImGuiRender::imgui_draw_pre() {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    return 0;
+}
+
+void ImGuiRender::imgui_draw_post() {
+    ImGui::Render();
+
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
+}
+
+}  // namespace ImGuiWrap
+}  // namespace Neko

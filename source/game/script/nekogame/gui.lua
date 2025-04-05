@@ -276,16 +276,18 @@ function ns.gui_test.OnDrawUI()
     draw_imgui()
 end
 
+local imgui_test_strbuf = neko.imgui.StringBuf()
+
 draw_imgui = function(dt)
     if not ns.edit.get_enabled() then
         return
     end
 
-    local ImGui = imgui
+    local ImGui = neko.imgui
 
-    local window<close> = ImGuiWindow("Demo")
+    -- local window<close> = ImGuiWindow("Demo")
 
-    if window then
+    if neko.imgui.Begin("Demo") then
 
         ImGui.Text("TestDemo")
 
@@ -442,6 +444,15 @@ draw_imgui = function(dt)
         -- ImGui.Image(test_tex, 100.0, 100.0)
         -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
 
+        neko.imgui.End()
+    end
+
+    if neko.imgui.Begin("Test ImGui Binding") then
+        neko.imgui.Text("Hello, world!")
+        if neko.imgui.InputText("TEST", imgui_test_strbuf) then
+            print(tostring(imgui_test_strbuf))
+        end
+        neko.imgui.End()
     end
 
 end

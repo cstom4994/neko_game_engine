@@ -26,6 +26,7 @@
 
 using namespace Neko;
 using namespace Neko::ecs;
+using namespace Neko::ImGuiWrap;
 
 extern CBase gBase;
 

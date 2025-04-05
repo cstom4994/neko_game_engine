@@ -123,10 +123,6 @@ public:
     void edit_draw_all();
 };
 
-bool gui_has_focus();
-bool gui_captured_event();
-int gui_pre_update_all(Event evt);
-
 int open_db(lua_State* L);
 
 #endif

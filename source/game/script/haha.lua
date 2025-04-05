@@ -1,6 +1,6 @@
 function ImGuiMouseHoldon()
-    local ImGui = neko.imgui_obsolete
-    if ImGui.IsItemHovered() then
+    local ImGui = neko.imgui
+    if ImGui.IsItemHovered(0) then
         if ImGui.IsMouseDown(0) then
             return true
         end

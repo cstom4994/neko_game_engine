@@ -1,5 +1,5 @@
 -- hot_require 'nekogame.edit'
-local ImGui = neko.imgui_obsolete
+local ImGui = neko.imgui
 
 ns.edit = {
     inspect = false,
@@ -69,28 +69,28 @@ function ns.edit.__ModeExecBind(up, codestr)
 end
 
 function ns.edit.ModeKeyDown(key)
-    if neko.IsGuiCapturedEvent() then
+    if neko.imgui.IsCapturedEvent() then
         return
     end
     ns.edit.__ModeExecBind(false, key)
 end
 
 function ns.edit.ModeKeyUp(key)
-    if neko.IsGuiCapturedEvent() then
+    if neko.imgui.IsCapturedEvent() then
         return
     end
     ns.edit.__ModeExecBind(true, key)
 end
 
 function ns.edit.ModeMouseDown(mouse)
-    if neko.IsGuiCapturedEvent() then
+    if neko.imgui.IsCapturedEvent() then
         return
     end
     ns.edit.__ModeExecBind(false, mouse)
 end
 
 function ns.edit.ModeMouseUp(mouse)
-    if neko.IsGuiCapturedEvent() then
+    if neko.imgui.IsCapturedEvent() then
         return
     end
     ns.edit.__ModeExecBind(true, mouse)
@@ -1223,7 +1223,7 @@ function ns.edit.OnMouseUp(mouse)
 end
 
 function ns.edit.OnMouseScroll(scroll)
-    if neko.IsGuiCapturedEvent() then
+    if neko.imgui.IsCapturedEvent() then
         return
     end
     ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
