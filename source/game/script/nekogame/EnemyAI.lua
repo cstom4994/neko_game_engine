@@ -1,4 +1,3 @@
-local nn = hot_require("nn")
 
 class "EnemyAI"
 

@@ -80,6 +80,11 @@ inline T& instance() {
     return static_cast<T&>(SingletonClass<BaseT>::instance());
 }
 
+template <typename Tuple, std::size_t... Indices>
+void initializeModulesHelper(Tuple&& tuple, std::index_sequence<Indices...>) {
+    (initialize<std::tuple_element_t<Indices, std::decay_t<Tuple>>>(), ...);
+}
+
 }  // namespace Neko::modules
 
 namespace Neko {

@@ -53,8 +53,9 @@ NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data)
 AssetTexture neko_aseprite_simple(String filename) {
     String contents = {};
     bool ok = the<VFS>().read_entire_file(&contents, filename);
-
     neko_defer(mem_free(contents.data));
+
+    neko_assert(ok);
 
     ase_t* ase;
 

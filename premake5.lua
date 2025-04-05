@@ -282,34 +282,40 @@ local function format_base64(str)
     return table.concat(parts)
 end
 
+local function build_data(outfile, filepath)
+    local entries = {}
+    local luaFiles = os.matchfiles(filepath)
+
+    local out = io.open(outfile, "w")
+    out:write("local F = function(x) return x end\n")
+    out:write("local M = {\n")
+
+    for _, luaFilePath in ipairs(luaFiles) do
+
+        local luaFile, err = io.open(luaFilePath, "rb")
+        local content = luaFile:read("*a")
+
+        local encoded = base64.encode(content)
+        local formatted = format_base64(encoded)
+        table.insert(entries, ('  ["%s"] = %s'):format("luabp/" .. luaFilePath, formatted))
+
+        luaFile:close()
+
+        print("embed_b64", luaFilePath)
+    end
+
+    out:write(table.concat(entries, ",\n"))
+    out:write("\n}\nreturn M\n")
+    out:close()
+end
+
+
 newaction {
     trigger = 'encode_b64',
     description = 'Embed base64 files',
     execute = function()
-        local entries = {}
-        local luaFiles = os.matchfiles("./source/game/**")
-
-        local out = io.open("out.lua", "w")
-        out:write("local F = function(x) return x end\n")
-        out:write("local M = {\n")
-
-        for _, luaFilePath in ipairs(luaFiles) do
-
-            local luaFile, err = io.open(luaFilePath, "rb")
-            local content = luaFile:read("*a")
-
-            local encoded = base64.encode(content)
-            local formatted = format_base64(encoded)
-            table.insert(entries, ('  ["%s"] = %s'):format("luabp/" .. luaFilePath, formatted))
-
-            luaFile:close()
-
-            print("embed_b64", luaFilePath)
-        end
-
-        out:write(table.concat(entries, ",\n"))
-        out:write("\n}\nreturn M\n")
-        out:close()
+        build_data("bin/gamedir.lua", "gamedir/**")
+        build_data("bin/game.lua", "source/game/**")
     end
 }
 

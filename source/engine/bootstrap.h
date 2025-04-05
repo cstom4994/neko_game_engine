@@ -90,7 +90,7 @@ public:
 
     void *miniaudio_vfs;
     ma_engine audio_engine;
-    Array<Sound *> garbage_sounds;
+    Array<SoundSource *> garbage_sounds;
 
 public:
     CL();

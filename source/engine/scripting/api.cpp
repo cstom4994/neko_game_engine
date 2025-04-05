@@ -29,20 +29,26 @@
 
 using namespace Neko::luabind;
 
-void open_luasocket(lua_State *L);
+extern int open_tools_spritepack(lua_State *L);
 
 namespace Neko {
+
 size_t luax_dump_traceback(lua_State *L, char *buf, size_t sz, int is_show_var, int is_show_tmp_var, int top_max, int bottom_max);
+
 namespace luabind {
-void package_preload(lua_State *L);
+
+void package_preload(lua_State *L) {
+    luaL_Reg preloads[] = {{"__neko.spritepack", open_tools_spritepack}};
+    for (auto m : preloads) {
+        luax_package_preload(L, m.name, m.func);
+    }
+}
+
 }  // namespace luabind
+
 }  // namespace Neko
 
 void package_preload_embed(lua_State *L);
-
-// extern impl
-extern int open_tools_spritepack(lua_State *L);
-extern int open_filesys(lua_State *L);
 
 void l_registerFunctions(lua_State *L, int idx, const luaL_Reg *r) {
     if (idx < 0) idx += lua_gettop(L) + 1;
@@ -52,38 +58,6 @@ void l_registerFunctions(lua_State *L, int idx, const luaL_Reg *r) {
         lua_rawset(L, idx);
     }
 }
-
-#if 0
-template <>
-vec2 LuaGet<vec2>(lua_State *L, int idx) {
-    luaL_checktype(L, idx, LUA_TTABLE);
-    lua_getfield(L, idx, "x");
-    float x = LuaGet<float>(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, idx, "y");
-    float y = LuaGet<float>(L, -1);
-    lua_pop(L, 1);
-    return {x, y};
-}
-
-template <>
-Color256 LuaGet<Color256>(lua_State *L, int idx) {
-    luaL_checktype(L, idx, LUA_TTABLE);
-    lua_getfield(L, idx, "r");
-    u8 r = LuaGet<u8>(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, idx, "g");
-    u8 g = LuaGet<u8>(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, idx, "b");
-    u8 b = LuaGet<u8>(L, -1);
-    lua_pop(L, 1);
-    lua_getfield(L, idx, "a");
-    u8 a = LuaGet<u8>(L, -1);
-    lua_pop(L, 1);
-    return color256(r, g, b, a);
-}
-#endif
 
 // mt_thread
 
@@ -2917,15 +2891,3 @@ void open_neko_api(lua_State *L) {
 
     neko_w_init();
 }
-
-namespace Neko::luabind {
-void package_preload(lua_State *L) {
-    luaL_Reg preloads[] = {
-            {"__neko.spritepack", open_tools_spritepack},
-            {"__neko.filesys", open_filesys},
-    };
-    for (auto m : preloads) {
-        luax_package_preload(L, m.name, m.func);
-    }
-}
-}  // namespace Neko::luabind

@@ -49,8 +49,6 @@ public:
     }
 };
 
-i32 keyboard_lookup(String str);
-
 }  // namespace Neko
 
 using Neko::CBase;

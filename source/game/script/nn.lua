@@ -131,7 +131,7 @@ local matrix_utilities = {
 
 -- ====================
 -- 所有神经网络逻辑
-local nn = {}
+class "nn"
 
 -- 创建新的网络结构
 -- 注意突触在 0 和 1 之间随机化
@@ -420,5 +420,3 @@ function nn:inspect()
 
     return table.concat(report, "\n")
 end
-
-return nn

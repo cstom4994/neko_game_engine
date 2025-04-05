@@ -17,6 +17,7 @@ vec2 input_get_mouse_pos_pixels_fix();
 vec2 input_get_mouse_pos_pixels();
 vec2 input_get_mouse_pos_unit();
 bool input_mouse_down(MouseCode mouse);
+i32 keyboard_lookup(String str);
 
 typedef void (*KeyCallback)(KeyCode key, int scancode, int mode);
 void input_add_key_down_callback(KeyCallback f);

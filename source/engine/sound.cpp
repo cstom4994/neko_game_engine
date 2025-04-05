@@ -9,18 +9,18 @@
 void *vfs_for_miniaudio();
 
 static void on_sound_end(void *udata, ma_sound *ma) {
-    Sound *sound = (Sound *)udata;
+    SoundSource *sound = (SoundSource *)udata;
     if (sound->zombie) {
         sound->dead_end = true;
     }
 }
 
-Sound *sound_load(String filepath) {
+SoundSource *sound_load(String filepath) {
     PROFILE_FUNC();
 
     ma_result res = MA_SUCCESS;
 
-    Sound *sound = (Sound *)mem_alloc(sizeof(Sound));
+    SoundSource *sound = (SoundSource *)mem_alloc(sizeof(SoundSource));
 
     String cpath = to_cstr(filepath);
     neko_defer(mem_free(cpath.data));
@@ -42,17 +42,17 @@ Sound *sound_load(String filepath) {
     return sound;
 }
 
-void Sound::trash() { ma_sound_uninit(&ma); }
+void SoundSource::trash() { ma_sound_uninit(&ma); }
 
 // mt_sound
 
 static ma_sound *sound_ma(lua_State *L) {
-    Sound *sound = *(Sound **)luaL_checkudata(L, 1, "mt_sound");
+    SoundSource *sound = *(SoundSource **)luaL_checkudata(L, 1, "mt_sound");
     return &sound->ma;
 }
 
 static int mt_sound_gc(lua_State *L) {
-    Sound *sound = *(Sound **)luaL_checkudata(L, 1, "mt_sound");
+    SoundSource *sound = *(SoundSource **)luaL_checkudata(L, 1, "mt_sound");
 
     if (ma_sound_at_end(&sound->ma)) {
         sound->trash();
@@ -225,7 +225,7 @@ int open_mt_sound(lua_State *L) {
     return 0;
 }
 
-void sound_init() {
+void Sound::sound_init() {
     PROFILE_FUNC();
 
     {
@@ -287,8 +287,8 @@ void sound_init() {
             });
 }
 
-void sound_fini() {
-    for (Sound *sound : the<CL>().garbage_sounds) {
+void Sound::sound_fini() {
+    for (SoundSource *sound : the<CL>().garbage_sounds) {
         sound->trash();
     }
     the<CL>().garbage_sounds.trash();
@@ -297,12 +297,12 @@ void sound_fini() {
     mem_free(the<CL>().miniaudio_vfs);
 }
 
-int sound_update_all(Event evt) { return 0; }
+int Sound::sound_update_all(Event evt) { return 0; }
 
-int sound_postupdate(Event evt) {
-    Array<Sound *> &sounds = the<CL>().garbage_sounds;
+int Sound::sound_postupdate(Event evt) {
+    Array<SoundSource *> &sounds = the<CL>().garbage_sounds;
     for (u64 i = 0; i < sounds.len;) {
-        Sound *sound = sounds[i];
+        SoundSource *sound = sounds[i];
 
         if (sound->dead_end) {
             assert(sound->zombie);

@@ -5,10 +5,6 @@
 #include "engine/event.h"
 #include "base/scripting/luax.h"
 
-NEKO_API() void physics_init();
-NEKO_API() void physics_fini();
-NEKO_API() int physics_update_all(Event evt);
-NEKO_API() int physics_post_update_all(Event evt);
-NEKO_API() void physics_draw_all();
+
 
 #endif

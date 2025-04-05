@@ -20,7 +20,7 @@ struct AudioFile {
     u64 len;
 };
 
-struct Sound {
+struct SoundSource {
     ma_sound ma;
     bool zombie;
     bool dead_end;
@@ -28,14 +28,14 @@ struct Sound {
     void trash();
 };
 
-Sound *sound_load(String filepath);
+SoundSource *sound_load(String filepath);
 
 int open_mt_sound(lua_State *L);
 
 inline int neko_sound_load(lua_State *L) {
     String str = luax_check_string(L, 1);
 
-    Sound *sound = sound_load(str);
+    SoundSource *sound = sound_load(str);
     if (sound == nullptr) {
         return 0;
     }
@@ -44,9 +44,10 @@ inline int neko_sound_load(lua_State *L) {
     return 1;
 }
 
-NEKO_API() void sound_init();
-NEKO_API() void sound_fini();
-NEKO_API() int sound_update_all(Event evt);
-int sound_postupdate(Event evt);
-
-void audio_play_event(String event);
+class Sound : public SingletonClass<Sound> {
+public:
+    void sound_init();
+    void sound_fini();
+    int sound_update_all(Event evt);
+    int sound_postupdate(Event evt);
+};

@@ -457,9 +457,6 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     }
 }
 
-static Asset font_shader = {};
-static GLuint font_vbo, font_vao;
-
 bool FontFamily::load(String filepath) {
     PROFILE_FUNC();
 
@@ -586,7 +583,9 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
     float x = *start_x;
     float y = *start_y;
 
-    GLuint font_program = font_shader.shader.id;
+    Font &font_renderer = the<Font>();
+
+    GLuint font_program = font_renderer.font_shader.shader.id;
 
     glUseProgram(font_program);
     glUniform3f(glGetUniformLocation(font_program, "textColor"), col.r / 255.f, col.g / 255.f, col.b / 255.f);
@@ -602,7 +601,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         glUniform1i(glGetUniformLocation(font_program, "mode"), 1);
     }
 
-    glBindVertexArray(font_vao);
+    glBindVertexArray(font_renderer.font_vao);
 
     for (Rune r : UTF8(line)) {
         u32 tex_id = 0;
@@ -630,7 +629,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         // clang-format on
 
         glBindTexture(GL_TEXTURE_2D, gl_tex_id);
-        glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, font_renderer.font_vbo);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -692,7 +691,7 @@ float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float 
     return y - size;
 }
 
-void font_init() {
+void Font::font_init() {
 
     // 编译着色器并创建程序
     bool ok = asset_load_kind(AssetKind_Shader, "shader/font.glsl", &font_shader);
@@ -738,7 +737,7 @@ void Batch::batch_init(int vertex_capacity) {
 
     batch = (batch_renderer *)mem_alloc(sizeof(batch_renderer));
 
-    asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
+    asset_load(AssetLoadData{AssetKind_Image, false}, "@gamedata/assets/aliens.png", NULL);
 
     // batch->shader = program;
     batch->vao = vao;
@@ -763,7 +762,7 @@ void Batch::batch_fini() {
 
 int Batch::batch_update_all(Event evt) {
 
-    AssetTexture tex_aliens = texture_get_ptr("assets/aliens.png");
+    AssetTexture tex_aliens = texture_get_ptr("@gamedata/assets/aliens.png");
 
     auto &game = the<CL>();
 

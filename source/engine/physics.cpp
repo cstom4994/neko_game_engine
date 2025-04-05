@@ -2,6 +2,7 @@
 
 #include "base/common/color.hpp"
 #include "base/common/math.hpp"
+#include "base/common/profiler.hpp"
 #include "engine/component.h"
 
 #ifdef NEKO_BOX2D

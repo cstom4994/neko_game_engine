@@ -266,7 +266,7 @@ String VFS::filepath_redirect(String file) {
     if (!file.starts_with("@")) return file;
     for (auto &[name, redirect] : vfs_redirect) {
         if (!file.starts_with("@" + name + "/")) continue;
-        return str_fmt("%s/%s", redirect.c_str(), file.substr(2 + name.size(), file.len).data);
+        return tmp_fmt("%s/%s", redirect.c_str(), file.substr(2 + name.size(), file.len).data);
     }
     return file;
 }

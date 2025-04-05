@@ -215,7 +215,6 @@ void CL::game_draw() {
         the<Sprite>().sprite_draw_all();
         the<Batch>().batch_draw_all();
         the<Edit>().edit_draw_all();
-        physics_draw_all();
         the<DebugDraw>().debug_draw_all();
 
         // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
@@ -338,7 +337,7 @@ void CL::game_draw() {
 }
 
 void CL::SplashScreen() {
-    AssetTexture splash_texture = neko_aseprite_simple("assets/cat.ase");
+    AssetTexture splash_texture = neko_aseprite_simple("@gamedata/assets/cat.ase");
     Asset splash_shader = {};
     bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
     error_assert(ok);
@@ -483,15 +482,9 @@ void CL::init() {
     auto &input = Neko::the<Input>();
     input.init();
 
-    Neko::modules::initialize<Entity>();
-    Neko::modules::initialize<Transform>();
-    Neko::modules::initialize<Camera>();
-    Neko::modules::initialize<Batch>();
-    Neko::modules::initialize<Sprite>();
-    Neko::modules::initialize<Tiled>();
-    Neko::modules::initialize<ImGuiRender>();
-    Neko::modules::initialize<Edit>();
-    Neko::modules::initialize<DebugDraw>();
+    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Edit, DebugDraw>;
+
+    Neko::modules::initializeModulesHelper(Modules{}, std::make_index_sequence<std::tuple_size_v<Modules>>{});
 
     the<Entity>().entity_init();
     the<Transform>().transform_init();
@@ -499,10 +492,9 @@ void CL::init() {
     the<Batch>().batch_init(state.batch_vertex_capacity);
     the<Sprite>().sprite_init();
     the<Tiled>().tiled_init();
-    font_init();
+    the<Font>().font_init();
     the<ImGuiRender>().imgui_init(window->glfwWindow());
-    sound_init();
-    physics_init();
+    the<Sound>().sound_init();
     the<Edit>().edit_init();
     the<DebugDraw>().debug_draw_init();
 
@@ -603,13 +595,12 @@ void CL::init() {
                  the<EventHandler>().EventPushLuaType(OnUpdate);
                  return 0;
              }},
-            {EventMask::Update, physics_update_all},
             {EventMask::Update, [](Event evt) -> int { return the<Transform>().transform_update_all(evt); }},
 
             {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
-            {EventMask::Update, sound_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Sound>().sound_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Edit>().edit_update_all(evt); }},
 
@@ -618,8 +609,7 @@ void CL::init() {
                  the<EventHandler>().EventPushLuaType(OnPostUpdate);
                  return 0;
              }},
-            {EventMask::PostUpdate, physics_post_update_all},
-            {EventMask::PostUpdate, sound_postupdate},
+            {EventMask::PostUpdate, [](Event evt) -> int { return the<Sound>().sound_postupdate(evt); }},
             {EventMask::PostUpdate, [](Event evt) -> int { return the<Entity>().entity_update_all(evt); }},
 
             {EventMask::Draw,
@@ -758,8 +748,7 @@ void CL::fini() {
     the<DebugDraw>().debug_draw_fini();
     the<Edit>().edit_fini();
     the<Scripting>().script_fini();
-    physics_fini();
-    sound_fini();
+    the<Sound>().sound_fini();
     the<Tiled>().tiled_fini();
     the<Sprite>().sprite_fini();
     the<Batch>().batch_fini();

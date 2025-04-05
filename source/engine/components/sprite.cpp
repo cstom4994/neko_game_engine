@@ -116,7 +116,7 @@ void Sprite::sprite_init() {
 
     glUseProgram(sid);
     glUniform1i(glGetUniformLocation(sid, "tex0"), 0);
-    sprite_set_atlas("assets/data/default.png");
+    sprite_set_atlas("@gamedata/assets/data/default.png");
 
     glGenVertexArrays(1, &sprite_vao);
     glBindVertexArray(sprite_vao);

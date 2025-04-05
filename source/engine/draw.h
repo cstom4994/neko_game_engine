@@ -104,7 +104,14 @@ FontFamily* neko_default_font();
 float draw_font(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, f32 scale = 1.0f);
 float draw_font_wrapped(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit, f32 scale = 1.0f);
 
-void font_init();
+class Font : public SingletonClass<Font> {
+public:
+    Asset font_shader{};
+    GLuint font_vbo, font_vao;
+
+public:
+    void font_init();
+};
 
 namespace Neko {
 

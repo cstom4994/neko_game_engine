@@ -4,8 +4,7 @@ function __neko_conf(t)
         width = 1280.0,
         height = 720.0,
         game_proxy = "default",
-        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
-        -- lite_init_path = "D:/Projects/Neko/DevNew/gamedir/lite",
+        default_font = "@gamedata/assets/fonts/VonwaonBitmap-16px.ttf",
         dump_allocs_detailed = true,
         swap_interval = 1,
         target_fps = 120,
@@ -22,9 +21,17 @@ function __neko_conf(t)
             path = "../gamedir",
             redirect = ""
         },
-        demo_data = {
-            path = "../demo_data.lua",
-            redirect = "luabp/source/game"
-        }
+        -- demo_data = {
+        --     path = "../demo_data.lua",
+        --     redirect = "luabp/source/game"
+        -- }
+        -- luacode = {
+        --     path = "gamedir.lua",
+        --     redirect = "luabp/source/game"
+        -- },
+        -- gamedata = {
+        --     path = "gamedir.lua",
+        --     redirect = "luabp/gamedir"
+        -- },
     }
 end

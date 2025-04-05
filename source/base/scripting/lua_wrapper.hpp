@@ -433,16 +433,15 @@ auto Get(lua_State *L, int N, T &x)
 }
 
 template <typename T>
-auto Push(lua_State *L, T x)
-    requires std::is_integral_v<T> && !std::is_same_v<T, bool>
-{
-    lua_pushinteger(L, x);
+concept IntegralNotBool = std::is_integral_v<T> && !std::is_same_v<T, bool>;
+
+template <IntegralNotBool T>
+void Push(lua_State *L, T x) {
+    lua_pushinteger(L, static_cast<lua_Integer>(x));
 }
 
-template <typename T>
-auto Get(lua_State *L, int N, T &x)
-    requires std::is_integral_v<T> && !std::is_same_v<T, bool>
-{
+template <IntegralNotBool T>
+void Get(lua_State *L, int N, T &x) {
     x = static_cast<T>(lua_tointeger(L, N));
 }
 
