@@ -2365,22 +2365,6 @@ int wrap_entity_get_save_filter(lua_State *L) {
     return 1;
 }
 
-int wrap_console_set_visible(lua_State *L) {
-    bool v = lua_toboolean(L, 1);
-    console_set_visible(v);
-    return 0;
-}
-int wrap_console_get_visible(lua_State *L) {
-    bool v = console_get_visible();
-    lua_pushboolean(L, v);
-    return 1;
-}
-int wrap_console_puts(lua_State *L) {
-    const_str str = lua_tostring(L, 1);
-    console_puts(str);
-    return 0;
-}
-
 int wrap_timing_set_scale(lua_State *L) {
     f32 v = lua_tonumber(L, 1);
     the<CL>().timing_set_scale(v);
@@ -2745,10 +2729,6 @@ static int open_neko(lua_State *L) {
             {"IsGuiCapturedEvent", l_gui_captured_event},
             {"transform_get_world_matrix", l_transform_get_world_matrix},
 
-            {"batch_push_vertex", wrap_batch_push_vertex},
-            {"batch_texture", wrap_batch_texture},
-            {"batch_flush", wrap_batch_flush},
-
             // audio
             {"set_master_volume", neko_set_master_volume},
 
@@ -2787,10 +2767,6 @@ static int open_neko(lua_State *L) {
             {"CEntityEq", wrap_CEntityEq},
             {"entity_set_save_filter", wrap_entity_set_save_filter},
             {"entity_get_save_filter", wrap_entity_get_save_filter},
-
-            {"console_set_visible", wrap_console_set_visible},
-            {"console_get_visible", wrap_console_get_visible},
-            {"console_puts", wrap_console_puts},
 
             {"timing_set_scale", wrap_timing_set_scale},
             {"timing_get_scale", wrap_timing_get_scale},

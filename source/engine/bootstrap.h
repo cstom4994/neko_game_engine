@@ -51,7 +51,6 @@ public:
     } time{};
     lua_State *L{};
     EcsWorld *ECS{};
-    batch_renderer *batch{};
     ui_context_t *ui{};
     bool win_console{};
     LuaInspector *inspector{};

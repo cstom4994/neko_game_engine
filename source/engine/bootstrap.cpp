@@ -213,7 +213,7 @@ void CL::game_draw() {
         the<EventHandler>().EventPushLuaType(OnDraw);
 
         the<Sprite>().sprite_draw_all();
-        batch_draw_all(batch);
+        the<Batch>().batch_draw_all();
         the<Edit>().edit_draw_all();
         physics_draw_all();
         the<DebugDraw>().debug_draw_all();
@@ -444,9 +444,6 @@ void CL::init() {
     time.startup = TimeUtil::now();
     time.last = TimeUtil::now();
 
-    // init systems
-    console_puts("welcome to neko!");
-
     PROFILE_FUNC();
 
     script_init();
@@ -519,6 +516,7 @@ end
     Neko::modules::initialize<Entity>();
     Neko::modules::initialize<Transform>();
     Neko::modules::initialize<Camera>();
+    Neko::modules::initialize<Batch>();
     Neko::modules::initialize<Sprite>();
     Neko::modules::initialize<Tiled>();
     Neko::modules::initialize<Edit>();
@@ -527,12 +525,11 @@ end
     the<Entity>().entity_init();
     the<Transform>().transform_init();
     the<Camera>().camera_init();
-    batch = batch_init(state.batch_vertex_capacity);
+    the<Batch>().batch_init(state.batch_vertex_capacity);
     the<Sprite>().sprite_init();
     the<Tiled>().tiled_init();
     font_init();
     imgui_init(window->glfwWindow());
-    console_init();
     sound_init();
     physics_init();
     the<Edit>().edit_init();
@@ -640,7 +637,7 @@ end
 
             {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
-            {EventMask::Update, batch_update_all},
+            {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
             {EventMask::Update, sound_update_all},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Edit>().edit_update_all(evt); }},
@@ -792,10 +789,9 @@ void CL::fini() {
     script_fini();
     physics_fini();
     sound_fini();
-    console_fini();
     the<Tiled>().tiled_fini();
     the<Sprite>().sprite_fini();
-    batch_fini(batch);
+    the<Batch>().batch_fini();
     the<Camera>().camera_fini();
     the<Transform>().transform_fini();
     the<Entity>().entity_fini();

@@ -123,16 +123,16 @@ int neko_sprite_load(lua_State* L);
 typedef struct {
     float position[2];
     float texcoord[2];
-} Vertex;
+} BatchVertex;
 
-typedef struct batch_renderer {
+struct batch_renderer {
 
     // vertex buffer data
     GLuint vao;
     GLuint vbo;
     int vertex_count;
     int vertex_capacity;
-    Vertex* vertices;
+    BatchVertex* vertices;
 
     float scale;
 
@@ -142,16 +142,25 @@ typedef struct batch_renderer {
     bool glow;
     bool bloom;
     bool trans;
-} batch_renderer;
+};
 
-NEKO_API() batch_renderer* batch_init(int vertex_capacity);
-NEKO_API() void batch_fini(batch_renderer* batch);
-NEKO_API() int batch_update_all(Event evt);
-NEKO_API() void batch_draw_all(batch_renderer* batch);
+class Batch : public SingletonClass<Batch> {
+private:
+    batch_renderer* batch;
+    Asset shader_asset{};
 
-NEKO_API() void batch_flush(batch_renderer* renderer);
-NEKO_API() void batch_texture(batch_renderer* renderer, GLuint id);
-NEKO_API() void batch_push_vertex(batch_renderer* renderer, float x, float y, float u, float v);
+public:
+    void batch_init(int vertex_capacity);
+    void batch_fini();
+    int batch_update_all(Event evt);
+    void batch_draw_all();
+
+    void batch_flush();
+    void batch_texture(GLuint id);
+    void batch_push_vertex(float x, float y, float u, float v);
+
+    inline batch_renderer* GetBatch() { return batch; }
+};
 
 #define MAX_VERTS 3 * 2048 * 16
 

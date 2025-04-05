@@ -219,23 +219,3 @@ int neko_sprite_load(lua_State *L) {
 }
 
 }  // namespace Neko::mt_sprite
-
-int wrap_batch_push_vertex(lua_State *L) {
-    lua_Number x = luaL_checknumber(L, 1);
-    lua_Number y = luaL_checknumber(L, 2);
-    lua_Number u = luaL_checknumber(L, 3);
-    lua_Number v = luaL_checknumber(L, 4);
-    batch_push_vertex(the<CL>().batch, x, y, u, v);
-    return 0;
-}
-
-int wrap_batch_texture(lua_State *L) {
-    int id = lua_tointeger(L, 1);
-    batch_texture(the<CL>().batch, id);
-    return 0;
-}
-
-int wrap_batch_flush(lua_State *L) {
-    batch_flush(the<CL>().batch);
-    return 0;
-}

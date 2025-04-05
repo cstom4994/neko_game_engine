@@ -28,12 +28,3 @@ struct udata<FontFamily> {
     static inline auto metatable = Neko::mt_font::metatable;
 };
 }  // namespace Neko::luabind
-
-int wrap_batch_push_vertex(lua_State *L);
-int wrap_batch_texture(lua_State *L);
-int wrap_batch_flush(lua_State *L);
-int wrap_draw_line(lua_State *L);
-int wrap_draw_circle(lua_State *L);
-int wrap_draw_capsule(lua_State *L);
-int wrap_draw_aabb(lua_State *L);
-int wrap_draw_half_circle(lua_State *L);

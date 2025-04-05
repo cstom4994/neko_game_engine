@@ -386,9 +386,7 @@ RectDescription rect_description_args(lua_State *L, i32 arg_start) {
 void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    batch_renderer *b = the<CL>().batch;
-
-    neko_assert(b);
+    auto &batch = the<Batch>();
 
     AseSpriteView view = {};
     ok = view.make(spr);
@@ -400,7 +398,7 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
 
     AseSpriteFrame f = view.data.frames[view.frame()];
 
-    batch_texture(b, gl_tex_id);
+    batch.batch_texture(gl_tex_id);
 
     desc->x -= desc->ox;
     desc->y -= desc->oy;
@@ -440,22 +438,22 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     float y4_rot = sin_rot * x2 + cos_rot * y1 + desc->y + hh;
 
     // 绘制两个三角形
-    batch_push_vertex(b, x1_rot, y1_rot, u1, v1);  // 左上
-    batch_push_vertex(b, x2_rot, y2_rot, u2, v2);  // 右下
-    batch_push_vertex(b, x3_rot, y3_rot, u1, v2);  // 左下
+    batch.batch_push_vertex(x1_rot, y1_rot, u1, v1);  // 左上
+    batch.batch_push_vertex(x2_rot, y2_rot, u2, v2);  // 右下
+    batch.batch_push_vertex(x3_rot, y3_rot, u1, v2);  // 左下
 
-    batch_push_vertex(b, x1_rot, y1_rot, u1, v1);  // 左上
-    batch_push_vertex(b, x4_rot, y4_rot, u2, v1);  // 右上
-    batch_push_vertex(b, x2_rot, y2_rot, u2, v2);  // 右下
+    batch.batch_push_vertex(x1_rot, y1_rot, u1, v1);  // 左上
+    batch.batch_push_vertex(x4_rot, y4_rot, u2, v1);  // 右上
+    batch.batch_push_vertex(x2_rot, y2_rot, u2, v2);  // 右下
 
     if (spr->effects.any()) {
-        b->outline = spr->effects[0];
-        b->glow = spr->effects[1];
-        b->bloom = spr->effects[2];
-        b->trans = spr->effects[3];
-        batch_flush(b);
+        batch.GetBatch()->outline = spr->effects[0];
+        batch.GetBatch()->glow = spr->effects[1];
+        batch.GetBatch()->bloom = spr->effects[2];
+        batch.GetBatch()->trans = spr->effects[3];
+        batch.batch_flush();
     } else {
-        b->outline = b->glow = b->bloom = b->trans = false;
+        batch.GetBatch()->outline = batch.GetBatch()->glow = batch.GetBatch()->bloom = batch.GetBatch()->trans = false;
     }
 }
 
@@ -717,9 +715,7 @@ void font_init() {
     glBindVertexArray(0);
 }
 
-static Asset batch_shader = {};
-
-batch_renderer *batch_init(int vertex_capacity) {
+void Batch::batch_init(int vertex_capacity) {
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -727,20 +723,20 @@ batch_renderer *batch_init(int vertex_capacity) {
     GLuint vbo;
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertex_capacity, NULL, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(BatchVertex) * vertex_capacity, NULL, GL_DYNAMIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, position));
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (void *)offsetof(BatchVertex, position));
 
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, texcoord));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (void *)offsetof(BatchVertex, texcoord));
 
-    if (batch_shader.shader.id == 0) {
-        bool ok = asset_load_kind(AssetKind_Shader, "shader/batch.glsl", &batch_shader);
+    if (shader_asset.shader.id == 0) {
+        bool ok = asset_load_kind(AssetKind_Shader, "shader/batch.glsl", &shader_asset);
         error_assert(ok);
     }
 
-    batch_renderer *batch = (batch_renderer *)mem_alloc(sizeof(batch_renderer));
+    batch = (batch_renderer *)mem_alloc(sizeof(batch_renderer));
 
     asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
 
@@ -749,19 +745,23 @@ batch_renderer *batch_init(int vertex_capacity) {
     batch->vbo = vbo;
     batch->vertex_count = 0;
     batch->vertex_capacity = vertex_capacity;
-    batch->vertices = (Vertex *)mem_alloc(sizeof(Vertex) * vertex_capacity);
+    batch->vertices = (BatchVertex *)mem_alloc(sizeof(BatchVertex) * vertex_capacity);
     batch->texture = 0;
     batch->scale = 0;
 
-    return batch;
+    auto type = BUILD_TYPE(Batch)
+                        .MemberMethod("batch_texture", this, &Batch::batch_texture)          //
+                        .MemberMethod("batch_flush", this, &Batch::batch_flush)              //
+                        .MemberMethod("batch_push_vertex", this, &Batch::batch_push_vertex)  //
+                        .Build();
 }
 
-void batch_fini(batch_renderer *batch) {
+void Batch::batch_fini() {
     mem_free(batch->vertices);
     mem_free(batch);
 }
 
-int batch_update_all(Event evt) {
+int Batch::batch_update_all(Event evt) {
 
     AssetTexture tex_aliens = texture_get_ptr("assets/aliens.png");
 
@@ -791,7 +791,7 @@ int batch_update_all(Event evt) {
             .th = alien_uvs[2].h,
     };
 
-    batch_texture(game.batch, tex_aliens.id);
+    batch_texture(tex_aliens.id);
 
     float x1 = ch.px;
     float y1 = ch.py;
@@ -803,64 +803,64 @@ int batch_update_all(Event evt) {
     float u2 = (ch.tx + ch.tw) / tex_aliens.width;
     float v2 = (ch.ty + ch.th) / tex_aliens.height;
 
-    batch_push_vertex(game.batch, x1, y1, u1, v2);
-    batch_push_vertex(game.batch, x2, y2, u2, v1);
-    batch_push_vertex(game.batch, x1, y2, u1, v1);
+    batch_push_vertex(x1, y1, u1, v2);
+    batch_push_vertex(x2, y2, u2, v1);
+    batch_push_vertex(x1, y2, u1, v1);
 
-    batch_push_vertex(game.batch, x1, y1, u1, v2);
-    batch_push_vertex(game.batch, x2, y1, u2, v2);
-    batch_push_vertex(game.batch, x2, y2, u2, v1);
+    batch_push_vertex(x1, y1, u1, v2);
+    batch_push_vertex(x2, y1, u2, v2);
+    batch_push_vertex(x2, y2, u2, v1);
 
     return 0;
 }
 
-void batch_draw_all(batch_renderer *batch) { batch_flush(batch); }
+void Batch::batch_draw_all() { batch_flush(); }
 
-void batch_flush(batch_renderer *renderer) {
-    if (renderer->vertex_count == 0) {
+void Batch::batch_flush() {
+    if (batch->vertex_count == 0) {
         return;
     }
 
-    GLuint sid = batch_shader.shader.id;
+    GLuint sid = shader_asset.shader.id;
 
     glUseProgram(sid);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, renderer->texture);
+    glBindTexture(GL_TEXTURE_2D, batch->texture);
 
-    glUniform1i(glGetUniformLocation(sid, "outline_enable"), renderer->outline);
-    glUniform1i(glGetUniformLocation(sid, "glow_enable"), renderer->glow);
-    glUniform1i(glGetUniformLocation(sid, "bloom_enable"), renderer->bloom);
-    glUniform1i(glGetUniformLocation(sid, "trans_enable"), renderer->trans);
+    glUniform1i(glGetUniformLocation(sid, "outline_enable"), batch->outline);
+    glUniform1i(glGetUniformLocation(sid, "glow_enable"), batch->glow);
+    glUniform1i(glGetUniformLocation(sid, "bloom_enable"), batch->bloom);
+    glUniform1i(glGetUniformLocation(sid, "trans_enable"), batch->trans);
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
-    // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
+    // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&batch->mvp.cols[0]);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    glUniform1f(glGetUniformLocation(sid, "scale"), renderer->scale);
+    glUniform1f(glGetUniformLocation(sid, "scale"), batch->scale);
 
-    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * renderer->vertex_count, renderer->vertices);
+    glBindBuffer(GL_ARRAY_BUFFER, batch->vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(BatchVertex) * batch->vertex_count, batch->vertices);
 
-    glBindVertexArray(renderer->vao);
-    glDrawArrays(GL_TRIANGLES, 0, renderer->vertex_count);
+    glBindVertexArray(batch->vao);
+    glDrawArrays(GL_TRIANGLES, 0, batch->vertex_count);
 
-    renderer->vertex_count = 0;
+    batch->vertex_count = 0;
 }
 
-void batch_texture(batch_renderer *renderer, GLuint id) {
-    if (renderer->texture != id) {
-        batch_flush(renderer);
-        renderer->texture = id;
+void Batch::batch_texture(GLuint id) {
+    if (batch->texture != id) {
+        batch_flush();
+        batch->texture = id;
     }
 }
 
-void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, float v) {
-    if (renderer->vertex_count == renderer->vertex_capacity) {
-        batch_flush(renderer);
+void Batch::batch_push_vertex(float x, float y, float u, float v) {
+    if (batch->vertex_count == batch->vertex_capacity) {
+        batch_flush();
     }
 
-    renderer->vertices[renderer->vertex_count++] = Vertex{
+    batch->vertices[batch->vertex_count++] = BatchVertex{
             .position = {x, y},
             .texcoord = {u, v},
     };

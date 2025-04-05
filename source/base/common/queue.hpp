@@ -2,6 +2,7 @@
 
 #include "base/common/base.hpp"
 #include "base/common/mutex.hpp"
+#include "base/common/mem.hpp"
 
 namespace Neko {
 

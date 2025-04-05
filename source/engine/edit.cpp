@@ -282,17 +282,3 @@ int open_tools_spritepack(lua_State *L) {
     luaL_newlib(L, l);
     return 1;
 }
-
-void console_set_visible(bool visible) {
-    // if (!CEntityEq(text, entity_nil)) gui_set_visible(transform_get_parent(text), visible);
-}
-bool console_get_visible() {
-    // if (!CEntityEq(text, entity_nil)) return gui_get_visible(transform_get_parent(text));
-    return false;
-}
-
-void console_puts(const char *s) { LOG_INFO("{}", s); }
-
-void console_init() { PROFILE_FUNC(); }
-
-void console_fini() {}

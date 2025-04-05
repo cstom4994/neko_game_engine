@@ -4,15 +4,6 @@ mu = neko.ui
 db = neko.db
 imgui = neko.imgui_obsolete
 
-function console_print(...)
-    local args = table.pack(...)
-    local sargs = {}
-    for i = 1, args.n do
-        sargs[i] = tostring(args[i])
-    end
-    ns.console.puts(table.concat(sargs, '    '))
-end
-
 function neko.__define_default_callbacks()
     neko.before_quit = function()
     end
@@ -31,7 +22,7 @@ function ns.app.OnKeyDown(key)
     local keyname = key
 
     if keyname == "KC_F1" then
-        ns.console.set_visible(not ns.console.get_visible())
+
     elseif keyname == "KC_F2" then
         ns.inspector.set_visible(not ns.inspector.get_visible())
     elseif keyname == "KC_E" then

@@ -3,7 +3,7 @@
 -- require "scripts/ecc/ecc"
 -- require "scripts/cmake/_cmake"
 workspace "neko"
-configurations {"Debug", "Release"}
+configurations {"Debug", "Debug_Profiler", "Release"}
 
 buildoptions {"/utf-8", "/Zc:__cplusplus", "/permissive", "/bigobj", "/Zc:preprocessor", "/Zc:wchar_t", "/Zc:forScope",
               "/MP"}
@@ -412,6 +412,19 @@ do
     architecture(arch)
 
     defines {"_WIN64"}
+
+    targetsuffix("_debug")
+end
+
+filter "configurations:Debug_Profiler"
+do
+    defines {"_DEBUG", "DEBUG", "_CONSOLE", "USE_PROFILER"}
+    symbols "On"
+    architecture(arch)
+
+    defines {"_WIN64"}
+
+    targetsuffix("_debug_profiler")
 end
 
 filter "configurations:Release"
@@ -421,6 +434,8 @@ do
     architecture(arch)
 
     defines {"_WIN64"}
+
+    targetsuffix("_release")
 end
 
 filter "configurations:*"

@@ -112,8 +112,8 @@ void main()
         EndPrimitive();
 
         /* draw grown bbox */
-        vec2 g1 = 0.012 * (u + r);
-        vec2 g2 = 0.012 * (u - r);
+        vec2 g1 = 0.02 * (u + r);
+        vec2 g2 = 0.02 * (u - r);
         gl_Position = vec4(m * vec3(bbmin.x, bbmax.y, 1) + vec3( g2, 0), 1);
         EmitVertex();
         gl_Position = vec4(m * vec3(bbmin.x, bbmin.y, 1) + vec3(-g1, 0), 1);
