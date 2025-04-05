@@ -15,7 +15,6 @@ public:
     Mutex gpu_mtx;
 
     std::atomic<bool> error_mode;
-    std::atomic<bool> is_fused;
 
     Mutex error_mtx;
     String fatal_error_string;
@@ -25,17 +24,15 @@ public:
     std::atomic<f32> reload_interval;
 
 public:
-    void SetArgs(int argc, const char** argv);
     inline const Slice<String>& GetArgs() const { return args; };
 
     inline int GetArgc() const { return argc; };
     inline const char** GetArgv() const { return argv; };
 
 public:
-    void Init();
+    void Init(int argc, const char* argv[]);
     void Fini();
 
-    bool LoadVFS(String filepath);
     void UnLoadVFS();
 
     bool InitLuaBase();

@@ -144,9 +144,9 @@ static void load_all_lua_scripts(lua_State *L) {
     bool ok = false;
 
 #if defined(_DEBUG) || 1
-    ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
+    ok = the<VFS>().list_all_files("luacode", &files);
 #else
-    ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
+    ok = the<VFS>().list_all_files("gamedata", &files);
 #endif
 
     if (!ok) {
@@ -424,12 +424,6 @@ void CL::init() {
 
     window = &Neko::the<Window>();
 
-#if defined(NDEBUG)
-    LOG_INFO("neko {}", neko_buildnum());
-#else
-    LOG_INFO("neko {} (debug build) (Lua {}.{}.{}, {})", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
-#endif
-
     window->create();
     window->SetFramebufferSizeCallback(framebuffer_size_callback);
 
@@ -446,40 +440,16 @@ void CL::init() {
 
     PROFILE_FUNC();
 
-    script_init();
+    the<Scripting>().script_init();
 
     lua_State *L = ENGINE_LUA();
-
-    if (!gBase.error_mode.load() /*&& mount.ok*/) {
-        bool ok = asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
-        if (!ok) {
-            String conf = R"(
-function neko.conf(t)
-
-    t.app = {
-        title = "ahaha",
-        width = 1280.0,
-        height = 720.0,
-        game_proxy = "default",
-        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
-        dump_allocs_detailed = true,
-        swap_interval = 1,
-        target_fps = 999,
-        reload_interval = 1,
-        debug_on = false,
-        batch_vertex_capacity = 2048
-    }
-end
-)";
-            luax_require_script_buffer(L, conf, "<builtin_conf>");
-        }
-    }
 
     lua_newtable(L);
     i32 conf_table = lua_gettop(L);
 
     if (!gBase.error_mode.load()) {
-        luax_neko_get(L, "conf");
+        // luax_neko_get(L, "conf");
+        lua_getglobal(L, "__neko_conf");
         lua_pushvalue(L, conf_table);
         luax_pcall(L, 1, 0);
     }
@@ -787,7 +757,7 @@ void CL::fini() {
 
     the<DebugDraw>().debug_draw_fini();
     the<Edit>().edit_fini();
-    script_fini();
+    the<Scripting>().script_fini();
     physics_fini();
     sound_fini();
     the<Tiled>().tiled_fini();
@@ -917,17 +887,12 @@ static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, 
 
 Int32 Main(int argc, const char *argv[]) {
     bool ok = true;
-    gBase.Init();
-    gBase.SetArgs(argc, argv);
-    gBase.LoadVFS("../gamedir");
-    auto argsArray = BaseGetCommandLine(argc);
+    gBase.Init(argc, argv);
+
     glfwSetErrorCallback(_glfw_error_callback);
     if (!glfwInit()) {
         ok = false;
     }
-
-    for (auto &s : argsArray) mem_free(s.data);
-    argsArray.trash();
 
     // if (!SV_Init()) return false;
     Neko::modules::initialize<CL>();

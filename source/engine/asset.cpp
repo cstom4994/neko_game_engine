@@ -63,7 +63,7 @@ static void hot_reload_thread(void *) {
             for (auto [k, v] : g_assets.table) {
                 PROFILE_BLOCK("read modtime");
 
-                u64 modtime = vfs_file_modtime(v->name);
+                u64 modtime = the<VFS>().file_modtime(v->name);
                 if (modtime > v->modtime) {
                     FileChange change = {};
                     change.key = v->hash;
@@ -136,7 +136,7 @@ int assets_perform_hot_reload_changes(Event evt) {
             }
             case AssetKind_Text: {
                 mem_free(a.text.data);
-                ok = vfs_read_entire_file(&a.text, a.name);
+                ok = the<VFS>().read_entire_file(&a.text, a.name);
                 break;
             }
             default:
@@ -218,6 +218,7 @@ bool asset_load_kind(AssetKind kind, String filepath, Asset *out) {
     return asset_load(data, filepath, out);
 }
 
+
 bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
     PROFILE_FUNC();
 
@@ -241,7 +242,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
         asset.hash = key;
         {
             PROFILE_BLOCK("asset modtime")
-            asset.modtime = vfs_file_modtime(asset.name);
+            asset.modtime = the<VFS>().file_modtime(asset.name);
         }
         asset.kind = desc.kind;
 
@@ -271,7 +272,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 break;
             }
             case AssetKind_Text: {
-                ok = vfs_read_entire_file(&asset.text, filepath);
+                ok = the<VFS>().read_entire_file(&asset.text, filepath);
                 break;
             }
             // case AssetKind_Pak:

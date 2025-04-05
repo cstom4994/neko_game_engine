@@ -15,7 +15,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filepath);
+    bool ok = read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }
@@ -144,7 +144,7 @@ bool AseSpriteData::load(String filepath) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filepath);
+    bool ok = the<VFS>().read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }

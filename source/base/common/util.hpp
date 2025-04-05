@@ -160,6 +160,136 @@ constexpr bool static_find() {
     return b;
 }
 
+#define neko_time_count(x) std::chrono::time_point_cast<std::chrono::microseconds>(x).time_since_epoch().count()
+
+class timer {
+public:
+    inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
+    inline void stop() noexcept {
+        auto endTime = std::chrono::high_resolution_clock::now();
+        duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
+    }
+    [[nodiscard]] inline f64 get() const noexcept { return duration; }
+    ~timer() noexcept { stop(); }
+
+private:
+    f64 duration = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
+};
+
+template <typename T>
+using initializer_list = std::initializer_list<T>;
+
+template <typename T>
+using function = std::function<T>;
+
+template <typename T>
+concept concept_is_pair = requires(T t) {
+    t.first;
+    t.second;
+};
+
+template <class T>
+struct is_pair : public std::false_type {};
+
+template <class T1, class T2>
+struct is_pair<std::pair<T1, T2>> : public std::true_type {};
+
+template <class>
+inline constexpr bool always_false = false;
+
+// std::function 合并方法
+
+template <typename, typename...>
+struct lastFnType;
+
+template <typename F0, typename F1, typename... Fn>
+struct lastFnType<F0, F1, Fn...> {
+    using type = typename lastFnType<F1, Fn...>::type;
+};
+
+template <typename T1, typename T2>
+struct lastFnType<function<T2(T1)>> {
+    using type = T1;
+};
+
+template <typename T1, typename T2>
+function<T1(T2)> func_combine(function<T1(T2)> conv) {
+    return conv;
+}
+
+template <typename T1, typename T2, typename T3, typename... Fn>
+auto func_combine(function<T1(T2)> conv1, function<T2(T3)> conv2, Fn... fn) -> function<T1(typename lastFnType<function<T2(T3)>, Fn...>::type)> {
+    using In = typename lastFnType<function<T2(T3)>, Fn...>::type;
+
+    return [=](In const& in) { return conv1(func_combine(conv2, fn...)(in)); };
+}
+
+template <typename T>
+struct tuple_size;
+
+template <typename... Args>
+struct tuple_size<std::tuple<Args...>> {
+    static constexpr std::size_t value = sizeof...(Args);
+};
+
+template <typename T>
+constexpr std::size_t tuple_size_v = tuple_size<T>::value;
+
+template <typename T, std::size_t N>
+constexpr bool is_pointer_to_const_char(T (&)[N]) {
+    return std::is_same_v<const char, T>;
+}
+
+template <typename T>
+constexpr bool is_pointer_to_const_char(T&&) {
+    return std::is_same_v<const char*, T>;
+}
+
+template <typename T>
+struct is_vector : std::false_type {};
+
+template <typename T, typename Alloc>
+struct is_vector<std::vector<T, Alloc>> : std::true_type {};
+
+struct format_str {
+    constexpr format_str(const char* str) noexcept : str(str) {}
+    const char* str;
+};
+
+template <format_str F>
+constexpr auto operator""_f() {
+    return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
+}
+
+namespace detail {
+// 某些旧版本的 GCC 需要
+template <typename...>
+struct voider {
+    using type = void;
+};
+
+// std::void_t 将成为 C++17 的一部分 但在这里我还是自己实现吧
+template <typename... T>
+using void_t = typename voider<T...>::type;
+
+template <typename T, typename U = void>
+struct is_mappish_impl : std::false_type {};
+
+template <typename T>
+struct is_mappish_impl<T, void_t<typename T::key_type, typename T::mapped_type, decltype(std::declval<T&>()[std::declval<const typename T::key_type&>()])>> : std::true_type {};
+}  // namespace detail
+
+template <typename T>
+struct neko_is_mappish : detail::is_mappish_impl<T>::type {};
+
+template <class... Ts>
+struct neko_overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
+
 }  // namespace util
 
 }  // namespace Neko

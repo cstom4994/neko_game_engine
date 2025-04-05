@@ -5,6 +5,10 @@
 #include "base/common/os.hpp"
 #include "base/common/string.hpp"
 #include "base/common/hashmap.hpp"
+#include "base/common/singleton.hpp"
+#include "base/common/map.hpp"
+#include "base/common/logger.hpp"
+#include "base/common/reflection.hpp"
 
 // miniz
 #include "extern/miniz.h"
@@ -21,16 +25,12 @@ namespace Neko {
 #define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
 #endif
 
-struct NEKO_PACKS {
-    static inline const_str GAMEDATA = "default_pack";
-    static inline const_str LUACODE = "luacode";
-};
-
 class FileSystem {
 public:
     FileSystem() = default;
     virtual ~FileSystem() = default;
 
+    virtual bool mount() { return false; };
     virtual void trash() = 0;
     virtual bool file_exists(String filepath) = 0;
     virtual bool read_entire_file(String* out, String filepath) = 0;
@@ -70,29 +70,41 @@ public:
 
 bool read_entire_file_raw(String* out, String filepath);
 
-extern HashMap<FileSystem*> g_vfs;
+class VFS : public SingletonClass<VFS> {
+private:
+    UnorderedMap<String, FileSystem*> vfs_map;
 
-template <typename T>
-inline bool vfs_mount_type(String fsname, T* vfs)
-    requires(std::is_base_of_v<FileSystem, T>)
-{
-    // bool ok = vfs->mount(mount);
-    // if (!ok) {
-    //     vfs->trash();
-    //     mem_free(vfs);
-    //     return false;
-    // }
-    g_vfs[fnv1a(fsname)] = vfs;
-    return true;
-}
+    std::unordered_map<std::string, std::string> vfs_redirect;
 
-void vfs_fini();
+public:
+    template <typename T, typename... Args>
+    inline bool mount_type(String fsname, String redirect, Args&&... args)
+        requires(std::is_base_of_v<FileSystem, T>)
+    {
+        T* fs = mem_new<T>();
+        bool ok = fs->mount(std::forward<Args>(args)...);
+        if (!ok) {
+            fs->trash();
+            mem_del(fs);
+            return false;
+        }
+        vfs_map[to_cstr(fsname)] = fs;
+        vfs_redirect[fsname.cstr()] = redirect.cstr();
+        LOG_TRACE("vfs mount {} as {}", reflection::GetTypeName<T>(), fsname.cstr());
+        return true;
+    }
 
-u64 vfs_file_modtime(String filepath);
-bool vfs_file_exists(String filepath);
-bool vfs_read_entire_file(String* out, String filepath);
-// bool vfs_write_entire_file(String fsname, String filepath, String contents);
-bool vfs_list_all_files(String fsname, Array<String>* files);
+    inline bool is_mount(String fsname) { return vfs_map.find(fsname) != nullptr; }
+
+    void vfs_fini();
+
+    String filepath_redirect(String file);
+    u64 file_modtime(String filepath);
+    bool file_exists(String filepath);
+    bool read_entire_file(String* out, String filepath);
+    // bool vfs_write_entire_file(String fsname, String filepath, String contents);
+    bool list_all_files(String fsname, Array<String>* files);
+};
 
 typedef struct vfs_file {
     const_str data;

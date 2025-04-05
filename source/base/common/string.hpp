@@ -45,13 +45,12 @@ struct String {
         return substr(len - match.len, len).equel(match);
     }
 
-    u64 first_of(char c) {
-        for (u64 i = 0; i < len; i++) {
+    u64 first_of(char c, u64 start_pos = 0) {
+        for (u64 i = start_pos; i < len; i++) {
             if (data[i] == c) {
                 return i;
             }
         }
-
         return (u64)-1;
     }
 
@@ -288,6 +287,8 @@ struct StringBuilder {
     void clear();
     void swap_filename(String filepath, String file);
     void concat(String str, i32 times);
+
+    inline String to_str() const { return {data, len}; }
 
     StringBuilder& operator<<(String str);
     explicit operator String();

@@ -1,5 +1,4 @@
-function neko.conf(t)
-
+function __neko_conf(t)
     t.app = {
         title = "ahaha",
         width = 1280.0,
@@ -13,5 +12,19 @@ function neko.conf(t)
         reload_interval = 1,
         debug_on = false,
         batch_vertex_capacity = 2048
+    }
+    t.vfs = {
+        luacode = {
+            path = "../source/game",
+            redirect = ""
+        },
+        gamedata = {
+            path = "../gamedir",
+            redirect = ""
+        },
+        demo_data = {
+            path = "../demo_data.lua",
+            redirect = "luabp/source/game"
+        }
     }
 end

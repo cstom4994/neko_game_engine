@@ -287,9 +287,7 @@ newaction {
     description = 'Embed base64 files',
     execute = function()
         local entries = {}
-        -- local luaFiles = os.matchfiles("source/game/script/*.lua")
-        -- local luaFiles = os.matchfiles("./*.md")
-        local luaFiles = os.matchfiles("./gamedir/**")
+        local luaFiles = os.matchfiles("./source/game/**")
 
         local out = io.open("out.lua", "w")
         out:write("local F = function(x) return x end\n")

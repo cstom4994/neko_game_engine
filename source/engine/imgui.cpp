@@ -740,7 +740,7 @@ void ImGuiRender::imgui_init(GLFWwindow* window) {
         // config.PixelSnapH = 1;
 
         String ttf_file;
-        vfs_read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
+        the<VFS>().read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
         io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 16.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     }
 #endif

@@ -214,7 +214,7 @@ int open_db(lua_State *L) {
                 auto newdb = [](lua_State *L, std::string source) {
                     lua_State *Ldb = luaL_newstate();
                     String contents = {};
-                    bool ok = vfs_read_entire_file(&contents, source.c_str());
+                    bool ok = the<VFS>().read_entire_file(&contents, source.c_str());
                     if (ok) {
                         neko_defer(mem_free(contents.data));
                         if (luaL_dostring(Ldb, contents.data)) {

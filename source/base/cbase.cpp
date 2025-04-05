@@ -6,6 +6,7 @@
 #include "base/common/profiler.hpp"
 #include "base/common/string.hpp"
 #include "base/common/logger.hpp"
+#include "base/scripting/scripting.h"
 
 #include <cstdlib>
 
@@ -35,17 +36,7 @@ void HACK_CALL operator delete(void* p, size_t) { free(p); }
 
 namespace Neko {
 
-void CBase::SetArgs(int argc, const char** argv) {
-    this->argc = argc;
-    this->argv = argv;
-
-    this->args.resize(argc);
-    for (i32 i = 0; i < argc; i++) {
-        this->args[i] = to_cstr(String(argv[i]));
-    }
-}
-
-void CBase::Init() {
+void CBase::Init(int argc, const char* argv[]) {
 
     os_high_timer_resolution();
     TimeUtil::initialize();
@@ -54,6 +45,27 @@ void CBase::Init() {
 
     profile_setup();
     PROFILE_FUNC();
+
+    this->argc = argc;
+    this->argv = argv;
+
+    this->args.resize(argc);
+    for (i32 i = 0; i < argc; i++) {
+        this->args[i] = to_cstr(String(argv[i]));
+    }
+
+#if defined(NDEBUG)
+    LOG_INFO("neko {}", neko_buildnum());
+#else
+    LOG_INFO("neko {} (debug build) (Lua {}.{}.{}, {})", neko_buildnum(), LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE, LUAJIT_VERSION);
+#endif
+
+    Neko::modules::initialize<Scripting>();
+    Neko::modules::initialize<VFS>();
+
+    the<Scripting>().init_lua();
+
+    hot_reload_enabled.store(true);
 }
 
 void CBase::Fini() {
@@ -75,60 +87,7 @@ void CBase::Fini() {
     neko_println("see ya");
 }
 
-bool CBase::LoadVFS(String filepath) {
-
-    PROFILE_FUNC();
-
-    // #if defined(_DEBUG) || 1
-    //     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, filepath);
-    //     MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "../source/game");
-    // #else
-    //     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
-    //     MountResult mount_luacode = {true};
-    // #endif
-
-    bool ok = false;
-
-    if (filepath.len == 0) {
-        String path = os_program_path();
-        LOG_INFO("program path: {}", path.data);
-
-        ZipFileSystem* zipfs = mem_new<ZipFileSystem>();
-        ok = zipfs->mount(path);
-        ok &= vfs_mount_type(NEKO_PACKS::GAMEDATA, zipfs);
-        if (!ok) {
-            ok = zipfs->mount("./gamedata.zip");
-            ok &= vfs_mount_type(NEKO_PACKS::GAMEDATA, zipfs);
-            is_fused.store(true);
-            LOG_INFO("zip_fs load with gamedata.zip");
-        }
-    } else {
-        String mount_dir = filepath;
-
-        if (mount_dir.ends_with(".zip")) {
-            ZipFileSystem* zipfs = mem_new<ZipFileSystem>();
-            ok = zipfs->mount(mount_dir);
-            ok &= vfs_mount_type(NEKO_PACKS::GAMEDATA, zipfs);
-            is_fused.store(true);
-        } else {
-            DirectoryFileSystem* dirfs1 = mem_new<DirectoryFileSystem>();
-            DirectoryFileSystem* dirfs2 = mem_new<DirectoryFileSystem>();
-            ok = dirfs1->mount(mount_dir);
-            ok &= dirfs2->mount("../source/game");
-            ok &= vfs_mount_type(NEKO_PACKS::GAMEDATA, dirfs1);
-            ok &= vfs_mount_type(NEKO_PACKS::LUACODE, dirfs2);
-            hot_reload_enabled.store(true);
-        }
-    }
-
-    if (filepath.len != 0 && !ok) {
-        fatal_error(tmp_fmt("failed to load: %s", filepath));
-    }
-
-    return ok;
-}
-
-void CBase::UnLoadVFS() { vfs_fini(); }
+void CBase::UnLoadVFS() { the<VFS>().vfs_fini(); }
 
 bool CBase::InitLuaBase() { return true; }
 

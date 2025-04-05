@@ -5,6 +5,13 @@
 #include "base/common/base.hpp"
 #include "base/common/string.hpp"
 #include "base/common/math.hpp"
+#include "base/common/arena.hpp"
+#include "base/common/array.hpp"
+#include "base/common/hashmap.hpp"
+#include "base/common/mem.hpp"
+#include "base/common/mutex.hpp"
+#include "base/common/queue.hpp"
+#include "base/common/util.hpp"
 
 using namespace Neko;
 
@@ -294,40 +301,6 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void *p, size_t len, size_t seed) {
 #endif
 }
 
-#endif
-
-#if !defined(NEKO_BASE_HPP)
-#define NEKO_BASE_HPP
-
-#include "base/common/arena.hpp"
-#include "base/common/array.hpp"
-#include "base/common/hashmap.hpp"
-#include "base/common/mem.hpp"
-#include "base/common/mutex.hpp"
-#include "base/common/queue.hpp"
-#include "base/common/string.hpp"
-#include "base/common/util.hpp"
-
-/*=============================
-//
-=============================*/
-
-// #include <intrin.h>
-
-#include <stdint.h>
-
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <fstream>
-#include <functional>
-#include <memory>
-#include <string>
-#include <string_view>
-#include <type_traits>
-#include <utility>
-#include <vector>
-
 #define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
 
 #define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name)  \
@@ -419,175 +392,11 @@ constexpr typename cpp_remove_reference<T>::type &&cpp_move(T &&arg) noexcept {
     return (typename cpp_remove_reference<T>::type &&)arg;
 }
 
-template <typename T>
-using initializer_list = std::initializer_list<T>;
-
-template <typename T>
-using function = std::function<T>;
-
-template <typename T>
-concept concept_is_pair = requires(T t) {
-    t.first;
-    t.second;
-};
-
-template <class T>
-struct is_pair : public std::false_type {};
-
-template <class T1, class T2>
-struct is_pair<std::pair<T1, T2>> : public std::true_type {};
-
-template <class>
-inline constexpr bool always_false = false;
-
 }  // namespace Neko
 
 #define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
 
-namespace Neko {
-
-#define neko_time_count(x) std::chrono::time_point_cast<std::chrono::microseconds>(x).time_since_epoch().count()
-
-class timer {
-public:
-    inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
-    inline void stop() noexcept {
-        auto endTime = std::chrono::high_resolution_clock::now();
-        duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
-    }
-    [[nodiscard]] inline f64 get() const noexcept { return duration; }
-    ~timer() noexcept { stop(); }
-
-private:
-    f64 duration = 0;
-    std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
-};
-
-}  // namespace Neko
-
-namespace Neko {
-
-struct format_str {
-    constexpr format_str(const char *str) noexcept : str(str) {}
-    const char *str;
-};
-
-template <format_str F>
-constexpr auto operator""_f() {
-    return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
-}
-
-// 成员函数返回值类型确定
-// https://stackoverflow.com/questions/26107041/how-can-i-determine-the-return-type-of-a-c11-member-function
-
-template <typename T>
-struct return_type;
-template <typename R, typename... Args>
-struct return_type<R (*)(Args...)> {
-    using type = R;
-};
-template <typename R, typename C, typename... Args>
-struct return_type<R (C::*)(Args...)> {
-    using type = R;
-};
-template <typename R, typename C, typename... Args>
-struct return_type<R (C::*)(Args...) const> {
-    using type = R;
-};
-template <typename R, typename C, typename... Args>
-struct return_type<R (C::*)(Args...) volatile> {
-    using type = R;
-};
-template <typename R, typename C, typename... Args>
-struct return_type<R (C::*)(Args...) const volatile> {
-    using type = R;
-};
-template <typename T>
-using return_type_t = typename return_type<T>::type;
-
-// std::function 合并方法
-
-template <typename, typename...>
-struct lastFnType;
-
-template <typename F0, typename F1, typename... Fn>
-struct lastFnType<F0, F1, Fn...> {
-    using type = typename lastFnType<F1, Fn...>::type;
-};
-
-template <typename T1, typename T2>
-struct lastFnType<function<T2(T1)>> {
-    using type = T1;
-};
-
-template <typename T1, typename T2>
-function<T1(T2)> func_combine(function<T1(T2)> conv) {
-    return conv;
-}
-
-template <typename T1, typename T2, typename T3, typename... Fn>
-auto func_combine(function<T1(T2)> conv1, function<T2(T3)> conv2, Fn... fn) -> function<T1(typename lastFnType<function<T2(T3)>, Fn...>::type)> {
-    using In = typename lastFnType<function<T2(T3)>, Fn...>::type;
-
-    return [=](In const &in) { return conv1(func_combine(conv2, fn...)(in)); };
-}
-
-template <typename T>
-struct tuple_size;
-
-template <typename... Args>
-struct tuple_size<std::tuple<Args...>> {
-    static constexpr std::size_t value = sizeof...(Args);
-};
-
-template <typename T>
-constexpr std::size_t tuple_size_v = tuple_size<T>::value;
-
-template <typename T, std::size_t N>
-constexpr bool is_pointer_to_const_char(T (&)[N]) {
-    return std::is_same_v<const char, T>;
-}
-
-template <typename T>
-constexpr bool is_pointer_to_const_char(T &&) {
-    return std::is_same_v<const char *, T>;
-}
-
-template <typename T>
-struct is_vector : std::false_type {};
-
-template <typename T, typename Alloc>
-struct is_vector<std::vector<T, Alloc>> : std::true_type {};
-
-}  // namespace Neko
-
-namespace detail {
-// 某些旧版本的 GCC 需要
-template <typename...>
-struct voider {
-    using type = void;
-};
-
-// std::void_t 将成为 C++17 的一部分 但在这里我还是自己实现吧
-template <typename... T>
-using void_t = typename voider<T...>::type;
-
-template <typename T, typename U = void>
-struct is_mappish_impl : std::false_type {};
-
-template <typename T>
-struct is_mappish_impl<T, void_t<typename T::key_type, typename T::mapped_type, decltype(std::declval<T &>()[std::declval<const typename T::key_type &>()])>> : std::true_type {};
-}  // namespace detail
-
-template <typename T>
-struct neko_is_mappish : detail::is_mappish_impl<T>::type {};
-
-template <class... Ts>
-struct neko_overloaded : Ts... {
-    using Ts::operator()...;
-};
-template <class... Ts>
-neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
+namespace Neko {}  // namespace Neko
 
 namespace Neko {
 
@@ -660,22 +469,6 @@ constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, Out
 
 }  // namespace Neko
 
-namespace Neko {}  // namespace Neko
-
-#endif
-
-#ifndef NEKO_REFL_HPP
-#define NEKO_REFL_HPP
-
-#include <cstddef>
-#include <functional>
-#include <span>
-#include <stdexcept>
-#include <string>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-
 template <typename T>
 static inline std::string readable_bytes(T num) {
     char buffer[64];
@@ -697,4 +490,4 @@ static inline std::string readable_bytes(T num) {
     return std::string(buffer);
 }
 
-#endif  // NEKO_ENGINE_NEKO_REFL_HPP
+#endif

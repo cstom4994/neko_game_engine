@@ -328,7 +328,7 @@ void *vfs_for_miniaudio() {
             return MA_ERROR;
         }
 
-        bool ok = vfs_read_entire_file(&contents, pFilePath);
+        bool ok = the<VFS>().read_entire_file(&contents, pFilePath);
         if (!ok) {
             return MA_ERROR;
         }

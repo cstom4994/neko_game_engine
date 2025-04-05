@@ -15,8 +15,15 @@ NEKO_API() void script_error(const char *s);
 
 NEKO_API() void ng_push_cdata(const char *t, void *p);
 
-NEKO_API() void script_init();
-NEKO_API() void script_fini();
+class Scripting : public SingletonClass<Scripting> {
+private:
+    lua_State *L;
+
+public:
+    void init_lua();
+    void script_init();
+    void script_fini();
+};
 
 void luax_run_bootstrap(lua_State *L);
 void luax_run_nekogame(lua_State *L);

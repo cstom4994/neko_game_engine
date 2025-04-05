@@ -176,7 +176,7 @@ bool MapLdtk::load(String filepath) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool success = vfs_read_entire_file(&contents, filepath);
+    bool success = the<VFS>().read_entire_file(&contents, filepath);
     if (!success) {
         return false;
     }
@@ -610,14 +610,14 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
         char full_image_path[256];
         neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path.data);
 
-        bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
+        bool ok = neko_capi_vfs_file_exists("gamedata", full_image_path);
         if (!ok) {
             neko_panic("failed to load texture file: %s", full_image_path);
             return false;
         }
 
         size_t len = 0;
-        const_str tex_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, full_image_path, &len);
+        const_str tex_data = neko_capi_vfs_read_file("gamedata", full_image_path, &len);
         neko_assert(tex_data);
 
         neko_init_texture_from_memory(&tileset.texture, (u8 *)tex_data, len, TextureFlags(TEXTURE_ALIASED | TEXTURE_NO_FLIP_VERTICAL));

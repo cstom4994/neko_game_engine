@@ -131,7 +131,7 @@ bool neko_load_shader(AssetShader* shader, String path) {
     neko_assert(shader);
 
     String source = {};
-    bool ok = vfs_read_entire_file(&source, path);
+    bool ok = the<VFS>().read_entire_file(&source, path);
     neko_defer(mem_free(source.data));
 
     if (ok) {

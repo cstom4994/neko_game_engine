@@ -59,8 +59,6 @@ static bool list_all_files_help(Array<String> *files, const_str path) {
     return true;
 }
 
-HashMap<FileSystem *> g_vfs;
-
 DirectoryFileSystem::~DirectoryFileSystem() {}
 
 void DirectoryFileSystem::trash() { mem_free(basepath.data); }
@@ -120,8 +118,8 @@ bool ZipFileSystem::mount(String filepath) {
 
     // 判断是否已经挂载gamedata
     // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
-    if (g_vfs.get(fnv1a(NEKO_PACKS::GAMEDATA))) {
-        contents_ok = vfs_read_entire_file(&contents, filepath);
+    if (the<VFS>().is_mount("gamedata")) {
+        contents_ok = the<VFS>().read_entire_file(&contents, filepath);
     } else {
         contents_ok = read_entire_file_raw(&contents, filepath);
     }
@@ -252,44 +250,57 @@ bool ZipFileSystem::list_all_files(Array<String> *files) {
 
 u64 ZipFileSystem::file_modtime(String filepath) { return 0; }
 
-void vfs_fini() {
-    for (auto &vfs : g_vfs) {
-        LOG_INFO("vfs_fini({})", vfs.key);
-        FileSystem *fs = *vfs.value;
+void VFS::vfs_fini() {
+    for (auto &[name, vfs] : vfs_map) {
+        LOG_INFO("vfs_fini({})", name.cstr());
+        FileSystem *fs = vfs;
         fs->trash();
         mem_del(fs);
+        mem_free(name.data);
     }
 
-    g_vfs.trash();
+    vfs_map.trash();
 }
 
-u64 vfs_file_modtime(String filepath) {
-    for (auto v : g_vfs) {
-        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
-        if (vfs->file_exists(filepath)) {
-            return vfs->file_modtime(filepath);
+String VFS::filepath_redirect(String file) {
+    if (!file.starts_with("@")) return file;
+    for (auto &[name, redirect] : vfs_redirect) {
+        if (!file.starts_with("@" + name + "/")) continue;
+        return str_fmt("%s/%s", redirect.c_str(), file.substr(2 + name.size(), file.len).data);
+    }
+    return file;
+}
+
+u64 VFS::file_modtime(String filepath) {
+    String file = filepath_redirect(filepath);
+    for (auto &[name, vfs_] : vfs_map) {
+        FileSystem *vfs = static_cast<FileSystem *>(vfs_);
+        if (vfs->file_exists(file)) {
+            return vfs->file_modtime(file);
         }
     }
     return 0;
 }
 
-bool vfs_file_exists(String filepath) {
-    for (auto v : g_vfs) {
-        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
-        if (vfs->file_exists(filepath)) return true;
+bool VFS::file_exists(String filepath) {
+    String file = filepath_redirect(filepath);
+    for (auto &[name, vfs_] : vfs_map) {
+        FileSystem *vfs = static_cast<FileSystem *>(vfs_);
+        if (vfs->file_exists(file)) return true;
     }
     return false;
 }
 
-bool vfs_read_entire_file(String *out, String filepath) {
-    for (auto v : g_vfs) {
-        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
-        if (vfs->file_exists(filepath)) return vfs->read_entire_file(out, filepath);
+bool VFS::read_entire_file(String *out, String filepath) {
+    String file = filepath_redirect(filepath);
+    for (auto &[name, vfs_] : vfs_map) {
+        FileSystem *vfs = static_cast<FileSystem *>(vfs_);
+        if (vfs->file_exists(file)) return vfs->read_entire_file(out, file);
     }
     return false;
 }
 
-bool vfs_list_all_files(String fsname, Array<String> *files) { return g_vfs[fnv1a(fsname)]->list_all_files(files); }
+bool VFS::list_all_files(String fsname, Array<String> *files) { return vfs_map[fsname]->list_all_files(files); }
 
 // #define SEEK_SET 0
 // #define SEEK_CUR 1
@@ -330,7 +341,7 @@ u64 neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
 
 vfs_file neko_capi_vfs_fopen(const_str path) {
     vfs_file vf{};
-    vf.data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &vf.len);
+    vf.data = neko_capi_vfs_read_file("gamedata", path, &vf.len);
     return vf;
 }
 
@@ -423,11 +434,11 @@ int neko_capi_vfs_fscanf(vfs_file *vf, const char *format, ...) {
     return count;
 }
 
-bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(filepath); }
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return the<VFS>().file_exists(filepath); }
 
 const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size) {
     String out;
-    bool ok = vfs_read_entire_file(&out, filepath);
+    bool ok = the<VFS>().read_entire_file(&out, filepath);
     if (!ok) return NULL;
     *size = out.len;
     return out.data;

@@ -89,7 +89,7 @@ int spritepack_bake(lua_State *L) {
     // unsigned char *data = stbi_load(filename, &w, &h, &n, 0);
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filename);
+    bool ok = the<VFS>().read_entire_file(&contents, filename);
     if (!ok) {
         return luaL_error(L, "vfs can't open file %s", filename);
     }
@@ -220,7 +220,7 @@ static unsigned char *read_img(lua_State *L, int *w, int *h, int *x, int *y, int
     int width, height, comp;
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filename);
+    bool ok = the<VFS>().read_entire_file(&contents, filename);
     if (!ok) {
         luaL_error(L, "load %s failed", filename);
     }

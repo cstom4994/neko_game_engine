@@ -210,7 +210,6 @@ function haha()
 
         LocalGame.world = World()
 
-
         -- LocalGame.world:add(CEnemy(100, 100, "chort", true))
 
         cursor = Cursor(neko.sprite_load "assets/cursor.ase")
@@ -306,7 +305,9 @@ function haha()
 
         LocalGame.world:draw()
 
-        LocalGame.b2:debugdraw()
+        if draw_fixtures then
+            LocalGame.b2:debugdraw()
+        end
 
         if not ns.edit.get_enabled() then
             cursor:draw()

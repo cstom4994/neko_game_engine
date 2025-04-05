@@ -33,8 +33,6 @@
 
 namespace Neko {
 
-Array<String> BaseGetCommandLine(int argc);
-
 String os_program_dir();
 String os_program_path();
 u64 os_file_modtime(const char *filename);

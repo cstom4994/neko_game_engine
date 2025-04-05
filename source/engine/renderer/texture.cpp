@@ -52,7 +52,7 @@ NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data)
 
 AssetTexture neko_aseprite_simple(String filename) {
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filename);
+    bool ok = the<VFS>().read_entire_file(&contents, filename);
 
     neko_defer(mem_free(contents.data));
 
@@ -262,7 +262,7 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     LOG_INFO("texture: loading texture '{}' ...", filename.cstr());
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filename);
+    bool ok = the<VFS>().read_entire_file(&contents, filename);
     if (!ok) {
         return false;
     }
@@ -330,7 +330,7 @@ bool load_texture_data_from_memory(const void* memory, int sz, i32* width, i32* 
 
 bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
     size_t len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
+    const_str file_data = neko_capi_vfs_read_file("gamedata", file_path, &len);
     neko_assert(file_data);
     bool ret = load_texture_data_from_memory(file_data, (int)len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {

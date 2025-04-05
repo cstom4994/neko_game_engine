@@ -351,7 +351,7 @@ bool BinDataWriteItem(FILE *binfile, u64 item_count, char **item_paths, bool pri
         // seek_result = neko_fseek(item_file, 0, SEEK_SET);
 
         String content{};
-        bool ok = vfs_read_entire_file(&content, item_path);
+        bool ok = the<VFS>().read_entire_file(&content, item_path);
         neko_defer(mem_free(content.data));
         neko_assert(ok);
 

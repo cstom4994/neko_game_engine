@@ -363,14 +363,14 @@ draw_imgui = function(dt)
             end
         end
 
-        if ImGui.Button("test_luabp") then
+        if ImGui.Button("test_UnitTest") then
             hot_require('test').UnitTest()
         end
 
         if ImGui.Button("test_luabp") then
-            local M = dofile("../out.lua")
-            neko.vfs_load_luabp("name", M)
-            local content = read_file("luabp/README copy.md")
+            -- local M = dofile("../out.lua")
+            -- neko.vfs_load_luabp("demo_data", M)
+            local content = read_file("@demo_data/shader/font.glsl")
             print(content)
         end
 

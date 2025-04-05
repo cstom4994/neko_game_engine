@@ -236,7 +236,7 @@ Array<XMLNode> XMLDoc::ParseBlock(const_str start, u32 length) {
 
 void XMLDoc::ParseVFS(String path) {
     size_t size;
-    const_str source = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path.cstr(), &size);
+    const_str source = neko_capi_vfs_read_file("gamedata", path.cstr(), &size);
     neko_assert(source);
     Parse(source);
     mem_free(source);

@@ -229,7 +229,7 @@ static void test_struct() {
     dumpObj(rect);
 
     std::tuple<int, double, std::string> myTuple;
-    constexpr std::size_t size = Neko::tuple_size_v<decltype(myTuple)>;
+    constexpr std::size_t size = Neko::util::tuple_size_v<decltype(myTuple)>;
 
     std::cout << "Size of tuple: " << size << std::endl;
 }

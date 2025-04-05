@@ -7,6 +7,7 @@
 #include "engine/asset.h"
 #include "engine/base.hpp"
 #include "base/common/profiler.hpp"
+#include "base/common/util.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entity.h"
@@ -329,19 +330,9 @@ int app_stop(Event evt) {
     return 0;
 }
 
-void script_init() {
-    PROFILE_FUNC();
-
-    Neko::timer timer;
-    timer.start();
-
+void Scripting::init_lua() {
     LuaVM vm;
-
-    ENGINE_LUA() = vm.Create(true);
-
-    auto L = ENGINE_LUA();
-
-    open_neko_api(L);
+    L = vm.Create(true);
 
     lua_atpanic(
             L, +[](lua_State *L) {
@@ -349,6 +340,117 @@ void script_init() {
                 printf("LUA: neko_panic error: %s", msg);
                 return 0;
             });
+
+    String conf;
+    bool ok = read_entire_file_raw(&conf, "../gamedir/conf.lua");
+    if (!ok) {
+        String conf = R"(
+function __neko_conf(t)
+    t.app = {
+        title = "ahaha",
+        width = 1280.0,
+        height = 720.0,
+        game_proxy = "default",
+        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        dump_allocs_detailed = true,
+        swap_interval = 1,
+        target_fps = 999,
+        reload_interval = 1,
+        debug_on = false,
+        batch_vertex_capacity = 2048
+    }
+end
+)";
+    }
+    luax_require_script_buffer(L, conf, "<builtin_conf>");
+    if (ok) mem_free(conf.data);
+
+    lua_newtable(L);
+    i32 conf_table = lua_gettop(L);
+
+    if (!gBase.error_mode.load()) {
+        lua_getglobal(L, "__neko_conf");
+        lua_pushvalue(L, conf_table);
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK) {
+            lua_pop(L, 1);
+            LOG_ERROR("failed to run __neko_conf");
+            return;
+        }
+    }
+
+    if (1) {
+        luabind::detail::StackGuard p(L);
+
+        lua_getfield(L, -1, "vfs");
+        if (!lua_istable(L, -1)) {
+            LOG_ERROR("vfs registies not found");
+            lua_pop(L, 1);
+            return;
+        }
+        lua_pushnil(L);
+        while (lua_next(L, -2)) {
+            String name = luax_check_string(L, -2);  // k
+
+            bool ok = false;
+
+            if (!lua_istable(L, -1)) {
+                LOG_ERROR("bad {}", name);
+                lua_pop(L, 1);
+                continue;
+            }
+
+            lua_getfield(L, -1, "path");
+            String path = luax_check_string(L, -1);
+            lua_pop(L, 1);
+
+            lua_getfield(L, -1, "redirect");
+            String redirect = luax_check_string(L, -1);
+            lua_pop(L, 1);
+
+            if (path.ends_with(".lua")) {
+                if (luaL_dofile(L, path.cstr()) != LUA_OK) {
+                    LOG_ERROR("vfs not found: {}", path);
+                    lua_pop(L, 2);  // 弹出错误信息和当前value
+                    continue;
+                }
+                if (!lua_istable(L, -1)) {
+                    LOG_ERROR("vfs load failed: {}", path);
+                    lua_pop(L, 2);  // 弹出非表结果和当前value
+                    continue;
+                }
+                LuaRef tb = LuaRef::FromStack(L, -1);
+                ok = the<VFS>().mount_type<LuaBpFileSystem>(name, redirect, L, tb);
+                lua_pop(L, 1);
+            } else if (path.ends_with(".zip")) {
+                ok = the<VFS>().mount_type<ZipFileSystem>(name, redirect, path);
+            } else {
+                ok = the<VFS>().mount_type<DirectoryFileSystem>(name, redirect, path);
+            }
+
+            if (!ok) {
+                LOG_ERROR("mount failed for vfs: {}", name);
+            }
+            lua_pop(L, 1);  // pop value
+        }
+        lua_pop(L, 1);  // pop .vfs field
+    }
+
+    lua_pop(L, 1);
+
+    neko_assert(lua_gettop(L) == 0);
+}
+
+void Scripting::script_init() {
+    PROFILE_FUNC();
+
+    neko_assert(L);
+
+    Neko::util::timer timer;
+    timer.start();
+
+    ENGINE_LUA() = L;
+
+    open_neko_api(L);
 
     lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
 
@@ -370,11 +472,10 @@ void script_init() {
     lua_pop(L, 1);
 
     timer.stop();
-    LOG_INFO("lua init done in {0:.3f} ms", timer.get());
+    LOG_INFO("scripting init done in {0:.3f} ms", timer.get());
 }
 
-void script_fini() {
-    lua_State *L = ENGINE_LUA();
+void Scripting::script_fini() {
 
     {
         PROFILE_BLOCK("before quit");
@@ -495,7 +596,7 @@ LuaRefID luax_require_script(lua_State *L, String filepath) {
     LOG_INFO("{}", filepath.cstr());
 
     String contents;
-    bool ok = vfs_read_entire_file(&contents, filepath);
+    bool ok = the<VFS>().read_entire_file(&contents, filepath);
 
     // 如果是读取绝对路径
     if (!ok) ok = read_entire_file_raw(&contents, filepath);
@@ -537,6 +638,9 @@ int LuaBpFileSystem::vfs_load_luabp(lua_State *L) {
 }
 
 void LuaBpFileSystem::trash() {
+    for (auto &data : luabp) {
+        mem_free(data.value->data);
+    }
     luabp.trash();
     mem_free(luabpPath.data);
 }

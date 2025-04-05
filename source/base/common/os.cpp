@@ -32,21 +32,6 @@
 
 namespace Neko {
 
-Array<String> BaseGetCommandLine(int argc) {
-
-    // 转储CommandLine到argsArray
-    Array<String> argsArray{};
-    wchar_t **argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
-    if (argv_w == nullptr) {
-        LOG_INFO("Failed to parse command line arguments");
-        return {};
-    }
-    for (int i = 0; i < argc; i++) argsArray.push(to_cstr(win::w2u(argv_w[i])));
-    LocalFree(argv_w);  // 释放 CommandLineToArgvW 分配的内存
-
-    return argsArray;
-}
-
 #ifdef NEKO_IS_WIN32
 
 uint64_t this_thread_id() { return GetCurrentThreadId(); }

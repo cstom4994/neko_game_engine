@@ -701,14 +701,9 @@ static int neko_program_dir(lua_State *L) {
     return 1;
 }
 
-static int neko_is_fused(lua_State *L) {
-    lua_pushboolean(L, gBase.is_fused.load());
-    return 1;
-}
-
 static int neko_file_exists(lua_State *L) {
     String path = luax_check_string(L, 1);
-    lua_pushboolean(L, vfs_file_exists(path));
+    lua_pushboolean(L, the<VFS>().file_exists(path));
     return 1;
 }
 
@@ -718,7 +713,7 @@ static int neko_file_read(lua_State *L) {
     String path = luax_check_string(L, 1);
 
     String contents = {};
-    bool ok = vfs_read_entire_file(&contents, path);
+    bool ok = the<VFS>().read_entire_file(&contents, path);
     if (!ok) {
         lua_pushnil(L);
         lua_pushboolean(L, false);
@@ -1977,7 +1972,7 @@ LUA_FUNCTION(wrap_vfs_read_file) {
     const_str path = lua_tostring(L, 1);
 
     String str;
-    bool ok = vfs_read_entire_file(&str, path);
+    bool ok = the<VFS>().read_entire_file(&str, path);
 
     if (ok) {
         const_str data = str.data;
@@ -1996,17 +1991,9 @@ LUA_FUNCTION(wrap_vfs_load_luabp) {
 
     LuaRef tb = LuaRef::FromStack(L, 2);
 
-    LuaBpFileSystem *luabpFs = mem_new<LuaBpFileSystem>();
-    if (!luabpFs) {
-        return luaL_error(L, "Memory allocation for LuaBpFileSystem failed");
-    }
-    bool ok = luabpFs->mount(L, tb);
-    if (ok) {
-        ok &= vfs_mount_type(name, luabpFs);
-    }
+    bool ok = the<VFS>().mount_type<LuaBpFileSystem>(name, "", L, tb);
 
     if (!ok) {
-        mem_del(luabpFs);
         return luaL_error(L, "Failed to mount LuaBpFileSystem");
     }
 
@@ -2727,7 +2714,6 @@ static int open_neko(lua_State *L) {
             // filesystem
             {"program_path", neko_program_path},
             {"program_dir", neko_program_dir},
-            {"is_fused", neko_is_fused},
             {"file_exists", neko_file_exists},
             {"file_read", neko_file_read},
             {"file_write", neko_file_write},
@@ -2807,8 +2793,6 @@ static int open_neko(lua_State *L) {
 
             {"color", wrap_color},
             {"color_opaque", wrap_color_opaque},
-
-
 
             {nullptr, nullptr},
     };
