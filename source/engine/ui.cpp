@@ -71,7 +71,7 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
 
     renderer->icon_texture = NEKO_DEFAULT_VAL();
     renderer->tex = 0;
-    renderer->shader = ui_shader.shader.id;
+    renderer->shader = assets_get<AssetShader>(ui_shader).id;
     renderer->quad_count = 0;
 
     VertexBuffer &vb = renderer->vb;
@@ -336,7 +336,7 @@ void neko_init_ui_renderer() {
     texture_create(&ui_renderer->icon_texture, ui_atlas_texture, UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, TEXTURE_ANTIALIASED);
 
     std::string formatted_name = std::format("UIIconTex_{}", ui_renderer->icon_texture.id);
-    asset_sync_internal(formatted_name, {.texture = ui_renderer->icon_texture}, AssetKind_Image);
+    asset_sync_internal(formatted_name, {.data = ui_renderer->icon_texture}, AssetKind_Image);
 
     for (u32 i = UI_ICON_CLOSE; i <= UI_ICON_MAX; i++) {
         rect_t rect = ui_atlas_lookup(i);

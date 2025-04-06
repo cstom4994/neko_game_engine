@@ -828,7 +828,7 @@ void tiled_render_init(tiled_renderer *renderer) {
 
     // hashmap_init(&renderer->quad_table);
 
-    GLuint sid = CTiledMap::tiled_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(CTiledMap::tiled_shader).id;
 
     PROFILE_FUNC();
 
@@ -882,7 +882,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    GLuint sid = CTiledMap::tiled_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(CTiledMap::tiled_shader).id;
 
     glUseProgram(sid);
 
@@ -1027,7 +1027,7 @@ static void tiled_map_edit_w(CTiledMap *tiled, u32 layer_idx, u32 x, u32 y, u32 
     bool ok = asset_read(tiled->render->map_asset, &asset);
     error_assert(ok);
 
-    TiledMap map = asset.tiledmap;
+    TiledMap map = assets_get<TiledMap>(asset);
 
     error_assert(layer_idx < map.layers.len);
     layer_t *layer = &map.layers[layer_idx];
@@ -1061,7 +1061,7 @@ int Tiled::RenderMap(CTiledMap *tiled) {
     bool ok = asset_read(tiled->render->map_asset, &asset);
     error_assert(ok);
 
-    TiledMap map = asset.tiledmap;
+    TiledMap map = assets_get<TiledMap>(asset);
 
     {
         tiled_render_begin(tiled->render);
@@ -1206,7 +1206,7 @@ int tiled_get_object_groups(CEntity ent, lua_State *L) {
     bool ok = asset_read(tiled->render->map_asset, &asset);
     error_assert(ok);
 
-    TiledMap map = asset.tiledmap;
+    TiledMap map = assets_get<TiledMap>(asset);
 
     lua_createtable(L, 0, 0);
     for (auto &obj_group : map.object_groups) {

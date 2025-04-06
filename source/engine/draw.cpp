@@ -520,7 +520,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         texture_create(&tex, bitmap, width, height, 1, TEXTURE_ALIASED);
 
         std::string formatted_name = std::format("FontBake_{}", tex.id);
-        asset_sync_internal(formatted_name, {.texture = tex}, AssetKind_Image);
+        asset_sync_internal(formatted_name, {.data = tex}, AssetKind_Image);
 
         out->tex.id = tex.id;
         out->tex.width = width;
@@ -586,7 +586,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
 
     Font &font_renderer = the<Font>();
 
-    GLuint font_program = font_renderer.font_shader.shader.id;
+    GLuint font_program = assets_get<AssetShader>(font_renderer.font_shader).id;
 
     glUseProgram(font_program);
     glUniform3f(glGetUniformLocation(font_program, "textColor"), col.r / 255.f, col.g / 255.f, col.b / 255.f);
@@ -731,7 +731,7 @@ void Batch::batch_init(int vertex_capacity) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (void *)offsetof(BatchVertex, texcoord));
 
-    if (shader_asset.shader.id == 0) {
+    if (assets_get<AssetShader>(shader_asset).id == 0) {
         bool ok = asset_load_kind(AssetKind_Shader, "shader/batch.glsl", &shader_asset);
         error_assert(ok);
     }
@@ -821,7 +821,7 @@ void Batch::batch_flush() {
         return;
     }
 
-    GLuint sid = shader_asset.shader.id;
+    GLuint sid = assets_get<AssetShader>(shader_asset).id;
 
     glUseProgram(sid);
 
@@ -893,7 +893,7 @@ void DebugDraw::debug_draw_init() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/debug_line.glsl", &debug_renderer->lines_shader);
     error_assert(ok);
 
-    debug_renderer->program_id = debug_renderer->lines_shader.shader.id;
+    debug_renderer->program_id = assets_get<AssetShader>(debug_renderer->lines_shader).id;
 
     debug_renderer->pos_width = glGetAttribLocation(debug_renderer->program_id, "pos_width");
     debug_renderer->col = glGetAttribLocation(debug_renderer->program_id, "col");

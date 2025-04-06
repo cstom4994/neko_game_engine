@@ -287,7 +287,7 @@ bool AseSpriteView::make(AseSprite *spr) {
         return false;
     }
 
-    AseSpriteData data = a.sprite;
+    AseSpriteData data = assets_get<AseSpriteData>(a);
     const AseSpriteLoop *res = data.by_tag.get(spr->loop);
 
     AseSpriteView view = {};

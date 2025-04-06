@@ -88,7 +88,7 @@ static void _bboxes_init() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
     error_assert(ok);
 
-    GLuint sid = bboxes_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
 
     glUseProgram(sid);
 
@@ -137,7 +137,7 @@ static void _bboxes_draw_all() {
     vec2 win;
     unsigned int nbboxes;
 
-    GLuint sid = bboxes_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
@@ -218,7 +218,7 @@ static void _grid_draw() {
     vec2 win;
     unsigned int ncells;
 
-    GLuint sid = bboxes_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
@@ -264,7 +264,7 @@ static void _line_init() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/edit_line.glsl", &line_shader);
     error_assert(ok);
 
-    GLuint sid = line_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(line_shader).id;
 
     glUseProgram(sid);
     glGenVertexArrays(1, &line_vao);
@@ -288,7 +288,7 @@ static void _line_draw_all() {
 
     const mat3* mat = camera_get_inverse_view_matrix_ptr();
 
-    GLuint sid = line_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(line_shader).id;
 
     // bind program, update uniforms
     glUseProgram(sid);

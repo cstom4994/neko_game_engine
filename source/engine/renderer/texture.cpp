@@ -316,7 +316,7 @@ void texture_bind_byname(String filename, u32 slot) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
 
-    if (ok && a.texture.id != 0) texture_bind(&a.texture, slot);
+    if (ok && assets_get<AssetTexture>(a).id != 0) texture_bind(&assets_get<AssetTexture>(a), slot);
 }
 
 void texture_bind(AssetTexture* texture, u32 slot) {
@@ -333,13 +333,13 @@ vec2 texture_get_size(String filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     error_assert(ok);
-    return luavec2(a.texture.width, a.texture.height);
+    return luavec2(assets_get<AssetTexture>(a).width, assets_get<AssetTexture>(a).height);
 }
 
 AssetTexture texture_get_ptr(String filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
-    return a.texture;
+    return assets_get<AssetTexture>(a);
 }
 
 bool texture_update(AssetTexture* tex, String filename) { return _texture_load_vfs(tex, filename); }

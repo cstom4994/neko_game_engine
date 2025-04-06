@@ -437,7 +437,7 @@ static int neko_require_lua_script(lua_State *L) {
         return 0;
     }
 
-    lua_rawgeti(L, LUA_REGISTRYINDEX, asset.lua_ref);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, assets_get<LuaRefID>(asset));
     return 1;
 }
 
@@ -2812,7 +2812,7 @@ void createStructTables(lua_State *L) {
     LuaStruct<CEntity>(L);
     LuaStruct<BBox>(L);
 
-    LuaStruct<Asset>(L);
+    // LuaStruct<Asset>(L);
 }
 
 void open_neko_api(lua_State *L) {

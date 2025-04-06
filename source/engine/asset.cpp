@@ -100,44 +100,44 @@ int assets_perform_hot_reload_changes(Event evt) {
     auto L = ENGINE_LUA();
 
     for (FileChange change : g_assets.changes) {
-        Asset a = {};
-        bool exists = asset_read(change.key, &a);
+        Asset asset = {};
+        bool exists = asset_read(change.key, &asset);
         neko_assert(exists);
 
-        a.modtime = change.modtime;
+        asset.modtime = change.modtime;
 
         bool ok = false;
-        switch (a.kind) {
+        switch (asset.kind) {
             case AssetKind_LuaRef: {
-                luaL_unref(L, LUA_REGISTRYINDEX, a.lua_ref);
-                a.lua_ref = luax_require_script(L, a.name);
+                luaL_unref(L, LUA_REGISTRYINDEX, assets_get<LuaRefID>(asset));
+                asset.data = luax_require_script(L, asset.name);
                 ok = true;
                 break;
             }
             case AssetKind_Image: {
-                ok = texture_update(&a.texture, a.name);
+                ok = texture_update(&assets_get<AssetTexture>(asset), asset.name);
                 break;
             }
             case AssetKind_AseSprite: {
-                a.sprite.trash();
-                ok = a.sprite.load(a.name);
+                assets_get<AseSpriteData>(asset).trash();
+                ok = assets_get<AseSpriteData>(asset).load(asset.name);
                 break;
             }
             case AssetKind_Tiledmap: {
-                tiled_unload(&a.tiledmap);
-                ok = tiled_load(&a.tiledmap, a.name.cstr(), NULL);
+                tiled_unload(&assets_get<TiledMap>(asset));
+                ok = tiled_load(&assets_get<TiledMap>(asset), asset.name.cstr(), NULL);
                 break;
             }
             case AssetKind_Shader: {
-                GLuint save_sid = a.shader.id;
-                neko_unload_shader(&a.shader);
-                ok = neko_load_shader(&a.shader, a.name);
-                neko_assert(save_sid == a.shader.id);
+                GLuint save_sid = assets_get<AssetShader>(asset).id;
+                neko_unload_shader(&assets_get<AssetShader>(asset));
+                ok = neko_load_shader(&assets_get<AssetShader>(asset), asset.name);
+                neko_assert(save_sid == assets_get<AssetShader>(asset).id);
                 break;
             }
             case AssetKind_Text: {
-                mem_free(a.text.data);
-                ok = the<VFS>().read_entire_file(&a.text, a.name);
+                mem_free(assets_get<String>(asset).data);
+                ok = the<VFS>().read_entire_file(&assets_get<String>(asset), asset.name);
                 break;
             }
             default:
@@ -146,12 +146,12 @@ int assets_perform_hot_reload_changes(Event evt) {
         }
 
         if (!ok) {
-            gBase.fatal_error(tmp_fmt("failed to hot reload: %s", a.name.data));
+            gBase.fatal_error(tmp_fmt("failed to hot reload: %s", asset.name.data));
             return 0;
         }
 
-        asset_write(a);
-        LOG_INFO("reloaded: {}", a.name.data);
+        asset_write(asset);
+        LOG_INFO("reloaded: {}", asset.name.data);
     }
 
     g_assets.changes.len = 0;
@@ -177,21 +177,22 @@ void assets_shutdown() {
     for (auto [k, v] : g_assets.table) {
         mem_free(v->name.data);
 
-        switch (v->kind) {
+        Asset &asset = *v;
+        switch (asset.kind) {
             case AssetKind_Image:
-                texture_release(&v->texture);
+                texture_release(&assets_get<AssetTexture>(asset));
                 break;
             case AssetKind_AseSprite:
-                v->sprite.trash();
+                assets_get<AseSpriteData>(asset).trash();
                 break;
             case AssetKind_Shader:
-                neko_unload_shader(&v->shader);
+                neko_unload_shader(&assets_get<AssetShader>(asset));
                 break;
             case AssetKind_Tiledmap:
-                tiled_unload(&v->tiledmap);
+                tiled_unload(&assets_get<TiledMap>(asset));
                 break;
             case AssetKind_Text:
-                mem_free(v->text.data);
+                mem_free(assets_get<String>(asset).data);
                 break;
             default:
                 break;
@@ -273,30 +274,30 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
         bool ok = false;
         switch (desc.kind) {
             case AssetKind_LuaRef: {
-                asset.lua_ref = LUA_REFNIL;
+                asset.data = LUA_REFNIL;
                 asset_write(asset);
-                asset.lua_ref = luax_require_script(ENGINE_LUA(), filepath);
+                asset.data = luax_require_script(ENGINE_LUA(), filepath);
                 ok = true;
                 break;
             }
             case AssetKind_Image: {
-                ok = texture_load(&asset.texture, filepath.cstr(), desc.flip_image_vertical);
+                ok = texture_load(&assets_get<AssetTexture>(asset), filepath.cstr(), desc.flip_image_vertical);
                 break;
             }
             case AssetKind_AseSprite: {
-                ok = asset.sprite.load(filepath);
+                ok = assets_get<AseSpriteData>(asset).load(filepath);
                 break;
             }
             case AssetKind_Shader: {
-                ok = neko_load_shader(&asset.shader, filepath);
+                ok = neko_load_shader(&assets_get<AssetShader>(asset), filepath);
                 break;
             }
             case AssetKind_Tiledmap: {
-                ok = tiled_load(&asset.tiledmap, filepath.cstr(), NULL);
+                ok = tiled_load(&assets_get<TiledMap>(asset), filepath.cstr(), NULL);
                 break;
             }
             case AssetKind_Text: {
-                ok = the<VFS>().read_entire_file(&asset.text, filepath);
+                ok = the<VFS>().read_entire_file(&assets_get<String>(asset), filepath);
                 break;
             }
             // case AssetKind_Pak:

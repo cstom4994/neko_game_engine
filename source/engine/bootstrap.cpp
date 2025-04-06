@@ -224,7 +224,7 @@ void CL::game_draw() {
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);  // 将透明颜色设置为白色
         glClear(GL_COLOR_BUFFER_BIT);
 
-        GLuint sid = posteffect_shader.shader.id;
+        GLuint sid = assets_get<AssetShader>(posteffect_shader).id;
         glUseProgram(sid);
 
         int posteffect_enable = !edit_get_enabled();
@@ -341,7 +341,7 @@ void CL::SplashScreen() {
     Asset splash_shader = {};
     bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
     error_assert(ok);
-    GLuint sid = splash_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(splash_shader).id;
 
     // position uv
     // clang-format off
@@ -675,7 +675,7 @@ void CL::init() {
     ok = asset_load_kind(AssetKind_Shader, "shader/sprite2.glsl", &sprite_shader);
     error_assert(ok);
 
-    quadrenderer.new_renderer(sprite_shader.shader, neko_v2(state.width, state.height));
+    quadrenderer.new_renderer(assets_get<AssetShader>(sprite_shader), neko_v2(state.width, state.height));
 }
 
 int CL::set_window_title(const char *title) {

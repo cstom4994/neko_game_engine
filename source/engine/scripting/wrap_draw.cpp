@@ -144,7 +144,7 @@ static int mt_sprite_effect(lua_State *L) {
 
 static int mt_sprite_width(lua_State *L) {
     AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
+    AseSpriteData data = assets_get<AseSpriteData>(check_asset(L, spr.sprite));
 
     lua_pushnumber(L, (lua_Number)data.width);
     return 1;
@@ -152,7 +152,7 @@ static int mt_sprite_width(lua_State *L) {
 
 static int mt_sprite_height(lua_State *L) {
     AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
+    AseSpriteData data = assets_get<AseSpriteData>(check_asset(L, spr.sprite));
 
     lua_pushnumber(L, (lua_Number)data.height);
     return 1;
@@ -168,7 +168,7 @@ static int mt_sprite_set_frame(lua_State *L) {
 
 static int mt_sprite_total_frames(lua_State *L) {
     AseSprite &spr = check_sprite_udata(L, 1);
-    AseSpriteData data = check_asset(L, spr.sprite).sprite;
+    AseSpriteData data = assets_get<AseSpriteData>(check_asset(L, spr.sprite));
 
     lua_pushinteger(L, data.frames.len);
     return 1;

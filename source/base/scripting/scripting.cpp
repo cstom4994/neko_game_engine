@@ -50,7 +50,7 @@ String bootstrap_lua() {
 #else
     Asset text{};
     bool ok = asset_load_kind(AssetKind_Text, "../engine/bootstrap.lua", &text);
-    String data = text.text;
+    String data = assets_get<String>(text);
 #endif
     return data;
 }
@@ -61,7 +61,7 @@ String nekogame_lua() {
 #else
     Asset text{};
     bool ok = asset_load_kind(AssetKind_Text, "../engine/nekogame.lua", &text);
-    String data = text.text;
+    String data = assets_get<String>(text);
 #endif
     return data;
 }
@@ -72,7 +72,7 @@ String nekoeditor_lua() {
 #else
     Asset text{};
     bool ok = asset_load_kind(AssetKind_Text, "../engine/nekoeditor.lua", &text);
-    String data = text.text;
+    String data = assets_get<String>(text);
 #endif
     return data;
 }

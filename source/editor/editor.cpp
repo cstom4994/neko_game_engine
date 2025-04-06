@@ -1079,7 +1079,7 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
 
             if (ImGui::BeginTabItem("Shaders")) {
                 asset_view_each([](const Asset& view) {
-                    if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), view.shader.id);
+                    if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), assets_get<AssetShader>(view).id);
                 });
                 ImGui::EndTabItem();
             }
@@ -1087,12 +1087,14 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
             if (ImGui::BeginTabItem("Textures")) {
                 asset_view_each([](const Asset& view) {
                     if (view.kind == AssetKind_Image) {
-                        f32 scale = 250.0 / view.texture.height;
-                        ImGui::Image(view.texture.id, ImVec2(view.texture.width, view.texture.height) * scale);
+                        const auto tex = assets_get<AssetTexture>(view);
+                        f32 scale = 250.0 / tex.height;
+                        ImGui::Image(tex.id, ImVec2(tex.width, tex.height) * scale);
                     }
                     if (view.kind == AssetKind_AseSprite) {
-                        f32 scale = 250.0 / view.sprite.tex.height;
-                        ImGui::Image(view.sprite.tex.id, ImVec2(view.sprite.tex.width, view.sprite.tex.height) * scale);
+                        const auto spr = assets_get<AseSpriteData>(view);
+                        f32 scale = 250.0 / spr.tex.height;
+                        ImGui::Image(spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale);
                     }
                 });
                 ImGui::EndTabItem();

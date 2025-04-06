@@ -19,7 +19,7 @@ static GLuint sprite_vbo;
 static void _set_atlas(const char *filename, bool err) {
     vec2 atlas_size;
 
-    GLuint sid = sprite_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(sprite_shader).id;
 
     bool ok = asset_load(AssetLoadData{AssetKind_Image, true}, filename, NULL);
 
@@ -112,7 +112,7 @@ void Sprite::sprite_init() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &sprite_shader);
     error_assert(ok);
 
-    GLuint sid = sprite_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(sprite_shader).id;
 
     glUseProgram(sid);
     glUniform1i(glGetUniformLocation(sid, "tex0"), 0);
@@ -183,7 +183,7 @@ void Sprite::sprite_draw_all() {
 
     entitypool_sort(Sprite__pool, _depth_compare);
 
-    GLuint sid = sprite_shader.shader.id;
+    GLuint sid = assets_get<AssetShader>(sprite_shader).id;
 
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());

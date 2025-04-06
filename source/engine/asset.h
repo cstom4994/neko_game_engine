@@ -76,7 +76,6 @@ enum AssetKind : i32 {
     AssetKind_Tiledmap,
     AssetKind_Shader,
     AssetKind_Text,
-    // AssetKind_Pak,
 };
 
 struct AssetLoadData {
@@ -84,7 +83,7 @@ struct AssetLoadData {
     bool flip_image_vertical;
 };
 
-using AssetVariant = std::variant<LuaRefID, AssetTexture, AseSpriteData, AssetShader, TiledMap, String>;
+using AssetVariant = std::variant<std::monostate, LuaRefID, AssetTexture, AseSpriteData, TiledMap, AssetShader, String>;
 
 struct Asset {
     String name;
@@ -92,16 +91,24 @@ struct Asset {
     u64 modtime;
     AssetKind kind;
     bool is_internal;
-    union {
-        LuaRefID lua_ref;
-        AssetTexture texture;
-        AseSpriteData sprite;
-        AssetShader shader;
-        TiledMap tiledmap;
-        String text;
-        // Pak pak;
-    };
+    AssetVariant data;
 };
+
+template <typename T>
+T& assets_get(Asset& asset) {
+    if (!std::holds_alternative<T>(asset.data)) {
+        asset.data = T{};
+    }
+    return std::get<T>(asset.data);
+}
+
+template <typename T>
+const T& assets_get(const Asset& asset) {
+    if (!std::holds_alternative<T>(asset.data)) {
+        throw std::runtime_error("failed to get asset");
+    }
+    return std::get<T>(asset.data);
+}
 
 struct FileChange {
     u64 key;
