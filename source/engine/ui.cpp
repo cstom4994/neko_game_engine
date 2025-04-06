@@ -69,6 +69,7 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
 
     renderer->draw_call_count = 0;
 
+    renderer->icon_texture = NEKO_DEFAULT_VAL();
     renderer->tex = 0;
     renderer->shader = ui_shader.shader.id;
     renderer->quad_count = 0;
@@ -196,7 +197,7 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
     renderer->vb.bind_vb_for_edit(false);
     neko_bind_shader(renderer->shader);
 
-    neko_bind_texture(renderer->icon_texture, 0);
+    texture_bind(&renderer->icon_texture, 0);
     neko_shader_set_int(renderer->shader, "atlas", 0);
 
     neko_shader_set_int(renderer->shader, "font", 1);
@@ -207,7 +208,7 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
     renderer->vb.draw_vb_n(renderer->quad_count * 6);
     renderer->vb.bind_vb_for_draw(false);
 
-    neko_bind_texture({}, 0);
+    texture_bind({}, 0);
     neko_bind_shader(NULL);
 
     renderer->quad_count = 0;
@@ -332,7 +333,10 @@ ui_context_t *ui_global_ctx() { return the<CL>().ui; }
 void neko_init_ui_renderer() {
     ui_renderer = neko_new_ui_renderer();
 
-    ui_renderer->icon_texture = neko_new_texture_from_memory_uncompressed(ui_atlas_texture, sizeof(ui_atlas_texture), UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, TEXTURE_ANTIALIASED);
+    texture_create(&ui_renderer->icon_texture, ui_atlas_texture, UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, TEXTURE_ANTIALIASED);
+
+    std::string formatted_name = std::format("UIIconTex_{}", ui_renderer->icon_texture.id);
+    asset_sync_internal(formatted_name, {.texture = ui_renderer->icon_texture}, AssetKind_Image);
 
     for (u32 i = UI_ICON_CLOSE; i <= UI_ICON_MAX; i++) {
         rect_t rect = ui_atlas_lookup(i);
@@ -351,11 +355,7 @@ void neko_init_ui_renderer() {
 #endif
 }
 
-void neko_deinit_ui_renderer() {
-    neko_free_texture(ui_renderer->icon_texture);
-
-    neko_free_ui_renderer(ui_renderer);
-}
+void neko_deinit_ui_renderer() { neko_free_ui_renderer(ui_renderer); }
 
 static void neko_ui_renderer_push_quad(rect_t dst, rect_t src, Color256 color, u32 mode) {
     Color rgb = {(float)color.r / 255.0f, (float)color.g / 255.0f, (float)color.b / 255.0f};

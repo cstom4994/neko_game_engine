@@ -50,7 +50,124 @@ NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data)
     }
 }
 
-AssetTexture neko_aseprite_simple(String filename) {
+template <size_t>
+struct texture_create_impl;
+
+template <>
+struct texture_create_impl<1> {
+
+    bool run(AssetTexture* tex, u8* data) {
+        if (!data) return false;
+
+        bool EnableDSA = the<Renderer>().EnableDSA;
+
+        {
+            LockGuard<Mutex> lock(gBase.gpu_mtx);
+
+            // 如果存在 则释放旧的 GL 纹理
+            if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+            u32 alias_mode = GL_NEAREST;
+            if (tex->flags & TEXTURE_LINEAR) {
+                alias_mode = GL_LINEAR;
+            }
+
+            // 生成 GL 纹理
+            if (EnableDSA) [[likely]] {
+                glCreateTextures(GL_TEXTURE_2D, 1, &tex->id);
+                glTextureParameteri(tex->id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTextureParameteri(tex->id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTextureParameteri(tex->id, GL_TEXTURE_MIN_FILTER, alias_mode);
+                glTextureParameteri(tex->id, GL_TEXTURE_MAG_FILTER, alias_mode);
+            } else {
+                glGenTextures(1, &tex->id);
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, tex->id);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, alias_mode);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, alias_mode);
+            }
+
+            if (tex->flip_image_vertical) {
+                _flip_image_vertical(data, tex->width, tex->height);
+            }
+
+            u32 format = GL_RGB;
+            u32 internal_format = GL_RGB;
+            if (tex->components == 4) {
+                internal_format = GL_RGBA;
+                format = GL_RGBA8;
+            } else if (tex->components == 1) {
+                internal_format = GL_RED;
+                format = GL_R8;  // OpenGL 3.0+
+            }
+
+            if (EnableDSA) [[likely]] {
+                if (tex->flags & TEXTURE_SUBTEX) {  // 如果已经分配了存储，仅更新纹理数据
+                    glTextureSubImage2D(tex->id, 0, 0, 0, tex->width, tex->height, internal_format, GL_UNSIGNED_BYTE, data);
+                } else {
+                    glTextureStorage2D(tex->id, 1, format, tex->width, tex->height);
+                    glTextureSubImage2D(tex->id, 0, 0, 0, tex->width, tex->height, internal_format, GL_UNSIGNED_BYTE, data);
+                }
+            } else {
+                if (tex->flags & TEXTURE_SUBTEX) {
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex->width, tex->height, internal_format, GL_UNSIGNED_BYTE, data);
+                } else {
+                    glTexImage2D(GL_TEXTURE_2D, 0, format, tex->width, tex->height, 0, internal_format, GL_UNSIGNED_BYTE, data);
+                }
+
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
+        }
+
+        return true;
+    }
+};
+
+template <>
+struct texture_create_impl<2> {
+    ase_t* ase = nullptr;
+    bool run(AssetTexture* tex, const String& contents) {
+
+        u8* data = nullptr;
+        {
+            PROFILE_BLOCK("ase_image load");
+            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+            // neko_aseprite_default_blend_bind(ase);
+
+            tex->width = ase->w;
+            tex->height = ase->h;
+            tex->components = 4;
+            tex->flags = TEXTURE_ALIASED;
+        }
+        data = reinterpret_cast<u8*>(ase->frames->pixels);
+        texture_create_impl<1> tc;
+        tc.run(tex, data);
+        cute_aseprite_free(ase);
+        return true;
+    }
+};
+
+template <>
+struct texture_create_impl<3> {
+    bool run(AssetTexture* tex, const String& contents) {
+        u8* data = nullptr;
+        {
+            PROFILE_BLOCK("stb_image load");
+            stbi_set_flip_vertically_on_load(false);
+            data = stbi_load_from_memory((u8*)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
+        }
+        texture_create_impl<1> tc;
+        tc.run(tex, data);
+        stbi_image_free(data);
+        return true;
+    }
+};
+
+AssetTexture texure_aseprite_simple(String filename) {
     String contents = {};
     bool ok = the<VFS>().read_entire_file(&contents, filename);
     neko_defer(mem_free(contents.data));
@@ -69,23 +186,17 @@ AssetTexture neko_aseprite_simple(String filename) {
 
     u8* data = reinterpret_cast<u8*>(ase->frames->pixels);
 
-    // gfx_texture_desc_t t_desc = {};
-
-    // t_desc.format = GL_RGBA;
-    // t_desc.mag_filter = GL_NEAREST;
-    // t_desc.min_filter = GL_NEAREST;
-    // t_desc.num_mips = 0;
-    // t_desc.width = ase->w;
-    // t_desc.height = ase->h;
-    //// t_desc.num_comps = 4;
-    // t_desc.data = data;
-
     neko_tex_flip_vertically(ase->w, ase->h, (u8*)(data));
-    // gfx_texture_t tex = gfx_texture_create(t_desc);
 
     AssetTexture tex{};
 
-    neko_init_texture_from_memory_uncompressed(&tex, data, ase->w, ase->h, 4, TEXTURE_ALIASED);
+    tex.components = 4;
+    tex.width = ase->w;
+    tex.height = ase->h;
+    tex.flags = TEXTURE_ALIASED;
+
+    texture_create_impl<1> tc;
+    tc.run(&tex, data);
 
     cute_aseprite_free(ase);
     return tex;
@@ -152,111 +263,6 @@ static void ase_default_blend_bind(ase_t* ase) {
     }
 }
 
-bool texture_update_data(AssetTexture* tex, u8* data) {
-    LockGuard<Mutex> lock{gBase.gpu_mtx};
-
-    // 如果存在 则释放旧的 GL 纹理
-    if (tex->id != 0) glDeleteTextures(1, &tex->id);
-
-    // 生成 GL 纹理
-    glGenTextures(1, &tex->id);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->id);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    if (tex->flip_image_vertical) {
-        _flip_image_vertical(data, tex->width, tex->height);
-    }
-
-    // 将纹理数据复制到 GL
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    return true;
-}
-
-template <size_t>
-struct texture_create;
-
-template <>
-struct texture_create<1> {
-
-    bool run(AssetTexture* tex, u8* data) {
-        if (!data) return false;
-
-        {
-            LockGuard<Mutex> lock(gBase.gpu_mtx);
-
-            // 如果存在 则释放旧的 GL 纹理
-            if (tex->id != 0) glDeleteTextures(1, &tex->id);
-
-            // 生成 GL 纹理
-            glGenTextures(1, &tex->id);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, tex->id);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-            if (tex->flip_image_vertical) {
-                _flip_image_vertical(data, tex->width, tex->height);
-            }
-
-            // 将纹理数据复制到 GL
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-            glBindTexture(GL_TEXTURE_2D, 0);
-        }
-
-        return true;
-    }
-};
-
-template <>
-struct texture_create<2> {
-    ase_t* ase = nullptr;
-    bool run(AssetTexture* tex, const String& contents) {
-
-        u8* data = nullptr;
-        {
-            PROFILE_BLOCK("ase_image load");
-            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
-
-            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
-            // neko_aseprite_default_blend_bind(ase);
-
-            tex->width = ase->w;
-            tex->height = ase->h;
-        }
-        data = reinterpret_cast<u8*>(ase->frames->pixels);
-        texture_create<1> tc;
-        tc.run(tex, data);
-        cute_aseprite_free(ase);
-        return true;
-    }
-};
-
-template <>
-struct texture_create<3> {
-    bool run(AssetTexture* tex, const String& contents) {
-        u8* data = nullptr;
-        {
-            PROFILE_BLOCK("stb_image load");
-            stbi_set_flip_vertically_on_load(false);
-            data = stbi_load_from_memory((u8*)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
-        }
-        texture_create<1> tc;
-        tc.run(tex, data);
-        stbi_image_free(data);
-        return true;
-    }
-};
-
 static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     neko_assert(tex);
 
@@ -270,15 +276,32 @@ static bool _texture_load_vfs(AssetTexture* tex, String filename) {
     neko_defer(mem_free(contents.data));
 
     if (filename.ends_with(".ase")) {
-        texture_create<2> tc;
+        texture_create_impl<2> tc;
         tc.run(tex, contents);
     } else {
-        texture_create<3> tc;
+        texture_create_impl<3> tc;
         tc.run(tex, contents);
     }
 
     LOG_INFO("texture: loading texture '{}' successful", filename.cstr());
     return true;
+}
+
+bool texture_create(AssetTexture* tex, u8* data, u32 width, u32 height, u32 num_comps, TextureFlags flags) {
+
+    tex->components = num_comps;
+    tex->width = width;
+    tex->height = height;
+    tex->flags = flags;
+
+    texture_create_impl<1> tc;
+
+    return tc.run(tex, data);
+}
+
+void texture_release(AssetTexture* texture) {
+    assert(texture);
+    glDeleteTextures(1, &texture->id);
 }
 
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical) {
@@ -287,23 +310,33 @@ bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical) 
     return _texture_load_vfs(tex, filename);
 }
 
-void texture_bind(const char* filename) {
+void texture_bind_byname(String filename, u32 slot) {
     LockGuard<Mutex> lock{gBase.gpu_mtx};
 
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
 
-    if (ok && a.texture.id != 0) glBindTexture(GL_TEXTURE_2D, a.texture.id);
+    if (ok && a.texture.id != 0) texture_bind(&a.texture, slot);
 }
 
-vec2 texture_get_size(const char* filename) {
+void texture_bind(AssetTexture* texture, u32 slot) {
+    bool EnableDSA = the<Renderer>().EnableDSA;
+    if (EnableDSA) [[likely]] {
+        glBindTextureUnit(slot, texture ? texture->id : 0);
+    } else {
+        glActiveTexture(GL_TEXTURE0 + slot);
+        glBindTexture(GL_TEXTURE_2D, texture ? texture->id : 0);
+    }
+}
+
+vec2 texture_get_size(String filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     error_assert(ok);
     return luavec2(a.texture.width, a.texture.height);
 }
 
-AssetTexture texture_get_ptr(const char* filename) {
+AssetTexture texture_get_ptr(String filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     return a.texture;
@@ -311,45 +344,9 @@ AssetTexture texture_get_ptr(const char* filename) {
 
 bool texture_update(AssetTexture* tex, String filename) { return _texture_load_vfs(tex, filename); }
 
-bool load_texture_data_from_memory(const void* memory, int sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
-    // Load texture data
-
-    int channels;
-    u8* image = (u8*)stbi_load_from_memory((unsigned char*)memory, sz, width, height, &channels, 0);
-
-    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
-
-    *data = image;
-
-    if (!*data) {
-        // neko_image_free(&img);
-        LOG_INFO("could not load image {}", memory);
-        return false;
-    }
-    return true;
-}
-
-bool load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
-    size_t len = 0;
-    const_str file_data = neko_capi_vfs_read_file("gamedata", file_path, &len);
-    neko_assert(file_data);
-    bool ret = load_texture_data_from_memory(file_data, (int)len, width, height, num_comps, data, flip_vertically_on_load);
-    if (!ret) {
-        LOG_INFO("could not load texture: {}", file_path);
-    }
-    mem_free(file_data);
-    return ret;
-}
-
 AssetTexture* neko_new_texture_from_memory(void* data, u32 size, TextureFlags flags) {
     AssetTexture* texture = (AssetTexture*)mem_alloc(sizeof(AssetTexture));
     neko_init_texture_from_memory(texture, data, size, flags);
-    return texture;
-}
-
-AssetTexture* neko_new_texture_from_memory_uncompressed(unsigned char* pixels, u32 size, i32 width, i32 height, i32 component_count, TextureFlags flags) {
-    AssetTexture* texture = (AssetTexture*)mem_alloc(sizeof(AssetTexture));
-    neko_init_texture_from_memory_uncompressed(texture, pixels, width, height, component_count, flags);
     return texture;
 }
 
@@ -370,69 +367,7 @@ void neko_init_texture_from_memory(AssetTexture* texture, void* data, u32 size, 
         return;
     }
 
-    neko_init_texture_from_memory_uncompressed(texture, pixels, width, height, component_count, flags);
+    texture_create(texture, pixels, width, height, component_count, flags);
 
     mem_free(pixels);
-}
-
-void neko_init_texture_from_memory_uncompressed(AssetTexture* texture, unsigned char* pixels, i32 width, i32 height, i32 component_count, TextureFlags flags) {
-    if (pixels == NULL) {
-        LOG_INFO("Data insufficient for texture creation.");
-        return;
-    }
-
-    texture->width = width;
-    texture->height = height;
-    texture->components = component_count;
-
-    texture->flags = flags;
-
-    glGenTextures(1, &texture->id);
-    glBindTexture(GL_TEXTURE_2D, texture->id);
-
-    u32 alias_mode = GL_LINEAR;
-    if (flags & TEXTURE_ALIASED) {
-        alias_mode = GL_NEAREST;
-    }
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, alias_mode);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, alias_mode);
-
-    u32 format = GL_RGB;
-    u32 internal_format = GL_RGB;
-    if (texture->components == 4) {
-        internal_format = GL_RGBA;
-        format = GL_RGBA;
-    } else if (texture->components == 1) {
-        internal_format = GL_RED;
-        format = GL_R8;  // OpenGL 3.0+
-    }
-
-    if (flags & TEXTURE_SUBTEX) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, internal_format, GL_UNSIGNED_BYTE, pixels);
-    } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, internal_format, GL_UNSIGNED_BYTE, pixels);
-    }
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void neko_release_texture(AssetTexture* texture) {
-    assert(texture);
-    glDeleteTextures(1, &texture->id);
-}
-
-void neko_free_texture(AssetTexture* texture) {
-    assert(texture);
-
-    neko_release_texture(texture);
-
-    mem_free(texture);
-}
-
-void neko_bind_texture(AssetTexture* texture, u32 slot) {
-    glActiveTexture(GL_TEXTURE0 + slot);
-    glBindTexture(GL_TEXTURE_2D, texture ? texture->id : 0);
 }

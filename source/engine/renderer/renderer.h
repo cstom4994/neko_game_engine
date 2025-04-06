@@ -152,5 +152,8 @@ void flush_post_processor(PostProcessor* p, bool default_rt);
 
 class Renderer : public Neko::SingletonClass<Renderer> {
 public:
+    bool EnableDSA{};
+
+public:
     void InitOpenGL();
 };

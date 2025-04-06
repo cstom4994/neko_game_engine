@@ -188,8 +188,7 @@ void Sprite::sprite_draw_all() {
     glUseProgram(sid);
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    glActiveTexture(GL_TEXTURE0);
-    texture_bind(atlas);
+    texture_bind_byname(atlas, 0);
 
     glBindVertexArray(sprite_vao);
     glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);

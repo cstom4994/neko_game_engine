@@ -337,7 +337,7 @@ void QuadRenderer::renderer_flush() {
     neko_bind_shader(this->shader.id);
 
     for (u32 i = 0; i < this->texture_count; i++) {
-        neko_bind_texture(this->textures[i], i);
+        texture_bind(this->textures[i], i);
 
         char name[32];
         sprintf(name, "textures[%u]", i);
@@ -557,11 +557,21 @@ void flush_post_processor(PostProcessor* p, bool default_rt) {
     neko_bind_shader(NULL);
 }
 
+extern "C" int GLAD_GL_ARB_direct_state_access;
+
 void Renderer::InitOpenGL() {
 
     // initialize GLEW
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         LOG_INFO("Failed to initialize GLAD");
+    }
+
+    if (GLAD_GL_ARB_direct_state_access) {
+        LOG_INFO("renderer support GL_ARB_direct_state_access");
+        EnableDSA = true;
+    } else {
+        LOG_WARN("renderer not support GL_ARB_direct_state_access");
+        EnableDSA = false;
     }
 
 #if defined(_DEBUG) && !defined(NEKO_IS_APPLE)

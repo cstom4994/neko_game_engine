@@ -254,16 +254,6 @@ struct is_vector : std::false_type {};
 template <typename T, typename Alloc>
 struct is_vector<std::vector<T, Alloc>> : std::true_type {};
 
-struct format_str {
-    constexpr format_str(const char* str) noexcept : str(str) {}
-    const char* str;
-};
-
-template <format_str F>
-constexpr auto operator""_f() {
-    return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
-}
-
 namespace detail {
 // 某些旧版本的 GCC 需要
 template <typename...>

@@ -84,11 +84,14 @@ struct AssetLoadData {
     bool flip_image_vertical;
 };
 
+using AssetVariant = std::variant<LuaRefID, AssetTexture, AseSpriteData, AssetShader, TiledMap, String>;
+
 struct Asset {
     String name;
     u64 hash;
     u64 modtime;
     AssetKind kind;
+    bool is_internal;
     union {
         LuaRefID lua_ref;
         AssetTexture texture;
@@ -125,6 +128,7 @@ void assets_shutdown();
 void assets_start_hot_reload();
 int assets_perform_hot_reload_changes(Event evt);
 
+bool asset_sync_internal(String name, Asset sync, AssetKind kind);
 bool asset_load_kind(AssetKind kind, String filepath, Asset* out);
 bool asset_load(AssetLoadData desc, String filepath, Asset* out);
 

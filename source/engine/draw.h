@@ -143,7 +143,7 @@ struct batch_renderer {
 
     float scale;
 
-    GLuint texture;
+    GLuint texture_id;
 
     bool outline;
     bool glow;

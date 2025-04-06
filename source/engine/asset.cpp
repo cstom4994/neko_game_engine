@@ -62,6 +62,7 @@ static void hot_reload_thread(void *) {
 
             for (auto [k, v] : g_assets.table) {
                 PROFILE_BLOCK("read modtime");
+                if (v->is_internal) continue;  // 内部资源不参与热更新
 
                 u64 modtime = the<VFS>().file_modtime(v->name);
                 if (modtime > v->modtime) {
@@ -178,7 +179,7 @@ void assets_shutdown() {
 
         switch (v->kind) {
             case AssetKind_Image:
-                // v->image.trash();
+                texture_release(&v->texture);
                 break;
             case AssetKind_AseSprite:
                 v->sprite.trash();
@@ -211,13 +212,35 @@ void assets_start_hot_reload() {
     }
 }
 
+bool asset_sync_internal(String name, Asset sync, AssetKind kind) {
+    PROFILE_FUNC();
+
+    u64 key = fnv1a(name);
+
+    sync.name = to_cstr(name);
+    sync.is_internal = true;
+    sync.hash = key;
+    sync.kind = kind;
+    sync.modtime = 0;
+
+    {
+        Asset asset = {};
+        if (asset_read(key, &asset)) {
+            if (!asset.is_internal) LOG_WARN("a non-internal asset {} is replaced", asset.name);
+        }
+    }
+
+    asset_write(sync);
+
+    return true;
+}
+
 bool asset_load_kind(AssetKind kind, String filepath, Asset *out) {
     AssetLoadData data = {};
     data.kind = kind;
 
     return asset_load(data, filepath, out);
 }
-
 
 bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
     PROFILE_FUNC();
@@ -245,6 +268,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             asset.modtime = the<VFS>().file_modtime(asset.name);
         }
         asset.kind = desc.kind;
+        asset.is_internal = false;
 
         bool ok = false;
         switch (desc.kind) {

@@ -21,6 +21,7 @@
 #include "extern/stb_truetype.h"
 
 using namespace Neko::luabind;
+using namespace Neko::util;
 
 #if 0
 
@@ -474,9 +475,6 @@ bool FontFamily::load(String filepath) {
 }
 
 void FontFamily::trash() {
-    for (auto [k, v] : ranges) {
-        neko_release_texture(&v->tex);
-    }
     sb.trash();
     ranges.trash();
 
@@ -519,14 +517,17 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     {
         PROFILE_BLOCK("make image");
         AssetTexture tex{};
-        neko_init_texture_from_memory_uncompressed(&tex, bitmap, width, height, 1, TEXTURE_ALIASED);
+        texture_create(&tex, bitmap, width, height, 1, TEXTURE_ALIASED);
+
+        std::string formatted_name = std::format("FontBake_{}", tex.id);
+        asset_sync_internal(formatted_name, {.texture = tex}, AssetKind_Image);
 
         out->tex.id = tex.id;
         out->tex.width = width;
         out->tex.height = height;
-    }
 
-    LOG_INFO("created font range with id {}", out->tex.id);
+        LOG_INFO("created font range named {}", formatted_name);
+    }
 }
 
 static FontRange *get_range(FontFamily *font, FontKey key) {
@@ -745,7 +746,7 @@ void Batch::batch_init(int vertex_capacity) {
     batch->vertex_count = 0;
     batch->vertex_capacity = vertex_capacity;
     batch->vertices = (BatchVertex *)mem_alloc(sizeof(BatchVertex) * vertex_capacity);
-    batch->texture = 0;
+    batch->texture_id = 0;
     batch->scale = 0;
 
     auto type = BUILD_TYPE(Batch)
@@ -825,7 +826,7 @@ void Batch::batch_flush() {
     glUseProgram(sid);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, batch->texture);
+    glBindTexture(GL_TEXTURE_2D, batch->texture_id);
 
     glUniform1i(glGetUniformLocation(sid, "outline_enable"), batch->outline);
     glUniform1i(glGetUniformLocation(sid, "glow_enable"), batch->glow);
@@ -848,9 +849,9 @@ void Batch::batch_flush() {
 }
 
 void Batch::batch_texture(GLuint id) {
-    if (batch->texture != id) {
+    if (batch->texture_id != id) {
         batch_flush();
-        batch->texture = id;
+        batch->texture_id = id;
     }
 }
 
@@ -931,7 +932,6 @@ void DebugDraw::debug_draw_init() {
 }
 
 void DebugDraw::debug_draw_fini() {
-    // glDeleteProgram(device->program_id);
     glDeleteBuffers(1, &debug_renderer->vbo);
     glDeleteVertexArrays(1, &debug_renderer->vao);
 

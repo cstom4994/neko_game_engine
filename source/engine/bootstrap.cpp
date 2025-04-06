@@ -337,7 +337,7 @@ void CL::game_draw() {
 }
 
 void CL::SplashScreen() {
-    AssetTexture splash_texture = neko_aseprite_simple("@gamedata/assets/cat.ase");
+    AssetTexture splash_texture = texure_aseprite_simple("@gamedata/assets/cat.ase");
     Asset splash_shader = {};
     bool ok = asset_load_kind(AssetKind_Shader, "shader/splash.glsl", &splash_shader);
     error_assert(ok);
@@ -372,7 +372,7 @@ void CL::SplashScreen() {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
     neko_bind_shader(sid);
-    neko_bind_texture(&splash_texture, 0);
+    texture_bind(&splash_texture, 0);
     neko_shader_set_int(sid, "image", 0);
     neko_shader_set_m4f(sid, "transform", model);
     neko_shader_set_m4f(sid, "projection", projection);
@@ -388,7 +388,7 @@ void CL::SplashScreen() {
     window->SwapBuffer();
 
     quad.fini_vb();
-    neko_release_texture(&splash_texture);
+    texture_release(&splash_texture);
 }
 
 void CL::game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
