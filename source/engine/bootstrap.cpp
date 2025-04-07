@@ -29,7 +29,7 @@
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/renderer/renderer.h"
-#include "editor/editor.hpp"
+#include "engine/editor.h"
 #include "base/common/math.hpp"
 #include "engine/input.h"
 #include "engine/window.h"
@@ -186,7 +186,7 @@ void CL::game_draw() {
 
             the<Sprite>().sprite_draw_all();
             the<Batch>().batch_draw_all();
-            the<Edit>().edit_draw_all();
+            the<Editor>().edit_draw_all();
             the<DebugDraw>().debug_draw_all();
         }
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -273,28 +273,32 @@ void CL::game_draw() {
             }
             ImGui::End();
 
-            if (ImGui::Begin("Play")) {
+            if (ImGui::Begin("Play", nullptr)) {
                 ImVec2 contentSize = ImGui::GetContentRegionAvail();
-                float imageAspectRatio = state.width / state.height;
-                float scaleWidth = contentSize.x / state.width;
-                float scaleHeight = contentSize.y / state.height;
-                float scale = std::min(scaleWidth, scaleHeight);
-                float scaledImageWidth = state.width * scale;
-                float scaledImageHeight = state.height * scale;
+                float viewportAspectRatio = state.width / state.height;
+                float scale = std::min(contentSize.x / state.width, contentSize.y / state.height);
 
-                ImGui::Image(renderview.output, ImVec2(scaledImageWidth, scaledImageHeight), ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image(renderview.output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
 
-                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                bool on_hovered = ImGui::IsItemHovered();
+                auto &editor = the<Editor>();
+
+                editor.ViewportIsOnEvent() = on_hovered;
+
+                if (on_hovered) {
+
                     ImVec2 mousePos = ImGui::GetMousePos();
                     ImVec2 windowPos = ImGui::GetWindowPos();
                     ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
                     ImVec2 relativeMousePos = ImVec2(mousePos.x - cursorStartPos.x, mousePos.y - cursorStartPos.y);
-                    float imageX = relativeMousePos.x / scale;
-                    float imageY = (relativeMousePos.y + scaledImageHeight) / scale;
-                    imageX = std::clamp(imageX, 0.0f, state.width);
-                    imageY = std::clamp(imageY, 0.0f, state.height);
+                    float viewportMouseX = relativeMousePos.x / scale;
+                    float viewportMouseY = (relativeMousePos.y + (state.height * scale)) / scale;
+                    viewportMouseX = std::clamp(viewportMouseX, 0.0f, state.width);
+                    viewportMouseY = std::clamp(viewportMouseY, 0.0f, state.height);
 
-                    LOG_INFO("{} {} , {} {} , {} {}", imageX, imageY, relativeMousePos.x, relativeMousePos.y, mousePos.x, mousePos.y);
+                    the<Editor>().PushEditorEvent(OnMouseMove, luavec2(viewportMouseX, viewportMouseY));
+
+                    ImGui::Text("%f,%f", viewportMouseX, viewportMouseY);
                 }
             }
             ImGui::End();
@@ -493,7 +497,7 @@ void CL::init() {
     auto &input = Neko::the<Input>();
     input.init();
 
-    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Edit, DebugDraw>;
+    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Editor, DebugDraw>;
 
     Neko::modules::initializeModulesHelper(Modules{}, std::make_index_sequence<std::tuple_size_v<Modules>>{});
 
@@ -506,7 +510,7 @@ void CL::init() {
     the<Font>().font_init();
     the<ImGuiRender>().imgui_init(window->glfwWindow());
     the<Sound>().sound_init();
-    the<Edit>().edit_init();
+    the<Editor>().edit_init();
     the<DebugDraw>().debug_draw_init();
 
     gBase.reload_interval.store(state.reload_interval);
@@ -545,13 +549,34 @@ void CL::init() {
     the<EventHandler>().EventPushLua("init");
     errcheck(L, luax_pcall_nothrow(L, 1, 0));
 
-    auto _key_down = [](KeyCode key, int scancode, int mode) { the<EventHandler>().EventPushLuaType(OnKeyDown, key); };
-    auto _key_up = [](KeyCode key, int scancode, int mode) { the<EventHandler>().EventPushLuaType(OnKeyUp, key); };
+    auto _key_down = [](KeyCode key, int scancode, int mode) {
+        the<EventHandler>().EventPushLuaType(OnKeyDown, key);
+        if (the<Editor>().ViewportIsOnEvent()) the<Editor>().PushEditorEvent(OnKeyDown, key);
+    };
+
+    auto _key_up = [](KeyCode key, int scancode, int mode) {
+        the<EventHandler>().EventPushLuaType(OnKeyUp, key);
+        if (the<Editor>().ViewportIsOnEvent()) the<Editor>().PushEditorEvent(OnKeyUp, key);
+    };
+
     auto _char_down = [](unsigned int c) { /*gui_char_down(c);*/ };
-    auto _mouse_down = [](MouseCode mouse) { the<EventHandler>().EventPushLuaType(OnMouseDown, mouse); };
-    auto _mouse_up = [](MouseCode mouse) { the<EventHandler>().EventPushLuaType(OnMouseUp, mouse); };
+
+    auto _mouse_down = [](MouseCode mouse) {
+        the<EventHandler>().EventPushLuaType(OnMouseDown, mouse);
+        if (the<Editor>().ViewportIsOnEvent()) the<Editor>().PushEditorEvent(OnMouseDown, mouse);
+    };
+
+    auto _mouse_up = [](MouseCode mouse) {
+        the<EventHandler>().EventPushLuaType(OnMouseUp, mouse);
+        if (the<Editor>().ViewportIsOnEvent()) the<Editor>().PushEditorEvent(OnMouseUp, mouse);
+    };
+
     auto _mouse_move = [](vec2 pos) { the<EventHandler>().EventPushLuaType(OnMouseMove, pos); };
-    auto _scroll = [](vec2 scroll) { the<EventHandler>().EventPushLuaType(OnMouseScroll, scroll); };
+
+    auto _scroll = [](vec2 scroll) {
+        the<EventHandler>().EventPushLuaType(OnMouseScroll, scroll);
+        if (the<Editor>().ViewportIsOnEvent()) the<Editor>().PushEditorEvent(OnMouseScroll, scroll);
+    };
 
     input_add_key_down_callback(_key_down);
     input_add_key_up_callback(_key_up);
@@ -613,7 +638,7 @@ void CL::init() {
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sound>().sound_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
-            {EventMask::Update, [](Event evt) -> int { return the<Edit>().edit_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<Editor>().edit_update_all(evt); }},
 
             {EventMask::PostUpdate,
              [](Event) -> int {
@@ -731,7 +756,7 @@ void CL::fini() {
     inspector = nullptr;
 
     the<DebugDraw>().debug_draw_fini();
-    the<Edit>().edit_fini();
+    the<Editor>().edit_fini();
     the<Scripting>().script_fini();
     the<Sound>().sound_fini();
     the<Tiled>().tiled_fini();

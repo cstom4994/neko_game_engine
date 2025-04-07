@@ -7,6 +7,13 @@ ns.edit = {
     mode_text = ""
 }
 
+local EditorMouseX = 0
+local EditorMouseY = 0
+
+local function EditorGetMouseUnit()
+    return neko.pixels_to_unit(EditorMouseX, EditorMouseY)
+end
+
 ns.edit.set_enabled = neko.edit_set_enabled
 ns.edit.get_enabled = neko.edit_get_enabled
 ns.edit.set_editable = neko.edit_set_editable
@@ -69,30 +76,18 @@ function ns.edit.__ModeExecBind(up, codestr)
 end
 
 function ns.edit.ModeKeyDown(key)
-    if neko.imgui.IsCapturedEvent() then
-        return
-    end
     ns.edit.__ModeExecBind(false, key)
 end
 
 function ns.edit.ModeKeyUp(key)
-    if neko.imgui.IsCapturedEvent() then
-        return
-    end
     ns.edit.__ModeExecBind(true, key)
 end
 
 function ns.edit.ModeMouseDown(mouse)
-    if neko.imgui.IsCapturedEvent() then
-        return
-    end
     ns.edit.__ModeExecBind(false, mouse)
 end
 
 function ns.edit.ModeMouseUp(mouse)
-    if neko.imgui.IsCapturedEvent() then
-        return
-    end
     ns.edit.__ModeExecBind(true, mouse)
 end
 
@@ -197,7 +192,7 @@ ns.camera.set_edit_camera(ns.edit.camera)
 
 local camera_drag_mouse_prev
 function ns.edit.camera_drag_start()
-    camera_drag_mouse_prev = ns.input.get_mouse_pos_unit()
+    camera_drag_mouse_prev = EditorGetMouseUnit()
     ns.edit_camera_drag.enabled = true
 end
 
@@ -214,7 +209,7 @@ function ns.edit_camera_drag.OnUpdate()
         return
     end
 
-    local m = ns.input.get_mouse_pos_unit()
+    local m = EditorGetMouseUnit()
 
     -- find screen mouse motion in world coordinates, move opposite way
     local campos = ns.transform.local_to_world(ns.edit.camera, ng.vec2_zero)
@@ -269,7 +264,7 @@ end
 
 local function GetEntitiesUnderMouse()
     local ents = {}
-    local mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
+    local mouse_pos = ns.camera.unit_to_world(EditorGetMouseUnit())
     for i = 0, ns.edit.bboxes_get_num() - 1 do
         local ent = ns.edit.bboxes_get_nth_ent(i)
         local bbox = neko.edit_bboxes_get_nth_bbox(i)
@@ -398,7 +393,7 @@ end
 ns.edit.modes.grab = {}
 
 function ns.edit.modes.grab.enter()
-    grab_mouse_start = ns.input.get_mouse_pos_unit()
+    grab_mouse_start = EditorGetMouseUnit()
     grab_disp = ng.Vec2(ng.vec2_zero)
     grab_snap = false
 
@@ -411,7 +406,7 @@ end
 
 function ns.edit.modes.grab.OnUpdate()
     local ms = ns.camera.unit_to_world(grab_mouse_start)
-    local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
+    local mc = ns.camera.unit_to_world(EditorGetMouseUnit())
 
     -- snap mc to grid if needed
     if grab_snap then
@@ -474,7 +469,7 @@ ns.edit.modes.rotate = {}
 function ns.edit.modes.rotate.enter()
     ns.edit.set_mode_text('rotate')
 
-    rotate_mouse_start = ns.input.get_mouse_pos_unit()
+    rotate_mouse_start = EditorGetMouseUnit()
 
     -- store old positions, rotations
     rotate_old_posrot = ng.entity_table()
@@ -497,7 +492,7 @@ end
 
 function ns.edit.modes.rotate.OnUpdate()
     local ms = ns.camera.unit_to_world(rotate_mouse_start)
-    local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
+    local mc = ns.camera.unit_to_world(EditorGetMouseUnit())
     local ang = ng.vec2_atan2(mc - rotate_pivot) - ng.vec2_atan2(ms - rotate_pivot)
 
     for ent in pairs(SelectTable) do
@@ -1194,39 +1189,48 @@ ns.edit.modes.rotate["MC_RIGHT"] = ns.edit.rotate_cancel
 
 --- 主事件 ----------------------------------------------------------------
 
-function ns.edit.OnKeyUp(key)
-    if not ns.edit.get_enabled() then
-        return
-    end
+function ns.edit.__OnKeyUp(key)
     ns.edit.ModeKeyUp(key)
 end
 
-function ns.edit.OnKeyDown(key)
-    if not ns.edit.get_enabled() then
-        return
-    end
+function ns.edit.__OnKeyDown(key)
     ns.edit.ModeKeyDown(key)
 end
 
-function ns.edit.OnMouseDown(mouse)
-    if not ns.edit.get_enabled() then
-        return
-    end
+function ns.edit.__OnMouseDown(mouse)
     ns.edit.ModeMouseDown(mouse)
 end
 
-function ns.edit.OnMouseUp(mouse)
-    if not ns.edit.get_enabled() then
-        return
-    end
+function ns.edit.__OnMouseUp(mouse)
     ns.edit.ModeMouseUp(mouse)
 end
 
-function ns.edit.OnMouseScroll(scroll)
-    if neko.imgui.IsCapturedEvent() then
+function ns.edit.__OnMouseScroll(scroll)
+    ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
+end
+
+function ns.edit.OnEvent(evt, args)
+    if not ns.edit.get_enabled() then
         return
     end
-    ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
+
+    -- ns.edit.mode_event(evt, key, mouse)
+
+    -- 转到系统事件
+    if evt == 'OnMouseMove' then
+        EditorMouseX = args.x
+        EditorMouseY = -args.y -- 和input_get_mouse_pos_pixels一样需要倒置y轴
+    elseif evt == 'OnKeyUp' then
+        ns.edit.__OnKeyUp(args)
+    elseif evt == 'OnKeyDown' then
+        ns.edit.__OnKeyDown(args)
+    elseif evt == 'OnMouseDown' then
+        ns.edit.__OnMouseDown(args)
+    elseif evt == 'OnMouseUp' then
+        ns.edit.__OnMouseUp(args)
+    elseif evt == 'OnMouseScroll' then
+        ns.edit.__OnMouseScroll(args)
+    end
 end
 
 function ns.edit.OnUpdate()

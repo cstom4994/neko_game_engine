@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include "editor/editor.hpp"
+#include "engine/editor.h"
 #include "engine/asset.h"
 #include "engine/base.hpp"
 #include "base/common/json.hpp"
@@ -2613,6 +2613,14 @@ int wrap_color_opaque(lua_State *L) {
     return 1;
 }
 
+int wrap_pixels_to_unit(lua_State *L) {
+    f32 v1 = LuaGet<f32>(L, 1);
+    f32 v2 = LuaGet<f32>(L, 2);
+    vec2 ret = the<CL>().pixels_to_unit({v1, v2});
+    LuaPush<vec2>(L, ret);
+    return 1;
+}
+
 // DEFINE_LUAOPEN_EXTERN(luadb)
 DEFINE_LUAOPEN_EXTERN(unittest)
 
@@ -2738,6 +2746,7 @@ static int open_neko(lua_State *L) {
             {"input_get_mouse_pos_pixels", wrap_input_get_mouse_pos_pixels},
             {"input_get_mouse_pos_unit", wrap_input_get_mouse_pos_unit},
             {"input_mouse_down", wrap_input_mouse_down},
+            {"pixels_to_unit", wrap_pixels_to_unit},
 
             {"luamat3", wrap_luamat3},
             {"mat3_identity", wrap_mat3_identity},

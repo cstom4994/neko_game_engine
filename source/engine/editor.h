@@ -2,6 +2,11 @@
 
 #include "engine/imgui.hpp"
 #include "base/scripting/scripting.h"
+#include "engine/ecs/entity.h"
+#include "base/common/color.hpp"
+
+// OpenGL
+#include <glad/glad.h>
 
 namespace Neko {
 
@@ -218,4 +223,57 @@ public:
         *param = T(value);
     }
 };
+
 }  // namespace Neko
+
+void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);
+void inspect_shader(const char* label, GLuint program);
+void inspect_vertex_array(const char* label, GLuint vao);
+
+void edit_set_editable(CEntity ent, bool editable);
+bool edit_get_editable(CEntity ent);
+void edit_set_grid_size(vec2 size);
+vec2 edit_get_grid_size();
+bool edit_bboxes_has(CEntity ent);
+int edit_bboxes_get_num();
+CEntity edit_bboxes_get_nth_ent(int n);
+void edit_bboxes_set_selected(CEntity ent, bool selected);
+void edit_line_add(vec2 a, vec2 b, f32 point_size, Color color);
+void edit_set_enabled(bool e);
+bool edit_get_enabled();
+
+// 用于点击选择等
+void edit_bboxes_update(CEntity ent, BBox bbox);  // 合并bbox
+BBox edit_bboxes_get_nth_bbox(int n);
+void edit_line_add_xy(vec2 p, f32 point_size, Color color);
+int edit_clear(Event evt);
+
+class Editor : public SingletonClass<Editor> {
+private:
+    bool enabled;
+    bool ViewportOnEvent;
+
+public:
+    void edit_init();
+    void edit_fini();
+    int edit_update_all(Event evt);
+    void edit_draw_all();
+
+    template <typename... Args>
+    inline void PushEditorEvent(EventEnum type, Args&&... args) {
+        lua_State* L = ENGINE_LUA();
+        String& evt_name = the<EventHandler>().EventName(type);
+        int n = sizeof...(args);
+        lua_getglobal(L, "ns");
+        lua_getfield(L, -1, "edit");
+        lua_remove(L, -2);
+        lua_getfield(L, -1, "OnEvent");
+        lua_remove(L, -2);
+        lua_pushstring(L, evt_name.cstr());
+        the<EventHandler>().EventPushLuaArgs(L, std::forward<Args>(args)...);
+        errcheck(L, luax_pcall_nothrow(L, 1 + n, 0));
+    }
+
+    bool& get_enable() { return enabled; }
+    bool& ViewportIsOnEvent() { return ViewportOnEvent; }
+};

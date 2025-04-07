@@ -1,5 +1,5 @@
 
-#include "editor/editor.hpp"
+#include "editor.h"
 
 #include <inttypes.h>
 
@@ -17,6 +17,11 @@
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 #include "engine/window.h"
+#include "engine/ecs/entitybase.hpp"
+#include "engine/edit.h"
+#include "base/common/profiler.hpp"
+#include "engine/component.h"
+#include "engine/scripting/lua_util.h"
 
 using namespace Neko::ImGuiWrap;
 
@@ -1504,3 +1509,73 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 }
 
 #endif
+
+// -------------------------------------------------------------------------
+
+static int l_edit_bboxes_get_nth_bbox(lua_State* L) {
+    int i = lua_tointeger(L, 1);
+    BBox v = edit_bboxes_get_nth_bbox(i);
+    LuaPush<BBox>(L, v);
+    return 1;
+}
+
+static int l_edit_line_add(lua_State* L) {
+    vec2* a = LuaGet<vec2>(L, 1);
+    vec2* b = LuaGet<vec2>(L, 2);
+    f32 p = lua_tonumber(L, 3);
+    Color* col = LuaGet<Color>(L, 4);
+    edit_line_add(*a, *b, p, *col);
+    return 0;
+}
+
+static int l_edit_set_enabled(lua_State* L) {
+    bool enable = lua_toboolean(L, 1);
+    edit_set_enabled(enable);
+    return 0;
+}
+
+static int l_edit_get_enabled(lua_State* L) {
+    bool enable = edit_get_enabled();
+    lua_pushboolean(L, enable);
+    return 1;
+}
+
+// -------------------------------------------------------------------------
+
+void Editor::edit_init() {
+    PROFILE_FUNC();
+
+    auto L = ENGINE_LUA();
+
+    edit_init_impl(L);
+
+    auto type = BUILD_TYPE(Editor)
+                        .Method("edit_set_editable", &edit_set_editable)                //
+                        .Method("edit_get_editable", &edit_get_editable)                //
+                        .Method("edit_set_grid_size", &edit_set_grid_size)              //
+                        .Method("edit_get_grid_size", &edit_get_grid_size)              //
+                        .Method("edit_bboxes_has", &edit_bboxes_has)                    //
+                        .Method("edit_bboxes_get_num", &edit_bboxes_get_num)            //
+                        .Method("edit_bboxes_get_nth_ent", &edit_bboxes_get_nth_ent)    //
+                        .Method("edit_bboxes_set_selected", &edit_bboxes_set_selected)  //
+                        .CClosure({{"edit_bboxes_get_nth_bbox", l_edit_bboxes_get_nth_bbox},
+                                   {"edit_line_add", l_edit_line_add},
+                                   {"edit_set_enabled", l_edit_set_enabled},
+                                   {"edit_get_enabled", l_edit_get_enabled}})
+                        .Build();
+}
+
+void Editor::edit_fini() { edit_fini_impl(); }
+
+int Editor::edit_update_all(Event evt) {
+    edit_update_impl();
+
+    return 0;
+}
+
+void Editor::edit_draw_all() {
+    if (!enabled) return;
+
+    edit_draw_impl();
+}
+

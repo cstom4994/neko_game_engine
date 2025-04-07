@@ -4,7 +4,7 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 #include "engine/ecs/entitybase.hpp"
-#include "engine/edit.h"
+#include "engine/editor.h"
 #include "engine/scripting/lua_util.h"
 
 // -------------------------------------------------------------------------

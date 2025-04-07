@@ -1,21 +1,17 @@
+
+#include "engine/edit.h"
+
 #include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/ecs/entitybase.hpp"
 #include "engine/scripting/lua_util.h"
-
-static bool enabled;
+#include "engine/editor.h"
 
 CEntityPool<CUnEditable>* uneditable__pool;
-
 int type_uneditable;
-
 CEntityPool<CBBoxPoolElem>* BBoxPoolElem__pool;
-
 int type_bbox;
-
-void edit_set_enabled(bool e) { enabled = e; }
-bool edit_get_enabled() { return enabled; }
 
 // 无法选择不可编辑的实体
 void edit_set_editable(CEntity ent, bool editable) {
@@ -31,12 +27,11 @@ bool edit_get_editable(CEntity ent) { return !uneditable__pool->Get(ent); }
 void edit_bboxes_update(CEntity ent, BBox bbox) {
     CBBoxPoolElem* elem;
 
-    // editable?
     if (!edit_get_editable(ent)) return;
 
     elem = BBoxPoolElem__pool->Get(ent);
 
-    // merge if already exists, else set
+    // 如果存在就合并
     if (elem)
         elem->bbox = bbox_merge(elem->bbox, bbox);
     else {
@@ -118,21 +113,19 @@ static void _bboxes_update_all() {
     CBBoxPoolElem* elem;
     static BBox defaultbb = {{-0.25, -0.25}, {0.25, 0.25}};
 
-    if (!enabled) return;
+    if (!the<Editor>().get_enable()) return;
 
     entitypool_foreach(elem, BBoxPoolElem__pool) {
         ent = elem->ent;
         if (!transform_has(ent)) continue;
 
-        // update world matrix
         elem->wmat = transform_get_world_matrix(ent);
 
-        // if no bbox, make default
+        // 如果没有就构建默认的
         if (elem->bbox.max.x - elem->bbox.min.x <= NEKO_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= NEKO_EPSILON) elem->bbox = defaultbb;
     }
 }
 
-// needs bbox shader program to be bound
 static void _bboxes_draw_all() {
     vec2 win;
     unsigned int nbboxes;
@@ -307,95 +300,12 @@ static void _line_draw_all() {
 
 // -------------------------------------------------------------------------
 
-static int l_edit_bboxes_get_nth_bbox(lua_State* L) {
-    int i = lua_tointeger(L, 1);
-    BBox v = edit_bboxes_get_nth_bbox(i);
-    LuaPush<BBox>(L, v);
-    return 1;
-}
-
-static int l_edit_line_add(lua_State* L) {
-    vec2* a = LuaGet<vec2>(L, 1);
-    vec2* b = LuaGet<vec2>(L, 2);
-    f32 p = lua_tonumber(L, 3);
-    Color* col = LuaGet<Color>(L, 4);
-    edit_line_add(*a, *b, p, *col);
-    return 0;
-}
-
-static int l_edit_set_enabled(lua_State* L) {
-    bool enable = lua_toboolean(L, 1);
-    edit_set_enabled(enable);
-    return 0;
-}
-
-static int l_edit_get_enabled(lua_State* L) {
-    bool enable = edit_get_enabled();
-    lua_pushboolean(L, enable);
-    return 1;
-}
-
-// -------------------------------------------------------------------------
+static void _uneditable_remove(CEntity ent) { uneditable__pool->Remove(ent); }
 
 int edit_clear(Event evt) {
     entitypool_clear(BBoxPoolElem__pool);
     line_points.resize(0);
     return 0;
-}
-
-void Edit::edit_init() {
-    PROFILE_FUNC();
-
-    auto L = ENGINE_LUA();
-
-    type_uneditable = EcsRegisterCType<CUnEditable>(L);
-
-    uneditable__pool = EcsProtoGetCType<CUnEditable>(L);
-
-    _bboxes_init();
-    _grid_init();
-    _line_init();
-
-    auto type = BUILD_TYPE(Edit)
-                        .Method("edit_set_editable", &edit_set_editable)                //
-                        .Method("edit_get_editable", &edit_get_editable)                //
-                        .Method("edit_set_grid_size", &edit_set_grid_size)              //
-                        .Method("edit_get_grid_size", &edit_get_grid_size)              //
-                        .Method("edit_bboxes_has", &edit_bboxes_has)                    //
-                        .Method("edit_bboxes_get_num", &edit_bboxes_get_num)            //
-                        .Method("edit_bboxes_get_nth_ent", &edit_bboxes_get_nth_ent)    //
-                        .Method("edit_bboxes_set_selected", &edit_bboxes_set_selected)  //
-                        .CClosure({{"edit_bboxes_get_nth_bbox", l_edit_bboxes_get_nth_bbox},
-                                   {"edit_line_add", l_edit_line_add},
-                                   {"edit_set_enabled", l_edit_set_enabled},
-                                   {"edit_get_enabled", l_edit_get_enabled}})
-                        .Build();
-}
-
-void Edit::edit_fini() {
-    _line_fini();
-    _grid_fini();
-    _bboxes_fini();
-
-    entitypool_free(uneditable__pool);
-}
-
-static void _uneditable_remove(CEntity ent) { uneditable__pool->Remove(ent); }
-
-int Edit::edit_update_all(Event evt) {
-    entitypool_remove_destroyed(uneditable__pool, _uneditable_remove);
-
-    _bboxes_update_all();
-
-    return 0;
-}
-
-void Edit::edit_draw_all() {
-    if (!enabled) return;
-
-    _bboxes_draw_all();
-    _grid_draw();
-    _line_draw_all();
 }
 
 void edit_save_all(CL* app) {
@@ -415,4 +325,36 @@ void edit_load_all(CL* app) {
     //     vec2_load(&grid_size, "grid_size", grid_size, t);
     //     entitypool_load_foreach(elem, elem_s, uneditable__pool, "uneditable_pool", t);
     // }
+}
+
+void edit_set_enabled(bool e) { the<Editor>().get_enable() = e; }
+bool edit_get_enabled() { return the<Editor>().get_enable(); }
+
+void edit_init_impl(lua_State* L) {
+    type_uneditable = EcsRegisterCType<CUnEditable>(L);
+    uneditable__pool = EcsProtoGetCType<CUnEditable>(L);
+
+    _bboxes_init();
+    _grid_init();
+    _line_init();
+}
+
+void edit_fini_impl() {
+    _line_fini();
+    _grid_fini();
+    _bboxes_fini();
+
+    entitypool_free(uneditable__pool);
+}
+
+void edit_update_impl() {
+    entitypool_remove_destroyed(uneditable__pool, _uneditable_remove);
+
+    _bboxes_update_all();
+}
+
+void edit_draw_impl() {
+    _bboxes_draw_all();
+    _grid_draw();
+    _line_draw_all();
 }

@@ -97,32 +97,11 @@ public:
     void sprite_draw_all();
 };
 
-void edit_set_editable(CEntity ent, bool editable);
-bool edit_get_editable(CEntity ent);
-void edit_set_grid_size(vec2 size);
-vec2 edit_get_grid_size();
-bool edit_bboxes_has(CEntity ent);
-int edit_bboxes_get_num();
-CEntity edit_bboxes_get_nth_ent(int n);
-void edit_bboxes_set_selected(CEntity ent, bool selected);
-void edit_line_add(vec2 a, vec2 b, f32 point_size, Color color);
-void edit_set_enabled(bool e);
-bool edit_get_enabled();
-
-// 用于点击选择等
-void edit_bboxes_update(CEntity ent, BBox bbox);  // 合并bbox
-BBox edit_bboxes_get_nth_bbox(int n);
-void edit_line_add_xy(vec2 p, f32 point_size, Color color);
-int edit_clear(Event evt);
-
-class Edit : public SingletonClass<Edit> {
-public:
-    void edit_init();
-    void edit_fini();
-    int edit_update_all(Event evt);
-    void edit_draw_all();
-};
-
 int open_db(lua_State* L);
+
+void edit_init_impl(lua_State* L);
+void edit_fini_impl();
+void edit_update_impl();
+void edit_draw_impl();
 
 #endif

@@ -9,6 +9,7 @@
 #include "engine/ecs/entitybase.hpp"
 #include "engine/renderer/shader.h"
 #include "engine/physics.h"
+#include "engine/editor.h"
 #include "engine/scripting/lua_util.h"
 
 // deps

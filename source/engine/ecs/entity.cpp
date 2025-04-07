@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "editor/editor.hpp"
+#include "engine/editor.h"
 #include "engine/asset.h"
 #include "engine/base.hpp"
 #include "base/common/os.hpp"
