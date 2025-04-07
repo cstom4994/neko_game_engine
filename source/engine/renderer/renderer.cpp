@@ -213,74 +213,6 @@ void VertexBuffer::draw_vb_n(u32 count) const {
     glDrawElements(draw_type, count, GL_UNSIGNED_INT, 0);
 }
 
-void init_render_target(RenderTarget* target, u32 width, u32 height) {
-    glGenFramebuffers(1, &target->id);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, target->id);
-
-    /* Attach a texture */
-    glGenTextures(1, &target->output);
-    glBindTexture(GL_TEXTURE_2D, target->output);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    /* Allow multiple attachments? I don't think it's necessary for the time being;
-     * A 2-D game won't need *that* much post-processing. */
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target->output, 0);
-
-    target->width = width;
-    target->height = height;
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        fprintf(stderr, "Failed to create render target.\n");
-    }
-
-    bind_render_target(NULL);
-}
-
-void deinit_render_target(RenderTarget* target) {
-    glDeleteFramebuffers(1, &target->id);
-    glDeleteTextures(1, &target->output);
-}
-
-void resize_render_target(RenderTarget* target, u32 width, u32 height) {
-    if (target->width == width && target->height == height) {
-        return;
-    }
-
-    target->width = width;
-    target->height = height;
-
-    glBindTexture(GL_TEXTURE_2D, target->output);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
-void bind_render_target(RenderTarget* target) {
-    if (!target) {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return;
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, target->id);
-}
-
-void bind_render_target_output(RenderTarget* target, u32 unit) {
-    if (!target) {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        return;
-    }
-
-    glActiveTexture(GL_TEXTURE0 + unit);
-    glBindTexture(GL_TEXTURE_2D, target->output);
-}
-
 #define batch_size 100
 #define els_per_vert 11
 #define verts_per_quad 4
@@ -491,68 +423,174 @@ void QuadRenderer::renderer_resize(vec2 size) {
 
 void QuadRenderer::renderer_fit_to_main_window() { renderer_resize(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
 
-PostProcessor* new_post_processor(AssetShader shader) {
-    PostProcessor* p = (PostProcessor*)mem_calloc(1, sizeof(PostProcessor));
+void RenderTarget::create(u32 width, u32 height) {
+    bool EnableDSA = the<Renderer>().EnableDSA;
+
+    if (EnableDSA) [[likely]] {
+        glCreateFramebuffers(1, &this->id);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &this->output);
+        glTextureStorage2D(this->output, 1, GL_RGB8, width, height);
+
+        glTextureParameteri(this->output, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(this->output, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(this->output, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(this->output, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glNamedFramebufferTexture(this->id, GL_COLOR_ATTACHMENT0, this->output, 0);
+    } else {
+        glGenFramebuffers(1, &this->id);
+        glBindFramebuffer(GL_FRAMEBUFFER, this->id);
+
+        glGenTextures(1, &this->output);
+        glBindTexture(GL_TEXTURE_2D, this->output);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->output, 0);
+    }
+
+    this->width = width;
+    this->height = height;
+
+    GLenum status = EnableDSA ? glCheckNamedFramebufferStatus(this->id, GL_FRAMEBUFFER) : glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        LOG_ERROR("failed to create render target");
+    }
+
+    bind();
+}
+
+void RenderTarget::release() {
+    glDeleteFramebuffers(1, &this->id);
+    glDeleteTextures(1, &this->output);
+}
+
+void RenderTarget::resize(u32 width, u32 height) {
+    if (this->width == width && this->height == height) {
+        return;
+    }
+
+    bool EnableDSA = the<Renderer>().EnableDSA;
+
+    if (EnableDSA) [[likely]] {
+        GLuint oldOutput = this->output;
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &this->output);
+        glTextureStorage2D(this->output, 1, GL_RGB8, width, height);
+
+        glTextureParameteri(this->output, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(this->output, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(this->output, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(this->output, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glNamedFramebufferTexture(this->id, GL_COLOR_ATTACHMENT0, this->output, 0);
+
+        // 删除旧纹理
+        glDeleteTextures(1, &oldOutput);
+    } else {
+        glBindFramebuffer(GL_FRAMEBUFFER, id);
+        glBindTexture(GL_TEXTURE_2D, output);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, output, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    this->width = width;
+    this->height = height;
+}
+
+void RenderTarget::bind() {
+    if (!this->id) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, this->id);
+}
+
+void RenderTarget::bind_output(u32 unit) {
+    if (!this->id) {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        return;
+    }
+
+    bool EnableDSA = the<Renderer>().EnableDSA;
+
+    if (EnableDSA) [[likely]] {
+        glBindTextureUnit(unit, this->output);
+    } else {
+        glActiveTexture(GL_TEXTURE0 + unit);
+        glBindTexture(GL_TEXTURE_2D, this->output);
+    }
+}
+
+void PostProcessor::new_post_processor(AssetShader shader) {
 
     i32 win_w = the<CL>().state.width, win_h = the<CL>().state.height;
 
-    init_render_target(&p->target, win_w, win_h);
+    this->target.create(win_w, win_h);
 
-    p->dimentions = neko_v2(win_w, win_h);
+    this->dimentions = neko_v2(win_w, win_h);
 
-    p->shader = shader;
+    this->shader = shader;
 
     f32 verts[] = {-1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f};
 
     u32 indices[] = {3, 2, 1, 3, 1, 0};
 
-    p->vb.init_vb(vb_static | vb_tris);
-    p->vb.bind_vb_for_edit(true);
-    p->vb.push_vertices(verts, 4 * 4);
-    p->vb.push_indices(indices, 6);
-    p->vb.configure_vb(0, 2, 4, 0);
-    p->vb.configure_vb(1, 2, 4, 2);
-    p->vb.bind_vb_for_edit(false);
-
-    return p;
+    this->vb.init_vb(vb_static | vb_tris);
+    this->vb.bind_vb_for_edit(true);
+    this->vb.push_vertices(verts, 4 * 4);
+    this->vb.push_indices(indices, 6);
+    this->vb.configure_vb(0, 2, 4, 0);
+    this->vb.configure_vb(1, 2, 4, 2);
+    this->vb.bind_vb_for_edit(false);
 }
 
-void free_post_processor(PostProcessor* p) {
-    deinit_render_target(&p->target);
-    p->vb.fini_vb();
-
-    mem_free(p);
+void PostProcessor::free_post_processor() {
+    this->target.release();
+    this->vb.fini_vb();
 }
 
-void use_post_processor(PostProcessor* p) {
-    if (!p) {
-        bind_render_target(NULL);
-    }
+void PostProcessor::use_post_processor() { this->target.bind(); }
 
-    bind_render_target(&p->target);
+void PostProcessor::resize_post_processor(vec2 dimentions) {
+    this->dimentions = dimentions;
+    this->target.resize(dimentions.x, dimentions.y);
 }
 
-void resize_post_processor(PostProcessor* p, vec2 dimentions) {
-    p->dimentions = dimentions;
-    resize_render_target(&p->target, dimentions.x, dimentions.y);
-}
+void PostProcessor::post_processor_fit_to_main_window() { resize_post_processor(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
 
-void post_processor_fit_to_main_window(PostProcessor* p) { resize_post_processor(p, neko_v2(the<CL>().state.width, the<CL>().state.height)); }
-
-void flush_post_processor(PostProcessor* p, bool default_rt) {
+void PostProcessor::flush_post_processor(bool default_rt) {
     if (default_rt) {
-        bind_render_target(NULL);
+        this->target.bind();
     }
 
-    neko_bind_shader(p->shader.id);
-    neko_shader_set_int(p->shader.id, "input", 0);
-    neko_shader_set_v2f(p->shader.id, "screen_size", neko_v2(p->dimentions.x, p->dimentions.y));
+    neko_bind_shader(this->shader.id);
+    neko_shader_set_int(this->shader.id, "input", 0);
+    neko_shader_set_v2f(this->shader.id, "screen_size", neko_v2(this->dimentions.x, this->dimentions.y));
 
-    bind_render_target_output(&p->target, 0);
+    this->target.bind_output(0);
 
-    p->vb.bind_vb_for_draw(true);
-    p->vb.draw_vb();
-    p->vb.bind_vb_for_draw(false);
+    this->vb.bind_vb_for_draw(true);
+    this->vb.draw_vb();
+    this->vb.bind_vb_for_draw(false);
 
     neko_bind_shader(NULL);
 }

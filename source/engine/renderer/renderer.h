@@ -63,13 +63,15 @@ struct RenderTarget {
     u32 width, height;
 
     u32 output;
-};
 
-void init_render_target(RenderTarget* target, u32 width, u32 height);
-void deinit_render_target(RenderTarget* target);
-void resize_render_target(RenderTarget* target, u32 width, u32 height);
-void bind_render_target(RenderTarget* target);
-void bind_render_target_output(RenderTarget* target, u32 unit);
+    void create(u32 width, u32 height);
+    void release();
+    void resize(u32 width, u32 height);
+    void bind();
+    void bind_output(u32 unit);
+
+    inline bool valid() const { return id != 0; }
+};
 
 Color256 make_color(u32 rgb, u8 alpha);
 
@@ -141,14 +143,14 @@ struct PostProcessor {
     VertexBuffer vb;
 
     vec2 dimentions;
-};
 
-PostProcessor* new_post_processor(AssetShader shader);
-void free_post_processor(PostProcessor* p);
-void use_post_processor(PostProcessor* p);
-void resize_post_processor(PostProcessor* p, vec2 dimentions);
-void post_processor_fit_to_main_window(PostProcessor* p);
-void flush_post_processor(PostProcessor* p, bool default_rt);
+    void new_post_processor(AssetShader shader);
+    void free_post_processor();
+    void use_post_processor();
+    void resize_post_processor(vec2 dimentions);
+    void post_processor_fit_to_main_window();
+    void flush_post_processor(bool default_rt);
+};
 
 class Renderer : public Neko::SingletonClass<Renderer> {
 public:

@@ -72,9 +72,8 @@ CBase gBase;
 
 #if 1
 
-unsigned int fbo;
-unsigned int rbo;
-unsigned int fbo_tex;
+RenderTarget renderview;
+
 unsigned int quadVAO, quadVBO;
 Asset posteffect_shader = {};
 Asset sprite_shader = {};
@@ -85,35 +84,13 @@ extern void draw_gui();
 
 // -------------------------------------------------------------------------
 
-void rescale_framebuffer(float width, float height) {
-    if (fbo_tex == 0 || rbo == 0) return;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-    glBindTexture(GL_TEXTURE_2D, fbo_tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     auto &CLGame = the<CL>();
     CLGame.state.width = width;
     CLGame.state.height = height;
 
-    rescale_framebuffer(width, height);
+    if (renderview.valid()) renderview.resize(width, height);
 
     // 更新视口
     glViewport(0, 0, width, height);
@@ -189,54 +166,51 @@ void CL::game_draw() {
 
     if (!gBase.error_mode.load()) {
 
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_DEPTH_TEST);
         glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        if (edit_get_enabled() && ImGui::BeginMainMenuBar()) {
-            ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
+        renderview.bind();
+        {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDisable(GL_DEPTH_TEST);
+            glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), GetTimeInfo().true_dt * 1000.f,
-                        1.f / GetTimeInfo().true_dt);
+            the<Tiled>().tiled_draw_all();
 
-            ImGui::EndMainMenuBar();
+            the<EventHandler>().EventPushLuaType(OnDraw);
+
+            the<Sprite>().sprite_draw_all();
+            the<Batch>().batch_draw_all();
+            the<Edit>().edit_draw_all();
+            the<DebugDraw>().debug_draw_all();
         }
-
-        // script_draw_all();
-        the<Tiled>().tiled_draw_all();
-
-        the<EventHandler>().EventPushLuaType(OnDraw);
-
-        the<Sprite>().sprite_draw_all();
-        the<Batch>().batch_draw_all();
-        the<Edit>().edit_draw_all();
-        the<DebugDraw>().debug_draw_all();
-
-        // 现在绑定回默认帧缓冲区并使用附加的帧缓冲区颜色纹理绘制一个四边形平面
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glDisable(GL_DEPTH_TEST);  // 禁用深度测试，以便屏幕空间四边形不会因深度测试而被丢弃。
-        // 清除所有相关缓冲区
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);  // 将透明颜色设置为白色
-        glClear(GL_COLOR_BUFFER_BIT);
 
-        GLuint sid = assets_get<AssetShader>(posteffect_shader).id;
-        glUseProgram(sid);
+        if (!edit_get_enabled()) [[likely]] {
+            glDisable(GL_DEPTH_TEST);
+            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-        int posteffect_enable = !edit_get_enabled();
+            GLuint sid = assets_get<AssetShader>(posteffect_shader).id;
+            glUseProgram(sid);
 
-        glUniform1f(glGetUniformLocation(sid, "intensity"), state.posteffect_intensity);
-        glUniform1i(glGetUniformLocation(sid, "enable"), 0);
-        glUniform1f(glGetUniformLocation(sid, "rt_w"), state.width);
-        glUniform1f(glGetUniformLocation(sid, "rt_h"), state.height);
+            int posteffect_enable = !edit_get_enabled();
 
-        glBindVertexArray(quadVAO);
-        glBindTexture(GL_TEXTURE_2D, fbo_tex);  // 使用颜色附件纹理作为四边形平面的纹理
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+            glUniform1f(glGetUniformLocation(sid, "intensity"), state.posteffect_intensity);
+            glUniform1i(glGetUniformLocation(sid, "enable"), 0);
+            glUniform1f(glGetUniformLocation(sid, "rt_w"), state.width);
+            glUniform1f(glGetUniformLocation(sid, "rt_h"), state.height);
+
+            glBindVertexArray(quadVAO);
+            glBindTexture(GL_TEXTURE_2D, renderview.output);  // 使用颜色附件纹理作为四边形平面的纹理
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        } else {
+        }
 
         {
             ImGuiIO &io = ImGui::GetIO();
@@ -279,12 +253,49 @@ void CL::game_draw() {
         if (state.show_demo_window) ImGui::ShowDemoWindow();
 
         if (edit_get_enabled()) {
+
+            if (ImGui::BeginMainMenuBar()) {
+                ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
+
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
+                ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), GetTimeInfo().true_dt * 1000.f,
+                            1.f / GetTimeInfo().true_dt);
+
+                ImGui::EndMainMenuBar();
+            }
+
             ImGui::SetNextWindowViewport(devui_vp);
             if (ImGui::Begin("Hello")) {
                 state_inspector(state);
 
                 mat3 view = camera_get_inverse_view_matrix();
                 ImGuiWrap::Auto(view);
+            }
+            ImGui::End();
+
+            if (ImGui::Begin("Play")) {
+                ImVec2 contentSize = ImGui::GetContentRegionAvail();
+                float imageAspectRatio = state.width / state.height;
+                float scaleWidth = contentSize.x / state.width;
+                float scaleHeight = contentSize.y / state.height;
+                float scale = std::min(scaleWidth, scaleHeight);
+                float scaledImageWidth = state.width * scale;
+                float scaledImageHeight = state.height * scale;
+
+                ImGui::Image(renderview.output, ImVec2(scaledImageWidth, scaledImageHeight), ImVec2(0, 1), ImVec2(1, 0));
+
+                if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    ImVec2 mousePos = ImGui::GetMousePos();
+                    ImVec2 windowPos = ImGui::GetWindowPos();
+                    ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
+                    ImVec2 relativeMousePos = ImVec2(mousePos.x - cursorStartPos.x, mousePos.y - cursorStartPos.y);
+                    float imageX = relativeMousePos.x / scale;
+                    float imageY = (relativeMousePos.y + scaledImageHeight) / scale;
+                    imageX = std::clamp(imageX, 0.0f, state.width);
+                    imageY = std::clamp(imageY, 0.0f, state.height);
+
+                    LOG_INFO("{} {} , {} {} , {} {}", imageX, imageY, relativeMousePos.x, relativeMousePos.y, mousePos.x, mousePos.y);
+                }
             }
             ImGui::End();
         }
@@ -623,31 +634,7 @@ void CL::init() {
         eh.Register(evt.evt, evt.cb, NULL);
     }
 
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-        LOG_INFO("framebuffer good");
-    }
-
-    glGenTextures(1, &fbo_tex);
-    glBindTexture(GL_TEXTURE_2D, fbo_tex);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, state.width, state.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_tex, 0);
-
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, state.width, state.height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n";
+    renderview.create(state.width, state.height);
 
     float quadVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
                             // positions   // texCoords
@@ -728,9 +715,7 @@ void test_native_script() {
 void CL::fini() {
     PROFILE_FUNC();
 
-    glDeleteFramebuffers(1, &fbo);
-    glDeleteTextures(1, &fbo_tex);
-    glDeleteRenderbuffers(1, &rbo);
+    renderview.release();
 
     quadrenderer.free_renderer();
 
