@@ -50,7 +50,7 @@ public:
     bool mount(lua_State *L, LuaRef &tb);
     bool file_exists(String filepath);
     bool read_entire_file(String *out, String filepath);
-    bool list_all_files(Array<String> *files);
+    bool list_all_files(std::vector<std::string> *files);
     u64 file_modtime(String filepath);
 };
 

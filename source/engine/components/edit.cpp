@@ -80,7 +80,7 @@ static void _bboxes_init() {
     BBoxPoolElem__pool = EcsProtoGetCType<CBBoxPoolElem>(L);
 
     // 创建着色器程序 加载图集 绑定参数
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/bbox.glsl", &bboxes_shader);
     error_assert(ok);
 
     GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
@@ -254,7 +254,7 @@ void edit_line_add(vec2 a, vec2 b, f32 point_size, Color color) {
 static void _line_init() {
 
     // init draw stuff
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/edit_line.glsl", &line_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/edit_line.glsl", &line_shader);
     error_assert(ok);
 
     GLuint sid = assets_get<AssetShader>(line_shader).id;

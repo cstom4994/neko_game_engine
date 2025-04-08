@@ -1137,7 +1137,7 @@ void Tiled::tiled_init() {
 
     Tiled__pool = EcsProtoGetCType<CTiledMap>(L);
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &CTiledMap::tiled_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/tiled.glsl", &CTiledMap::tiled_shader);
     error_assert(ok);
 
     auto type = BUILD_TYPE(Tiled)

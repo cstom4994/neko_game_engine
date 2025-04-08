@@ -3,7 +3,7 @@ class "CPlayer"
 function CPlayer:new(x, y)
     self.x, self.y = x, y
 
-    self.sprite = neko.sprite_load "assets/B_witch.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/B_witch.ase"
 
     self.update_thread = coroutine.create(self.co_update)
 
@@ -143,7 +143,7 @@ function CPlayer:update(dt)
         -- 播放弓箭音效
         -- choose({sound_bow_1, sound_bow_2, sound_bow_3}):start()
 
-        neko.sound_load(choose({"assets/sounds/attackBow01.wav", "assets/sounds/attackBow02.wav"})):start()
+        neko.sound_load(choose({"@gamedata/assets/sounds/attackBow01.wav", "@gamedata/assets/sounds/attackBow02.wav"})):start()
 
         local ox = self.x
         local oy = self.y
@@ -206,7 +206,7 @@ class "CEnemy"
 
 function CEnemy:new(x, y, name, brain)
     self.x, self.y = x, y
-    self.sprite = neko.sprite_load "assets/enemy.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/enemy.ase"
     self.facing_left = false
     self.hit_cooldown = 0
     self.health = 100
@@ -439,7 +439,7 @@ function Coin:new(x, y)
     self.spring = Spring()
     self.update_thread = coroutine.create(self.co_update)
 
-    self.sprite = neko.sprite_load "assets/coin.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/coin.ase"
     self.sprite:set_frame(math.random(0, self.sprite:total_frames() - 1))
 end
 
@@ -563,7 +563,7 @@ class "Hpbar"
 
 function Hpbar:new(father)
     self.father = father
-    self.sprite = neko.sprite_load "assets/hpbar.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/hpbar.ase"
     self.angle = 0
     self.health = 10
 end
@@ -594,7 +594,7 @@ class "Target"
 
 function Target:new(x, y, name, sprite)
     self.x, self.y = x, y
-    self.sprite = sprite or neko.sprite_load "assets/target.ase"
+    self.sprite = sprite or neko.sprite_load "@gamedata/assets/target.ase"
     self.angle = 0
     -- self.z_index = -1
 
@@ -729,4 +729,45 @@ function Target.begin_contact(a, b)
     elseif mt == Arrow then
         self:hit(other)
     end
+end
+
+class "Robot"
+
+function Robot:new(x, y)
+    self.x = x
+    self.y = y
+    self.z = -1
+
+    self.sprite = neko.sprite_load "@gamedata/assets/coin.ase"
+
+    self.angle = 0 -- 当前角度
+    self.radius = 30 -- 旋转半径
+    self.targetSpeed = math.pi * 6 -- 目标角速度
+    self.speed = 0 -- 当前角速度
+    self.damping = 4.0 -- 阻尼系数
+end
+
+function Robot:update(dt)
+    self.sprite:update(dt)
+
+    local diff = self.targetSpeed - self.speed
+    -- self.speed = self.speed + diff * dt * self.damping
+    self.speed = self.speed + diff * dt * self.damping - self.speed * 0.1
+
+    -- 更新角度
+    self.angle = self.angle + self.speed * dt
+
+    local ox = player.x + math.cos(self.angle) * self.radius
+    local oy = player.y + math.sin(self.angle) * self.radius
+
+    self.x = ox
+    self.y = oy
+end
+
+function Robot:draw()
+    local sx = 1
+    local sy = -1
+    local ox = self.sprite:width() / 2
+    local oy = self.sprite:height()
+    self.sprite:draw(self.x, self.y, 0, sx, sy, ox, oy)
 end

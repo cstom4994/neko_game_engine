@@ -2,7 +2,7 @@ class "test_func"
 
 function test_func:new(x, y)
     self.x, self.y = x, y
-    self.sprite = neko.sprite_load "assets/workingman.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/workingman.ase"
     self.facing_left = false
     self.hit_cooldown = 0
     self.health = 100

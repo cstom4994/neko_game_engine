@@ -309,7 +309,6 @@ local function build_data(outfile, filepath)
     out:close()
 end
 
-
 newaction {
     trigger = 'encode_b64',
     description = 'Embed base64 files',
@@ -511,6 +510,8 @@ do
     debugdir "./bin"
 
     includedirs {"source/extern/luaot", "source/extern/imgui", "source/extern/box2d", "source/extern/libffi/include"}
+
+    files {"source/**.glsl", "source/**.vert", "source/**.frag", "source/**.geom", "source/**.comp"}
 
     files {"source/engine/**.cpp", "source/engine/**.hpp", "source/engine/**.h", "source/engine/**.lua"}
     -- files {"source/game/**.cpp", "source/game/**.hpp", "source/game/**.h", "source/game/**.lua"}

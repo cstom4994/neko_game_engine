@@ -34,7 +34,7 @@ public:
     virtual void trash() = 0;
     virtual bool file_exists(String filepath) = 0;
     virtual bool read_entire_file(String* out, String filepath) = 0;
-    virtual bool list_all_files(Array<String>* files) = 0;
+    virtual bool list_all_files(std::vector<std::string>* files) = 0;
     virtual u64 file_modtime(String filepath) = 0;
 };
 
@@ -48,7 +48,7 @@ public:
     bool mount(String filepath);
     bool file_exists(String filepath);
     bool read_entire_file(String* out, String filepath);
-    bool list_all_files(Array<String>* files);
+    bool list_all_files(std::vector<std::string>* files);
     u64 file_modtime(String filepath);
 };
 
@@ -64,7 +64,7 @@ public:
     bool mount(String filepath);
     bool file_exists(String filepath);
     bool read_entire_file(String* out, String filepath);
-    bool list_all_files(Array<String>* files);
+    bool list_all_files(std::vector<std::string>* files);
     u64 file_modtime(String filepath);
 };
 
@@ -103,7 +103,7 @@ public:
     bool file_exists(String filepath);
     bool read_entire_file(String* out, String filepath);
     // bool vfs_write_entire_file(String fsname, String filepath, String contents);
-    bool list_all_files(String fsname, Array<String>* files);
+    bool list_all_files(String fsname, std::vector<std::string>* files);
 };
 
 typedef struct vfs_file {

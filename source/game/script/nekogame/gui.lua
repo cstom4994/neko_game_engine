@@ -308,7 +308,7 @@ draw_imgui = function(dt)
         end
 
         if ImGui.Button("build_pack") then
-            neko.bindata_build(("fgd.pack"), {"assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
+            neko.bindata_build(("fgd.pack"), {"@gamedata/assets/fmod/Build/Desktop/Master.bank", "neko_base.fgd"})
         end
 
         if ImGui.Button("read_pack") then

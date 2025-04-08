@@ -99,6 +99,8 @@ String str_fmt(const char *fmt, ...) {
 String tmp_fmt(const char *fmt, ...) {
     static char s_buf[1024] = {};
 
+    neko_assert(fmt != s_buf);  // 检测tmp_fmt是否被递归调用
+
     va_list args;
     va_start(args, fmt);
     i32 len = vsnprintf(s_buf, sizeof(s_buf), fmt, args);

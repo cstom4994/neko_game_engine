@@ -48,13 +48,13 @@ bool read_entire_file_raw(String *out, String filepath) {
     return true;
 }
 
-static bool list_all_files_help(Array<String> *files, const_str path) {
+static bool list_all_files_help(std::vector<std::string> *files, const_str path) {
     PROFILE_FUNC();
     std::filesystem::path search_path = (path != nullptr) ? path : std::filesystem::current_path();
     for (const auto &entry : std::filesystem::recursive_directory_iterator(search_path)) {
         if (!entry.is_regular_file()) continue;
         std::filesystem::path relative_path = std::filesystem::relative(entry.path(), search_path);
-        files->push(str_fmt("%s", relative_path.generic_string().c_str()));
+        files->push_back(relative_path.generic_string());
     }
     return true;
 }
@@ -92,7 +92,7 @@ bool DirectoryFileSystem::read_entire_file(String *out, String filepath) {
     return read_entire_file_raw(out, path);
 }
 
-bool DirectoryFileSystem::list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
+bool DirectoryFileSystem::list_all_files(std::vector<std::string> *files) { return list_all_files_help(files, basepath.cstr()); }
 
 u64 DirectoryFileSystem::file_modtime(String filepath) {
     if (!file_exists(filepath)) return 0;
@@ -118,11 +118,13 @@ bool ZipFileSystem::mount(String filepath) {
 
     // 判断是否已经挂载gamedata
     // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
-    if (the<VFS>().is_mount("gamedata")) {
-        contents_ok = the<VFS>().read_entire_file(&contents, filepath);
-    } else {
-        contents_ok = read_entire_file_raw(&contents, filepath);
-    }
+    // if (the<VFS>().is_mount("gamedata")) {
+    //    contents_ok = the<VFS>().read_entire_file(&contents, filepath);
+    //} else {
+    //    contents_ok = read_entire_file_raw(&contents, filepath);
+    //}
+
+    contents_ok = read_entire_file_raw(&contents, filepath);
 
     if (!contents_ok) {
         return false;
@@ -229,7 +231,7 @@ bool ZipFileSystem::read_entire_file(String *out, String filepath) {
     return true;
 }
 
-bool ZipFileSystem::list_all_files(Array<String> *files) {
+bool ZipFileSystem::list_all_files(std::vector<std::string> *files) {
     PROFILE_FUNC();
 
     LockGuard<Mutex> lock{mtx};
@@ -242,7 +244,7 @@ bool ZipFileSystem::list_all_files(Array<String> *files) {
         }
 
         String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
-        files->push(to_cstr(name));
+        files->push_back(name.cstr());
     }
 
     return true;
@@ -263,10 +265,12 @@ void VFS::vfs_fini() {
 }
 
 String VFS::filepath_redirect(String file) {
-    if (!file.starts_with("@")) return file;
-    for (auto &[name, redirect] : vfs_redirect) {
-        if (!file.starts_with("@" + name + "/")) continue;
-        return tmp_fmt("%s/%s", redirect.c_str(), file.substr(2 + name.size(), file.len).data);
+    if (file.starts_with("@")) {
+        for (auto &[name, redirect] : vfs_redirect) {
+            if (!file.starts_with("@" + name + "/")) continue;
+            if (!redirect.size()) return file.substr(2 + name.size(), file.len);
+            return tmp_fmt("%s/%s", redirect.c_str(), file.substr(2 + name.size(), file.len).data);
+        }
     }
     return file;
 }
@@ -300,7 +304,7 @@ bool VFS::read_entire_file(String *out, String filepath) {
     return false;
 }
 
-bool VFS::list_all_files(String fsname, Array<String> *files) { return vfs_map[fsname]->list_all_files(files); }
+bool VFS::list_all_files(String fsname, std::vector<std::string> *files) { return vfs_map[fsname]->list_all_files(files); }
 
 // #define SEEK_SET 0
 // #define SEEK_CUR 1

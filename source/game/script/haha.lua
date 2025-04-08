@@ -36,7 +36,7 @@ function haha()
     hot_require 'oscillator'
     hot_require 'rotator'
 
-    ns.sprite.set_atlas('assets/atlas.ase')
+    ns.sprite.set_atlas("@gamedata/assets/atlas.ase")
 
     -- add camera: 32 pixels is one unit
 
@@ -91,7 +91,7 @@ function haha()
     --     },
     --     player = {},
     --     aseprite = {
-    --         ase = "assets/B_witch.ase"
+    --         ase = "@gamedata/assets/B_witch.ase"
     --     }
     -- }
 
@@ -167,7 +167,7 @@ function haha()
             scale = ng.Vec2(2, 2)
         },
         tiled = {
-            map = "assets/maps/map.tmx"
+            map = "@gamedata/assets/maps/map.tmx"
         }
     }
 
@@ -211,11 +211,12 @@ function haha()
         LocalGame.world = World()
 
         -- LocalGame.world:add(CEnemy(100, 100, "chort", true))
+        LocalGame.world:add(Robot(100, 100))
 
-        cursor = Cursor(neko.sprite_load "assets/cursor.ase")
+        cursor = Cursor(neko.sprite_load "@gamedata/assets/cursor.ase")
 
-        bow_img = neko.sprite_load "assets/bow.ase"
-        arrow_img = neko.sprite_load "assets/arrow.ase"
+        bow_img = neko.sprite_load "@gamedata/assets/bow.ase"
+        arrow_img = neko.sprite_load "@gamedata/assets/arrow.ase"
 
         local objs = LocalGame.level_1_obj
         for object_group_name, object_groups in pairs(objs) do
@@ -520,7 +521,7 @@ function haha_huge()
     hot_require 'oscillator'
     hot_require 'rotator'
 
-    ns.sprite.set_atlas('assets/atlas.ase')
+    ns.sprite.set_atlas("@gamedata/assets/atlas.ase")
 
     -- add camera: 32 pixels is one unit
 
@@ -585,7 +586,7 @@ function haha_basic()
     hot_require 'oscillator'
     hot_require 'rotator'
 
-    ns.sprite.set_atlas('assets/atlas.ase')
+    ns.sprite.set_atlas("@gamedata/assets/atlas.ase")
 
     -- add camera: 32 pixels is one unit
 
@@ -657,7 +658,7 @@ function haha_basic()
         }
     }
 
-    -- local tiletype, layers = TiledMap_Parse("assets/maps/map.tmx")
+    -- local tiletype, layers = TiledMap_Parse("@gamedata/assets/maps/map.tmx")
 
     -- print(type(tiletype))
 
@@ -742,7 +743,7 @@ local function load_world()
     }
     local world = World()
 
-    local tilemap = neko.tilemap_load "assets/map.ldtk"
+    local tilemap = neko.tilemap_load "@gamedata/assets/map.ldtk"
     tilemap:make_collision(b2, "Collision", {1})
 
     for k, v in ipairs(tilemap:entities()) do

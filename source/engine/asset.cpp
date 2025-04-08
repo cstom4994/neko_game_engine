@@ -300,9 +300,6 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 ok = the<VFS>().read_entire_file(&assets_get<String>(asset), filepath);
                 break;
             }
-            // case AssetKind_Pak:
-            //     ok = asset.pak.load(filepath.data, 0, false);
-            //     break;
             default:
                 LOG_INFO("asset_load {} undefined", (int)desc.kind);
                 break;

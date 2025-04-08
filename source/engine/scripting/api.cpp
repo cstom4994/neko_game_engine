@@ -429,7 +429,7 @@ static int neko_registry_load(lua_State *L) {
 static int neko_require_lua_script(lua_State *L) {
     PROFILE_FUNC();
 
-    String path = tmp_fmt("script/%s", luax_check_string(L, 1).cstr());
+    std::string path = std::format("@code/game/script/{}", luax_check_string(L, 1).cstr());
 
     Asset asset = {};
     bool ok = asset_load_kind(AssetKind_LuaRef, path, &asset);

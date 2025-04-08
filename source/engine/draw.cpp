@@ -695,7 +695,7 @@ float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float 
 void Font::font_init() {
 
     // 编译着色器并创建程序
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/font.glsl", &font_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/font.glsl", &font_shader);
     error_assert(ok);
 
     glGenVertexArrays(1, &font_vao);
@@ -732,7 +732,7 @@ void Batch::batch_init(int vertex_capacity) {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(BatchVertex), (void *)offsetof(BatchVertex, texcoord));
 
     if (assets_get<AssetShader>(shader_asset).id == 0) {
-        bool ok = asset_load_kind(AssetKind_Shader, "shader/batch.glsl", &shader_asset);
+        bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/batch.glsl", &shader_asset);
         error_assert(ok);
     }
 
@@ -890,7 +890,7 @@ void DebugDraw::debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color)
 void DebugDraw::debug_draw_init() {
     debug_renderer = mem_new<DebugRenderer>();
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/debug_line.glsl", &debug_renderer->lines_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/debug_line.glsl", &debug_renderer->lines_shader);
     error_assert(ok);
 
     debug_renderer->program_id = assets_get<AssetShader>(debug_renderer->lines_shader).id;

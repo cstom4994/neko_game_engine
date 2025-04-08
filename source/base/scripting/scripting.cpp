@@ -44,34 +44,34 @@ extern const uint8_t *get_bootstrap_lua();
 extern const uint8_t *get_nekogame_lua();
 extern const uint8_t *get_nekoeditor_lua();
 
-String bootstrap_lua() {
+static String bootstrap_lua() {
 #if 0
     String data{(const_str)get_bootstrap_lua(), neko_strlen((const_str)get_bootstrap_lua())};
 #else
     Asset text{};
-    bool ok = asset_load_kind(AssetKind_Text, "../engine/bootstrap.lua", &text);
+    bool ok = asset_load_kind(AssetKind_Text, "@code/engine/bootstrap.lua", &text);
     String data = assets_get<String>(text);
 #endif
     return data;
 }
 
-String nekogame_lua() {
+static String nekogame_lua() {
 #if 0
     String data{(const_str)get_nekogame_lua(), neko_strlen((const_str)get_nekogame_lua())};
 #else
     Asset text{};
-    bool ok = asset_load_kind(AssetKind_Text, "../engine/nekogame.lua", &text);
+    bool ok = asset_load_kind(AssetKind_Text, "@code/engine/nekogame.lua", &text);
     String data = assets_get<String>(text);
 #endif
     return data;
 }
 
-String nekoeditor_lua() {
+static String nekoeditor_lua() {
 #if 0
     String data{(const_str)get_nekoeditor_lua(), neko_strlen((const_str)get_nekoeditor_lua())};
 #else
     Asset text{};
-    bool ok = asset_load_kind(AssetKind_Text, "../engine/nekoeditor.lua", &text);
+    bool ok = asset_load_kind(AssetKind_Text, "@code/engine/nekoeditor.lua", &text);
     String data = assets_get<String>(text);
 #endif
     return data;
@@ -342,22 +342,30 @@ void Scripting::init_lua() {
             });
 
     String conf;
-    bool ok = read_entire_file_raw(&conf, "../gamedir/conf.lua");
+    bool ok = read_entire_file_raw(&conf, "conf.lua");
     if (!ok) {
-        String conf = R"(
+        conf = R"(
 function __neko_conf(t)
     t.app = {
         title = "ahaha",
         width = 1280.0,
         height = 720.0,
         game_proxy = "default",
-        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        default_font = "@gamedata/assets/fonts/VonwaonBitmap-16px.ttf",
         dump_allocs_detailed = true,
         swap_interval = 1,
-        target_fps = 999,
+        target_fps = 120,
         reload_interval = 1,
         debug_on = false,
         batch_vertex_capacity = 2048
+    }
+    t.vfs = {
+        code = {
+            mount = "source"
+        },
+        gamedata = {
+            mount = "gamedir"
+        },
     }
 end
 )";
@@ -399,32 +407,36 @@ end
                 continue;
             }
 
-            lua_getfield(L, -1, "path");
-            String path = luax_check_string(L, -1);
+            lua_getfield(L, -1, "mount");
+            String mount = luax_check_string(L, -1);
             lua_pop(L, 1);
+
+            String redirect = "";
 
             lua_getfield(L, -1, "redirect");
-            String redirect = luax_check_string(L, -1);
+            if (!lua_isnil(L, -1) && lua_type(L, -1) == LUA_TSTRING) {
+                redirect = luax_check_string(L, -1);
+            }
             lua_pop(L, 1);
 
-            if (path.ends_with(".lua")) {
-                if (luaL_dofile(L, path.cstr()) != LUA_OK) {
-                    LOG_ERROR("vfs not found: {}", path);
+            if (mount.ends_with(".lua")) {
+                if (luaL_dofile(L, mount.cstr()) != LUA_OK) {
+                    LOG_ERROR("vfs not found: {}", mount);
                     lua_pop(L, 2);  // 弹出错误信息和当前value
                     continue;
                 }
                 if (!lua_istable(L, -1)) {
-                    LOG_ERROR("vfs load failed: {}", path);
+                    LOG_ERROR("vfs load failed: {}", mount);
                     lua_pop(L, 2);  // 弹出非表结果和当前value
                     continue;
                 }
                 LuaRef tb = LuaRef::FromStack(L, -1);
                 ok = the<VFS>().mount_type<LuaBpFileSystem>(name, redirect, L, tb);
                 lua_pop(L, 1);
-            } else if (path.ends_with(".zip")) {
-                ok = the<VFS>().mount_type<ZipFileSystem>(name, redirect, path);
+            } else if (mount.ends_with(".zip")) {
+                ok = the<VFS>().mount_type<ZipFileSystem>(name, redirect, mount);
             } else {
-                ok = the<VFS>().mount_type<DirectoryFileSystem>(name, redirect, path);
+                ok = the<VFS>().mount_type<DirectoryFileSystem>(name, redirect, mount);
             }
 
             if (!ok) {
@@ -667,10 +679,10 @@ bool LuaBpFileSystem::read_entire_file(String *out, String filepath) {
     return true;
 }
 
-bool LuaBpFileSystem::list_all_files(Array<String> *files) {
+bool LuaBpFileSystem::list_all_files(std::vector<std::string> *files) {
     for (auto bp : luabp) {
         auto &s = std::format("{}", bp.key);
-        files->push(s);
+        files->push_back(s);
     }
     return true;
 }

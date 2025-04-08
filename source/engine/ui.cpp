@@ -64,7 +64,7 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
     engine_ui_renderer_t *renderer = (engine_ui_renderer_t *)mem_alloc(sizeof(engine_ui_renderer_t));
 
     Asset ui_shader = {};
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/ui.glsl", &ui_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/ui.glsl", &ui_shader);
     error_assert(ok);
 
     renderer->draw_call_count = 0;

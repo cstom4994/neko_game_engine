@@ -109,7 +109,7 @@ void Sprite::sprite_init() {
 
     Sprite__pool = EcsProtoGetCType<CSprite>(L);
 
-    bool ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &sprite_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/sprite.glsl", &sprite_shader);
     error_assert(ok);
 
     GLuint sid = assets_get<AssetShader>(sprite_shader).id;
