@@ -34,7 +34,7 @@ CEntity entity_create(const String& name) {
     auto L = ENGINE_LUA();
 
     LuaRef table = LuaRef::NewTable(L);
-    table["name"] = name.cstr();
+    table["__name"] = name.cstr();
 
     EntityData* e = EcsEntityNew(L, table, NULL);
     ent.id = e - ENGINE_ECS()->entity_buf;
@@ -61,6 +61,9 @@ void Entity::entity_init() {
         int* a = new int(7);
 
         LuaRef table = LuaRef::NewTable(L);
+
+        table["__name"] = "NekoWorldRoot";
+
         table["testing"] = "iNIT C";
         table["afucking_ptr"] = a;
 

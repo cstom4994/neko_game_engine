@@ -27,10 +27,6 @@ function ns.app.OnKeyDown(key)
 
     local keyname = key
 
-    if keyname == "KC_F2" then
-        ns.inspector.set_visible(not ns.inspector.get_visible())
-    end
-
     if ns.edit.get_enabled() then
         if keyname == "KC_C" then
 

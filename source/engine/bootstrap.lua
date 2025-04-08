@@ -1441,6 +1441,26 @@ function ImGuiWindow(name, flags)
     end
 end
 
+function ImGuiTabBar(name)
+    if neko.imgui.BeginTabBar(name) then
+        return setmetatable({}, {
+            __close = function()
+                neko.imgui.EndTabBar()
+            end
+        })
+    end
+end
+
+function ImGuiTabItem(name)
+    if neko.imgui.BeginTabItem(name) then
+        return setmetatable({}, {
+            __close = function()
+                neko.imgui.EndTabItem()
+            end
+        })
+    end
+end
+
 common.pack = serialize
 
 local cdata_init = function()

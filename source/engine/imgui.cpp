@@ -296,6 +296,20 @@ static int Begin(lua_State* L) {
     return has_open ? 2 : 1;
 }
 
+static int BeginTabBar(lua_State* L) {
+    auto* label = LuaGet<const char*>(L, 1);
+    bool res = ImGui::BeginTabBar(label);
+    lua_pushboolean(L, res);
+    return 1;
+}
+
+static int BeginTabItem(lua_State* L) {
+    auto* label = LuaGet<const char*>(L, 1);
+    bool res = ImGui::BeginTabItem(label);
+    lua_pushboolean(L, res);
+    return 1;
+}
+
 static int Button(lua_State* L) {
     auto* label = LuaGet<const char*>(L, 1);
     ImVec2 size(0, 0);
@@ -752,6 +766,8 @@ void ImGuiRender::imgui_init(GLFWwindow* window) {
     auto type = BUILD_TYPE_SUB(ImGuiRender, "imgui")
                         .Method("AlignTextToFramePadding", &ImGui::AlignTextToFramePadding)          //
                         .Method("End", &ImGui::End)                                                  //
+                        .Method("EndTabBar", &ImGui::EndTabBar)                                      //
+                        .Method("EndTabItem", &ImGui::EndTabItem)                                    //
                         .Method("Separator", &ImGui::Separator)                                      //
                         .Method("SeparatorText", &ImGui::SeparatorText)                              //
                         .Method("IsItemHovered", &ImGui::IsItemHovered)                              //
@@ -760,6 +776,8 @@ void ImGuiRender::imgui_init(GLFWwindow* window) {
                         .Method("IsMouseDown", [](int b) -> bool { return ImGui::IsMouseDown(b); })  //
                         .Method("IsCapturedEvent", &IsCapturedEvent)                                 //
                         .CClosure({{"Begin", Begin},                                                 //
+                                   {"BeginTabBar", BeginTabBar},
+                                   {"BeginTabItem", BeginTabItem},
                                    {"Button", Button},
                                    {"Text", Text},
                                    {"TextUnformatted", TextUnformatted},

@@ -115,6 +115,7 @@ EntityData* EcsEntityAlloc(EcsWorld* world) {
     std::memset(e->components, ENTITY_MAX_COMPONENTS, sizeof(e->components));
     std::memset(e->components_index, -1, sizeof(e->components_index));
     e->next = LINK_NONE;
+    ++world->entity_count;
     return e;
 }
 
@@ -138,6 +139,7 @@ void EcsEntityFree(EcsWorld* world, EntityData* e) {
     assert(e->components_count == -1);  //
     e->next = world->entity_free_id;
     world->entity_free_id = e - world->entity_buf;
+    --world->entity_count;
 }
 
 int EcsGetTid_w(lua_State* L, int stk, int proto_id) {

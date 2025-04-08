@@ -54,7 +54,6 @@ public:
     EcsWorld *ECS{};
     ui_context_t *ui{};
     bool win_console{};
-    LuaInspector *inspector{};
     ImGuiID devui_vp{};
     FontFamily *default_font{};
     Window *window{};
@@ -129,6 +128,35 @@ private:
 
 inline lua_State *&ENGINE_LUA() { return the<CL>().get_lua(); }
 inline EcsWorld *&ENGINE_ECS() { return the<CL>().get_ecs(); }
+
+// clang-format off
+
+NEKO_STRUCT(CL::State, 
+_Fs(show_editor,""),
+_Fs(show_demo_window,""),
+_Fs(show_gui,""),
+_Fs(shader_inspect,""),
+_Fs(hello_ai_shit,""),
+_Fs(vsync,""),
+_Fs(is_hotfix,""),
+_Fs(game_proxy,""),
+_Fs(default_font,""),
+_Fs(title,""),
+_Fs(height,""),
+_Fs(width,""),
+_Fs(dump_allocs_detailed,""),
+_Fs(hot_reload,""),
+_Fs(startup_load_scripts,""),
+_Fs(fullscreen,""),
+_Fs(debug_on,""),
+_Fs(reload_interval,""),
+_Fs(swap_interval,""),
+_Fs(target_fps,""),
+_Fs(batch_vertex_capacity,""),
+_Fs(posteffect_intensity,"")
+);
+
+// clang-format on
 
 extern Int32 Main(int argc, const char *argv[]);
 

@@ -179,6 +179,7 @@ template <typename T>
 void mem_del(T *ptr) {
     ptr->~T();
     mem_free(ptr);
+    ptr = nullptr;
 }
 
 }  // namespace Neko

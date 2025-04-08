@@ -70,7 +70,7 @@ function haha()
 
     ns.edit_inspector.add(block, "transform")
     ns.edit_inspector.add(block, "sprite")
-    -- ns.edit_inspector.add(block, "tiled")
+    ns.edit_inspector.add(block, "camera")
 
     print("blockblockblock", block.id)
 
@@ -319,8 +319,10 @@ function haha()
         local dt = neko.dt()
         -- default_font:draw(("fps: %.2f (%.4f) 分数: %d"):format(1 / dt, dt * 1000, LocalGame.score), 300, 0, 24)
 
-        default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.health), 40,
-            LocalGame.win_size.y - 60, 36)
+        if not ns.edit.get_enabled() then
+            default_font:draw(("分数: %d 血量: %d"):format(LocalGame.score, player.health), 40,
+                LocalGame.win_size.y - 60, 36)
+        end
     end
 
     -- neko.before_quit = function()

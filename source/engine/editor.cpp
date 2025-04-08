@@ -30,14 +30,16 @@ struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
     auto format(Neko::LuaInspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
 };
 
+namespace Neko {
+
 static int __luainspector_echo(lua_State* L) {
-    Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
+    LuaInspector* m = *static_cast<LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
     if (m) m->print(luaL_checkstring(L, 1), Logger::Level::INFO);
     return 0;
 }
 
 static int __luainspector_gc(lua_State* L) {
-    Neko::LuaInspector* m = *static_cast<Neko::LuaInspector**>(lua_touserdata(L, 1));
+    LuaInspector* m = *static_cast<LuaInspector**>(lua_touserdata(L, 1));
     if (m) {
         m->variable_pool_free();
         m->setL(0x0);
@@ -46,8 +48,6 @@ static int __luainspector_gc(lua_State* L) {
     LOG_INFO("luainspector __gc {}", m);
     return 0;
 }
-
-namespace Neko {
 
 const size_t MAX_LOG_ENTRIES = 50;       // 内存中最大日志条数
 const size_t MAX_VISIBLE_LOGS = 10;      // 屏幕上最多显示10条日志
@@ -197,7 +197,7 @@ void RenderConsoleLogs() noexcept {
             }
 
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, entry.alpha);
-            Neko::ImGuiWrap::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
+            ImGuiWrap::OutlineText(draw_list, textPos, "%s", entry.message.c_str());
             ImGui::PopStyleVar();
 
             currentPos.y += entry.height;
@@ -329,9 +329,7 @@ std::string LuaInspector::Hints::common_prefix(const std::vector<std::string>& p
     return ret;
 }
 
-}  // namespace Neko
-
-void Neko::LuaInspector::print_luastack(int first, int last, Logger::Level logtype) {
+void LuaInspector::print_luastack(int first, int last, Logger::Level logtype) {
     std::stringstream ss;
     for (int i = first; i <= last; ++i) {
         switch (lua_type(L, i)) {
@@ -356,7 +354,7 @@ void Neko::LuaInspector::print_luastack(int first, int last, Logger::Level logty
     print(ss.str(), logtype);
 }
 
-bool Neko::LuaInspector::try_eval(std::string m_buffcmd, bool addreturn) {
+bool LuaInspector::try_eval(std::string m_buffcmd, bool addreturn) {
     if (addreturn) {
         const std::string code = "return " + m_buffcmd;
         if (LUA_OK == luaL_loadstring(L, code.c_str())) {
@@ -377,12 +375,12 @@ static inline std::string adjust_error_msg(lua_State* L, int idx) {
     return std::string("(non string error value - ") + lua_typename(L, t) + ")";
 }
 
-void Neko::LuaInspector::setL(lua_State* L) {
+void LuaInspector::setL(lua_State* L) {
     this->L = L;
 
     if (!L) return;
 
-    // Neko::LuaInspector** ptr = static_cast<Neko::LuaInspector**>(lua_newuserdata(L, sizeof(Neko::LuaInspector*)));
+    // LuaInspector** ptr = static_cast<LuaInspector**>(lua_newuserdata(L, sizeof(LuaInspector*)));
     //(*ptr) = this;
 
     // luaL_newmetatable(L, kMetaname);  // table
@@ -399,7 +397,7 @@ void Neko::LuaInspector::setL(lua_State* L) {
     // lua_setglobal(L, "echo");
 }
 
-std::string Neko::LuaInspector::read_history(int change) {
+std::string LuaInspector::read_history(int change) {
     const bool was_promp = static_cast<std::size_t>(m_hindex) == m_history.size();
 
     m_hindex += change;
@@ -413,7 +411,7 @@ std::string Neko::LuaInspector::read_history(int change) {
     }
 }
 
-std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
+std::string LuaInspector::try_complete(std::string inputbuffer) {
     if (!L) {
         print("Lua state pointer is NULL, no completion available", Logger::Level::ERR);
         return inputbuffer;
@@ -451,14 +449,14 @@ std::string Neko::LuaInspector::try_complete(std::string inputbuffer) {
     return inputbuffer;
 }
 
-void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) {
+void LuaInspector::print(std::string msg, Logger::Level logtype) {
     if (messageLog.size() >= 64) {
         messageLog.pop_front();
     }
     messageLog.push_back(msg);
 }
 
-// void Neko::luainspector::set_print_eval_prettifier(lua_State* L) {
+// void luainspector::set_print_eval_prettifier(lua_State* L) {
 //     if (lua_gettop(L) == 0) return;
 
 //     const int t = lua_type(L, -1);
@@ -469,12 +467,12 @@ void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) {
 //     lua_settable(L, LUA_REGISTRYINDEX);
 // }
 
-// void Neko::luainspector::get_print_eval_prettifier(lua_State* L) const {
+// void luainspector::get_print_eval_prettifier(lua_State* L) const {
 //     lua_pushlightuserdata(L, __neko_lua_inspector_print_func_lightkey());
 //     lua_gettable(L, LUA_REGISTRYINDEX);
 // }
 
-// bool Neko::luainspector::apply_prettifier(int index) {
+// bool luainspector::apply_prettifier(int index) {
 //     get_print_eval_prettifier(L);
 //     if (lua_type(L, -1) == LUA_TNIL) {
 //         lua_pop(L, 1);
@@ -497,14 +495,14 @@ void Neko::LuaInspector::print(std::string msg, Logger::Level logtype) {
 
 int command_line_callback_st(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
-    return reinterpret_cast<Neko::LuaInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
+    return reinterpret_cast<LuaInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
 }
 
-int Neko::LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
+int LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
 
     auto paste_buffer = [data](auto begin, auto end, auto buffer_shift) {
-        Neko::copy(begin, end, data->Buf + buffer_shift, data->Buf + data->BufSize - 1);
+        copy(begin, end, data->Buf + buffer_shift, data->Buf + data->BufSize - 1);
         data->BufTextLen = std::min(static_cast<int>(std::distance(begin, end) + buffer_shift), data->BufSize - 1);
         data->Buf[data->BufTextLen] = '\0';
         data->BufDirty = true;
@@ -513,7 +511,7 @@ int Neko::LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* 
     };
 
     const char* command_beg = nullptr;
-    command_beg = Neko::find_terminating_word(cmd.data(), cmd.data() + cmd.size(), [this](std::string_view sv) { return sv[0] == ' ' ? 1 : 0; });
+    command_beg = find_terminating_word(cmd.data(), cmd.data() + cmd.size(), [this](std::string_view sv) { return sv[0] == ' ' ? 1 : 0; });
 
     if (data->EventKey == ImGuiKey_Tab) {
         std::string complete = this->try_complete(cmd);
@@ -545,7 +543,7 @@ int Neko::LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* 
     return 0;
 }
 
-bool Neko::LuaInspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool LuaInspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -557,7 +555,7 @@ bool Neko::LuaInspector::command_line_input(const char* label, std::string* str,
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, command_line_callback_st, &cb_user_data);
 }
 
-void Neko::LuaInspector::show_autocomplete() noexcept {
+void LuaInspector::show_autocomplete() noexcept {
     constexpr ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
                                                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
 
@@ -664,13 +662,11 @@ void Neko::LuaInspector::show_autocomplete() noexcept {
     }
 }
 
-Neko::LuaInspector::LuaInspector() {
-    callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { ConsoleLogAdd(msg, level); });
-}
+LuaInspector::LuaInspector() {}
 
-Neko::LuaInspector::~LuaInspector() { Logger::getInstance()->unregisterCallback(callbackId); }
+LuaInspector::~LuaInspector() {}
 
-void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
+void LuaInspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -727,7 +723,7 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
                 lua_settop(L, oldtop);
             } else {
                 const std::string err = adjust_error_msg(L, -1);
-                if (evalok || !Neko::incomplete_chunk_error(err.c_str(), err.length())) {
+                if (evalok || !incomplete_chunk_error(err.c_str(), err.length())) {
                     print(err, Logger::Level::ERR);
                 }
                 lua_pop(L, 1);
@@ -753,7 +749,7 @@ void Neko::LuaInspector::console_draw(bool& textbox_react) noexcept {
     show_autocomplete();
 }
 
-void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
+void LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
         while (*str != '\0') {
             if (*str == '\n') return true;
@@ -929,11 +925,7 @@ void Neko::LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
-Neko::CCharacter cJohn;
-
-void inspect_shader(const char* label, GLuint program);
-
-int Neko::LuaInspector::luainspector_init(lua_State* L) {
+int LuaInspector::luainspector_init(lua_State* L) {
 
     this->setL(L);
     this->m_history.resize(8);
@@ -944,20 +936,13 @@ int Neko::LuaInspector::luainspector_init(lua_State* L) {
     this->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
     this->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
 
-    this->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
-
-    this->property_register<CCharacter>("John", &cJohn, "John");
+    // this->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
+    // this->property_register<CCharacter>("John", &cJohn, "John");
 
     return 1;
 }
 
-int Neko::LuaInspector::luainspector_draw(lua_State* L) {
-
-    RenderConsoleLogs();
-
-    if (!visible) {
-        return 0;
-    }
+int LuaInspector::OnImGui(lua_State* L) {
 
     Assets& g_assets = the<Assets>();
 
@@ -1112,6 +1097,8 @@ int Neko::LuaInspector::luainspector_draw(lua_State* L) {
     return 0;
 }
 
+}  // namespace Neko
+
 #if 1
 
 // 生成宏 以避免始终重复代码
@@ -1244,16 +1231,14 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1uiv(program, location, 1, &value);
         } break;
 
-            // #if !defined(NEKO_IS_APPLE)
-            //         case GL_IMAGE_2D: {
-            //             ImGui::Text("GL_IMAGE_2D %s:", name);
-            //             // ImGui::SameLine();
-            //             GLuint value;
-            //             glGetUniformuiv(program, location, &value);
-            //             // if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1iv(program, location, 1, &value);
-            //             ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
-            //         } break;
-            // #endif
+#if !defined(NEKO_IS_APPLE)
+        case GL_IMAGE_2D: {
+            ImGui::Text("GL_IMAGE_2D %s:", name);
+            GLuint value;
+            glGetUniformuiv(program, location, &value);
+            ImGui::Image((intptr_t)value, ImVec2(256, 256));
+        } break;
+#endif
 
         case GL_SAMPLER_CUBE: {
             ImGui::Text("GL_SAMPLER_CUBE %s:", name);
@@ -1549,6 +1534,11 @@ void Editor::edit_init() {
 
     edit_init_impl(L);
 
+    inspector = mem_new<LuaInspector>();
+    inspector->luainspector_init(L);
+
+    ctag_tid = EcsGetTid(L, "CTag");
+
     auto type = BUILD_TYPE(Editor)
                         .Method("edit_set_editable", &edit_set_editable)                //
                         .Method("edit_get_editable", &edit_get_editable)                //
@@ -1563,9 +1553,18 @@ void Editor::edit_init() {
                                    {"edit_set_enabled", l_edit_set_enabled},
                                    {"edit_get_enabled", l_edit_get_enabled}})
                         .Build();
+
+    callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { ConsoleLogAdd(msg, level); });
 }
 
-void Editor::edit_fini() { edit_fini_impl(); }
+void Editor::edit_fini() {
+
+    Logger::getInstance()->unregisterCallback(callbackId);
+
+    mem_del(inspector);
+
+    edit_fini_impl();
+}
 
 int Editor::edit_update_all(Event evt) {
     edit_update_impl();
@@ -1573,9 +1572,225 @@ int Editor::edit_update_all(Event evt) {
     return 0;
 }
 
+void state_inspector(CL::State& cvar) {
+    auto func = []<typename S, typename Fields>(const char* name, auto& var, S& t, Fields&& fields) {
+        Neko::ImGuiWrap::Auto(var, name);
+        ImGui::Text("    [%s]", std::get<0>(fields));
+    };
+    reflection::struct_foreach_rec(func, cvar);
+}
+
+void inspect_table(lua_State* L) {
+
+    if (!lua_istable(L, -1)) {
+        ImGui::Text("not a table");
+        return;
+    }
+
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+
+        const char* key = lua_tostring(L, -2);
+        if (!key) {
+            key = "[non-string key]";
+        }
+
+        const char* value = nullptr;
+        if (lua_istable(L, -1) || lua_isuserdata(L, -1)) {
+            if (lua_getmetatable(L, -1)) {                  // 获取元表
+                lua_getfield(L, -1, "__tostring");          // 获取元表中的 __tostring 方法
+                if (lua_isfunction(L, -1)) {                // 如果存在 __tostring 方法
+                    lua_pushvalue(L, -3);                   // 将值本身压入栈作为参数
+                    if (lua_pcall(L, 1, 1, 0) == LUA_OK) {  // 调用 __tostring 方法
+                        value = lua_tostring(L, -1);        // 获取返回的字符串
+                        lua_pop(L, 1);                      // 弹出返回值
+                    } else {
+                        lua_pop(L, 1);  // 弹出错误信息
+                        value = "[__tostring error]";
+                    }
+                } else {
+                    lua_pop(L, 1);  // 弹出非函数的字段
+                    value = "[no __tostring]";
+                }
+                lua_pop(L, 1);  // 弹出元表
+            } else {
+                value = "[no metatable]";
+            }
+        } else {
+            value = lua_tostring(L, -1);
+        }
+
+        if (!value) {
+            value = "[non-string value]";
+        }
+
+        ImGui::Text("%s: %s", key, value);
+
+        lua_pop(L, 1);
+    }
+}
+
 void Editor::edit_draw_all() {
+
+    lua_State* L = ENGINE_LUA();
+
+    auto& GameCL = the<CL>();
+
+    RenderConsoleLogs();
+
     if (!enabled) return;
 
     edit_draw_impl();
+
+    inspector->OnImGui(L);
+
+    if (ImGui::BeginMainMenuBar()) {
+        ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
+
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
+        ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), GameCL.GetTimeInfo().true_dt * 1000.f,
+                    1.f / GameCL.GetTimeInfo().true_dt);
+
+        ImGui::EndMainMenuBar();
+    }
+
+    ImGui::SetNextWindowViewport(GameCL.devui_vp);
+    if (ImGui::Begin("查看器")) {
+
+        if (ImGui::BeginTabBar("editor_inspector", ImGuiTabBarFlags_None)) {
+
+            if (ImGui::BeginTabItem("编辑器")) {
+
+                GetEditorLuaFunc("__OnImGui");
+                lua_pushstring(L, "E");
+                // the<EventHandler>().EventPushLuaArgs(L, );
+                errcheck(L, luax_pcall_nothrow(L, 1, 0));
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("游戏")) {
+
+                state_inspector(GameCL.state);
+
+                mat3 view = camera_get_inverse_view_matrix();
+                ImGuiWrap::Auto(view);
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("对象")) {
+
+                if (ImGui::BeginTabBar("editor_object_inspector", ImGuiTabBarFlags_None)) {
+
+                    GetEditorLuaFunc("__OnImGui");
+                    lua_pushstring(L, "O");
+                    // the<EventHandler>().EventPushLuaArgs(L, );
+                    errcheck(L, luax_pcall_nothrow(L, 1, 0));
+
+                    ImGui::EndTabBar();
+                }
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("ECS")) {
+                if (ImGui::BeginTabBar("editor_ecs_inspector", ImGuiTabBarFlags_None)) {
+
+                    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
+                    int ecs_ud = lua_gettop(L);
+                    EcsWorld* world = (EcsWorld*)luaL_checkudata(L, -1, ECS_WORLD_METATABLE);
+                    neko_assert(world == ENGINE_ECS());
+
+                    if (ImGui::BeginTabItem("实体")) {
+
+                        ImGui::Text("实体总数: %d/%d", world->entity_count, world->entity_cap);
+                        ImGui::Text("下一个闲置实体ID: %d", world->entity_free_id);
+                        ImGui::Text("下一个将亡实体ID: %d", world->entity_dead_id);
+                        ImGui::Text("当前最大组件索引: %d", world->type_idx);
+
+                        lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
+                        {
+                            lua_rawgeti(L, -1, ctag_tid);
+
+                            if (!lua_istable(L, -1)) {
+                                assert(0);
+                            }
+
+                            lua_pushnil(L);
+                            while (lua_next(L, -2) != 0) {  // tid
+
+                                if (!lua_istable(L, -1)) {
+                                    assert(0);
+                                }
+
+                                lua_getfield(L, -1, "__name");
+                                String name = luax_check_string(L, -1);
+                                lua_pop(L, 1);
+                                ImGui::Text("name: %s", name.cstr());
+
+                                lua_getfield(L, -1, "__eid");
+                                int eid = lua_tonumber(L, -1);
+                                lua_pop(L, 1);
+                                ImGui::Text("__eid: %d", eid);
+
+#if 0
+                                lua_pushnil(L);
+                                while (lua_next(L, -2) != 0) {  // cid
+
+                                    String name = luax_check_string(L, -2);
+                                    String value = luax_check_string(L, -1);
+                                    ImGui::Text("%s %s", name.cstr(), value.cstr());
+
+
+                                    lua_pop(L, 1);  // pop value
+                                }
+#endif
+                                lua_pop(L, 1);  // pop value
+                            }
+                            lua_pop(L, 1);  // pop WORLD_COMPONENTS[tid]
+                        }
+                        lua_pop(L, 1);  // pop WORLD_COMPONENTS
+
+                        ImGui::EndTabItem();
+                    }
+
+                    if (ImGui::BeginTabItem("组件")) {
+
+                        ImGui::SeparatorText("WORLD_PROTO_ID:");
+
+                        lua_getiuservalue(L, ecs_ud, WORLD_PROTO_ID);
+                        inspect_table(L);
+                        lua_pop(L, 1);
+
+                        ImGui::SeparatorText("WORLD_PROTO_DEFINE:");
+
+                        lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);
+                        inspect_table(L);
+                        lua_pop(L, 1);
+
+                        ImGui::EndTabItem();
+                    }
+
+                    lua_pop(L, 1);  // pop NEKO_ECS_CORE
+
+                    ImGui::EndTabBar();
+                }
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
 }
 
+int Editor::GetEditorLuaFunc(String name) {
+    lua_State* L = ENGINE_LUA();
+    lua_getglobal(L, "ns");
+    lua_getfield(L, -1, "edit");
+    lua_remove(L, -2);
+    lua_getfield(L, -1, name.cstr());
+    lua_remove(L, -2);
+    return 1;
+}

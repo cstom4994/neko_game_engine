@@ -12,13 +12,6 @@ namespace Neko {
 
 using namespace luabind;
 
-class CCharacter {
-public:
-    int age = 0;
-    float stamina = 0.0f;
-    double skill = 0.0;
-};
-
 struct luainspector_property_st {
     static void Render_TypeGeneric(const char* label, void* value) { IM_ASSERT(value); }
 
@@ -47,12 +40,12 @@ struct luainspector_property_st {
         ImGui::InputInt(label, iValue);
     }
 
-    static void Render_TypeCharacter(const char* label, void* value) {
-        NEKO_STATIC_CAST(CCharacter, value, character);
-        ImGui::InputInt("Age", &character->age);
-        ImGui::InputFloat("Stamina", &character->stamina);
-        ImGui::InputDouble("Skill", &character->skill);
-    }
+    // static void Render_TypeCharacter(const char* label, void* value) {
+    //     NEKO_STATIC_CAST(CCharacter, value, character);
+    //     ImGui::InputInt("Age", &character->age);
+    //     ImGui::InputFloat("Stamina", &character->stamina);
+    //     ImGui::InputDouble("Skill", &character->skill);
+    // }
 };
 
 struct luainspector_property {
@@ -72,7 +65,7 @@ struct command_line_input_callback_UserData {
     std::string* Str;
     ImGuiInputTextCallback ChainCallback;
     void* ChainCallbackUserData;
-    Neko::LuaInspector* luainspector_ptr;
+    LuaInspector* luainspector_ptr;
 };
 
 struct inspect_table_config {
@@ -109,8 +102,6 @@ private:
 
     std::deque<std::string> messageLog;
 
-    int callbackId;
-
 private:
     inline int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
         if (color) {
@@ -126,11 +117,9 @@ public:
 
     void console_draw(bool& textbox_react) noexcept;
 
-    bool visible{false};
-
     void inspect_table(lua_State* L, inspect_table_config& cfg);
     int luainspector_init(lua_State* L);
-    int luainspector_draw(lua_State* L);
+    int OnImGui(lua_State* L);
 
     void setL(lua_State* L);
     int command_line_input_callback(ImGuiInputTextCallbackData* data);
@@ -253,22 +242,26 @@ private:
     bool enabled;
     bool ViewportOnEvent;
 
+    LuaInspector* inspector{};
+    int ctag_tid;
+
+    int callbackId;
+
 public:
     void edit_init();
     void edit_fini();
     int edit_update_all(Event evt);
     void edit_draw_all();
 
+    int GetEditorLuaFunc(String name);
+
     template <typename... Args>
     inline void PushEditorEvent(EventEnum type, Args&&... args) {
         lua_State* L = ENGINE_LUA();
         String& evt_name = the<EventHandler>().EventName(type);
         int n = sizeof...(args);
-        lua_getglobal(L, "ns");
-        lua_getfield(L, -1, "edit");
-        lua_remove(L, -2);
-        lua_getfield(L, -1, "OnEvent");
-        lua_remove(L, -2);
+        // call ns.edit.__OnEvent(event, ...)
+        GetEditorLuaFunc("__OnEvent");
         lua_pushstring(L, evt_name.cstr());
         the<EventHandler>().EventPushLuaArgs(L, std::forward<Args>(args)...);
         errcheck(L, luax_pcall_nothrow(L, 1 + n, 0));

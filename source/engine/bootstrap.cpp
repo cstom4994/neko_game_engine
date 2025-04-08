@@ -27,35 +27,6 @@
 
 #include <ranges>
 
-// clang-format off
-
-NEKO_STRUCT(CL::State, 
-_Fs(show_editor,""),
-_Fs(show_demo_window,""),
-_Fs(show_gui,""),
-_Fs(shader_inspect,""),
-_Fs(hello_ai_shit,""),
-_Fs(vsync,""),
-_Fs(is_hotfix,""),
-_Fs(game_proxy,""),
-_Fs(default_font,""),
-_Fs(title,""),
-_Fs(height,""),
-_Fs(width,""),
-_Fs(dump_allocs_detailed,""),
-_Fs(hot_reload,""),
-_Fs(startup_load_scripts,""),
-_Fs(fullscreen,""),
-_Fs(debug_on,""),
-_Fs(reload_interval,""),
-_Fs(swap_interval,""),
-_Fs(target_fps,""),
-_Fs(batch_vertex_capacity,""),
-_Fs(posteffect_intensity,"")
-);
-
-// clang-format on
-
 #if 1
 
 CBase gBase;
@@ -135,14 +106,6 @@ DEFINE_IMGUI_END()
 
 DEFINE_IMGUI_BEGIN(template <>, mat3) { ImGui::Text("%f %f %f\n%f %f %f\n%f %f %f\n", var.v[0], var.v[1], var.v[2], var.v[3], var.v[4], var.v[5], var.v[6], var.v[7], var.v[8]); }
 DEFINE_IMGUI_END()
-
-void state_inspector(CL::State &cvar) {
-    auto func = []<typename S, typename Fields>(const char *name, auto &var, S &t, Fields &&fields) {
-        Neko::ImGuiWrap::Auto(var, name);
-        ImGui::Text("    [%s]", std::get<0>(fields));
-    };
-    reflection::struct_foreach_rec(func, cvar);
-}
 
 void CL::game_draw() {
 
@@ -242,25 +205,6 @@ void CL::game_draw() {
 
         if (edit_get_enabled()) {
 
-            if (ImGui::BeginMainMenuBar()) {
-                ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
-
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-                ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), GetTimeInfo().true_dt * 1000.f,
-                            1.f / GetTimeInfo().true_dt);
-
-                ImGui::EndMainMenuBar();
-            }
-
-            ImGui::SetNextWindowViewport(devui_vp);
-            if (ImGui::Begin("Hello")) {
-                state_inspector(state);
-
-                mat3 view = camera_get_inverse_view_matrix();
-                ImGuiWrap::Auto(view);
-            }
-            ImGui::End();
-
             if (ImGui::Begin("Play", nullptr)) {
                 ImVec2 contentSize = ImGui::GetContentRegionAvail();
                 float viewportAspectRatio = state.width / state.height;
@@ -291,8 +235,6 @@ void CL::game_draw() {
             }
             ImGui::End();
         }
-
-        inspector->luainspector_draw(ENGINE_LUA());
 
     } else {
 
@@ -504,9 +446,6 @@ void CL::init() {
     gBase.reload_interval.store(state.reload_interval);
 
     luax_run_nekogame(L);
-
-    inspector = new Neko::LuaInspector();
-    inspector->luainspector_init(L);
 
     if (!gBase.error_mode.load() && state.startup_load_scripts) {
         load_all_lua_scripts(L);
@@ -739,9 +678,6 @@ void CL::fini() {
         mem_free(this->ui);
         neko_deinit_ui_renderer();
     }
-
-    delete inspector;
-    inspector = nullptr;
 
     the<DebugDraw>().debug_draw_fini();
     the<Editor>().edit_fini();

@@ -73,6 +73,7 @@ struct EntityData {
 
 struct EcsWorld {
     int entity_cap;  // 容量
+    int entity_count;
 
     // TODO:将ENTITY_FREE设置为FIFO 这可以在以后回收EID以避免某些错误
     int entity_free_id;  // 下一个闲置实体的id

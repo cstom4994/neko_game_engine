@@ -309,10 +309,16 @@ function ns.edit.select_click_single()
     sel = (sel % #ents) + 1
     SelectTable[ents[sel]] = true
 
+    print("上一个选择", SingleSelectEnt, SingleSelectID)
+    -- ns.edit_inspector.remove(SingleSelectEnt, "transform")
+    -- ns.edit_inspector.remove(SingleSelectEnt, "sprite")
+
     SingleSelectID = ents[sel].id
     SingleSelectEnt = ents[sel]
 
     print("选择", ents[sel], ents[sel].id)
+    -- ns.edit_inspector.add(SingleSelectEnt, "transform")
+    -- ns.edit_inspector.add(SingleSelectEnt, "sprite")
 
     ns.edit.undo_save()
 end
@@ -569,7 +575,7 @@ field_types["boolean"] = {
     end,
 
     update = function(field, val)
-        ImGui.Text("%d", val)
+        ImGui.Text("%s", tostring(val))
     end
 }
 
@@ -1000,7 +1006,7 @@ local function update_inspector(inspector)
     local title = inspector.sys
     -- ns.gui_window.set_title(inspector.window, title)
 
-    local window<close> = ImGuiWindow(title)
+    local window<close> = ImGuiTabItem(title)
     if window then
         ImGui.Text("Inspector:\n%d\n%s", inspector.ent.id, table.show(SelectTable))
 
@@ -1023,11 +1029,6 @@ function ns.edit_inspector.OnUpdate()
         return
     end
 
-    for _, insps in pairs(inspectors) do
-        for _, inspector in pairs(insps) do
-            update_inspector(inspector)
-        end
-    end
 end
 
 local function post_update_inspector(inspector)
@@ -1209,7 +1210,7 @@ function ns.edit.__OnMouseScroll(scroll)
     ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
 end
 
-function ns.edit.OnEvent(evt, args)
+function ns.edit.__OnEvent(evt, args)
     if not ns.edit.get_enabled() then
         return
     end
@@ -1254,43 +1255,69 @@ function ns.edit.OnUpdate()
     -- forward to mode
     ns.edit.mode_event('OnUpdate')
 
-    local window<close> = ImGuiWindow("Editor")
+end
 
-    if window then
+function ns.edit.__OnImGui(args)
 
-        ImGui.Text("TestDemo:" .. ns.edit.mode_text)
+    if args == "E" then
 
-        -- -- update grid text
-        local g = ns.edit.get_grid_size()
-        if g.x <= 0 and g.y <= 0 then
-            ImGui.Text("no grid")
-        else
-            local s
-            if g.x == g.y then
-                s = string.format('grid %.4g', g.x)
-            else
-                s = string.format('grid %.4g %.4g', g.x, g.y)
+        -- local tabbar = ImGuiTabBar("tabbar_editor")
+        if ImGui.BeginTabBar("tabbar_editor") then
+
+            if ImGui.BeginTabItem("检查") then
+
+                ImGui.Text("TestDemo:" .. ns.edit.mode_text)
+
+                -- -- update grid text
+                local g = ns.edit.get_grid_size()
+                if g.x <= 0 and g.y <= 0 then
+                    ImGui.Text("no grid")
+                else
+                    local s
+                    if g.x == g.y then
+                        s = string.format('grid %.4g', g.x)
+                    else
+                        s = string.format('grid %.4g %.4g', g.x, g.y)
+                    end
+                    ImGui.Text(s)
+                end
+
+                local nselect = 0
+                for w in pairs(SelectTable) do
+                    nselect = nselect + 1
+                    ImGui.Text(tostring(w))
+                end
+                if nselect > 0 then
+                    ImGui.Text("SelectN: " .. nselect)
+                    ImGui.Text("Select: " .. SingleSelectID .. " [" .. tostring(SingleSelectEnt) .. "]")
+                else
+                    ImGui.Text("no select")
+                end
+
+                -- update play/stop text
+                if ns.edit.stopped then
+                    ImGui.Text("Stopped")
+                else
+                    ImGui.Text("Running")
+                end
+
+                ImGui.EndTabItem()
             end
-            ImGui.Text(s)
+
+            if ImGui.BeginTabItem("测试面板") then
+                EditorTestPanel()
+                ImGui.EndTabItem()
+            end
+
+            ImGui.EndTabBar()
         end
 
-        local nselect = 0
-        for w in pairs(SelectTable) do
-            nselect = nselect + 1
-            ImGui.Text(tostring(w))
-        end
-        if nselect > 0 then
-            ImGui.Text("SelectN: " .. nselect)
-            ImGui.Text("Select: " .. SingleSelectID .. " [" .. tostring(SingleSelectEnt) .. "]")
-        else
-            ImGui.Text("no select")
-        end
+    elseif args == "O" then
 
-        -- update play/stop text
-        if ns.edit.stopped then
-            ImGui.Text("Stopped")
-        else
-            ImGui.Text("Running")
+        for _, insps in pairs(inspectors) do
+            for _, inspector in pairs(insps) do
+                update_inspector(inspector)
+            end
         end
 
     end

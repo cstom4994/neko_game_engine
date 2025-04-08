@@ -2186,9 +2186,6 @@ static int l_transform_get_world_matrix(lua_State *L) {
     return 1;
 }
 
-void inspector_set_visible(bool visible) { the<CL>().inspector->visible = visible; }
-bool inspector_get_visible() { return the<CL>().inspector->visible; }
-
 // 将table转换为lightuserdata
 int tbptr_to(lua_State *L) {
     luaL_checktype(L, 1, LUA_TTABLE);
@@ -2374,17 +2371,6 @@ int wrap_window_scale(lua_State *L) {
 int wrap_window_size(lua_State *L) {
     vec2 v = luavec2(the<CL>().state.width, the<CL>().state.height);
     LuaPush<vec2>(L, v);
-    return 1;
-}
-
-int wrap_inspector_set_visible(lua_State *L) {
-    bool v = lua_toboolean(L, 1);
-    inspector_set_visible(v);
-    return 0;
-}
-int wrap_inspector_get_visible(lua_State *L) {
-    bool v = inspector_get_visible();
-    lua_pushboolean(L, v);
     return 1;
 }
 
@@ -2735,9 +2721,6 @@ static int open_neko(lua_State *L) {
             {"window_has_focus", wrap_window_has_focus},
             {"window_scale", wrap_window_scale},
             {"window_size", wrap_window_size},
-
-            {"inspector_set_visible", wrap_inspector_set_visible},
-            {"inspector_get_visible", wrap_inspector_get_visible},
 
             {"input_keycode_str", wrap_input_keycode_str},
             {"input_key_down", wrap_input_key_down},
