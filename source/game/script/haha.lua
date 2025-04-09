@@ -267,7 +267,9 @@ function haha()
         if ns.edit.get_enabled() then
             return
         end
-        LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
+        -- LocalGame.mouse_pos = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
+
+        LocalGame.mouse_pos = neko.__input_mouse_pos
 
         game_tick = game_tick + 1
 

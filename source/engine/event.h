@@ -98,7 +98,7 @@ private:
 public:
     void init();
     void fini();
-    void update();
+    void OnPreUpdate();
 
     void Register(int evt, EventCallback cb, lua_State* L);
     int Post(Event evt);

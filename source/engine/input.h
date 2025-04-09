@@ -11,6 +11,8 @@
 
 #include <GLFW/glfw3.h>
 
+struct Table;  // LuaVM Table
+
 bool input_key_down(KeyCode key);
 bool input_key_release(KeyCode key);
 vec2 input_get_mouse_pos_pixels_fix();
@@ -46,10 +48,13 @@ public:
     Array<MouseMoveCallback> mouse_move_cbs;
     Array<ScrollCallback> scroll_cbs;
 
+private:
+    Table* MousePosTable;
+
 public:
     void init();
     void fini();
-    void update();
+    int OnPreUpdate();
 };
 
 typedef enum {

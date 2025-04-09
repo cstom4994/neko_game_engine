@@ -14,18 +14,13 @@
 
 using namespace Neko::luabind;
 
-static int _keycode_to_glfw(KeyCode key) { return key; }
-static KeyCode _glfw_to_keycode(int key) { return (KeyCode)key; }
-static int _mousecode_to_glfw(MouseCode mouse) { return mouse; }
-static MouseCode _glfw_to_mousecode(int mouse) { return (MouseCode)mouse; }
-
 bool input_key_down(KeyCode key) {
-    int glfwkey = _keycode_to_glfw(key);
+    int glfwkey = (key);
     return glfwGetKey(the<CL>().window->glfwWindow(), glfwkey) == GLFW_PRESS;
 }
 
 bool input_key_release(KeyCode key) {
-    int glfwkey = _keycode_to_glfw(key);
+    int glfwkey = (key);
     return glfwGetKey(the<CL>().window->glfwWindow(), glfwkey) == GLFW_RELEASE;
 }
 
@@ -43,7 +38,7 @@ vec2 input_get_mouse_pos_pixels() {
 vec2 input_get_mouse_pos_unit() { return Neko::the<CL>().pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
-    int glfwmouse = _mousecode_to_glfw(mouse);
+    int glfwmouse = (mouse);
     return glfwGetMouseButton(the<CL>().window->glfwWindow(), glfwmouse) == GLFW_PRESS;
 }
 
@@ -60,13 +55,13 @@ static void _key_callback(GLFWwindow* window, int key, int scancode, int action,
     switch (action) {
         case GLFW_PRESS: {
             for (auto f : Neko::the<Input>().key_down_cbs) {
-                (*f)(_glfw_to_keycode(key), scancode, mods);
+                (*f)((KeyCode)(key), scancode, mods);
             }
             break;
         }
         case GLFW_RELEASE: {
             for (auto f : Neko::the<Input>().key_up_cbs) {
-                (*f)(_glfw_to_keycode(key), scancode, mods);
+                (*f)((KeyCode)(key), scancode, mods);
             }
             break;
         }
@@ -82,19 +77,15 @@ static void _char_callback(GLFWwindow* window, unsigned int c) {
 static void _mouse_callback(GLFWwindow* window, int mouse, int action, int mods) {
     switch (action) {
         case GLFW_PRESS: {
-            for (auto f : Neko::the<Input>().mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
+            for (auto f : Neko::the<Input>().mouse_down_cbs) (*f)((MouseCode)(mouse));
             break;
         }
 
         case GLFW_RELEASE: {
-            for (auto f : Neko::the<Input>().mouse_up_cbs) (*f)(_glfw_to_mousecode(mouse));
+            for (auto f : Neko::the<Input>().mouse_up_cbs) (*f)((MouseCode)(mouse));
             break;
         }
     }
-}
-
-static void _cursor_pos_callback(GLFWwindow* window, double x, double y) {
-    for (auto f : Neko::the<Input>().mouse_move_cbs) (*f)(luavec2(x, -y));
 }
 
 static void _scroll_callback(GLFWwindow* window, double x, double y) {
@@ -106,11 +97,32 @@ void Input::init() {
 
     auto& w = Neko::the<Window>();
 
+    auto L = ENGINE_LUA();
+
     glfwSetKeyCallback(w.glfwWindow(), _key_callback);
     glfwSetCharCallback(w.glfwWindow(), _char_callback);
     glfwSetMouseButtonCallback(w.glfwWindow(), _mouse_callback);
-    glfwSetCursorPosCallback(w.glfwWindow(), _cursor_pos_callback);
     glfwSetScrollCallback(w.glfwWindow(), _scroll_callback);
+
+    glfwSetCursorPosCallback(w.glfwWindow(), [](GLFWwindow* window, double x, double y) {
+        auto& input = the<Input>();
+        for (auto f : input.mouse_move_cbs) (*f)(luavec2(x, -y));
+    });
+
+    {
+        LuaTableAccess<InputMousePos>::Init(L);
+        auto& meta = LuaTableAccess<InputMousePos>::GetMeta();
+
+        lua_getglobal(L, "neko");
+
+        lua_newtable(L);
+        MousePosTable = LuaTableAccess<InputMousePos>::GetTable(L, -1);
+        LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "x") = 0.f;
+        LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "y") = 0.f;
+        lua_setfield(L, -2, "__input_mouse_pos");
+
+        lua_pop(L, 1);
+    }
 }
 
 void Input::fini() {
@@ -127,7 +139,17 @@ void Input::fini() {
     key_down_cbs.trash();
 }
 
-void Input::update() {}
+int Input::OnPreUpdate() {
+
+    double x, y;
+    glfwGetCursorPos(the<CL>().window->glfwWindow(), &x, &y);
+
+    vec2 p = camera_pixels_to_world({(f32)x, -(f32)y});
+    LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "x") = p.x;
+    LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "y") = p.y;
+
+    return 0;
+}
 
 INPUT_WRAP_event* input_wrap_new_event(event_queue* equeue) {
     INPUT_WRAP_event* event = equeue->events + equeue->head;

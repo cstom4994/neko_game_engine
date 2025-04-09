@@ -62,7 +62,7 @@ struct AseSprite {
 
     void make();
     bool play(String tag);
-    void update(float dt);
+    void OnPreUpdate(float dt);
     void set_frame(i32 frame);
 };
 

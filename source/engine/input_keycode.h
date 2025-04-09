@@ -141,3 +141,8 @@ enum MouseCode {
 
     MC_NONE = 32
 };
+
+struct InputMousePos {
+    float x;
+    float y;
+};

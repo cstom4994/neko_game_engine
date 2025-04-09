@@ -575,6 +575,7 @@ void CL::init() {
                  return 0;
              }},  //
             {EventMask::PreUpdate, [](Event evt) -> int { return the<ImGuiRender>().imgui_draw_pre(); }},
+            {EventMask::PreUpdate, [](Event evt) -> int { return the<Input>().OnPreUpdate(); }},
 
             {EventMask::Update,
              [](Event) -> int {

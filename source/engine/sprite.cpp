@@ -245,7 +245,7 @@ bool AseSprite::play(String tag) {
     return same;
 }
 
-void AseSprite::update(float dt) {
+void AseSprite::OnPreUpdate(float dt) {
     AseSpriteView view = {};
     bool ok = view.make(this);
     if (!ok) {

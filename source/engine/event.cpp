@@ -33,7 +33,7 @@ void EventHandler::fini() {
     m_delegate_map.trash();
 }
 
-void EventHandler::update() {}
+void EventHandler::OnPreUpdate() {}
 
 void EventHandler::Register(int evt, EventCallback cb, lua_State* L) {
     for (int i = 0; i < NUM_EVENTS; i++) {

@@ -115,7 +115,7 @@ static int mt_sprite_update(lua_State *L) {
     AseSprite &spr = check_sprite_udata(L, 1);
     lua_Number dt = luaL_checknumber(L, 2);
 
-    spr.update((float)dt);
+    spr.OnPreUpdate((float)dt);
     return 0;
 }
 
