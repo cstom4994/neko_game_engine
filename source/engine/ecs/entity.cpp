@@ -20,7 +20,7 @@
 #include "base/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
-#include "lua.h"
+#include "engine/scripting/lua_util.h"
 
 using namespace Neko::luabind;
 using namespace Neko::ecs;
@@ -41,14 +41,57 @@ CEntity entity_create(const String& name) {
     return ent;
 }
 
-static void entity_remove(CEntity ent) { EcsEntityDel(ENGINE_LUA(), ent.id); }
-
-// 释放实体 ID
-void entity_destroy(CEntity ent) { entity_remove(ent); }
-
 void entity_destroy_all() {}
 
 bool entity_destroyed(CEntity ent) { return NULL == EcsGetEnt(ENGINE_LUA(), ENGINE_ECS(), ent.id); }
+
+int wrap_EntityCreate(lua_State* L) {
+    String name = luax_opt_string(L, 1, "something_unknown_from_lua");
+    CEntity ent = entity_create(name);
+    LuaPush<CEntity>(L, ent);
+    return 1;
+}
+
+int wrap_EntityDestroy(lua_State* L) {
+    CEntity* ent = LuaGet<CEntity>(L, 1);
+    EcsEntityDel(ENGINE_LUA(), ent->id);
+    return 0;
+}
+
+int wrap_EntityDestroyAll(lua_State* L) {
+    entity_destroy_all();
+    return 0;
+}
+
+int wrap_EntityDestroyed(lua_State* L) {
+    CEntity* ent = LuaGet<CEntity>(L, 1);
+    bool v = entity_destroyed(*ent);
+    lua_pushboolean(L, v);
+    return 1;
+}
+
+int wrap_CEntityEq(lua_State* L) {
+    EcsId a = lua_tointeger(L, 1);
+    EcsId b = lua_tointeger(L, 2);
+    bool v = (a == b);
+    lua_pushboolean(L, v);
+    return 1;
+}
+
+int wrap_entity_set_save_filter(lua_State* L) {
+    CEntity* ent = LuaGet<CEntity>(L, 1);
+    bool filter = lua_toboolean(L, 2);
+    // entity_set_save_filter(*ent, filter);
+    return 0;
+}
+
+int wrap_entity_get_save_filter(lua_State* L) {
+    CEntity* ent = LuaGet<CEntity>(L, 1);
+    // bool v = entity_get_save_filter(*ent);
+    bool v = true;
+    lua_pushboolean(L, v);
+    return 1;
+}
 
 void Entity::entity_init() {
     PROFILE_FUNC();
@@ -70,27 +113,42 @@ void Entity::entity_init() {
         EcsEntityNew(L, table, NULL);
     }
 
+    // if (0) {
+    //     LuaRef table = LuaRef::NewTable(L);
+    //     table["__name"] = "TestDel";
+    //     auto e = EcsEntityNew(L, table, NULL);
+    //     EcsWorld* world = ENGINE_ECS();
+    //     EcsEntityDead(world, e);
+    //     EcsUpdate(L);
+    // }
+
     // struct CTransform {};
-
     // int type_transform = EcsRegisterCType<CTransform>(L);
-
     //{
     //    LuaRef table = LuaRef::NewTable(L);
     //    table["testing"] = "Test fucking CTransform";
-
     //    EntityData* e = EcsEntityNew(L, table, NULL);
-
     //    LuaRef tb = LuaRef::NewTable(L);
     //    tb["testing"] = "i'm CTransform haha";
     //    tb["__my_ud"] = new int(114514);
-
     //    int cid1 = EcsComponentSet(L, e, type_transform, tb);
-
     //    LuaRef tb_read = EcsComponentGet(L, e, type_transform);
     //    int* test_ptr = tb_read["__my_ud"];
     //    LOG_TRACE("__my_ud {}", *test_ptr);
     //    // DumpLuaRef(tb_read);
     //}
+
+    auto type = BUILD_TYPE(Entity)  //
+                        .CClosure({
+                                {"EntityCreate", wrap_EntityCreate},
+                                {"EntityDestroy", wrap_EntityDestroy},
+                                {"EntityDestroyAll", wrap_EntityDestroyAll},
+                                {"EntityDestroyed", wrap_EntityDestroyed},
+                                {"CEntityEq", wrap_CEntityEq},
+                                {"entity_set_save_filter", wrap_entity_set_save_filter},
+                                {"entity_get_save_filter", wrap_entity_get_save_filter},
+                        })
+                        .Build();
 }
 
 void Entity::entity_fini() {}
@@ -109,6 +167,9 @@ int Entity::entity_update_all(Event evt) {
     //         array_quick_remove(destroyed, i);
     //     }
     // }
+
+    EcsUpdate(ENGINE_LUA());
+
     return 0;
 }
 

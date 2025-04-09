@@ -25,7 +25,6 @@ struct CEntity {
 NEKO_EXPORT CEntity entity_nil;
 
 CEntity entity_create(const String& name);
-void entity_destroy(CEntity ent);
 void entity_destroy_all();
 bool entity_destroyed(CEntity ent);
 

@@ -96,10 +96,6 @@ private:
     std::string_view m_autocomlete_separator{" | "};
     std::vector<std::string> m_current_autocomplete_strings{};
 
-    std::unordered_map<std::type_index, std::function<void(const char*, void*)>> m_type_render_functions;
-    std::vector<luainspector_property> m_property_map;
-    std::vector<void*> m_variable_pool;
-
     std::deque<std::string> messageLog;
 
 private:
@@ -130,87 +126,6 @@ public:
     void print(std::string msg, Logger::Level logtype = Logger::Level::INFO);
     void print_luastack(int first, int last, Logger::Level logtype);
     bool try_eval(std::string m_buffcmd, bool addreturn);
-
-    inline void variable_pool_free() {
-        for (const auto& var : this->m_variable_pool) {
-            delete (char*)var;
-        }
-    }
-
-    template <typename T>
-    void register_function(std::function<void(const char*, void*)> function) {
-        this->m_type_render_functions.insert_or_assign(std::type_index(typeid(T)), function);
-    }
-
-    template <typename T>
-    void property_register(const std::string& name, T* param, const std::string& label = "") {
-        luainspector_property type_property;
-        type_property.name = name;
-        if (label.empty())
-            type_property.label = name;
-        else
-            type_property.label = label;
-
-        type_property.param_type = std::type_index(typeid(*param));
-        type_property.param = param;
-
-        this->m_property_map.push_back(type_property);
-    }
-
-    template <typename T>
-    void property_register(const std::string& name, const std::string& label = "") {
-
-        T* param = new T();
-        this->m_variable_pool.push_back(param);
-
-        property_register<T>(name, param, label);
-    }
-
-    inline void property_remove(const std::string& name) {
-
-        auto property_it = this->m_property_map.begin();
-        while (property_it != this->m_property_map.end()) {
-            if (property_it->name == name) break;
-        }
-
-        this->m_property_map.erase(property_it);
-    }
-
-    template <typename T>
-    void property_update(const std::string& name, const std::string& newName, T* param) {
-        property_remove(name);
-        property_register<T>(newName, param);
-    }
-
-    inline luainspector_property* property_get(const std::string& name) {
-        luainspector_property* ret_value = nullptr;
-
-        for (auto& property_it : this->m_property_map) {
-            if (property_it.name == name) ret_value = &property_it;
-        }
-
-        return ret_value;
-    }
-
-    template <typename T>
-    T* property_getv(const std::string& name) {
-
-        T* ret_value = nullptr;
-        const auto& param_it = property_get(name);
-        if (param_it) {
-            ret_value = reinterpret_cast<T*>(param_it->param);
-        }
-
-        return ret_value;
-    }
-
-    template <typename T>
-    T* property_setv(const std::string& name, const T& value) {
-        const auto& param = property_getv<T>(name);
-        IM_ASSERT(param)
-
-        *param = T(value);
-    }
 };
 
 }  // namespace Neko
@@ -252,6 +167,7 @@ public:
     void edit_fini();
     int edit_update_all(Event evt);
     void edit_draw_all();
+    void OnImGui();
 
     int GetEditorLuaFunc(String name);
 

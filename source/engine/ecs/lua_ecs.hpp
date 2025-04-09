@@ -37,7 +37,7 @@ enum ECS_WORLD_UPVALUES {
 #define ECS_WORLD_METATABLE "__NEKO_ECS_WORLD_METATABLE"
 #define ECS_WORLD (1)
 
-struct Component {
+struct ComponentData {
     int eid;  // 该组件附着的实体id
     int dirty_next;
     int dead_next;
@@ -53,7 +53,7 @@ struct ComponentPool {
     int dead_head;
     int dead_tail;
 
-    Component* buf;
+    ComponentData* buf;
 };
 
 // 每个Component类型都有一个数字id称为tid
@@ -111,6 +111,7 @@ int EcsCreateWorld(lua_State* L);
 
 int EcsRegister(lua_State* L, const_str name);
 int EcsGetTid(lua_State* L, const char* name);
+int EcsUpdate(lua_State* L);
 
 EntityData* EcsEntityAlloc(EcsWorld* world);
 void EcsEntityDead(EcsWorld* world, EntityData* e);

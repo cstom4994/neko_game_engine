@@ -84,7 +84,7 @@ static void l_system_remove(lua_State* L, EcsWorld* ecs, int entity_id, void* ud
 }
 
 static int __neko_ecs_lua_system(lua_State* L) {
-    EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
     int sys = u32_max;
     String system_name = luax_check_string(L, ECS_WORLD + 1);
@@ -206,7 +206,7 @@ struct EcsLuaWrap {
     }
 
     static int l_ecs_del_entity(lua_State* L) {
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         EntityData* e = EcsGetEnt_i(L, w, 2);
         EcsEntityDead(w, e);
         return 0;
@@ -214,7 +214,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_get_component(lua_State* L) {
         int i, top, proto_id, components;
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         EntityData* e = EcsGetEnt_i(L, w, 2);
         top = lua_gettop(L);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
@@ -237,7 +237,7 @@ struct EcsLuaWrap {
 
     static int l_ecs_add_component(lua_State* L) {
         int tid, cid;
-        struct EcsWorld* w = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
+        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
         EntityData* e = EcsGetEnt_i(L, w, 2);
         lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
         tid = EcsGetTid_w(L, 3, lua_gettop(L));
@@ -289,7 +289,7 @@ struct EcsLuaWrap {
     // MatchFunc::*(MatchCtx *mctx, nil)
     struct MatchFunc {
 
-        static EntityData* restrict_component(EntityData* ebuf, Component* c, int* keys, int kn) {
+        static EntityData* restrict_component(EntityData* ebuf, ComponentData* c, int* keys, int kn) {
             EntityData* e = &ebuf[c->eid];
             for (int i = 1; i < kn; i++) {
                 if (!EcsComponentHas(e, keys[i])) return NULL;
@@ -330,7 +330,7 @@ struct EcsLuaWrap {
             int mi = mctx->i;
             int free = cp->free_idx;
             while (mi < free) {
-                Component* c = &cp->buf[mi++];
+                ComponentData* c = &cp->buf[mi++];
                 if (c->dead_next == LINK_NONE) {
                     e = restrict_component(entity_buf, c, keys, kn);
                     if (e != NULL) break;
@@ -354,7 +354,7 @@ struct EcsLuaWrap {
             next = mctx->i;
             cp = &w->component_pool[keys[0]];
             while (next != LINK_NIL) {
-                Component* c = &cp->buf[next];
+                ComponentData* c = &cp->buf[next];
                 next = c->dirty_next;
                 if (c->dead_next == LINK_NONE) {
                     e = restrict_component(entity_buf, c, keys, kn);
@@ -379,7 +379,7 @@ struct EcsLuaWrap {
             next = mctx->i;
             cp = &w->component_pool[keys[0]];
             while (next != LINK_NIL) {
-                Component* c = &cp->buf[next];
+                ComponentData* c = &cp->buf[next];
                 next = c->dead_next;
                 e = restrict_component(entity_buf, c, keys, kn);
                 if (e != NULL) break;
@@ -396,7 +396,7 @@ struct EcsLuaWrap {
         const char* match_mode_name = luaL_checklstring(L, ECS_WORLD + 1, &match_mode_name_sz);
 
         int top = lua_gettop(L);
-        EcsWorld* world = (struct EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
+        EcsWorld* world = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
 
         lua_CFunction iter = NULL;
         MatchMode mode = MATCH_ALL;
@@ -447,62 +447,6 @@ struct EcsLuaWrap {
         }
         lua_pushinteger(L, 114514);  // iter + 2
         return 3;
-    }
-
-    static int l_ecs_update(lua_State* L) {
-
-        EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_METATABLE);
-
-        // 清除死亡实体
-        EntityData* entity_buf = w->entity_buf;
-        int next = w->entity_dead_id;
-        while (next != LINK_NIL) {
-            EntityData* e;
-            e = &entity_buf[next];
-            e->components_count = -1;
-            next = e->next;
-            EcsEntityFree(w, e);
-        }
-
-        // 清除死亡组件
-        ComponentPool* pool = w->component_pool;
-        lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
-        for (int tid = 0; tid <= w->type_idx; tid++) {  // 遍寻世界所有组件
-            ComponentPool* cp = &pool[tid];             // 组件池
-            cp->dirty_head = LINK_NIL;
-            cp->dirty_tail = LINK_NIL;
-            cp->dead_head = LINK_NIL;
-            cp->dead_tail = LINK_NIL;
-            lua_rawgeti(L, -1, tid);  // push WORLD_COMPONENTS[tid]
-            Component* buf = cp->buf;
-            int free_idx = cp->free_idx;  // 当前组件池第一个闲置位
-            int w = 0, r = 0;
-            for (r = 0; r < free_idx; r++) {
-                Component* c = &buf[r];
-                c->dirty_next = LINK_NONE;
-                if (c->dead_next == LINK_NONE) {  // 如果存活
-                    if (w != r) {
-                        EntityData* e = &entity_buf[c->eid];
-                        buf[w] = *c;
-                        lua_rawgeti(L, -1, r);          // N = WORLD_COMPONENTS[tid][r]
-                        lua_rawseti(L, -2, w);          // WORLD_COMPONENTS[tid][w] = N
-                        EcsEntityUpdateCid(e, tid, w);  // 更新cid = w
-                    }
-                    w++;
-                } else {  // 否则为标记的死组件
-                    EntityData* e = &entity_buf[c->eid];
-                    if (e->next == LINK_NONE) EcsComponentClear(e, tid);
-                }
-            }
-            cp->free_idx = w;
-            while (w < free_idx) {
-                lua_pushnil(L);
-                lua_rawseti(L, -2, w);  //  WORLD_COMPONENTS[tid][w] = nil 触发gc
-                w++;
-            }
-            lua_pop(L, 1);  // pop WORLD_COMPONENTS[tid]
-        }
-        return 0;
     }
 
     static void print_value(lua_State* L, int stk, int tab) {
@@ -581,7 +525,6 @@ int EcsCreateWorld(lua_State* L) {
                 {"remove", Wrap<EcsLuaWrap::l_ecs_remove_component>},
                 {"touch", Wrap<EcsLuaWrap::l_ecs_touch_component>},
                 {"match", Wrap<EcsLuaWrap::l_ecs_match_component>},
-                {"update", Wrap<EcsLuaWrap::l_ecs_update>},
                 {"dump", Wrap<EcsLuaWrap::l_ecs_dump>},
                 {"detail", Wrap<EcsLuaWrap::l_ecs_get_detail>},
                 {NULL, NULL},

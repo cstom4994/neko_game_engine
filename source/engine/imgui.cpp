@@ -721,7 +721,7 @@ static int BindFlags(lua_State* L) {
     return 1;
 }
 
-void ImGuiRender::imgui_init(GLFWwindow* window) {
+void ImGuiRender::imgui_init() {
     PROFILE_FUNC();
 
     ImGui::SetAllocatorFunctions(+[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
@@ -743,7 +743,7 @@ void ImGuiRender::imgui_init(GLFWwindow* window) {
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplGlfw_InitForOpenGL(the<Window>().glfwWindow(), true);
     ImGui_ImplOpenGL3_Init();
 
 #if defined(DEBUG)

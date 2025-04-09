@@ -168,7 +168,7 @@ void transform_destroy_rec(CEntity ent) {
     if (transform && transform->children.len)
         for (auto &child : transform->children) transform_destroy_rec(child);
 
-    entity_destroy(ent);
+    EcsEntityDel(ENGINE_LUA(), ent.id);
 }
 
 void transform_set_position(CEntity ent, vec2 pos) {

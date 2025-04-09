@@ -55,6 +55,7 @@ public:
     ui_context_t *ui{};
     bool win_console{};
     ImGuiID devui_vp{};
+    ImGuiID dockspace_id{};
     FontFamily *default_font{};
     Window *window{};
 
@@ -114,6 +115,8 @@ public:
     void quit();
     void game_draw();
     void SplashScreen();
+
+    void load_all_lua_scripts(lua_State *L);
 
     inline CL::TimeInfo GetTimeInfo() const { return the<CL>().time; }
     inline f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }

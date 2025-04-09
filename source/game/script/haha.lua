@@ -70,7 +70,7 @@ function haha()
 
     ns.edit_inspector.add(block, "transform")
     ns.edit_inspector.add(block, "sprite")
-    ns.edit_inspector.add(block, "camera")
+    -- ns.edit_inspector.add(block, "camera")
 
     print("blockblockblock", block.id)
 

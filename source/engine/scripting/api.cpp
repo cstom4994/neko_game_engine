@@ -2269,48 +2269,6 @@ static void typeclosure(lua_State *L) {
 
 #endif
 
-int wrap_EntityCreate(lua_State *L) {
-    String name = luax_opt_string(L, 1, "something_unknown_from_lua");
-    CEntity ent = entity_create(name);
-    LuaPush<CEntity>(L, ent);
-    return 1;
-}
-int wrap_EntityDestroy(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    entity_destroy(*ent);
-    return 0;
-}
-int wrap_EntityDestroyAll(lua_State *L) {
-    entity_destroy_all();
-    return 0;
-}
-int wrap_EntityDestroyed(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    bool v = entity_destroyed(*ent);
-    lua_pushboolean(L, v);
-    return 1;
-}
-int wrap_CEntityEq(lua_State *L) {
-    EcsId a = lua_tointeger(L, 1);
-    EcsId b = lua_tointeger(L, 2);
-    bool v = (a == b);
-    lua_pushboolean(L, v);
-    return 1;
-}
-int wrap_entity_set_save_filter(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    bool filter = lua_toboolean(L, 2);
-    // entity_set_save_filter(*ent, filter);
-    return 0;
-}
-int wrap_entity_get_save_filter(lua_State *L) {
-    CEntity *ent = LuaGet<CEntity>(L, 1);
-    // bool v = entity_get_save_filter(*ent);
-    bool v = true;
-    lua_pushboolean(L, v);
-    return 1;
-}
-
 int wrap_timing_set_scale(lua_State *L) {
     f32 v = lua_tonumber(L, 1);
     the<CL>().timing_set_scale(v);
@@ -2699,14 +2657,6 @@ static int open_neko(lua_State *L) {
 #ifdef NEKO_BOX2D
             {"b2_world", neko_b2_world},
 #endif
-
-            {"EntityCreate", wrap_EntityCreate},
-            {"EntityDestroy", wrap_EntityDestroy},
-            {"EntityDestroyAll", wrap_EntityDestroyAll},
-            {"EntityDestroyed", wrap_EntityDestroyed},
-            {"CEntityEq", wrap_CEntityEq},
-            {"entity_set_save_filter", wrap_entity_set_save_filter},
-            {"entity_get_save_filter", wrap_entity_get_save_filter},
 
             {"timing_set_scale", wrap_timing_set_scale},
             {"timing_get_scale", wrap_timing_get_scale},

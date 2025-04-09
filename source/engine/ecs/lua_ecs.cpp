@@ -32,15 +32,15 @@ int EcsComponentAlloc(EcsWorld* world, EntityData* e, int tid) {
     ComponentPool* cp = &world->component_pool[tid];
     if (cp->free_idx >= cp->cap) {
         cp->cap *= 2;  // 扩容
-        cp->buf = (Component*)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
+        cp->buf = (ComponentData*)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
     }
 
     // 获取新组件
-    Component* c = &cp->buf[cp->free_idx++];
+    ComponentData* c = &cp->buf[cp->free_idx++];
     c->eid = e - world->entity_buf;  // 记录组件附着的实体ID
-    c->dirty_next = LINK_NONE;
-    c->dead_next = LINK_NONE;
-    int cid = c - cp->buf;  // 计算组件在组件池的索引
+    c->dirty_next = LINK_NONE;       // 活跃默认状态
+    c->dead_next = LINK_NONE;        // 活跃默认状态
+    int cid = c - cp->buf;           // 计算组件在组件池的索引
 
     // 将组件添加到实体中
     for (int i = 0; i < ENTITY_MAX_COMPONENTS; i++) {
@@ -50,12 +50,15 @@ int EcsComponentAlloc(EcsWorld* world, EntityData* e, int tid) {
             break;
         }
     }
+
+    ++e->components_count;
+
     return cid;
 }
 
 void EcsComponentDead(EcsWorld* world, int tid, int cid) {
     ComponentPool* cp = &world->component_pool[tid];  // 获取索引为tid的组件标记数据
-    Component* c = &cp->buf[cid];                     // 获取索引为cid的组件
+    ComponentData* c = &cp->buf[cid];                 // 获取索引为cid的组件
 
     if (c->dead_next != LINK_NONE) return;  // 判断是否已经死亡
     c->dead_next = LINK_NIL;                // 标记为死亡
@@ -72,7 +75,7 @@ void EcsComponentDead(EcsWorld* world, int tid, int cid) {
 
 void EcsComponentDirty(EcsWorld* world, int tid, int cid) {
     ComponentPool* cp = &world->component_pool[tid];  // 获取索引为tid的组件标记数据
-    Component* c = &cp->buf[cid];                     // 获取索引为cid的组件
+    ComponentData* c = &cp->buf[cid];                 // 获取索引为cid的组件
 
     if (c->dirty_next != LINK_NONE) return;  // 判断是否已经标记
     c->dirty_next = LINK_NIL;                // 标记
@@ -254,7 +257,7 @@ int EcsRegister(lua_State* L, const_str name) {
     cp->dirty_tail = LINK_NIL;
     cp->dead_head = LINK_NIL;
     cp->dead_tail = LINK_NIL;
-    cp->buf = (Component*)mem_alloc(cp->cap * sizeof(cp->buf[0]));
+    cp->buf = (ComponentData*)mem_alloc(cp->cap * sizeof(cp->buf[0]));
 
     // 设置原型ID
     lua_pushstring(L, name);  // 复制组件key
@@ -437,6 +440,68 @@ LuaRef EcsComponentGet(lua_State* L, EntityData* e, int tid) {
     lua_pop(L, 2);
 
     return ud;
+}
+
+int EcsUpdate(lua_State* L) {
+
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
+    int ecs_ud = lua_gettop(L);
+    EcsWorld* w = (EcsWorld*)luaL_checkudata(L, ecs_ud, ECS_WORLD_METATABLE);
+
+    // 清除死亡实体
+    EntityData* entity_buf = w->entity_buf;
+    int next = w->entity_dead_id;
+    while (next != LINK_NIL) {
+        EntityData* e;
+        e = &entity_buf[next];
+        e->components_count = -1;
+        next = e->next;
+        EcsEntityFree(w, e);
+    }
+    w->entity_dead_id = LINK_NIL;  // 然后更新为 LINK_NIL
+
+    // 清除死亡组件
+    ComponentPool* pool = w->component_pool;
+    lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
+    for (int tid = 0; tid <= w->type_idx; tid++) {  // 遍寻世界所有组件
+        ComponentPool* cp = &pool[tid];             // 组件池
+        cp->dirty_head = LINK_NIL;
+        cp->dirty_tail = LINK_NIL;
+        cp->dead_head = LINK_NIL;
+        cp->dead_tail = LINK_NIL;
+        lua_rawgeti(L, -1, tid);  // push WORLD_COMPONENTS[tid]
+        ComponentData* buf = cp->buf;
+        int free_idx = cp->free_idx;  // 当前组件池第一个闲置位
+        int w = 0, r = 0;
+        for (r = 0; r < free_idx; r++) {
+            ComponentData* c = &buf[r];
+            c->dirty_next = LINK_NONE;
+            if (c->dead_next == LINK_NONE) {  // 如果存活
+                if (w != r) {
+                    EntityData* e = &entity_buf[c->eid];
+                    buf[w] = *c;
+                    lua_rawgeti(L, -1, r);          // N = WORLD_COMPONENTS[tid][r]
+                    lua_rawseti(L, -2, w);          // WORLD_COMPONENTS[tid][w] = N
+                    EcsEntityUpdateCid(e, tid, w);  // 更新cid = w
+                }
+                w++;
+            } else {  // 否则为标记的死组件
+                EntityData* e = &entity_buf[c->eid];
+                if (e->next == LINK_NONE) EcsComponentClear(e, tid);
+            }
+        }
+        cp->free_idx = w;
+        while (w < free_idx) {
+            lua_pushnil(L);
+            lua_rawseti(L, -2, w);  //  WORLD_COMPONENTS[tid][w] = nil 触发gc
+            w++;
+        }
+        lua_pop(L, 1);  // pop WORLD_COMPONENTS[tid]
+    }
+
+    lua_pop(L, 2);  // # pop WORLD_COMPONENTS | NEKO_ECS_CORE
+
+    return 0;
 }
 
 }  // namespace ecs

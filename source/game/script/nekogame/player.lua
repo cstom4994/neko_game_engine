@@ -220,6 +220,11 @@ function CEnemy:new(x, y, name, brain)
 
     self.CEntity = ns.entity.create(name)
 
+    EcsWorld:add(self.CEntity.id, "test_component_1", {
+        x = 114514,
+        y = 233
+    })
+
     if brain then
         self.brain = EnemyAI(self.x, self.y, self)
     else
@@ -260,6 +265,8 @@ function CEnemy:on_death()
         local y = self.y + random(-16, 16)
         LocalGame.world:add(Coin(x, y))
     end
+
+    neko.EntityDestroy(self.CEntity)
 end
 
 function CEnemy:hit(other, damage)

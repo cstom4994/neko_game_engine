@@ -70,7 +70,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     }
 }
 
-static void load_all_lua_scripts(lua_State *L) {
+void CL::load_all_lua_scripts(lua_State *L) {
     PROFILE_FUNC();
 
     std::vector<std::string> files = {};
@@ -205,6 +205,25 @@ void CL::game_draw() {
 
         if (edit_get_enabled()) {
 
+            static bool opt_fullscreen = true;
+            static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+            if (opt_fullscreen) {
+                const ImGuiViewport *viewport = ImGui::GetMainViewport();
+                ImGui::SetNextWindowPos(viewport->Pos);
+                ImGui::SetNextWindowSize(viewport->Size);
+                ImGui::SetNextWindowViewport(viewport->ID);
+                window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+                window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            }
+
+            ImGui::Begin("EditorDockSpace", nullptr, window_flags);
+
+            dockspace_id = ImGui::GetID("DockSpace");
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+
+            ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Play", nullptr)) {
                 ImVec2 contentSize = ImGui::GetContentRegionAvail();
                 float viewportAspectRatio = state.width / state.height;
@@ -234,6 +253,10 @@ void CL::game_draw() {
                 }
             }
             ImGui::End();
+
+            the<Editor>().OnImGui();
+
+            ImGui::End();  // EditorDockSpace
         }
 
     } else {
@@ -438,7 +461,7 @@ void CL::init() {
     the<Sprite>().sprite_init();
     the<Tiled>().tiled_init();
     the<Font>().font_init();
-    the<ImGuiRender>().imgui_init(window->glfwWindow());
+    the<ImGuiRender>().imgui_init();
     the<Sound>().sound_init();
     the<Editor>().edit_init();
     the<DebugDraw>().debug_draw_init();

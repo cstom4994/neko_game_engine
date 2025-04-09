@@ -41,7 +41,6 @@ static int __luainspector_echo(lua_State* L) {
 static int __luainspector_gc(lua_State* L) {
     LuaInspector* m = *static_cast<LuaInspector**>(lua_touserdata(L, 1));
     if (m) {
-        m->variable_pool_free();
         m->setL(0x0);
     }
 
@@ -930,26 +929,19 @@ int LuaInspector::luainspector_init(lua_State* L) {
     this->setL(L);
     this->m_history.resize(8);
 
-    this->register_function<float>(std::bind(&luainspector_property_st::Render_TypeFloat, std::placeholders::_1, std::placeholders::_2));
-    this->register_function<bool>(std::bind(&luainspector_property_st::Render_TypeBool, std::placeholders::_1, std::placeholders::_2));
-    this->register_function<char>(std::bind(&luainspector_property_st::Render_TypeConstChar, std::placeholders::_1, std::placeholders::_2));
-    this->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
-    this->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
-
-    // this->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
-    // this->property_register<CCharacter>("John", &cJohn, "John");
-
     return 1;
 }
 
 int LuaInspector::OnImGui(lua_State* L) {
 
     Assets& g_assets = the<Assets>();
+    auto& GameCL = the<CL>();
 
+    ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("LuaInspector")) {
 
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
-            if (ImGui::BeginTabItem("LuaConsole")) {
+            if (ImGui::BeginTabItem("LuaRepl")) {
                 bool textbox_react;
                 this->console_draw(textbox_react);
                 ImGui::EndTabItem();
@@ -996,29 +988,7 @@ int LuaInspector::OnImGui(lua_State* L) {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Property")) {
-
-                auto& properties = this->m_property_map;
-
-                ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), this->m_type_render_functions.size());
-
-                for (auto& property_it : properties) {
-
-                    auto prop_render_func_it = this->m_type_render_functions.find(property_it.param_type);
-                    neko_assert(prop_render_func_it != this->m_type_render_functions.end());  // unsupported type, render function not found
-                    const_str label = property_it.label.c_str();
-                    void* value = property_it.param;
-                    if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
-                        ImGui::Indent();
-                        prop_render_func_it->second(label, value);
-                        ImGui::Unindent();
-                    }
-                }
-
-                ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Info")) {
+            if (ImGui::BeginTabItem("信息")) {
                 lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
                 lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
@@ -1055,8 +1025,8 @@ int LuaInspector::OnImGui(lua_State* L) {
                 };
                 UpdateLuaMemPlot(bytes);
 
-                ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+                ImGui::Text("Lua 内存使用: %.2lf mb", ((f64)kb / 1024.0f));
+                ImGui::Text("Lua 空闲内存: %.2lf mb", ((f64)bytes / 1024.0f));
 
                 if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
 
@@ -1067,14 +1037,14 @@ int LuaInspector::OnImGui(lua_State* L) {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Shaders")) {
+            if (ImGui::BeginTabItem("着色器")) {
                 asset_view_each([](const Asset& view) {
                     if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), assets_get<AssetShader>(view).id);
                 });
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Textures")) {
+            if (ImGui::BeginTabItem("贴图")) {
                 asset_view_each([](const Asset& view) {
                     if (view.kind == AssetKind_Image) {
                         const auto tex = assets_get<AssetTexture>(view);
@@ -1631,16 +1601,19 @@ void inspect_table(lua_State* L) {
 }
 
 void Editor::edit_draw_all() {
+    lua_State* L = ENGINE_LUA();
+    auto& GameCL = the<CL>();
+
+    if (!enabled) return;
+    RenderConsoleLogs();
+    edit_draw_impl();
+}
+
+void Editor::OnImGui() {
 
     lua_State* L = ENGINE_LUA();
 
     auto& GameCL = the<CL>();
-
-    RenderConsoleLogs();
-
-    if (!enabled) return;
-
-    edit_draw_impl();
 
     inspector->OnImGui(L);
 
@@ -1655,6 +1628,7 @@ void Editor::edit_draw_all() {
     }
 
     ImGui::SetNextWindowViewport(GameCL.devui_vp);
+    ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("查看器")) {
 
         if (ImGui::BeginTabBar("editor_inspector", ImGuiTabBarFlags_None)) {
@@ -1725,14 +1699,35 @@ void Editor::edit_draw_all() {
                                 }
 
                                 lua_getfield(L, -1, "__name");
-                                String name = luax_check_string(L, -1);
+                                String ent_name = luax_check_string(L, -1);
                                 lua_pop(L, 1);
-                                ImGui::Text("name: %s", name.cstr());
 
                                 lua_getfield(L, -1, "__eid");
                                 int eid = lua_tonumber(L, -1);
                                 lua_pop(L, 1);
-                                ImGui::Text("__eid: %d", eid);
+
+                                EntityData* e = world->entity_buf + eid;
+
+                                std::string name = std::format("{} {}", eid, ent_name);
+
+                                if (ImGui::CollapsingHeader(name.c_str())) {
+                                    ImGui::Text("name: %s", ent_name.cstr());
+                                    ImGui::Text("__eid: %d", eid);
+                                    ImGui::Text("附着组件数量: %d", e->components_count);
+
+                                    for (int tid = 0; tid < TYPE_COUNT; ++tid) {
+                                        int index = e->components[tid];
+                                        if (index == ENTITY_MAX_COMPONENTS) continue;
+                                        int cid = e->components_index[index];
+                                        ImGui::Text("组件 tid=%d index=%d cid=%d", tid, index, cid);
+
+                                        ComponentPool* cp = &world->component_pool[tid];
+                                        ComponentData* c = &cp->buf[cid];
+                                        ImGui::Indent();
+                                        ImGui::Text("cap=%d free_idx=%d", cp->cap, cp->free_idx);
+                                        ImGui::Unindent();
+                                    }
+                                }
 
 #if 0
                                 lua_pushnil(L);

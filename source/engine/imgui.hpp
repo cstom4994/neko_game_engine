@@ -123,7 +123,7 @@ class ImGuiRender : public SingletonClass<ImGuiRender> {
 public:
     void imgui_draw_post();
     int imgui_draw_pre();
-    void imgui_init(GLFWwindow *window);
+    void imgui_init();
     void imgui_fini();
 };
 
