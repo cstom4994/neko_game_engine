@@ -20,7 +20,7 @@ void edit_set_editable(CEntity ent, bool editable) {
     else
         uneditable__pool->Remove(ent);
 }
-bool edit_get_editable(CEntity ent) { return !uneditable__pool->Get(ent); }
+bool edit_get_editable(CEntity ent) { return !uneditable__pool->GetPtr(ent); }
 
 // --- bboxes --------------------------------------------------------------
 
@@ -29,7 +29,7 @@ void edit_bboxes_update(CEntity ent, BBox bbox) {
 
     if (!edit_get_editable(ent)) return;
 
-    elem = BBoxPoolElem__pool->Get(ent);
+    elem = BBoxPoolElem__pool->GetPtr(ent);
 
     // 如果存在就合并
     if (elem)
@@ -40,9 +40,9 @@ void edit_bboxes_update(CEntity ent, BBox bbox) {
     }
 }
 
-bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem__pool->Get(ent) != NULL; }
+bool edit_bboxes_has(CEntity ent) { return BBoxPoolElem__pool->GetPtr(ent) != NULL; }
 BBox edit_bboxes_get(CEntity ent) {
-    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
+    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->GetPtr(ent);
     error_assert(elem);
     return elem->bbox;
 }
@@ -62,7 +62,7 @@ BBox edit_bboxes_get_nth_bbox(int n) {
 }
 
 void edit_bboxes_set_selected(CEntity ent, bool selected) {
-    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->Get(ent);
+    CBBoxPoolElem* elem = (CBBoxPoolElem*)BBoxPoolElem__pool->GetPtr(ent);
     error_assert(elem);
     elem->selected = selected;
 }
@@ -117,9 +117,9 @@ static void _bboxes_update_all() {
 
     entitypool_foreach(elem, BBoxPoolElem__pool) {
         ent = elem->ent;
-        if (!transform_has(ent)) continue;
+        if (!the<Transform>().transform_has(ent)) continue;
 
-        elem->wmat = transform_get_world_matrix(ent);
+        elem->wmat = the<Transform>().transform_get_world_matrix(ent);
 
         // 如果没有就构建默认的
         if (elem->bbox.max.x - elem->bbox.min.x <= NEKO_EPSILON || elem->bbox.max.y - elem->bbox.min.y <= NEKO_EPSILON) elem->bbox = defaultbb;
@@ -170,7 +170,7 @@ static void _grid_create_cells() {
     if (CEntityEq(camera, entity_nil))
         cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
-        cbox = bbox_transform(transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
+        cbox = bbox_transform(the<Transform>().transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
     csize = luavec2(cbox.max.x - cbox.min.x, cbox.max.y - cbox.min.y);
 
     // create grid cell bbox

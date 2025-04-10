@@ -101,12 +101,6 @@ void CL::load_all_lua_scripts(lua_State *L) {
     }
 }
 
-DEFINE_IMGUI_BEGIN(template <>, String) { ImGui::Text("%s", var.cstr()); }
-DEFINE_IMGUI_END()
-
-DEFINE_IMGUI_BEGIN(template <>, mat3) { ImGui::Text("%f %f %f\n%f %f %f\n%f %f %f\n", var.v[0], var.v[1], var.v[2], var.v[3], var.v[4], var.v[5], var.v[6], var.v[7], var.v[8]); }
-DEFINE_IMGUI_END()
-
 void CL::game_draw() {
 
     lua_State *L = ENGINE_LUA();
@@ -160,36 +154,36 @@ void CL::game_draw() {
             glBindVertexArray(quadVAO);
             glBindTexture(GL_TEXTURE_2D, renderview.output);  // 使用颜色附件纹理作为四边形平面的纹理
             glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            {
+                ImGuiIO &io = ImGui::GetIO();
+                const ImVec2 screenSize = io.DisplaySize;
+                ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+                const ImVec2 footer_size(60, 20);
+                const ImVec2 footer_pos(screenSize.x - footer_size.x - 20, 40);
+                const ImU32 background_color = IM_COL32(0, 0, 0, 102);
+
+                TexturedQuad quad = {
+                        .texture = NULL,
+                        .position = {screenSize.x - 180, 20},
+                        .dimentions = {180, 20},
+                        .rect = {0},
+                        .color = make_color(0x0000000, 100),
+                };
+
+                quadrenderer.renderer_push(&quad);
+
+                // NEKO_INVOKE_ONCE(quadrenderer.renderer_push_light(light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
+
+                quadrenderer.renderer_flush();
+
+                f32 fy = draw_font(default_font, false, 16.f, screenSize.x - 180.f, 20.f, "Neko build " __DATE__, NEKO_COLOR_WHITE);
+
+                draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
+
+                Neko::ImGuiWrap::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
+            }
         } else {
-        }
-
-        {
-            ImGuiIO &io = ImGui::GetIO();
-            const ImVec2 screenSize = io.DisplaySize;
-            ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-            const ImVec2 footer_size(60, 20);
-            const ImVec2 footer_pos(screenSize.x - footer_size.x - 20, 20);
-            const ImU32 background_color = IM_COL32(0, 0, 0, 102);
-
-            // f32 fy = draw_font(default_font, false, 16.f, 0.f, 20.f, "Neko build " __DATE__, NEKO_COLOR_WHITE);
-
-            // TexturedQuad quad = {
-            //         .texture = NULL,
-            //         .position = {0, 20},
-            //         .dimentions = {180, 20},
-            //         .rect = {0},
-            //         .color = make_color(0x0000000, 100),
-            // };
-
-            // quadrenderer.renderer_push(&quad);
-
-            // NEKO_INVOKE_ONCE(quadrenderer.renderer_push_light(light{.position = {100, 100}, .range = 1000.0f, .intensity = 20.0f}););
-
-            // quadrenderer.renderer_flush();
-
-            draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
-
-            Neko::ImGuiWrap::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
         }
 
         auto ui = this->ui;
@@ -650,44 +644,6 @@ int CL::set_window_title(const char *title) {
     return 0;
 }
 
-void test_native_script() {
-    CEntity camera, block, player;
-    unsigned int i, n_blocks;
-
-    // add camera
-
-    camera = entity_create("camera_test");
-
-    transform_add(camera);
-
-    camera_add(camera);
-
-    // add some blocks
-
-    n_blocks = rand() % 50;
-    for (i = 0; i < n_blocks; ++i) {
-        block = entity_create("block_test");
-
-        transform_add(block);
-        transform_set_position(block, luavec2((rand() % 25) - 12, (rand() % 9) - 4));
-
-        sprite_add(block);
-        sprite_set_texcell(block, luavec2(32.0f, 32.0f));
-        sprite_set_texsize(block, luavec2(32.0f, 32.0f));
-    }
-
-    // add player
-
-    player = entity_create("player_test");
-
-    transform_add(player);
-    transform_set_position(player, luavec2(0.0f, 0.0f));
-
-    sprite_add(player);
-    sprite_set_texcell(player, luavec2(0.0f, 32.0f));
-    sprite_set_texsize(player, luavec2(32.0f, 32.0f));
-}
-
 void CL::fini() {
     PROFILE_FUNC();
 
@@ -817,17 +773,6 @@ int CL::update_time(Event evt) {
 
 // 处理引擎状态变量和功能
 
-namespace Neko {
-Allocator *g_allocator = []() -> Allocator * {
-#ifndef NDEBUG
-    static DebugAllocator alloc;
-#else
-    static HeapAllocator alloc;
-#endif
-    return &alloc;
-}();
-}  // namespace Neko
-
 extern Neko::CBase gBase;
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
@@ -877,3 +822,48 @@ Int32 Main(int argc, const char *argv[]) {
 
     return 0;
 }
+
+int main(int argc, const char *argv[]) {
+    Main(argc, argv);
+    return 0;
+}
+
+#if 0
+void test_native_script() {
+    CEntity camera, block, player;
+    unsigned int i, n_blocks;
+
+    // add camera
+
+    camera = entity_create("camera_test");
+
+    transform_add(camera);
+
+    camera_add(camera);
+
+    // add some blocks
+
+    n_blocks = rand() % 50;
+    for (i = 0; i < n_blocks; ++i) {
+        block = entity_create("block_test");
+
+        transform_add(block);
+        transform_set_position(block, luavec2((rand() % 25) - 12, (rand() % 9) - 4));
+
+        sprite_add(block);
+        sprite_set_texcell(block, luavec2(32.0f, 32.0f));
+        sprite_set_texsize(block, luavec2(32.0f, 32.0f));
+    }
+
+    // add player
+
+    player = entity_create("player_test");
+
+    transform_add(player);
+    transform_set_position(player, luavec2(0.0f, 0.0f));
+
+    sprite_add(player);
+    sprite_set_texcell(player, luavec2(0.0f, 32.0f));
+    sprite_set_texsize(player, luavec2(32.0f, 32.0f));
+}
+#endif

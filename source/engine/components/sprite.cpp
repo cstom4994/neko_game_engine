@@ -44,9 +44,9 @@ const char *sprite_get_atlas() { return atlas; }
 void sprite_add(CEntity ent) {
     CSprite *sprite;
 
-    if (Sprite__pool->Get(ent)) return;
+    if (Sprite__pool->GetPtr(ent)) return;
 
-    transform_add(ent);
+    the<Transform>().transform_add(ent);
 
     sprite = Sprite__pool->Add(ent);
     sprite->size = luavec2(1.0f, 1.0f);
@@ -55,47 +55,47 @@ void sprite_add(CEntity ent) {
     sprite->depth = 0;
 }
 void sprite_remove(CEntity ent) { Sprite__pool->Remove(ent); }
-bool sprite_has(CEntity ent) { return Sprite__pool->Get(ent) != NULL; }
+bool sprite_has(CEntity ent) { return Sprite__pool->GetPtr(ent) != NULL; }
 
 void sprite_set_size(CEntity ent, vec2 size) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     sprite->size = size;
 }
 vec2 sprite_get_size(CEntity ent) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     return sprite->size;
 }
 
 void sprite_set_texcell(CEntity ent, vec2 texcell) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
 vec2 sprite_get_texcell(CEntity ent) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     return sprite->texcell;
 }
 void sprite_set_texsize(CEntity ent, vec2 texsize) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
 vec2 sprite_get_texsize(CEntity ent) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     return sprite->texsize;
 }
 
 void sprite_set_depth(CEntity ent, int depth) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     sprite->depth = depth;
 }
 int sprite_get_depth(CEntity ent) {
-    CSprite *sprite = Sprite__pool->Get(ent);
+    CSprite *sprite = Sprite__pool->GetPtr(ent);
     error_assert(sprite);
     return sprite->depth;
 }
@@ -162,7 +162,7 @@ int Sprite::sprite_update_all(Event evt) {
 
     entitypool_remove_destroyed(Sprite__pool, sprite_remove);
 
-    Sprite__pool->ForEach([](CSprite *sprite) { sprite->wmat = transform_get_world_matrix(sprite->ent); });
+    Sprite__pool->ForEach([](CSprite *sprite) { sprite->wmat = the<Transform>().transform_get_world_matrix(sprite->ent); });
 
     if (edit_get_enabled()) {
         Sprite__pool->ForEach([](CSprite *sprite) { edit_bboxes_update(sprite->ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });

@@ -60,7 +60,7 @@ struct CEntityPool {
     T* Add(CEntity ent) {
         T* elem = nullptr;
 
-        if ((elem = this->Get(ent)) != nullptr) return elem;
+        if ((elem = this->GetPtr(ent)) != nullptr) return elem;
 
         // 将元素添加到pool->array并在pool->emap中设置id
         u64 i = this->array.push(T{});
@@ -85,10 +85,16 @@ struct CEntityPool {
     }
 
     // 如果未映射则为 NULL
-    T* Get(CEntity ent) {
+    T* GetPtr(CEntity ent) {
         int i = entitymap_get(this->emap, ent);
         if (i >= 0) return &this->array[i];
         return NULL;
+    }
+
+    T& GetRef(CEntity ent) {
+        int i = entitymap_get(this->emap, ent);
+        assert(i >= 0);
+        return this->array[i];
     }
 
     template <class F>

@@ -7,7 +7,7 @@ using namespace Neko;
 using namespace Neko::shader;
 using namespace Neko::reflection;
 
-int main() {
+int Test_Shader() {
 
     HashMap<String> tokenTypeNames;
     guess_enum_range<TokenType, 0>(tokenTypeNames, std::make_integer_sequence<int, (int)TokenType::OTHER + 1>());
@@ -120,4 +120,6 @@ void main() {
     } catch (const std::exception& e) {
         std::cerr << "Compilation Error:\n" << e.what() << "\n";
     }
+
+    return 0;
 }

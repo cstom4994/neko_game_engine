@@ -35,6 +35,17 @@ void HACK_CALL operator delete(void* p, size_t) { free(p); }
 #endif
 
 namespace Neko {
+Allocator* g_allocator = []() -> Allocator* {
+#ifndef NDEBUG
+    static DebugAllocator alloc;
+#else
+    static HeapAllocator alloc;
+#endif
+    return &alloc;
+}();
+}  // namespace Neko
+
+namespace Neko {
 
 void CBase::Init(int argc, const char* argv[]) {
 
@@ -112,4 +123,13 @@ i32 neko_buildnum(void) {
     if (((y % 4) == 0) && m > 1) b += 1;
     b -= 211;
     return b;
+}
+
+void DebugAllocator::dump_allocs(bool detailed) {
+    i32 allocs = 0;
+    for (DebugAllocInfo* info = head; info != nullptr; info = info->next) {
+        if (detailed) LOG_TRACE("  {} bytes: {}:{}", (unsigned long long)info->size, info->file, info->line);
+        allocs++;
+    }
+    LOG_TRACE("leaks {} allocation(s) with {} bytes", allocs, alloc_size);
 }

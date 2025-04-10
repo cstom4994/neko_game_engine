@@ -1044,7 +1044,7 @@ static void tiled_map_edit_w(CTiledMap *tiled, u32 layer_idx, u32 x, u32 y, u32 
 }
 
 void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
-    CTiledMap *tiled = Tiled__pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->GetPtr(ent);
     error_assert(tiled);
 
     tiled_map_edit_w(tiled, layer_idx, x, y, id);
@@ -1112,9 +1112,9 @@ int Tiled::RenderMap(CTiledMap *tiled) {
 
 void tiled_add(CEntity ent) {
 
-    if (Tiled__pool->Get(ent)) return;
+    if (Tiled__pool->GetPtr(ent)) return;
 
-    transform_add(ent);
+    the<Transform>().transform_add(ent);
 
     CTiledMap *tiled = Tiled__pool->Add(ent);
 
@@ -1126,7 +1126,7 @@ void tiled_add(CEntity ent) {
 
 void tiled_remove(CEntity ent) { Tiled__pool->Remove(ent); }
 
-bool tiled_has(CEntity ent) { return Tiled__pool->Get(ent) != NULL; }
+bool tiled_has(CEntity ent) { return Tiled__pool->GetPtr(ent) != NULL; }
 
 void Tiled::tiled_init() {
     PROFILE_FUNC();
@@ -1169,7 +1169,7 @@ int Tiled::tiled_update_all(Event evt) {
     entitypool_remove_destroyed(Tiled__pool, tiled_remove);
 
     Tiled__pool->ForEach([](CTiledMap *tiled) {
-        tiled->pos = transform_get_position(tiled->ent);
+        tiled->pos = the<Transform>().transform_get_position(tiled->ent);
         tiled->draw_object_groups_rect = edit_get_enabled();
     });
 
@@ -1182,7 +1182,7 @@ void Tiled::tiled_draw_all() {
 }
 
 void tiled_set_map(CEntity ent, const char *str) {
-    CTiledMap *tiled = Tiled__pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->GetPtr(ent);
     error_assert(tiled);
     tiled->map_name = to_cstr(String(str));
 
@@ -1194,13 +1194,13 @@ void tiled_set_map(CEntity ent, const char *str) {
 }
 
 const char *tiled_get_map(CEntity ent) {
-    CTiledMap *tiled = Tiled__pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->GetPtr(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
 }
 
 int tiled_get_object_groups(CEntity ent, lua_State *L) {
-    CTiledMap *tiled = Tiled__pool->Get(ent);
+    CTiledMap *tiled = Tiled__pool->GetPtr(ent);
     error_assert(tiled);
 
     Asset asset = {};

@@ -504,17 +504,18 @@ end
 
 project "engine"
 do
-    kind "StaticLib"
+    kind "ConsoleApp"
     language "C++"
     targetdir "./bin"
     debugdir "./bin"
+
+    defines {"LUAOT_USE_GOTOS"}
 
     includedirs {"source/extern/luaot", "source/extern/imgui", "source/extern/box2d", "source/extern/libffi/include"}
 
     files {"source/**.glsl", "source/**.vert", "source/**.frag", "source/**.geom", "source/**.comp"}
 
     files {"source/engine/**.cpp", "source/engine/**.hpp", "source/engine/**.h", "source/engine/**.lua"}
-    -- files {"source/game/**.cpp", "source/game/**.hpp", "source/game/**.h", "source/game/**.lua"}
     files {"source/editor/**.cpp", "source/editor/**.c", "source/editor/**.hpp", "source/editor/**.h",
            "source/editor/**.lua"}
 
@@ -523,27 +524,11 @@ do
     files {"source/gen/*_embedded.cpp"}
     -- files {"source/gen/*_luaot.c"}
 
-    files {"premake5.lua"}
-
-    -- warnings "off"
-end
-
-project "sandbox"
-do
-    kind "ConsoleApp"
-    language "C++"
-    targetdir "./bin"
-    debugdir "./bin"
-
-    includedirs {"source", "source/extern/luaot"}
-
-    defines {"LUAOT_USE_GOTOS"}
-
-    files {"source/game/*.cpp"}
+    files {"source/game/**.lua"}
 
     files {"premake5.lua"}
 
-    links {"base", "engine"}
+    links {"base"}
 
     links {"ws2_32", "wininet", "glfw3"}
 end
@@ -564,26 +549,4 @@ do
     files {"premake5.lua"}
 
     links {"base"}
-end
-
-group "Tests"
-do
-    local function gen_test_proj(name, src)
-        project(name)
-        do
-            kind "ConsoleApp"
-            language "C++"
-            targetdir "./bin"
-            debugdir "./bin"
-            includedirs {"source", "source/extern/luaot"}
-            defines {"LUAOT_USE_GOTOS"}
-            files {src}
-            files {"premake5.lua"}
-            links {"base", "engine"}
-            links {"ws2_32", "wininet", "glfw3"}
-        end
-    end
-
-    gen_test_proj("test_shader", "source/test/test_shader.cpp")
-    gen_test_proj("test_luawrap", "source/test/test_luawrap.cpp")
 end

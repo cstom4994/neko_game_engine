@@ -134,6 +134,8 @@ void EcsWorldFini_i(EcsWorld* w);
 void EcsWorldInit_i(EcsWorld* world);
 void EcsEntityUpdateCid(EntityData* e, int tid, int cid);
 int EcsEntityGetCid(EntityData* e, int tid);
+bool EcsComponentIsCType(lua_State* L, String name);
+String EcsComponentName(lua_State* L, int tid);
 
 template <typename T>
 int EcsRegisterCType(lua_State* L) {

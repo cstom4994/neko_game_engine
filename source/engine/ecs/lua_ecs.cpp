@@ -198,6 +198,48 @@ int EcsEntityGetCid(EntityData* e, int tid) {
     return e->components_index[i];
 }
 
+bool EcsComponentIsCType(lua_State* L, String name) {
+
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
+    int ecs_ud = lua_gettop(L);
+
+    lua_getiuservalue(L, ecs_ud, WORLD_PROTO_DEFINE);
+
+    lua_getfield(L, -1, name.cstr());
+    if (lua_isuserdata(L, -1)) {
+        lua_pop(L, 3);  // # pop field | WORLD_PROTO_DEFINE | __NEKO_ECS_CORE
+        return true;
+    } else {
+        lua_pop(L, 3);  // # pop field | WORLD_PROTO_DEFINE | __NEKO_ECS_CORE
+        return false;
+    }
+}
+
+String EcsComponentName(lua_State* L, int tid) {
+
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_ECS_CORE);
+    int ecs_ud = lua_gettop(L);
+
+    lua_getiuservalue(L, ecs_ud, WORLD_PROTO_ID);
+
+    String name{};
+
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+        name = luax_check_string(L, -2);
+        int t = lua_tonumber(L, -1);
+        if (t == tid) {
+            lua_pop(L, 1);
+            break;
+        }
+        lua_pop(L, 1);
+    }
+
+    lua_pop(L, 2);
+
+    return name;
+}
+
 void EcsEntityUpdateCid(EntityData* e, int tid, int cid) {
     int i = e->components[tid];
     assert(i < ENTITY_MAX_COMPONENTS);

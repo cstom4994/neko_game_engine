@@ -17,7 +17,7 @@ protected:
 template <typename BaseT>
 class SingletonClass : private NonCopyable {
 public:
-    using base_type = BaseT;
+    using BaseType = BaseT;
 
 public:
     SingletonClass() noexcept = default;
@@ -60,23 +60,23 @@ std::unique_ptr<BaseT> SingletonClass<BaseT>::instance_;
 namespace Neko::modules {
 template <typename T, typename... Args>
 T& initialize(Args&&... args) {
-    using BaseT = typename T::base_type;
+    using BaseT = typename T::BaseType;
     return SingletonClass<BaseT>::template initialize<T>(std::forward<Args>(args)...);
 }
 
 template <typename... Ts>
 void shutdown() noexcept {
-    (..., SingletonClass<typename Ts::base_type>::shutdown());
+    (..., SingletonClass<typename Ts::BaseType>::shutdown());
 }
 
 template <typename... Ts>
 bool is_initialized() noexcept {
-    return (... && SingletonClass<typename Ts::base_type>::is_initialized());
+    return (... && SingletonClass<typename Ts::BaseType>::is_initialized());
 }
 
 template <typename T>
 inline T& instance() {
-    using BaseT = typename T::base_type;
+    using BaseT = typename T::BaseType;
     return static_cast<T&>(SingletonClass<BaseT>::instance());
 }
 

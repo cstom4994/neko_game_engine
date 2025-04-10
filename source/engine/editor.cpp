@@ -1604,8 +1604,9 @@ void Editor::edit_draw_all() {
     lua_State* L = ENGINE_LUA();
     auto& GameCL = the<CL>();
 
-    if (!enabled) return;
     RenderConsoleLogs();
+
+    if (!enabled) return;
     edit_draw_impl();
 }
 
@@ -1725,6 +1726,21 @@ void Editor::OnImGui() {
                                         ComponentData* c = &cp->buf[cid];
                                         ImGui::Indent();
                                         ImGui::Text("cap=%d free_idx=%d", cp->cap, cp->free_idx);
+
+                                        using ComponentTypes = std::tuple<Transform>;
+
+                                        auto InspectHelper = [&]<typename Tuple, std::size_t... Indices>(Tuple&& tuple, std::index_sequence<Indices...>) {
+                                            auto f = [&]<typename T>(T&) {
+                                                auto& Type = the<T>();
+                                                if (Type.GetTid() == tid) {
+                                                    Type.Inspect({(EcsId)eid});
+                                                }
+                                            };
+                                            (f(std::tuple_element_t<Indices, std::decay_t<Tuple>>{}), ...);
+                                        };
+
+                                        InspectHelper(ComponentTypes{}, std::make_index_sequence<std::tuple_size_v<ComponentTypes>>{});
+
                                         ImGui::Unindent();
                                     }
                                 }

@@ -309,7 +309,7 @@ static void TestReflection_field_name(T &v, std::index_sequence<Is...>) {
     }());
 }
 
-int main() {
+int Test_LuaWrap() {
 
     // std::cout << neko::reflection::field_count<TestStruct_RawArr> << std::endl;
     // std::cout << memberCount<TestStruct3>() << std::endl;

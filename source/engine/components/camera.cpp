@@ -21,9 +21,9 @@ int type_camera;
 void camera_add(CEntity ent) {
     CCamera *camera;
 
-    if (CCamera__pool->Get(ent)) return;
+    if (CCamera__pool->GetPtr(ent)) return;
 
-    transform_add(ent);
+    the<Transform>().transform_add(ent);
 
     camera = CCamera__pool->Add(ent);
     camera->viewport_height = 1.0;
@@ -35,7 +35,7 @@ void camera_remove(CEntity ent) {
 
     if (CEntityEq(curr_camera, ent)) curr_camera = entity_nil;
 }
-bool camera_has(CEntity ent) { return CCamera__pool->Get(ent) != NULL; }
+bool camera_has(CEntity ent) { return CCamera__pool->GetPtr(ent) != NULL; }
 
 void camera_set_edit_camera(CEntity ent) { edit_camera = ent; }
 
@@ -53,12 +53,12 @@ CEntity camera_get_current_camera() {
 }
 
 void camera_set_viewport_height(CEntity ent, f32 height) {
-    CCamera *camera = (CCamera *)CCamera__pool->Get(ent);
+    CCamera *camera = (CCamera *)CCamera__pool->GetPtr(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
 f32 camera_get_viewport_height(CEntity ent) {
-    CCamera *camera = (CCamera *)CCamera__pool->Get(ent);
+    CCamera *camera = (CCamera *)CCamera__pool->GetPtr(ent);
     error_assert(camera);
     return camera->viewport_height;
 }
@@ -75,7 +75,7 @@ vec2 camera_world_to_unit(vec2 p) {
 vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<CL>().pixels_to_unit(p)); }
 vec2 camera_unit_to_world(vec2 p) {
     CEntity cam = camera_get_current_camera();
-    if (!CEntityEq(cam, entity_nil)) return transform_local_to_world(cam, p);
+    if (!CEntityEq(cam, entity_nil)) return the<Transform>().transform_local_to_world(cam, p);
     return p;
 }
 
@@ -130,7 +130,7 @@ int Camera::camera_update_all(Event evt) {
 
     entitypool_foreach(camera, CCamera__pool) {
         scale = luavec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
-        transform_set_scale(camera->ent, scale);
+        the<Transform>().transform_set_scale(camera->ent, scale);
 
         edit_bboxes_update(camera->ent, bbox);
     }
@@ -139,7 +139,7 @@ int Camera::camera_update_all(Event evt) {
     if (CEntityEq(cam, entity_nil))
         inverse_view_matrix = mat3_identity();
     else
-        inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));
+        inverse_view_matrix = mat3_inverse(the<Transform>().transform_get_world_matrix(cam));
 
     return 0;
 }

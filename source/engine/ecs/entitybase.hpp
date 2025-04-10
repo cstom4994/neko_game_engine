@@ -22,16 +22,7 @@ struct CSprite : CEntityBase {
     int depth;
 };
 
-struct CTransform : CEntityBase {
-    vec2 position;
-    f32 rotation;
-    vec2 scale;
-    CEntity parent;           // 如果entity_nil 则为 root
-    Array<CEntity> children;  // 如果为 NULL 则为空
-    mat3 mat_cache;           // 更新此内容
-    mat3 worldmat_cache;      // 在父子更新时缓存
-    EcsId dirty_count;
-};
+
 
 // bbox pool
 struct CBBoxPoolElem : CEntityBase {

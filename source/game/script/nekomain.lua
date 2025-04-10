@@ -24,14 +24,6 @@ function ns.app.OnKeyDown(key)
     if neko.imgui.IsCapturedEvent() then
         return
     end
-
-    local keyname = key
-
-    if ns.edit.get_enabled() then
-        if keyname == "KC_C" then
-
-        end
-    end
 end
 
 local CheckDefaultCamera = function()

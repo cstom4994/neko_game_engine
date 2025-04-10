@@ -586,8 +586,11 @@ DEFINE_IMGUI_END()
 DEFINE_IMGUI_INLINE(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 DEFINE_IMGUI_INLINE(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 
-// DEFINE_IMGUI_BEGIN(template <>, neko_vec2_t) {
-//     //    Neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { Neko::ImGuiWrap::Auto(value, std::string(field.name)); });
-//     ImGui::Text("%f %f", var.x, var.y);
-// }
-// DEFINE_IMGUI_END()
+DEFINE_IMGUI_BEGIN(template <>, vec2) { ImGui::Text("%s: %f,%f", name.c_str(), var.x, var.y); }
+DEFINE_IMGUI_END()
+
+DEFINE_IMGUI_BEGIN(template <>, String) { ImGui::Text("%s", var.cstr()); }
+DEFINE_IMGUI_END()
+
+DEFINE_IMGUI_BEGIN(template <>, mat3) { ImGui::Text("%s:\n%f %f %f\n%f %f %f\n%f %f %f\n", name.c_str(), var.v[0], var.v[1], var.v[2], var.v[3], var.v[4], var.v[5], var.v[6], var.v[7], var.v[8]); }
+DEFINE_IMGUI_END()

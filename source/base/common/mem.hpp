@@ -159,15 +159,6 @@ inline void DebugAllocator::free(void *ptr) {
     ::free(info);
 }
 
-inline void DebugAllocator::dump_allocs(bool detailed) {
-    i32 allocs = 0;
-    for (DebugAllocInfo *info = head; info != nullptr; info = info->next) {
-        if (detailed) printf("  %10llu bytes: %s:%d\n", (unsigned long long)info->size, info->file, info->line);
-        allocs++;
-    }
-    neko_println("  --- leaks %d allocation(s) with %lld bytes ---", allocs, alloc_size);
-}
-
 template <typename T, typename... Args>
 T *mem_new(Args &&...args) {
     T *o = (T *)mem_alloc(sizeof(T));

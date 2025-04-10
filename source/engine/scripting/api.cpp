@@ -2181,7 +2181,7 @@ static int l_bbox_transform(lua_State *L) {
 
 static int l_transform_get_world_matrix(lua_State *L) {
     CEntity *ent = LuaGet<CEntity>(L, 1);
-    mat3 v = transform_get_world_matrix(*ent);
+    mat3 v = the<Transform>().transform_get_world_matrix(*ent);
     LuaPush<mat3>(L, v);
     return 1;
 }
