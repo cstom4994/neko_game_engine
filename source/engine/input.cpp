@@ -1,4 +1,4 @@
-#include "engine/input.h"
+﻿#include "engine/input.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -11,6 +11,7 @@
 #include "engine/input.h"
 #include "base/scripting/scripting.h"
 #include "engine/ui.h"
+#include "engine/components/camera.h"
 
 using namespace Neko::luabind;
 
@@ -144,7 +145,7 @@ int Input::OnPreUpdate() {
     double x, y;
     glfwGetCursorPos(the<CL>().window->glfwWindow(), &x, &y);
 
-    vec2 p = camera_pixels_to_world({(f32)x, -(f32)y});
+    vec2 p = the<Camera>().camera_pixels_to_world({(f32)x, -(f32)y});
     LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "x") = p.x;
     LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "y") = p.y;
 

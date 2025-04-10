@@ -1,4 +1,4 @@
-
+﻿
 #include "engine/bootstrap.h"
 
 #include "base/cbase.hpp"
@@ -24,6 +24,11 @@
 #include "engine/input.h"
 #include "engine/window.h"
 #include "engine/renderer/shader.h"
+#include "engine/components/camera.h"
+#include "engine/components/edit.h"
+#include "engine/components/sprite.h"
+#include "engine/components/tiledmap.hpp"
+#include "engine/components/transform.h"
 
 #include <ranges>
 

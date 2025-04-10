@@ -10,8 +10,6 @@
 #include "base/common/logger.hpp"
 #include "engine/renderer/texture.h"
 
-extern const mat3* camera_get_inverse_view_matrix_ptr();  // for GLSL binding : in component.cpp
-
 /*=============================
 // R_IMPL
 =============================*/
@@ -172,7 +170,6 @@ void gfx_init(gfx_t* render) {
     neko_printf("\n");
 #endif
 }
-
 
 void streambuffer_init(StreamBuffer* buffer, size_t size) {
     glGenBuffers(1, &buffer->vbo);

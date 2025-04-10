@@ -300,6 +300,12 @@ function haha()
             LocalGame.world:update(dt)
 
             cursor:update(dt)
+
+            if neko.key_down "p" then
+                for i = 1, 20, 1 do
+                    local obj = LocalGame.world:add(CEnemy(200 + 5 * i, -200 - 5 * i, choose({"chort", "skel", "zb"})))
+                end
+            end
         end
     end
 

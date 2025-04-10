@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "engine/asset.h"
 #include "engine/ecs/entity.h"
+#include "engine/component.h"
 
 struct Tile {
     float x, y, u, v;
@@ -133,19 +134,37 @@ void tiled_render_draw(tiled_renderer* renderer);
 struct CTiledMap;
 struct Physics;
 
-void tiled_add(CEntity ent);
-void tiled_remove(CEntity ent);
-bool tiled_has(CEntity ent);
-void tiled_set_map(CEntity ent, const char* str);
-const char* tiled_get_map(CEntity ent);
-void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
+class CTiledMap : public CEntityBase {
+public:
+    tiled_renderer* render;
+    vec2 pos;
+    String map_name;
+    bool draw_object_groups_rect;
 
-class Tiled : public SingletonClass<Tiled> {
+public:
+    static Asset tiled_shader;
+};
+
+static_assert(std::is_trivially_copyable_v<CTiledMap>);
+
+class Tiled : public SingletonClass<Tiled>, public ComponentTypeBase<CTiledMap> {
 public:
     void tiled_init();
     void tiled_fini();
     int tiled_update_all(Event evt);
     void tiled_draw_all();
+
+    void tiled_set_map(CEntity ent, const char* str);
+    const char* tiled_get_map(CEntity ent);
+    int tiled_get_object_groups(CEntity ent, lua_State* L);
+    void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
+    CTiledMap* tiled_add(CEntity ent);
+    void tiled_remove(CEntity ent);
+    bool tiled_has(CEntity ent);
+
+    CTiledMap* wrap_sprite_add(CEntity ent);
+
+    int Inspect(CEntity ent) override;
 
 private:
     int RenderMap(CTiledMap* tiled);
@@ -158,19 +177,7 @@ struct TiledMapWall {
     float height;  // 高度
 };
 
-int tiled_get_object_groups(CEntity ent, lua_State* L);
 b2Body* tiled_make_collision(Physics* physics, const std::vector<TiledMapWall>& walls);
 
 int wrap_tiled_make_collision(lua_State* L);
 int wrap_tiled_get_obj(lua_State* L);
-
-class CTiledMap : public CEntityBase {
-public:
-    tiled_renderer* render;
-    vec2 pos;
-    String map_name;
-    bool draw_object_groups_rect;
-
-public:
-    static Asset tiled_shader;
-};

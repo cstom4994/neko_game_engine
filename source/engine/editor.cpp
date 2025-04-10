@@ -1,4 +1,4 @@
-
+﻿
 #include "editor.h"
 
 #include <inttypes.h>
@@ -17,11 +17,13 @@
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 #include "engine/window.h"
-#include "engine/ecs/entitybase.hpp"
-#include "engine/edit.h"
-#include "base/common/profiler.hpp"
 #include "engine/component.h"
 #include "engine/scripting/lua_util.h"
+#include "engine/components/transform.h"
+#include "engine/components/camera.h"
+#include "engine/components/edit.h"
+#include "engine/components/sprite.h"
+#include "engine/components/tiledmap.hpp"
 
 using namespace Neko::ImGuiWrap;
 
@@ -1648,7 +1650,7 @@ void Editor::OnImGui() {
 
                 state_inspector(GameCL.state);
 
-                mat3 view = camera_get_inverse_view_matrix();
+                mat3 view = the<Camera>().GetInverseViewMatrix();
                 ImGuiWrap::Auto(view);
 
                 ImGui::EndTabItem();
@@ -1727,7 +1729,7 @@ void Editor::OnImGui() {
                                         ImGui::Indent();
                                         ImGui::Text("cap=%d free_idx=%d", cp->cap, cp->free_idx);
 
-                                        using ComponentTypes = std::tuple<Transform>;
+                                        using ComponentTypes = std::tuple<Transform, Camera, Sprite, Tiled>;
 
                                         auto InspectHelper = [&]<typename Tuple, std::size_t... Indices>(Tuple&& tuple, std::index_sequence<Indices...>) {
                                             auto f = [&]<typename T>(T&) {

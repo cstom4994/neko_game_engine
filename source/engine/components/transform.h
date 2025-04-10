@@ -1,8 +1,8 @@
-
+﻿
 #pragma once
 
 #include "engine/ecs/entity.h"
-#include "engine/ecs/entitybase.hpp"
+#include "engine/component.h"
 
 struct CTransform : CEntityBase {
     vec2 position;

@@ -1,10 +1,9 @@
-
+﻿
 #include "transform.h"
 
 #include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
-#include "engine/ecs/entitybase.hpp"
 #include "engine/editor.h"
 #include "engine/scripting/lua_util.h"
 
@@ -381,7 +380,7 @@ int Transform::Inspect(CEntity ent) {
     CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(transform);
 
-    ImGuiWrap::Auto(transform);
+    ImGuiWrap::Auto(transform, "CTransform");
 
     return 0;
 }

@@ -1,12 +1,13 @@
-
-#include "engine/edit.h"
+﻿
+#include "edit.h"
 
 #include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
-#include "engine/ecs/entitybase.hpp"
 #include "engine/scripting/lua_util.h"
 #include "engine/editor.h"
+#include "engine/components/transform.h"
+#include "engine/components/camera.h"
 
 CEntityPool<CUnEditable>* uneditable__pool;
 int type_uneditable;
@@ -133,7 +134,7 @@ static void _bboxes_draw_all() {
     GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
 
     glUseProgram(sid);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)the<Camera>().GetInverseViewMatrixPtr());
     win = Neko::the<CL>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 0);
@@ -166,7 +167,7 @@ static void _grid_create_cells() {
     vec2 cur, csize;
 
     // find camera bounds in world space
-    camera = camera_get_current_camera();
+    camera = the<Camera>().camera_get_current_camera();
     if (CEntityEq(camera, entity_nil))
         cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
@@ -214,7 +215,7 @@ static void _grid_draw() {
     GLuint sid = assets_get<AssetShader>(bboxes_shader).id;
 
     glUseProgram(sid);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat*)the<Camera>().GetInverseViewMatrixPtr());
     win = Neko::the<CL>().get_window_size();
     glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
     glUniform1f(glGetUniformLocation(sid, "is_grid"), 1);
@@ -279,7 +280,7 @@ static void _line_fini() {
 static void _line_draw_all() {
     unsigned int npoints;
 
-    const mat3* mat = camera_get_inverse_view_matrix_ptr();
+    const mat3* mat = the<Camera>().GetInverseViewMatrixPtr();
 
     GLuint sid = assets_get<AssetShader>(line_shader).id;
 
@@ -328,6 +329,7 @@ void edit_load_all(CL* app) {
 }
 
 void edit_set_enabled(bool e) { the<Editor>().get_enable() = e; }
+
 bool edit_get_enabled() { return the<Editor>().get_enable(); }
 
 void edit_init_impl(lua_State* L) {

@@ -1,4 +1,4 @@
-#include "engine/draw.h"
+﻿#include "engine/draw.h"
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
@@ -11,6 +11,8 @@
 #include "engine/ecs/entity.h"
 #include "engine/edit.h"
 #include "engine/scripting/lua_util.h"
+#include "engine/components/transform.h"
+#include "engine/components/camera.h"
 
 // deps
 #include "extern/cute_aseprite.h"
@@ -594,7 +596,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
     glUniform1i(glGetUniformLocation(font_program, "text"), 0);
 
     if (draw_in_world) {
-        glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+        glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
         glUniform1i(glGetUniformLocation(font_program, "mode"), 0);
     } else {
         mat4 cam_mat = mat4_ortho(0.0f, (float)the<CL>().state.width, (float)the<CL>().state.height, 0.0f, -1.0f, 1.0f);
@@ -835,7 +837,7 @@ void Batch::batch_flush() {
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
     // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&batch->mvp.cols[0]);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
 
     glUniform1f(glGetUniformLocation(sid, "scale"), batch->scale);
 
@@ -952,7 +954,7 @@ void DebugDraw::debug_draw_all() {
 
     glUseProgram(debug_renderer->program_id);
 
-    const mat3 *mat = camera_get_inverse_view_matrix_ptr();
+    const mat3 *mat = the<Camera>().GetInverseViewMatrixPtr();
     glUniformMatrix3fv(debug_renderer->view, 1, GL_FALSE, (const GLfloat *)mat);
 
     vec2 viewport{the<CL>().state.width, the<CL>().state.height};

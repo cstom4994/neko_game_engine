@@ -1,16 +1,14 @@
-
+﻿
+#include "sprite.h"
 
 #include "base/common/profiler.hpp"
 #include "engine/bootstrap.h"
-#include "engine/ecs/entitybase.hpp"
 #include "engine/editor.h"
 #include "engine/scripting/lua_util.h"
+#include "engine/components/transform.h"
+#include "engine/components/camera.h"
 
 static char *atlas = NULL;
-
-CEntityPool<CSprite> *Sprite__pool;
-
-int type_sprite;
 
 static Asset sprite_shader = {};
 static GLuint sprite_vao;
@@ -37,65 +35,83 @@ static void _set_atlas(const char *filename, bool err) {
     glUniform2fv(glGetUniformLocation(sid, "atlas_size"), 1, (const GLfloat *)&atlas_size);
 }
 
-void sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
+void Sprite::sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
 
-const char *sprite_get_atlas() { return atlas; }
+const char *Sprite::sprite_get_atlas() { return atlas; }
 
-void sprite_add(CEntity ent) {
+CSprite *Sprite::sprite_add(CEntity ent) {
     CSprite *sprite;
 
-    if (Sprite__pool->GetPtr(ent)) return;
+    if (ComponentTypeBase::EntityPool->GetPtr(ent)) return nullptr;
 
     the<Transform>().transform_add(ent);
 
-    sprite = Sprite__pool->Add(ent);
+    sprite = ComponentTypeBase::EntityPool->Add(ent);
     sprite->size = luavec2(1.0f, 1.0f);
     sprite->texcell = luavec2(32.0f, 32.0f);
     sprite->texsize = luavec2(32.0f, 32.0f);
     sprite->depth = 0;
-}
-void sprite_remove(CEntity ent) { Sprite__pool->Remove(ent); }
-bool sprite_has(CEntity ent) { return Sprite__pool->GetPtr(ent) != NULL; }
 
-void sprite_set_size(CEntity ent, vec2 size) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+    return sprite;
+}
+
+CSprite *Sprite::wrap_sprite_add(CEntity ent) {
+    CSprite *ptr = sprite_add(ent);
+
+    auto L = ENGINE_LUA();
+
+    EcsWorld *world = ENGINE_ECS();
+    EntityData *e = EcsGetEnt(L, world, ent.id);
+    LuaRef tb = LuaRef::NewTable(L);
+    tb["__ud"] = ptr;
+    int cid1 = EcsComponentSet(L, e, ComponentTypeBase::Tid, tb);
+
+    return ptr;
+}
+
+void Sprite::sprite_remove(CEntity ent) { ComponentTypeBase::EntityPool->Remove(ent); }
+
+bool Sprite::sprite_has(CEntity ent) { return ComponentTypeBase::EntityPool->GetPtr(ent) != NULL; }
+
+void Sprite::sprite_set_size(CEntity ent, vec2 size) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     sprite->size = size;
 }
-vec2 sprite_get_size(CEntity ent) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+vec2 Sprite::sprite_get_size(CEntity ent) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     return sprite->size;
 }
 
-void sprite_set_texcell(CEntity ent, vec2 texcell) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+void Sprite::sprite_set_texcell(CEntity ent, vec2 texcell) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
-vec2 sprite_get_texcell(CEntity ent) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+vec2 Sprite::sprite_get_texcell(CEntity ent) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     return sprite->texcell;
 }
-void sprite_set_texsize(CEntity ent, vec2 texsize) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+void Sprite::sprite_set_texsize(CEntity ent, vec2 texsize) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
-vec2 sprite_get_texsize(CEntity ent) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+vec2 Sprite::sprite_get_texsize(CEntity ent) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     return sprite->texsize;
 }
 
-void sprite_set_depth(CEntity ent, int depth) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+void Sprite::sprite_set_depth(CEntity ent, int depth) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     sprite->depth = depth;
 }
-int sprite_get_depth(CEntity ent) {
-    CSprite *sprite = Sprite__pool->GetPtr(ent);
+int Sprite::sprite_get_depth(CEntity ent) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
     error_assert(sprite);
     return sprite->depth;
 }
@@ -105,9 +121,8 @@ void Sprite::sprite_init() {
 
     auto L = ENGINE_LUA();
 
-    type_sprite = EcsRegisterCType<CSprite>(L);
-
-    Sprite__pool = EcsProtoGetCType<CSprite>(L);
+    ComponentTypeBase::Tid = EcsRegisterCType<CSprite>(L);
+    ComponentTypeBase::EntityPool = EcsProtoGetCType<CSprite>(L);
 
     bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/sprite.glsl", &sprite_shader);
     error_assert(ok);
@@ -129,21 +144,25 @@ void Sprite::sprite_init() {
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texcell", CSprite, texcell);
     gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texsize", CSprite, texsize);
 
+    // clang-format off
+
     auto type = BUILD_TYPE(Sprite)
-                        .Method("sprite_set_atlas", &sprite_set_atlas)      //
-                        .Method("sprite_get_atlas", &sprite_get_atlas)      //
-                        .Method("sprite_add", &sprite_add)                  //
-                        .Method("sprite_remove", &sprite_remove)            //
-                        .Method("sprite_has", &sprite_has)                  //
-                        .Method("sprite_set_size", &sprite_set_size)        //
-                        .Method("sprite_get_size", &sprite_get_size)        //
-                        .Method("sprite_set_texcell", &sprite_set_texcell)  //
-                        .Method("sprite_get_texcell", &sprite_get_texcell)  //
-                        .Method("sprite_set_texsize", &sprite_set_texsize)  //
-                        .Method("sprite_get_texsize", &sprite_get_texsize)  //
-                        .Method("sprite_set_depth", &sprite_set_depth)      //
-                        .Method("sprite_get_depth", &sprite_get_depth)      //
-                        .Build();
+        .MemberMethod("sprite_set_atlas", this, &Sprite::sprite_set_atlas)
+        .MemberMethod("sprite_get_atlas", this, &Sprite::sprite_get_atlas)
+        .MemberMethod("sprite_add", this, &Sprite::wrap_sprite_add)
+        .MemberMethod("sprite_remove", this, &Sprite::sprite_remove)
+        .MemberMethod("sprite_has", this, &Sprite::sprite_has)
+        .MemberMethod("sprite_set_size", this, &Sprite::sprite_set_size)
+        .MemberMethod("sprite_get_size", this, &Sprite::sprite_get_size)
+        .MemberMethod("sprite_set_texcell", this, &Sprite::sprite_set_texcell)
+        .MemberMethod("sprite_get_texcell", this, &Sprite::sprite_get_texcell)
+        .MemberMethod("sprite_set_texsize", this, &Sprite::sprite_set_texsize)
+        .MemberMethod("sprite_get_texsize", this, &Sprite::sprite_get_texsize)
+        .MemberMethod("sprite_set_depth", this, &Sprite::sprite_set_depth)
+        .MemberMethod("sprite_get_depth", this, &Sprite::sprite_get_depth)
+        .Build();
+
+    // clang-format on
 }
 
 void Sprite::sprite_fini() {
@@ -151,7 +170,7 @@ void Sprite::sprite_fini() {
     glDeleteBuffers(1, &sprite_vbo);
     glDeleteVertexArrays(1, &sprite_vao);
 
-    entitypool_free(Sprite__pool);
+    entitypool_free(ComponentTypeBase::EntityPool);
 
     mem_free(atlas);
 }
@@ -160,12 +179,12 @@ int Sprite::sprite_update_all(Event evt) {
 
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
-    entitypool_remove_destroyed(Sprite__pool, sprite_remove);
+    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { sprite_remove(ent); });
 
-    Sprite__pool->ForEach([](CSprite *sprite) { sprite->wmat = the<Transform>().transform_get_world_matrix(sprite->ent); });
+    ComponentTypeBase::EntityPool->ForEach([](CSprite *sprite) { sprite->wmat = the<Transform>().transform_get_world_matrix(sprite->ent); });
 
     if (edit_get_enabled()) {
-        Sprite__pool->ForEach([](CSprite *sprite) { edit_bboxes_update(sprite->ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
+        ComponentTypeBase::EntityPool->ForEach([](CSprite *sprite) { edit_bboxes_update(sprite->ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); });
     }
 
     return 0;
@@ -181,20 +200,38 @@ static int _depth_compare(const void *a, const void *b) {
 void Sprite::sprite_draw_all() {
     unsigned int nsprites;
 
-    entitypool_sort(Sprite__pool, _depth_compare);
+    entitypool_sort(ComponentTypeBase::EntityPool, _depth_compare);
 
     GLuint sid = assets_get<AssetShader>(sprite_shader).id;
 
     glUseProgram(sid);
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
 
     texture_bind_byname(atlas, 0);
 
     glBindVertexArray(sprite_vao);
     glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
-    nsprites = entitypool_size(Sprite__pool);
-    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(CSprite), entitypool_begin(Sprite__pool), GL_STREAM_DRAW);
+    nsprites = entitypool_size(ComponentTypeBase::EntityPool);
+    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(CSprite), entitypool_begin(ComponentTypeBase::EntityPool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nsprites);
+}
+
+DEFINE_IMGUI_BEGIN(template <>, CSprite) {
+    ImGuiWrap::Auto(var.wmat, "wmat");
+    ImGuiWrap::Auto(var.size, "size");
+    ImGuiWrap::Auto(var.texcell, "texcell");
+    ImGuiWrap::Auto(var.texsize, "texsize");
+    ImGuiWrap::Auto(var.depth, "depth");
+}
+DEFINE_IMGUI_END()
+
+int Sprite::Inspect(CEntity ent) {
+    CSprite *sprite = ComponentTypeBase::EntityPool->GetPtr(ent);
+    error_assert(sprite);
+
+    ImGuiWrap::Auto(sprite, "CSprite");
+
+    return 0;
 }
 
 void sprite_save_all(CL *app) {
@@ -204,7 +241,7 @@ void sprite_save_all(CL *app) {
     // if (store_child_save(&t, "sprite", s)) {
     //     string_save((const char **)&atlas, "atlas", t);
 
-    //     entitypool_save_foreach(sprite, sprite_s, Sprite__pool, "pool", t) {
+    //     entitypool_save_foreach(sprite, sprite_s, ComponentTypeBase::EntityPool, "pool", t) {
     //         vec2_save(&sprite->size, "size", sprite_s);
     //         vec2_save(&sprite->texcell, "texcell", sprite_s);
     //         vec2_save(&sprite->texsize, "texsize", sprite_s);
@@ -224,7 +261,7 @@ void sprite_load_all(CL *app) {
     //         mem_free(tatlas);
     //     }
 
-    //     entitypool_load_foreach(sprite, sprite_s, Sprite__pool, "pool", t) {
+    //     entitypool_load_foreach(sprite, sprite_s, ComponentTypeBase::EntityPool, "pool", t) {
     //         vec2_load(&sprite->size, "size", luavec2(1, 1), sprite_s);
     //         vec2_load(&sprite->texcell, "texcell", luavec2(32, 32), sprite_s);
     //         vec2_load(&sprite->texsize, "texsize", luavec2(32, 32), sprite_s);

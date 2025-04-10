@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "engine/imgui.hpp"
 #include "base/scripting/scripting.h"
