@@ -338,6 +338,24 @@ EditorTestPanel = function(dt)
         foo("s", {}, 234)
     end
 
+    if ImGui.Button("test_luadb") then
+        local data = db.open("@gamedata/test/data.luadb")
+
+        if data then
+            print(data)
+            for k, v in pairs(data) do
+                print("pairs", k, v)
+            end
+            for k, v in pairs(data.all.Skeleton[2]) do
+                print("pairs", k, v)
+            end
+            print(data.all.Skeleton[2]["npc_name"])
+            print(data.all.Skeleton[2]["sprite"])
+        else
+            print("无法打开文件或文件不存在")
+        end
+    end
+
     if ImGui.Button("test_ecs") then
 
         print(table.show({EcsWorld:detail()}))

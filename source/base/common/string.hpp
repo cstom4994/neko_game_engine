@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "base/common/base.hpp"
 #include "base/common/mem.hpp"
@@ -27,6 +27,14 @@ struct String {
             return false;
         }
         return memcmp(this->data, rhs.data, this->len) == 0;
+    }
+
+    inline void trash() {
+        if (data) {
+            mem_free(data);
+            data = nullptr;
+            len = 0;
+        }
     }
 
     // inline bool operator!=(String rhs) { return !(*this == rhs); }

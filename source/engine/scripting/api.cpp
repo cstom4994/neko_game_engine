@@ -1,4 +1,4 @@
-
+﻿
 
 #include <filesystem>
 
@@ -21,7 +21,9 @@
 #include "engine/bindata.h"
 #include "engine/window.h"
 #include "engine/scripting/lua_util.h"
+#include "engine/scripting/lua_database.h"
 #include "engine/scripting/wrap_draw.h"
+#include "engine/components/transform.h"
 
 // lua
 #include "lapi.h"
@@ -2565,7 +2567,7 @@ int wrap_pixels_to_unit(lua_State *L) {
     return 1;
 }
 
-// DEFINE_LUAOPEN_EXTERN(luadb)
+// DEFINE_LUAOPEN_EXTERN(LuaDatabase)
 DEFINE_LUAOPEN_EXTERN(unittest)
 
 static int open_neko(lua_State *L) {

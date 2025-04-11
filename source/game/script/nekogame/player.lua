@@ -135,6 +135,15 @@ function CPlayer:update(dt)
     -- ns.edit.bboxes_update(pl, ng.BBox(ng.bbox_bound(pl_pos, b)));
     -- end
 
+    local ox = self.x
+    local oy = self.y
+
+    local mx, my = LocalGame.mouse_pos.x, LocalGame.mouse_pos.y
+
+    local angle = direction(ox, oy, mx, my)
+    self.shoot_angle = angle
+    local dx, dy = heading(angle, 16)
+
     local function player_shoot(dt)
         -- if score <= 0 then
         --     return
@@ -143,29 +152,22 @@ function CPlayer:update(dt)
         -- 播放弓箭音效
         -- choose({sound_bow_1, sound_bow_2, sound_bow_3}):start()
 
-        neko.sound_load(choose({"@gamedata/assets/sounds/attackBow01.wav", "@gamedata/assets/sounds/attackBow02.wav"})):start()
+        -- neko.sound_load(choose({"@gamedata/assets/sounds/attackBow01.wav", "@gamedata/assets/sounds/attackBow02.wav"})):start()
 
-        local ox = self.x
-        local oy = self.y
+        neko.sound_load("@gamedata/assets/sounds/Shooting0002.wav"):start()
 
-        local mx, my = LocalGame.mouse_pos.x, LocalGame.mouse_pos.y
-
-        local angle = direction(ox, oy, mx, my)
-        self.shoot_angle = angle
-        local dx, dy = heading(angle, 16)
-
-        LocalGame.world:add(Arrow(ox + dx, oy + dy, angle))
+        LocalGame.world:add(Bullet(ox + dx, oy + dy - 5, angle))
 
         -- score = score - 1
     end
 
     self.shoot_cooldown = self.shoot_cooldown - dt
     if neko.mouse_down(0) and not ImGuiMouseHoldon() and self.shoot_cooldown <= 0 then
-        self.shoot_cooldown = 0.4
+        self.shoot_cooldown = 0.15
         player_shoot(dt)
     end
     if neko.mouse_down(1) and not ImGuiMouseHoldon() and self.shoot_cooldown <= 0 then
-        self.shoot_cooldown = 0.1
+        self.shoot_cooldown = 0.08
         player_shoot(dt)
     end
 end
@@ -173,27 +175,32 @@ end
 function CPlayer:draw()
     local sx = self.facing_left and -1 or 1
 
-    if self.shoot_cooldown > 0 then
-        local cos = math.cos(self.shoot_angle)
-        if -1e-16 < cos and cos < 1e-16 then
-            -- pass
-        elseif cos < 0 then
-            sx = -1
-        elseif cos > 0 then
-            sx = 1
-        end
+    -- if self.shoot_cooldown > 0 then
+    local cos = math.cos(self.shoot_angle)
+    if -1e-16 < cos and cos < 1e-16 then
+        -- pass
+    elseif cos < 0 then
+        sx = -1
+    elseif cos > 0 then
+        sx = 1
     end
+    -- end
 
     local ox = sx * self.sprite:width() / 2
     local oy = -self.sprite:height() / 2
     self.sprite:draw(self.x, self.y, 0, sx * 1, -1, ox, oy)
 
-    if self.shoot_cooldown > 0 then
-        local bow = bow_img
-        local ox = sx * -(bow:width() + 4)
-        local oy = -bow:height() / 2
-        bow:draw(self.x, self.y, self.shoot_angle, sx * 1, -1, ox, oy)
+    -- if self.shoot_cooldown > 0 then
+    local weapon_img = weapon_img_1
+    local ox = 1
+    local oy = (-weapon_img:height() / 2) + 8
+
+    local weapen_angle = self.shoot_angle
+    if sx < 0 then
+        weapen_angle = weapen_angle + math.pi
     end
+    weapon_img:draw(self.x, self.y, weapen_angle, sx * 1, -1, sx * 8, oy)
+    -- end
 
     self.hpbar:draw(self.x + 3, self.y + 15)
 
@@ -282,7 +289,7 @@ function CEnemy:hit(other, damage)
 
     self.hit_cooldown = 0.2
 
-    if getmetatable(other) == Arrow then
+    if getmetatable(other) == Bullet then
         self.body:set_velocity(heading(other.angle, 200))
         self.spring:pull(0.3)
     end
@@ -405,7 +412,7 @@ function CEnemy.begin_contact(a, b)
     if mt == CPlayer then
         -- LocalGame.world:kill(self)
         hit_player(choose {4, 5, 6})
-    elseif mt == Arrow then
+    elseif mt == Bullet then
         self:hit(other, 50)
     end
 end
@@ -502,16 +509,16 @@ function Coin:draw()
     self.sprite:draw(self.x, self.y + self.z, 0, sx, sy, ox, oy)
 end
 
-class "Arrow"
+class "Bullet"
 
-function Arrow:new(x, y, angle)
+function Bullet:new(x, y, angle)
     self.x = x
     self.y = y
     self.angle = angle
     self.lifetime = 0
 end
 
-function Arrow:on_create()
+function Bullet:on_create()
     local vx, vy = heading(self.angle, 500)
 
     self.body = LocalGame.b2:make_dynamic_body{
@@ -527,15 +534,15 @@ function Arrow:on_create()
         w = 8,
         h = 2,
         udata = self.id,
-        begin_contact = Arrow.begin_contact
+        begin_contact = Bullet.begin_contact
     }
 end
 
-function Arrow:on_death()
+function Bullet:on_death()
     self.body:destroy()
 end
 
-function Arrow:update(dt)
+function Bullet:update(dt)
     self.lifetime = self.lifetime + dt
     if self.lifetime > 10 then
         LocalGame.world:kill(self)
@@ -544,18 +551,20 @@ function Arrow:update(dt)
     self.x, self.y = self.body:position()
 end
 
-function Arrow:draw()
-    local img = arrow_img
+function Bullet:draw()
+    local img = bullet_img
     local ox = img:width() / 2
     local oy = img:height() / 2
-    img:draw(self.x, self.y, self.angle + math.pi / 2, 1, 1, ox, oy)
 
+    img:play("Tag2")
+
+    img:draw(self.x, self.y, self.angle + math.pi, -1, 1, -ox, oy)
     if draw_fixtures then
         self.body:draw_fixtures()
     end
 end
 
-function Arrow.begin_contact(a, b)
+function Bullet.begin_contact(a, b)
     local self = LocalGame.world:query_id(a:udata())
     local is_player = b:udata() == player.id
 
@@ -733,7 +742,7 @@ function Target.begin_contact(a, b)
 
     if mt == CPlayer then
         -- hit_player(20)
-    elseif mt == Arrow then
+    elseif mt == Bullet then
         self:hit(other)
     end
 end

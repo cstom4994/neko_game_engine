@@ -19,6 +19,4 @@ public:
     virtual int Inspect(CEntity ent) = 0;
 };
 
-int open_db(lua_State *L);
-
 #endif

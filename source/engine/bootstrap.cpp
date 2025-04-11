@@ -294,6 +294,8 @@ void CL::game_draw() {
 
             if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_R)) {
                 gBase.error_mode.store(false);
+                gBase.traceback.trash();
+                gBase.fatal_error_string.trash();
             }
         }
     }
@@ -704,8 +706,8 @@ void CL::fini() {
     profile_shutdown();
 #endif
 
-    mem_free(gBase.fatal_error_string.data);
-    mem_free(gBase.traceback.data);
+    gBase.traceback.trash();
+    gBase.fatal_error_string.trash();
 
     auto &eh = Neko::the<EventHandler>();
     eh.fini();

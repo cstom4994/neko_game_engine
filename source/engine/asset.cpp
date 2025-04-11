@@ -1,4 +1,4 @@
-#include "engine/asset.h"
+﻿#include "engine/asset.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +17,7 @@
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
+#include "engine/components/tiledmap.hpp"
 #include "base/scripting/lua_wrapper.hpp"
 #include "extern/glad/glad.h"
 

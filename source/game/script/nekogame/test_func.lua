@@ -58,7 +58,7 @@ function test_func:hit(other, damage)
 
     self.hit_cooldown = 0.2
 
-    if getmetatable(other) == Arrow then
+    if getmetatable(other) == Bullet then
         self.body:set_velocity(heading(other.angle, 200))
         self.spring:pull(0.3)
     end
@@ -151,7 +151,7 @@ function test_func.begin_contact(a, b)
     if mt == Player then
         LocalGame.world:kill(self)
         -- hit_player(20)
-    elseif mt == Arrow then
+    elseif mt == Bullet then
         -- self:hit(other, 50)
     end
 end

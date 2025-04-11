@@ -215,8 +215,10 @@ function haha()
 
         cursor = Cursor(neko.sprite_load "@gamedata/assets/cursor.ase")
 
-        bow_img = neko.sprite_load "@gamedata/assets/bow.ase"
-        arrow_img = neko.sprite_load "@gamedata/assets/arrow.ase"
+        -- bow_img = neko.sprite_load "@gamedata/assets/bow.ase"
+        weapon_img_1 = neko.sprite_load "@gamedata/assets/Weapon0001.ase"
+        -- arrow_img = neko.sprite_load "@gamedata/assets/arrow.ase"
+        bullet_img = neko.sprite_load "@gamedata/assets/bullet002.ase"
 
         local objs = LocalGame.level_1_obj
         for object_group_name, object_groups in pairs(objs) do

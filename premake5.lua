@@ -19,7 +19,7 @@ characterset("Unicode")
 location "vsbuild"
 
 flags {"MultiProcessorCompile"}
-staticruntime "off"
+staticruntime "on"
 
 defines {"WIN32", "_WIN32", "_WINDOWS", "NOMINMAX", "_CRT_SECURE_NO_DEPRECATE", "_CRT_SECURE_NO_WARNINGS",
          "_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING", "WIN32_LEAN_AND_MEAN", "_SCL_SECURE_NO_WARNINGS",
@@ -464,27 +464,14 @@ do
     targetdir "./bin"
     debugdir "./bin"
 
-    includedirs {"source", "source/extern/luaot", "source/extern/imgui", "source/extern/box2d",
-                 "source/extern/libffi/include"}
+    includedirs {"source", "source/extern/luaot", "source/extern/imgui", "source/extern/box2d"}
 
     files {"source/base/**.cpp", "source/base/**.hpp", "source/base/**.h", "source/base/**.lua"}
 
     files {"source/extern/imgui/**.cpp", "source/extern/imgui/**.h"}
 
     files {"source/extern/luaalloc.c", "source/extern/http.c", "source/extern/miniz.c", "source/extern/glad/glad.c",
-           "source/extern/ui.cpp", "source/extern/vtf/*.*"}
-
-    local luasocketsrc = {"source/extern/luasocket/auxiliar.c", "source/extern/luasocket/buffer.c",
-                          "source/extern/luasocket/compat.c", "source/extern/luasocket/except.c",
-                          "source/extern/luasocket/inet.c", "source/extern/luasocket/io.c",
-                          "source/extern/luasocket/luasocket.c", "source/extern/luasocket/mime.c",
-                          "source/extern/luasocket/options.c", "source/extern/luasocket/select.c",
-                          "source/extern/luasocket/tcp.c", "source/extern/luasocket/timeout.c",
-                          "source/extern/luasocket/udp.c"}
-
-    table.insert(luasocketsrc, "source/extern/luasocket/wsocket.c")
-
-    files {"source/extern/luasocket/**.h", luasocketsrc}
+           "source/extern/ui.cpp"}
 
     files {"source/extern/luaot/**.h"}
 
