@@ -1,4 +1,4 @@
-﻿
+
 #include "transform.h"
 
 #include "base/common/profiler.hpp"

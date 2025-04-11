@@ -11,6 +11,7 @@ int Test_Shader() {
 
     HashMap<String> tokenTypeNames;
     guess_enum_range<TokenType, 0>(tokenTypeNames, std::make_integer_sequence<int, (int)TokenType::OTHER + 1>());
+    neko_defer(for (const auto& value : tokenTypeNames) { value.value->trash(); } tokenTypeNames.trash(););
 
     std::string source = R"(
 #nekoshader version 1

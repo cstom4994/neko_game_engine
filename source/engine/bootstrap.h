@@ -86,6 +86,10 @@ public:
         f32 height;
         f32 bg[3];  //
         f32 posteffect_intensity = 2.0f;
+        f32 posteffect_exposure = 0.5f;
+        f32 posteffect_gamma = 2.2f;
+        f32 posteffect_bloom_scalar = 0.5f;
+        f32 posteffect_saturation = 2.0f;
     } state{};
 
     void *miniaudio_vfs;
@@ -156,7 +160,11 @@ _Fs(reload_interval,""),
 _Fs(swap_interval,""),
 _Fs(target_fps,""),
 _Fs(batch_vertex_capacity,""),
-_Fs(posteffect_intensity,"")
+_Fs(posteffect_intensity,""),
+_Fs(posteffect_exposure,""),
+_Fs(posteffect_gamma,""),
+_Fs(posteffect_bloom_scalar,""),
+_Fs(posteffect_saturation,"")
 );
 
 // clang-format on

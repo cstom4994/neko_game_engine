@@ -1305,6 +1305,7 @@ function ns.edit.__OnImGui(args)
             end
 
             if ImGui.BeginTabItem("测试面板") then
+                neko.EditorTestPanelInternal()
                 EditorTestPanel()
                 ImGui.EndTabItem()
             end

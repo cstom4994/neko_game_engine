@@ -1,4 +1,4 @@
-﻿
+
 #include "editor.h"
 
 #include <inttypes.h>
@@ -1497,6 +1497,11 @@ static int l_edit_get_enabled(lua_State* L) {
     return 1;
 }
 
+void EditorTestPanelInternal() {
+    extern void TestPanel();
+    TestPanel();
+}
+
 // -------------------------------------------------------------------------
 
 void Editor::edit_init() {
@@ -1512,6 +1517,7 @@ void Editor::edit_init() {
     ctag_tid = EcsGetTid(L, "CTag");
 
     auto type = BUILD_TYPE(Editor)
+                        .Method("EditorTestPanelInternal", &EditorTestPanelInternal)    //
                         .Method("edit_set_editable", &edit_set_editable)                //
                         .Method("edit_get_editable", &edit_get_editable)                //
                         .Method("edit_set_grid_size", &edit_set_grid_size)              //

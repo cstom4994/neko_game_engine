@@ -524,6 +524,11 @@ void RenderTarget::bind() {
     glBindFramebuffer(GL_FRAMEBUFFER, this->id);
 }
 
+void RenderTarget::unbind() {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void RenderTarget::bind_output(u32 unit) {
     if (!this->id) {
         glBindTexture(GL_TEXTURE_2D, 0);
@@ -540,15 +545,17 @@ void RenderTarget::bind_output(u32 unit) {
     }
 }
 
-void PostProcessor::new_post_processor(AssetShader shader) {
+void PostProcessor::create(String shader_file) {
 
-    i32 win_w = the<CL>().state.width, win_h = the<CL>().state.height;
+    bool ok = asset_load_kind(AssetKind_Shader, shader_file, &shader_asset);
+    error_assert(ok);
+
+    i32 win_w = the<CL>().state.width;
+    i32 win_h = the<CL>().state.height;
 
     this->target.create(win_w, win_h);
 
     this->dimentions = neko_v2(win_w, win_h);
-
-    this->shader = shader;
 
     f32 verts[] = {-1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f};
 
@@ -563,36 +570,51 @@ void PostProcessor::new_post_processor(AssetShader shader) {
     this->vb.bind_vb_for_edit(false);
 }
 
-void PostProcessor::free_post_processor() {
+void PostProcessor::release() {
     this->target.release();
     this->vb.fini_vb();
 }
 
 void PostProcessor::use_post_processor() { this->target.bind(); }
 
-void PostProcessor::resize_post_processor(vec2 dimentions) {
+void PostProcessor::Resize(vec2 dimentions) {
     this->dimentions = dimentions;
     this->target.resize(dimentions.x, dimentions.y);
 }
 
-void PostProcessor::post_processor_fit_to_main_window() { resize_post_processor(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
+void PostProcessor::post_processor_fit_to_main_window() { Resize(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
 
-void PostProcessor::flush_post_processor(bool default_rt) {
-    if (default_rt) {
-        this->target.bind();
+void PostProcessor::FlushTarget(RenderTarget& rt, std::function<void(AssetShader&)> op) {
+
+    AssetShader& shader = assets_get<AssetShader>(shader_asset);
+
+    rt.bind_output(0);
+
+    neko_bind_shader(shader.id);
+
+    neko_shader_set_v2f(shader.id, "NekoScreenSize", neko_v2(this->dimentions.x, this->dimentions.y));
+
+    std::invoke(op, shader);
+
+    GLint screenTextureLocation = glGetUniformLocation(shader.id, "NekoTextureInput");
+    if (screenTextureLocation == -1) {
+        // wtf
     }
 
-    neko_bind_shader(this->shader.id);
-    neko_shader_set_int(this->shader.id, "input", 0);
-    neko_shader_set_v2f(this->shader.id, "screen_size", neko_v2(this->dimentions.x, this->dimentions.y));
-
-    this->target.bind_output(0);
+    glUniform1i(screenTextureLocation, 0);
 
     this->vb.bind_vb_for_draw(true);
     this->vb.draw_vb();
     this->vb.bind_vb_for_draw(false);
 
-    neko_bind_shader(NULL);
+    neko_bind_shader(0);
+}
+
+void PostProcessor::Flush(std::function<void(AssetShader&)> op) {
+
+    // this->target.bind_output(0);
+
+    FlushTarget(target, op);
 }
 
 extern "C" int GLAD_GL_ARB_direct_state_access;

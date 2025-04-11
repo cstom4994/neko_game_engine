@@ -28,7 +28,6 @@ out vec4 FragColor;
 in vec2 TexCoords;
 
 uniform int enable;
-uniform sampler2D screenTexture;
 
 uniform float intensity = 2;
 uniform float start = 2.0f;
@@ -62,11 +61,15 @@ uniform vec2 pixel_count = vec2(512.0, 512.0 * (9.0/16.0));
 float pixel_w = 3.0; // 15.0
 float pixel_h = 2.0; // 10.0
 
-    uniform float rt_w; // 渲染目标宽度
-    uniform float rt_h; // 渲染目标高度
+uniform vec2 NekoScreenSize;
+uniform sampler2D NekoTextureInput;
+
 
 void main()
 {
+
+     float rt_w = NekoScreenSize.x;
+     float rt_h = NekoScreenSize.y;
 
     vec4 pixel;
 
@@ -76,8 +79,8 @@ void main()
         uv = floor(uv);
         uv = uv / pixel_count;
 
-        // vec4 pixel = texelFetch(screenTexture, ivec2(vert_pos.xy), 0);
-        pixel = texture(screenTexture, uv);
+        // vec4 pixel = texelFetch(NekoTextureInput, ivec2(vert_pos.xy), 0);
+        pixel = texture(NekoTextureInput, uv);
         float effect = pow(distance(vert_pos / start, vec2(0)), intensity);
         pixel = vec4(mix(pixel.xyz, vec3(0), effect), pixel.w);
 
@@ -94,28 +97,28 @@ void main()
             float dx = pixel_w*(1./rt_w);
             float dy = pixel_h*(1./rt_h);
             vec2 coord = vec2(dx*floor(uv.x/dx),dy*floor(uv.y/dy));
-            tc = texture(screenTexture, coord).rgb;
+            tc = texture(NekoTextureInput, coord).rgb;
         }
         else if (uv.x>=(vx_offset+0.005))
         {
-            tc = texture(screenTexture, uv).rgb;
+            tc = texture(NekoTextureInput, uv).rgb;
         }
 
         pixel = vec4(tc, 1.0);
     }else {
-        pixel = texture(screenTexture, TexCoords);
+        pixel = texture(NekoTextureInput, TexCoords);
     }
 
     // // 高斯模糊
     // vec3 blur_pixel = vec3(0.0);
-    // ivec2 texSize = textureSize(screenTexture, 0); // 获取纹理的尺寸
+    // ivec2 texSize = textureSize(NekoTextureInput, 0); // 获取纹理的尺寸
     // ivec2 center = ivec2(TexCoords * vec2(texSize)); // 将 TexCoords 转换为纹理像素位置
     // // 遍历高斯核的 5x5 区域
     // for (int i = -2; i <= 2; ++i) {
     //     for (int j = -2; j <= 2; ++j) {
     //         int kernelIndex = (i + 2) * 5 + (j + 2); // 计算内核的索引
     //         ivec2 offset = ivec2(i, j); // 偏移
-    //         blur_pixel += texelFetch(screenTexture, center + offset, 0).rgb * kernel[kernelIndex];
+    //         blur_pixel += texelFetch(NekoTextureInput, center + offset, 0).rgb * kernel[kernelIndex];
     //     }
     // }
     // FragColor = vec4(blur_pixel, pixel.a);
@@ -123,9 +126,9 @@ void main()
 	// 电影效果
     // float chromatic_aberration_effect = dot(vec2(vert_pos), vec2(vert_pos)) / chromatic_aberration_effect_start;
     // pixel = vec4(
-	// 	texture(screenTexture, vert_uv + rOffset * chromatic_aberration_effect).r,
-	// 	texture(screenTexture, vert_uv + gOffset * chromatic_aberration_effect).g,
-	// 	texture(screenTexture, vert_uv + bOffset * chromatic_aberration_effect).b,
+	// 	texture(NekoTextureInput, vert_uv + rOffset * chromatic_aberration_effect).r,
+	// 	texture(NekoTextureInput, vert_uv + gOffset * chromatic_aberration_effect).g,
+	// 	texture(NekoTextureInput, vert_uv + bOffset * chromatic_aberration_effect).b,
 	// 	1
     // );
 

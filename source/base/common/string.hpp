@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "base/common/base.hpp"
 #include "base/common/mem.hpp"

@@ -6,6 +6,7 @@
 #include "base/common/math.hpp"
 #include "base/common/singleton.hpp"
 #include "engine/renderer/shader.h"
+#include "engine/asset.h"
 
 #define max_lights 100
 
@@ -68,6 +69,7 @@ struct RenderTarget {
     void release();
     void resize(u32 width, u32 height);
     void bind();
+    void unbind();
     void bind_output(u32 unit);
 
     inline bool valid() const { return id != 0; }
@@ -138,18 +140,19 @@ struct QuadRenderer {
 
 struct PostProcessor {
     RenderTarget target;
-
-    AssetShader shader;
+    Asset shader_asset;
     VertexBuffer vb;
-
     vec2 dimentions;
 
-    void new_post_processor(AssetShader shader);
-    void free_post_processor();
+    void create(String shader_file);
+    void release();
     void use_post_processor();
-    void resize_post_processor(vec2 dimentions);
+    void Resize(vec2 dimentions);
     void post_processor_fit_to_main_window();
-    void flush_post_processor(bool default_rt);
+    void FlushTarget(RenderTarget& target, std::function<void(AssetShader&)> op);
+    void Flush(std::function<void(AssetShader&)> op);
+
+    inline RenderTarget& GetRenderTarget() { return target; }
 };
 
 class Renderer : public Neko::SingletonClass<Renderer> {

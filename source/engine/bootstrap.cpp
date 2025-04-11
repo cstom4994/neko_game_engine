@@ -1,4 +1,4 @@
-﻿
+
 #include "engine/bootstrap.h"
 
 #include "base/cbase.hpp"
@@ -40,10 +40,13 @@ CBase gBase;
 
 #if 1
 
-RenderTarget renderview;
+RenderTarget renderview_source;
+PostProcessor posteffect_dark;
+PostProcessor posteffect_bright;
+PostProcessor posteffect_blur_h;
+PostProcessor posteffect_blur_v;
+PostProcessor posteffect_composite;
 
-unsigned int quadVAO, quadVBO;
-Asset posteffect_shader = {};
 Asset sprite_shader = {};
 
 QuadRenderer quadrenderer;
@@ -58,7 +61,15 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     CLGame.state.width = width;
     CLGame.state.height = height;
 
-    if (renderview.valid()) renderview.resize(width, height);
+    if (renderview_source.valid()) {
+        renderview_source.resize(width, height);
+        posteffect_dark.Resize(neko_v2(width, height));
+        posteffect_bright.Resize(neko_v2(width, height));
+        posteffect_blur_h.Resize(neko_v2(width, height));
+        posteffect_blur_v.Resize(neko_v2(width, height));
+        posteffect_composite.Resize(neko_v2(width, height));
+        quadrenderer.renderer_resize(neko_v2(width, height));
+    }
 
     // 更新视口
     glViewport(0, 0, width, height);
@@ -122,7 +133,7 @@ void CL::game_draw() {
         glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        renderview.bind();
+        renderview_source.bind();
         {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -139,26 +150,41 @@ void CL::game_draw() {
             the<Editor>().edit_draw_all();
             the<DebugDraw>().debug_draw_all();
         }
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        renderview_source.unbind();
+
+        glDisable(GL_DEPTH_TEST);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         if (!edit_get_enabled()) [[likely]] {
-            glDisable(GL_DEPTH_TEST);
-            glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
 
-            GLuint sid = assets_get<AssetShader>(posteffect_shader).id;
-            glUseProgram(sid);
+            posteffect_blur_h.GetRenderTarget().bind();
+            posteffect_bright.FlushTarget(renderview_source, [](auto &shader) {});
+            posteffect_blur_h.GetRenderTarget().unbind();
 
-            int posteffect_enable = !edit_get_enabled();
+            posteffect_blur_v.GetRenderTarget().bind();
+            posteffect_blur_h.Flush([](auto &shader) {});
+            posteffect_blur_v.GetRenderTarget().unbind();
 
-            glUniform1f(glGetUniformLocation(sid, "intensity"), state.posteffect_intensity);
-            glUniform1i(glGetUniformLocation(sid, "enable"), 0);
-            glUniform1f(glGetUniformLocation(sid, "rt_w"), state.width);
-            glUniform1f(glGetUniformLocation(sid, "rt_h"), state.height);
+            posteffect_blur_v.Flush([](auto &shader) {});
 
-            glBindVertexArray(quadVAO);
-            glBindTexture(GL_TEXTURE_2D, renderview.output);  // 使用颜色附件纹理作为四边形平面的纹理
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            posteffect_composite.GetRenderTarget().bind();
+            posteffect_dark.FlushTarget(renderview_source, [&](auto &shader) {
+                neko_shader_set_float(shader.id, "intensity", state.posteffect_intensity);
+                neko_shader_set_int(shader.id, "enable", 1);
+            });
+            posteffect_composite.GetRenderTarget().unbind();
+
+            posteffect_composite.Flush([&](auto &shader) {
+                neko_shader_set_float(shader.id, "u_exposure", state.posteffect_exposure);
+                neko_shader_set_float(shader.id, "u_gamma", state.posteffect_gamma);
+                neko_shader_set_float(shader.id, "u_bloom_scalar", state.posteffect_bloom_scalar);
+                neko_shader_set_float(shader.id, "u_saturation", state.posteffect_saturation);
+                neko_shader_set_int(shader.id, "u_blur_tex", 1);
+
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, posteffect_blur_v.GetRenderTarget().output);
+            });
 
             {
                 ImGuiIO &io = ImGui::GetIO();
@@ -228,7 +254,7 @@ void CL::game_draw() {
                 float viewportAspectRatio = state.width / state.height;
                 float scale = std::min(contentSize.x / state.width, contentSize.y / state.height);
 
-                ImGui::Image(renderview.output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image(renderview_source.output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
 
                 bool on_hovered = ImGui::IsItemHovered();
                 auto &editor = the<Editor>();
@@ -611,8 +637,9 @@ void CL::init() {
         eh.Register(evt.evt, evt.cb, NULL);
     }
 
-    renderview.create(state.width, state.height);
+    renderview_source.create(state.width, state.height);
 
+#if 0
     float quadVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
                             // positions   // texCoords
                             -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
@@ -632,11 +659,15 @@ void CL::init() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+#endif
 
-    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/posteffect.glsl", &posteffect_shader);
-    error_assert(ok);
+    posteffect_dark.create("@code/game/shader/post_dark.glsl");
+    posteffect_bright.create("@code/game/shader/post_bright.glsl");
+    posteffect_blur_h.create("@code/game/shader/post_blur_h.glsl");
+    posteffect_blur_v.create("@code/game/shader/post_blur_v.glsl");
+    posteffect_composite.create("@code/game/shader/post_composite.glsl");
 
-    ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/sprite2.glsl", &sprite_shader);
+    bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/sprite2.glsl", &sprite_shader);
     error_assert(ok);
 
     quadrenderer.new_renderer(assets_get<AssetShader>(sprite_shader), neko_v2(state.width, state.height));
@@ -654,7 +685,13 @@ int CL::set_window_title(const char *title) {
 void CL::fini() {
     PROFILE_FUNC();
 
-    renderview.release();
+    renderview_source.release();
+
+    posteffect_composite.release();
+    posteffect_blur_h.release();
+    posteffect_blur_v.release();
+    posteffect_bright.release();
+    posteffect_dark.release();
 
     quadrenderer.free_renderer();
 

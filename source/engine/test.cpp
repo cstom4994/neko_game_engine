@@ -1,4 +1,4 @@
-#include "engine/test.h"
+﻿#include "engine/test.h"
 
 #include <algorithm>
 #include <chrono>
@@ -521,6 +521,15 @@ void draw_gui() {
     rect_t screen = neko_rect(0, 0, fb.x, fb.y);
 
     // draw_gui_auto_test();
+}
+
+void TestPanel() {
+
+    extern int Test_LuaWrap();
+    extern int Test_Shader();
+
+    if (ImGui::Button("Test_LuaWrap")) Test_LuaWrap();
+    if (ImGui::Button("Test_Shader")) Test_Shader();
 }
 
 #if 1
