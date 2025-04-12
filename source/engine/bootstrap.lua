@@ -1115,6 +1115,49 @@ function Spring:pull(f)
     self.x = self.x + f
 end
 
+class "SecondOrderMovement"
+
+function SecondOrderMovement:new(x, y, f, z, r)
+    self.oxp = x
+    self.oyp = y
+    self.xn = x
+    self.yn = y
+    self.dxn = 0
+    self.dyn = 0
+    self.k1 = 0
+    self.k2 = 0
+    self.k3 = 0
+
+    z = z or 0.5
+    f = f or 1.0
+    r = r or 0.0
+
+    self.k1 = z / (math.pi * f)
+    self.k2 = 1 / ((2 * math.pi * f) * (2 * math.pi * f))
+    self.k3 = r * z / (2 * math.pi * f)
+
+    self.x = x
+    self.y = y
+end
+
+function SecondOrderMovement:update(dt, ox, oy)
+    local ox_d = (ox - self.oxp) / dt
+    self.oxp = ox
+    local oy_d = (oy - self.oyp) / dt
+    self.oyp = oy
+
+    local k2_stable = math.max(self.k2, 1.1 * (dt * dt / 4 + dt * self.k1 / 2))
+
+    self.xn = self.xn + dt * self.dxn
+    self.yn = self.yn + dt * self.dyn
+
+    self.dxn = self.dxn + dt * (ox + self.k3 * ox_d - self.xn - self.k1 * self.dxn) / k2_stable
+    self.dyn = self.dyn + dt * (oy + self.k3 * oy_d - self.yn - self.k1 * self.dyn) / k2_stable
+
+    self.x = self.xn
+    self.y = self.yn
+end
+
 -- intervals/timeouts
 
 local timer = {}

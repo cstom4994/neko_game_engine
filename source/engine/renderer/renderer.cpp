@@ -545,7 +545,7 @@ void RenderTarget::bind_output(u32 unit) {
     }
 }
 
-void PostProcessor::create(String shader_file) {
+void PostProcessor::create(String shader_file, bool create_rt) {
 
     bool ok = asset_load_kind(AssetKind_Shader, shader_file, &shader_asset);
     error_assert(ok);
@@ -553,7 +553,9 @@ void PostProcessor::create(String shader_file) {
     i32 win_w = the<CL>().state.width;
     i32 win_h = the<CL>().state.height;
 
-    this->target.create(win_w, win_h);
+    if (create_rt) {
+        this->target.create(win_w, win_h);
+    }
 
     this->dimentions = neko_v2(win_w, win_h);
 
@@ -571,15 +573,23 @@ void PostProcessor::create(String shader_file) {
 }
 
 void PostProcessor::release() {
-    this->target.release();
-    this->vb.fini_vb();
+    if (target.valid()) {
+        target.release();
+    }
+    vb.fini_vb();
 }
 
-void PostProcessor::use_post_processor() { this->target.bind(); }
+void PostProcessor::use_post_processor() {
+    if (target.valid()) {
+        this->target.bind();
+    }
+}
 
 void PostProcessor::Resize(vec2 dimentions) {
     this->dimentions = dimentions;
-    this->target.resize(dimentions.x, dimentions.y);
+    if (target.valid()) {
+        this->target.resize(dimentions.x, dimentions.y);
+    }
 }
 
 void PostProcessor::post_processor_fit_to_main_window() { Resize(neko_v2(the<CL>().state.width, the<CL>().state.height)); }
@@ -613,6 +623,8 @@ void PostProcessor::FlushTarget(RenderTarget& rt, std::function<void(AssetShader
 void PostProcessor::Flush(std::function<void(AssetShader&)> op) {
 
     // this->target.bind_output(0);
+
+    neko_assert(target.valid());
 
     FlushTarget(target, op);
 }

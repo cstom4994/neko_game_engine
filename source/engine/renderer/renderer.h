@@ -60,7 +60,7 @@ struct VertexBuffer {
 };
 
 struct RenderTarget {
-    u32 id;
+    u32 id{0};
     u32 width, height;
 
     u32 output;
@@ -71,6 +71,11 @@ struct RenderTarget {
     void bind();
     void unbind();
     void bind_output(u32 unit);
+
+    inline u32 GetOutputTex() const {
+        neko_assert(valid());
+        return output;
+    }
 
     inline bool valid() const { return id != 0; }
 };
@@ -144,7 +149,7 @@ struct PostProcessor {
     VertexBuffer vb;
     vec2 dimentions;
 
-    void create(String shader_file);
+    void create(String shader_file, bool create_rt = true);
     void release();
     void use_post_processor();
     void Resize(vec2 dimentions);

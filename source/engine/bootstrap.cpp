@@ -250,11 +250,23 @@ void CL::game_draw() {
 
             ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Play", nullptr)) {
+
+                if (ImGui::BeginCombo("Select Render View", renderview_sources[currentRenderViewIndex].name.cstr())) {
+                    for (int i = 0; i < renderview_sources.size(); ++i) {
+                        if (ImGui::Selectable(renderview_sources[i].name.cstr(), currentRenderViewIndex == i)) {
+                            currentRenderViewIndex = i;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+
+                RenderViewSource &currentRenderViewSource = renderview_sources[currentRenderViewIndex];
+
                 ImVec2 contentSize = ImGui::GetContentRegionAvail();
                 float viewportAspectRatio = state.width / state.height;
                 float scale = std::min(contentSize.x / state.width, contentSize.y / state.height);
 
-                ImGui::Image(renderview_source.output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image(currentRenderViewSource.rt->output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
 
                 bool on_hovered = ImGui::IsItemHovered();
                 auto &editor = the<Editor>();
@@ -639,30 +651,8 @@ void CL::init() {
 
     renderview_source.create(state.width, state.height);
 
-#if 0
-    float quadVertices[] = {// vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
-                            // positions   // texCoords
-                            -1.0f, 1.0f, 0.0f, 1.0f, -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
-
-                            -1.0f, 1.0f, 0.0f, 1.0f, 1.0f,  -1.0f, 1.0f, 0.0f, 1.0f, 1.0f,  1.0f, 1.0f};
-
-    glGenVertexArrays(1, &quadVAO);
-    glGenBuffers(1, &quadVBO);
-    glBindVertexArray(quadVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-#endif
-
-    posteffect_dark.create("@code/game/shader/post_dark.glsl");
-    posteffect_bright.create("@code/game/shader/post_bright.glsl");
+    posteffect_dark.create("@code/game/shader/post_dark.glsl", false);
+    posteffect_bright.create("@code/game/shader/post_bright.glsl", false);
     posteffect_blur_h.create("@code/game/shader/post_blur_h.glsl");
     posteffect_blur_v.create("@code/game/shader/post_blur_v.glsl");
     posteffect_composite.create("@code/game/shader/post_composite.glsl");
@@ -671,6 +661,12 @@ void CL::init() {
     error_assert(ok);
 
     quadrenderer.new_renderer(assets_get<AssetShader>(sprite_shader), neko_v2(state.width, state.height));
+
+    renderview_sources = {
+            {&renderview_source, "Editor View"},                                //
+            {&posteffect_blur_v.GetRenderTarget(), "posteffect_blur"},          //
+            {&posteffect_composite.GetRenderTarget(), "posteffect_composite"},  //
+    };
 }
 
 int CL::set_window_title(const char *title) {

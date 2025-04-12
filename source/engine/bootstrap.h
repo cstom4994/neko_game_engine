@@ -36,6 +36,11 @@ namespace Neko {
 struct LuaInspector;
 }
 
+struct RenderViewSource {
+    RenderTarget *rt;
+    String name;
+};
+
 class CL : public Neko::SingletonClass<CL> {
 public:
     bool g_quit = false;  // 如果为 true 则退出主循环
@@ -95,6 +100,9 @@ public:
     void *miniaudio_vfs;
     ma_engine audio_engine;
     Array<SoundSource *> garbage_sounds;
+
+    int currentRenderViewIndex = 0;
+    std::vector<RenderViewSource> renderview_sources{};
 
 public:
     CL();

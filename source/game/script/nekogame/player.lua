@@ -754,13 +754,16 @@ function Robot:new(x, y)
     self.y = y
     self.z = -1
 
-    self.sprite = neko.sprite_load "@gamedata/assets/coin.ase"
+    self.sprite = neko.sprite_load "@gamedata/assets/robot.ase"
 
     self.angle = 0 -- 当前角度
     self.radius = 30 -- 旋转半径
-    self.targetSpeed = math.pi * 6 -- 目标角速度
+    self.targetSpeed = math.pi * 4 -- 目标角速度
     self.speed = 0 -- 当前角速度
     self.damping = 4.0 -- 阻尼系数
+
+    self.som = SecondOrderMovement(x, y)
+
 end
 
 function Robot:update(dt)
@@ -774,10 +777,12 @@ function Robot:update(dt)
     self.angle = self.angle + self.speed * dt
 
     local ox = player.x + math.cos(self.angle) * self.radius
-    local oy = player.y + math.sin(self.angle) * self.radius
+    local oy = player.y + 10 + math.sin(self.angle) * self.radius
 
-    self.x = ox
-    self.y = oy
+    self.som:update(dt, ox, oy)
+
+    self.x = self.som.x
+    self.y = self.som.y
 end
 
 function Robot:draw()
