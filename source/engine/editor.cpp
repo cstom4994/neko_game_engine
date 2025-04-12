@@ -939,7 +939,7 @@ int LuaInspector::OnImGui(lua_State* L) {
     Assets& g_assets = the<Assets>();
     auto& GameCL = the<CL>();
 
-    //ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
+    // ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("LuaInspector")) {
 
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
@@ -1053,12 +1053,74 @@ int LuaInspector::OnImGui(lua_State* L) {
                         f32 scale = 250.0 / tex.height;
                         ImGui::Image((ImTextureID)tex.id, ImVec2(tex.width, tex.height) * scale);
                     }
+                });
+                ImGui::EndTabItem();
+            }
+
+            static u64 selected_hash = 0;
+            static int selected_sprite_tag_index = 0;
+
+            if (ImGui::BeginTabItem("Aseprite")) {
+
+                ImGui::BeginChild("ThumbnailsRegion", ImVec2(0, 300), true, ImGuiWindowFlags_HorizontalScrollbar);
+                asset_view_each([&](const Asset& view) {
                     if (view.kind == AssetKind_AseSprite) {
-                        const auto spr = assets_get<AseSpriteData>(view);
-                        f32 scale = 250.0 / spr.tex.height;
-                        ImGui::Image((ImTextureID)spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale);
+                        const AseSpriteData& spr = assets_get<AseSpriteData>(view);
+
+                        f32 scale = 100.0f / spr.tex.height;
+                        if (ImGui::ImageButton((ImTextureID)spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale)) {
+                            selected_hash = view.hash;
+                            selected_sprite_tag_index = 0;
+                        }
+
+                        ImGui::SameLine();
+
+                        ImGui::BeginGroup();
+                        ImGui::Text("%s", view.name.cstr());
+                        ImGui::Text("宽度: %d", spr.width);
+                        ImGui::Text("高度: %d", spr.height);
+                        ImGui::EndGroup();
                     }
                 });
+                ImGui::EndChild();
+
+                if (selected_hash) {
+                    ImGui::Separator();
+
+                    Asset a{};
+
+                    bool ok = asset_read(selected_hash, &a);
+                    neko_assert(ok);
+
+                    const AseSpriteData& selected_spr = assets_get<AseSpriteData>(a);
+
+                    ImGui::Text("选择 AseSprite: %s", a.name.cstr());
+
+                    f32 scale = 250.0f / selected_spr.tex.height;
+                    ImGui::BeginGroup();
+                    ImGui::Image((ImTextureID)selected_spr.tex.id, ImVec2(selected_spr.tex.width, selected_spr.tex.height) * scale);
+                    ImGui::EndGroup();
+
+                    ImGui::SameLine();
+
+                    ImGui::BeginGroup();
+                    if (selected_spr.tags.len > 0 && selected_sprite_tag_index < selected_spr.tags.len) {
+                        if (ImGui::BeginCombo("选择预览Tag", selected_spr.tags.data[selected_sprite_tag_index].cstr())) {
+                            for (int i = 0; i < selected_spr.tags.len; ++i) {
+                                if (ImGui::Selectable(selected_spr.tags.data[i].cstr(), selected_sprite_tag_index == i)) {
+                                    selected_sprite_tag_index = i;
+                                }
+                            }
+                            ImGui::EndCombo();
+                        }
+                        ImGui::Text("当前Tag序号: %d", selected_sprite_tag_index);
+                        ImGui::Text("总帧数: %d", selected_spr.frames.len);
+                        ImGui::Text("单帧宽度: %d", selected_spr.width);
+                        ImGui::Text("单帧高度: %d", selected_spr.height);
+                    }
+                    ImGui::EndGroup();
+                }
+
                 ImGui::EndTabItem();
             }
 
@@ -1636,8 +1698,8 @@ void Editor::OnImGui() {
         ImGui::EndMainMenuBar();
     }
 
-    //ImGui::SetNextWindowViewport(GameCL.devui_vp);
-    //ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
+    // ImGui::SetNextWindowViewport(GameCL.devui_vp);
+    // ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("查看器")) {
 
         if (ImGui::BeginTabBar("editor_inspector", ImGuiTabBarFlags_None)) {

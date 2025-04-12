@@ -132,7 +132,8 @@ struct color24_t {
 
 #if defined(__cplusplus)
 #define NEKO_DEFAULT_VAL() \
-    {}
+    {                      \
+    }
 #define NEKO_API() extern "C"
 #else
 #define NEKO_DEFAULT_VAL() {0}
@@ -306,5 +307,31 @@ inline void neko_snprintf(char *buffer, size_t buffer_size, const char *fmt, ...
 #define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
     char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
+
+#define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
+
+#define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name)  \
+    neko_assert(value);                                    \
+    type *cast_var_name = dynamic_cast<type *>(input_var); \
+    neko_assert(cast_var_name)
+#define NEKO_STATIC_CAST(type, input_var, cast_var_name)  \
+    neko_assert(value);                                   \
+    type *cast_var_name = static_cast<type *>(input_var); \
+    neko_assert(cast_var_name)
+
+#define NEKO_ENUM_FLAG(T)                                                                                                                                                    \
+    inline T operator~(T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); }                                                                       \
+    inline T operator|(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); }                   \
+    inline T operator&(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); }                   \
+    inline T operator^(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) ^ static_cast<std::underlying_type<T>::type>(b)); }                   \
+    inline T &operator|=(T &a, T b) { return reinterpret_cast<T &>(reinterpret_cast<std::underlying_type<T>::type &>(a) |= static_cast<std::underlying_type<T>::type>(b)); } \
+    inline T &operator&=(T &a, T b) { return reinterpret_cast<T &>(reinterpret_cast<std::underlying_type<T>::type &>(a) &= static_cast<std::underlying_type<T>::type>(b)); } \
+    inline T &operator^=(T &a, T b) { return reinterpret_cast<T &>(reinterpret_cast<std::underlying_type<T>::type &>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
+
+#define NEKO_MOVEONLY(class_name)                       \
+    class_name(const class_name &) = delete;            \
+    class_name &operator=(const class_name &) = delete; \
+    class_name(class_name &&) = default;                \
+    class_name &operator=(class_name &&) = default
 
 namespace Neko {}  // namespace Neko

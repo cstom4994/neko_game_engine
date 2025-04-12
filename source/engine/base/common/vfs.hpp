@@ -121,4 +121,6 @@ int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
 bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
 const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
 
+void neko_util_get_dir_from_file(char* buffer, u32 buffer_size, const char* file_path);
+
 }  // namespace Neko

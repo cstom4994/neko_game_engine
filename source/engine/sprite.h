@@ -7,6 +7,9 @@
 #include "engine/base.hpp"
 #include "engine/renderer/texture.h"
 
+// deps
+#include "deps/cute_aseprite.h"
+
 using namespace Neko;
 
 #if 0
@@ -34,14 +37,17 @@ struct AseSpriteFrame {
     float u0, v0, u1, v1;
 };
 
-struct AseSpriteLoop {
+struct AseSpriteTag {
     Slice<i32> indices;
+    ase_tag_t data;
+    String name;
 };
 
 struct AseSpriteData {
     Arena arena;
     Slice<AseSpriteFrame> frames;
-    HashMap<AseSpriteLoop> by_tag;
+    HashMap<AseSpriteTag> by_tag;
+    Array<String> tags;
     AssetTexture tex;
     i32 width;
     i32 height;
@@ -69,7 +75,7 @@ struct AseSprite {
 struct AseSpriteView {
     AseSprite* sprite;
     AseSpriteData data;
-    AseSpriteLoop loop;
+    AseSpriteTag loop;
 
     bool make(AseSprite* spr);
     i32 frame();

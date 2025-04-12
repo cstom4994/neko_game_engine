@@ -56,3 +56,15 @@ using Neko::CBase;
 extern CBase gBase;
 
 i32 neko_buildnum(void);
+
+FORMAT_ARGS(1)
+inline void neko_panic(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+
+    fprintf(stderr, "\n");
+
+    exit(1);
+}

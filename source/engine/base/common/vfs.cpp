@@ -448,4 +448,20 @@ const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *
     return out.data;
 }
 
+void neko_util_get_dir_from_file(char *buffer, u32 buffer_size, const char *file_path) {
+    u32 str_len = neko_strlen(file_path);
+    const char *end = (file_path + str_len);
+    for (u32 i = 0; i < str_len; ++i) {
+        if (file_path[i] == '/' || file_path[i] == '\\') {
+            end = &file_path[i];
+        }
+    }
+
+    size_t dir_len = end - file_path;
+    memcpy(buffer, file_path, NEKO_MIN(buffer_size, dir_len + 1));
+    if (dir_len + 1 <= buffer_size) {
+        buffer[dir_len] = '\0';
+    }
+}
+
 }  // namespace Neko

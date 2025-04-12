@@ -37,7 +37,7 @@ static void _flip_image_vertical(unsigned char* data, unsigned int width, unsign
     mem_free(new_data);
 }
 
-NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
+void neko_tex_flip_vertically(int width, int height, u8* data) {
     u8 rgb[4];
     for (int y = 0; y < height / 2; y++) {
         for (int x = 0; x < width; x++) {

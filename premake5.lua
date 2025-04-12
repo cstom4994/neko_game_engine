@@ -469,7 +469,7 @@ do
 
     files {"source/deps/luaalloc.c", "source/deps/glad/glad.c", "source/deps/ui.cpp"}
 
-    files {"source/deps/lua/**.h"}
+    files {"source/deps/**.h", "source/deps/**.hpp"}
 
     local luasrc = {"lapi.c", "lauxlib.c", "lbaselib.c", "lcode.c", "lcorolib.c", "lctype.c", "ldblib.c", "ldebug.c",
                     "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "linit.c", "liolib.c", "llex.c", "lmathlib.c", "lmem.c",

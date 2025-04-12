@@ -7,8 +7,6 @@
 #include "engine/graphics.h"
 #include "engine/asset.h"
 
-#include "deps/cute_aseprite.h"
-
 #if 0
 
 bool Atlas::load(String filepath, bool generate_mips) {
@@ -200,7 +198,9 @@ bool AseSpriteData::load(String filepath) {
         texture_create(&new_tex, data, ase_width, ase_height, 4, TEXTURE_ALIASED);
     }
 
-    HashMap<AseSpriteLoop> by_tag = {};
+    AseSpriteData s = {};
+
+    HashMap<AseSpriteTag> by_tag = {};
     by_tag.reserve(ase->tag_count);
 
     for (i32 i = 0; i < ase->tag_count; i++) {
@@ -208,19 +208,23 @@ bool AseSpriteData::load(String filepath) {
 
         u64 len = (u64)((tag.to_frame + 1) - tag.from_frame);
 
-        AseSpriteLoop loop = {};
+        AseSpriteTag tag_data = {};
 
-        loop.indices.resize(&arena, len);
+        tag_data.indices.resize(&arena, len);
         for (i32 j = 0; j < len; j++) {
-            loop.indices[j] = j + tag.from_frame;
+            tag_data.indices[j] = j + tag.from_frame;
         }
 
-        by_tag[fnv1a(tag.name)] = loop;
+        tag_data.data = tag;
+        tag_data.name = to_cstr(String(tag.name));
+
+        by_tag[fnv1a(tag.name)] = tag_data;
+
+        s.tags.push(tag_data.name);
     }
 
     LOG_INFO("created sprite with image id: {} and {} frames", new_tex.id, (unsigned long long)frames.len);
 
-    AseSpriteData s = {};
     s.arena = arena;
     s.tex = new_tex;
     s.frames = frames;
@@ -232,7 +236,14 @@ bool AseSpriteData::load(String filepath) {
 }
 
 void AseSpriteData::trash() {
+    for (auto &tag : by_tag) {
+        // tag.value->name.trash();
+    }
+    for (auto &tag : tags) {
+        tag.trash();
+    }
     by_tag.trash();
+    tags.trash();
     arena.trash();
 }
 
@@ -288,7 +299,7 @@ bool AseSpriteView::make(AseSprite *spr) {
     }
 
     AseSpriteData data = assets_get<AseSpriteData>(a);
-    const AseSpriteLoop *res = data.by_tag.get(spr->loop);
+    const AseSpriteTag *res = data.by_tag.get(spr->loop);
 
     AseSpriteView view = {};
     view.sprite = spr;
