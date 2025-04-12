@@ -22,7 +22,7 @@
 #include "engine/window.h"
 
 // deps
-#include "extern/luaalloc.h"
+#include "deps/luaalloc.h"
 
 using namespace Neko;
 using namespace Neko::ecs;

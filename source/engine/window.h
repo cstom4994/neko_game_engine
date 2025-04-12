@@ -6,7 +6,7 @@
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 class Window : public Neko::SingletonClass<Window> {
 private:

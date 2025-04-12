@@ -1,6 +1,6 @@
 
 
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/logger.hpp"
 #include "engine/ecs/lua_ecs.hpp"
 

@@ -18,11 +18,11 @@
 #include "engine/renderer/shader.h"
 #include "engine/renderer/renderer.h"
 #include "engine/input.h"
-#include "base/scripting/lua_wrapper.hpp"
-#include "extern/atlas.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "deps/atlas.h"
 
 // deps
-#include "extern/stb_truetype.h"
+#include <stb_truetype.h>
 
 using namespace Neko;
 

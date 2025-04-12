@@ -16,9 +16,9 @@
 #include "base/common/color.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
-#include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/scripting.h"
-#include "extern/luaalloc.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
+#include "deps/luaalloc.h"
 
 static void _error(const char *s) { script_error(s); }
 
@@ -69,29 +69,29 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #define STBI_FREE(p) mem_free(p)
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "extern/stb_image.h"
+#include <stb_image.h>
 
 #define STBIR_MALLOC(size, user_data) ((void)(user_data), mem_alloc(size))
 #define STBIR_FREE(ptr, user_data) ((void)(user_data), mem_free(ptr))
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include "extern/stb_image_resize2.h"
+#include <stb_image_resize.h>
 
 #define STBIW_MALLOC(sz) mem_alloc(sz)
 #define STBIW_REALLOC(p, newsz) mem_realloc(p, newsz)
 #define STBIW_FREE(p) mem_free(p)
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "extern/stb_image_write.h"
+#include <stb_image_write.h>
 
 #define STB_RECT_PACK_IMPLEMENTATION
-#include "extern/stb_rect_pack.h"
+#include <stb_rect_pack.h>
 
 #define STBTT_malloc(x, u) ((void)(u), mem_alloc(x))
 #define STBTT_free(x, u) ((void)(u), mem_free(x))
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "extern/stb_truetype.h"
+#include <stb_truetype.h>
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -108,7 +108,7 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #define MA_MALLOC(sz) mem_alloc((sz))
 #define MA_REALLOC(p, sz) mem_realloc((p), (sz))
 #define MA_FREE(p) mem_free((p))
-#include "extern/miniaudio.h"
+#include <miniaudio.h>
 
 #ifdef __clang__
 #pragma clang diagnostic pop

@@ -5,7 +5,7 @@
 #include "base/common/string.hpp"
 #include "engine/graphics.h"
 #include "base/common/color.hpp"
-#include "extern/glad/glad.h"
+#include "deps/glad/glad.h"
 
 namespace Neko {
 

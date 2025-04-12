@@ -1,9 +1,9 @@
-﻿
+
 #include "lua_database.h"
 
 #include "base/common/vfs.hpp"
 #include "engine/component.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 // 从另一个Lua状态复制表到当前状态 并创建代理对象 (LuaDatabase userdata)
 void luadb_get(lua_State *toL, lua_State *fromL, int index) {

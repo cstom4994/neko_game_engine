@@ -939,7 +939,7 @@ int LuaInspector::OnImGui(lua_State* L) {
     Assets& g_assets = the<Assets>();
     auto& GameCL = the<CL>();
 
-    ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
+    //ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("LuaInspector")) {
 
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
@@ -1051,12 +1051,12 @@ int LuaInspector::OnImGui(lua_State* L) {
                     if (view.kind == AssetKind_Image) {
                         const auto tex = assets_get<AssetTexture>(view);
                         f32 scale = 250.0 / tex.height;
-                        ImGui::Image(tex.id, ImVec2(tex.width, tex.height) * scale);
+                        ImGui::Image((ImTextureID)tex.id, ImVec2(tex.width, tex.height) * scale);
                     }
                     if (view.kind == AssetKind_AseSprite) {
                         const auto spr = assets_get<AseSpriteData>(view);
                         f32 scale = 250.0 / spr.tex.height;
-                        ImGui::Image(spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale);
+                        ImGui::Image((ImTextureID)spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale);
                     }
                 });
                 ImGui::EndTabItem();
@@ -1208,7 +1208,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             ImGui::Text("GL_IMAGE_2D %s:", name);
             GLuint value;
             glGetUniformuiv(program, location, &value);
-            ImGui::Image((intptr_t)value, ImVec2(256, 256));
+            ImGui::Image((ImTextureID)value, ImVec2(256, 256));
         } break;
 #endif
 
@@ -1217,7 +1217,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             // ImGui::SameLine();
             GLuint value;
             glGetUniformuiv(program, location, &value);
-            ImGui::Image((ImTextureID)(intptr_t)value, ImVec2(256, 256));
+            ImGui::Image((ImTextureID)value, ImVec2(256, 256));
         } break;
 
         default:
@@ -1636,8 +1636,8 @@ void Editor::OnImGui() {
         ImGui::EndMainMenuBar();
     }
 
-    ImGui::SetNextWindowViewport(GameCL.devui_vp);
-    ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
+    //ImGui::SetNextWindowViewport(GameCL.devui_vp);
+    //ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("查看器")) {
 
         if (ImGui::BeginTabBar("editor_inspector", ImGuiTabBarFlags_None)) {

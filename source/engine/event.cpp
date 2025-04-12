@@ -1,6 +1,6 @@
 #include "event.h"
 
-#include "base/scripting/luax.h"
+#include "engine/scripting/luax.h"
 #include "base/common/logger.hpp"
 #include "base/common/reflection.hpp"
 #include "engine/bootstrap.h"

@@ -8,7 +8,7 @@
 #include "engine/event.h"
 
 // deps
-#include "extern/stb_truetype.h"
+#include <stb_truetype.h>
 
 struct DrawDescription {
     float x;

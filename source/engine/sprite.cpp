@@ -7,7 +7,7 @@
 #include "engine/graphics.h"
 #include "engine/asset.h"
 
-#include "extern/cute_aseprite.h"
+#include "deps/cute_aseprite.h"
 
 #if 0
 

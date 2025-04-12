@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "engine/imgui.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ecs/entity.h"
 #include "base/common/color.hpp"
 

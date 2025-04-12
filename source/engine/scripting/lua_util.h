@@ -2,8 +2,8 @@
 #ifndef NEKO_LUA_UTIL_H
 #define NEKO_LUA_UTIL_H
 
-#include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/lua_function.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_function.hpp"
 
 struct TValue;
 struct Table;

@@ -1,5 +1,5 @@
 
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/logger.hpp"
 
 enum class TYPEID { tid_int8, tid_int16, tid_int32, tid_int64, tid_uint8, tid_uint16, tid_uint32, tid_uint64, tid_bool, tid_ptr, tid_float, tid_double, tid_COUNT };

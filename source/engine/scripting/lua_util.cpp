@@ -1,6 +1,6 @@
 
 
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 extern "C" {
 #include "lapi.h"
@@ -18,7 +18,7 @@ void PushTValue(lua_State *L, const TValue *v) {
         }
         lua_lock(L);
         {
-            TValue *io1 = s2v(L->top);                        // 获取栈顶的 TValue 结构
+            TValue *io1 = &(L->top).p->val;                   // 获取栈顶的 TValue 结构 (s2v(L->top)
             const TValue *io2 = v;                            // v 作为输入值
             io1->value_ = io2->value_;                        // 复制 TValue 的值
             io1->tt_ = io2->tt_;                              // 复制类型标识
@@ -32,7 +32,7 @@ void PushTValue(lua_State *L, const TValue *v) {
                 lua_pushlightuserdata(L, hvalue(v));  // 将table作为lightuserdata压入
                 break;
             case LUA_TSTRING:
-                lua_pushlstring(L, svalue(v), vslen(v));  // 压入字符串
+                lua_pushlstring(L, luavm_svalue(v), luavm_vslen(v));  // 压入字符串
                 break;
             default:
                 luaL_error(L, "unsupport %s", lua_typename(L, t));

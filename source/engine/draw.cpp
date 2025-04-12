@@ -1,4 +1,4 @@
-﻿#include "engine/draw.h"
+#include "engine/draw.h"
 
 #include "engine/asset.h"
 #include "engine/base.hpp"
@@ -7,7 +7,7 @@
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/edit.h"
 #include "engine/scripting/lua_util.h"
@@ -15,12 +15,12 @@
 #include "engine/components/camera.h"
 
 // deps
-#include "extern/cute_aseprite.h"
+#include "deps/cute_aseprite.h"
 
 // deps
-#include "extern/stb_image.h"
-#include "extern/stb_rect_pack.h"
-#include "extern/stb_truetype.h"
+#include <stb_image.h>
+#include <stb_rect_pack.h>
+#include <stb_truetype.h>
 
 using namespace Neko::luabind;
 using namespace Neko::util;

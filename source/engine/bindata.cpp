@@ -4,11 +4,11 @@
 #include "base/cbase.hpp"
 #include "base/common/util.hpp"
 #include "base/common/profiler.hpp"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/logger.hpp"
 
 // miniz
-#include "extern/miniz.h"
+#include <miniz/miniz.h>
 
 namespace Neko {
 

@@ -18,14 +18,14 @@
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "base/scripting/lua_wrapper.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
 // deps
-#include "extern/stb_image.h"
-#include "extern/stb_image_write.h"
-#include "extern/stb_rect_pack.h"
+#include <stb_image.h>
+#include <stb_rect_pack.h>
+#include <stb_image_write.h>
 
 static int limginfo(lua_State *L) {
     const char *filename = luaL_checkstring(L, 1);

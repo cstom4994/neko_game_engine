@@ -1,4 +1,4 @@
-﻿#include "engine/asset.h"
+#include "engine/asset.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -18,18 +18,18 @@
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/components/tiledmap.hpp"
-#include "base/scripting/lua_wrapper.hpp"
-#include "extern/glad/glad.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "deps/glad/glad.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
 // deps
-#include "extern/stb_image.h"
+#include <stb_image.h>
 
 // miniz
-#include "extern/miniz.h"
+#include <miniz/miniz.h>
 
 using namespace Neko::luabind;
 

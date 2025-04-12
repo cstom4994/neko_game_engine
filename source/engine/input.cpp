@@ -1,4 +1,4 @@
-﻿#include "engine/input.h"
+#include "engine/input.h"
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -9,7 +9,7 @@
 #include "engine/component.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/components/camera.h"
 

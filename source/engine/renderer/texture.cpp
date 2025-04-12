@@ -11,14 +11,14 @@
 #include "engine/bootstrap.h"
 
 // deps
-#include "extern/stb_image.h"
+#include <stb_image.h>
 
 #define CUTE_ASEPRITE_ASSERT neko_assert
 #define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
 #define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
-#include "extern/cute_aseprite.h"
+#include "deps/cute_aseprite.h"
 
 static void _flip_image_vertical(unsigned char* data, unsigned int width, unsigned int height) {
     unsigned int size, stride, i, j;

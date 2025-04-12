@@ -8,6 +8,6 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 #endif

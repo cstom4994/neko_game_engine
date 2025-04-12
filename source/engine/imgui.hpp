@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <malloc.h>
 
 #include "base/common/base.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 
 #include <array>
 #include <cassert>

@@ -1,7 +1,3 @@
--- premake5.lua
--- require "scripts/export-compile-commands"
--- require "scripts/ecc/ecc"
--- require "scripts/cmake/_cmake"
 workspace "neko"
 configurations {"Debug", "Debug_Profiler", "Release"}
 
@@ -31,9 +27,9 @@ defines {"UNICODE", "_UNICODE"}
 
 defines {"GLFW_INCLUDE_NONE"}
 
-includedirs {"source", "source/extern", "source/extern/luaot", "source/extern/glfw/include"}
+includedirs {"source", "source/deps", "source/deps/lua", "source/deps/glfw/include"}
 
-libdirs {"source/extern/glfw/lib-vc2022"}
+libdirs {"source/deps/glfw/lib-vc2022"}
 
 local function runlua(name)
     return function(config)
@@ -382,36 +378,11 @@ newaction {
     end
 }
 
-newaction {
-    trigger = 'luaot',
-    description = 'Lua AOT',
-    execute = function()
-        local outputDir = "source/gen"
-        local luaFiles = os.matchfiles("source/engine/*.lua")
-        for _, luaFilePath in ipairs(luaFiles) do
-            local file = luaFilePath:match("([^/]+)%.lua$")
-            local cppFilePath = outputDir .. "/" .. file .. "_embedded.cpp"
-            local luaot_exe = os.getcwd() .. "/bin/luaot"
-
-            if os.isfile(luaot_exe .. ".exe") then
-                runlua("luaot") {
-                    exe = luaot_exe,
-                    args = {"$in", "-o", "$out"},
-                    input = luaFilePath,
-                    output = outputDir .. "/" .. file .. "_luaot.c"
-                }
-            else
-                print("no luaot.exe")
-            end
-
-        end
-    end
-}
-
 filter "configurations:Debug"
 do
     defines {"_DEBUG", "DEBUG", "_CONSOLE"}
-    symbols "On"
+    symbols "Full"
+    optimize "off"
     architecture(arch)
 
     defines {"_WIN64"}
@@ -422,7 +393,8 @@ end
 filter "configurations:Debug_Profiler"
 do
     defines {"_DEBUG", "DEBUG", "_CONSOLE", "USE_PROFILER"}
-    symbols "On"
+    symbols "Full"
+    optimize "off"
     architecture(arch)
 
     defines {"_WIN64"}
@@ -444,8 +416,9 @@ end
 filter "configurations:*"
 do
     local function vcpkg(prj)
-        -- premake.w('<VcpkgTriplet Condition="\'$(Platform)\'==\'x64\'">x64-windows-static</VcpkgTriplet>')
-        premake.w('<VcpkgEnabled>false</VcpkgEnabled>')
+        premake.w('<VcpkgTriplet Condition="\'$(Platform)\'==\'x64\'">x64-windows-static</VcpkgTriplet>')
+        premake.w('<VcpkgEnabled>true</VcpkgEnabled>')
+        premake.w('<VcpkgEnableManifest>true</VcpkgEnableManifest>')
     end
 
     require('vstudio')
@@ -453,38 +426,61 @@ do
     premake.override(premake.vstudio.vc2010.elements, "globals", function(base, prj)
         local calls = base(prj)
         table.insertafter(calls, vs.globals, vcpkg)
+
+        if prj.name == "engine" then
+            local vcpkgFile = path.join(prj.location, "vcpkg.json")
+            local file = io.open(vcpkgFile, "w")
+            file:write([[
+{
+    "dependencies": [
+        "box2d",
+        "glfw3",
+        "miniaudio",
+        "miniz",
+        "stb",
+        {
+            "name": "imgui",
+            "features": [
+                "docking-experimental",
+                "glfw-binding",
+                "freetype",
+                "opengl3-binding"
+            ]
+        }
+    ],
+    "overrides": []
+}
+]])
+            file:close()
+        end
+
         return calls
     end)
 end
 
-project "base"
+project "deps"
 do
     kind "StaticLib"
     language "C++"
     targetdir "./bin"
     debugdir "./bin"
 
-    includedirs {"source", "source/extern/luaot", "source/extern/imgui", "source/extern/box2d"}
+    includedirs {"source", "source/deps/lua"}
 
-    files {"source/base/**.cpp", "source/base/**.hpp", "source/base/**.h", "source/base/**.lua"}
+    files {"source/deps/luaalloc.c", "source/deps/glad/glad.c", "source/deps/ui.cpp"}
 
-    files {"source/extern/imgui/**.cpp", "source/extern/imgui/**.h"}
+    files {"source/deps/lua/**.h"}
 
-    files {"source/extern/luaalloc.c", "source/extern/http.c", "source/extern/miniz.c", "source/extern/glad/glad.c",
-           "source/extern/ui.cpp"}
+    local luasrc = {"lapi.c", "lauxlib.c", "lbaselib.c", "lcode.c", "lcorolib.c", "lctype.c", "ldblib.c", "ldebug.c",
+                    "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "linit.c", "liolib.c", "llex.c", "lmathlib.c", "lmem.c",
+                    "loadlib.c", "lobject.c", "lopcodes.c", "loslib.c", "lparser.c", "lstate.c", "lstring.c",
+                    "lstrlib.c", "ltable.c", "ltablib.c", "ltm.c", "lundump.c", "lutf8lib.c", "lvm.c", "lzio.c"}
 
-    files {"source/extern/luaot/**.h"}
-
-    local luaotsrc = {"lapi.c", "lauxlib.c", "lbaselib.c", "lcode.c", "lcorolib.c", "lctype.c", "ldblib.c", "ldebug.c",
-                      "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "linit.c", "liolib.c", "llex.c", "lmathlib.c", "lmem.c",
-                      "loadlib.c", "lobject.c", "lopcodes.c", "loslib.c", "lparser.c", "lstate.c", "lstring.c",
-                      "lstrlib.c", "ltable.c", "ltablib.c", "ltm.c", "lundump.c", "lutf8lib.c", "lvm.c", "lzio.c"}
-
-    for i, v in ipairs(luaotsrc) do
-        luaotsrc[i] = "source/extern/luaot/" .. luaotsrc[i]
+    for i, v in ipairs(luasrc) do
+        luasrc[i] = "source/deps/lua/" .. luasrc[i]
     end
 
-    files {luaotsrc}
+    files {luasrc}
 
     files {"premake5.lua"}
 end
@@ -496,9 +492,7 @@ do
     targetdir "./bin"
     debugdir "./bin"
 
-    defines {"LUAOT_USE_GOTOS"}
-
-    includedirs {"source/extern/luaot", "source/extern/imgui", "source/extern/box2d", "source/extern/libffi/include"}
+    includedirs {"source/engine", "source/deps/lua"}
 
     files {"source/**.glsl", "source/**.vert", "source/**.frag", "source/**.geom", "source/**.comp"}
 
@@ -506,34 +500,13 @@ do
     files {"source/editor/**.cpp", "source/editor/**.c", "source/editor/**.hpp", "source/editor/**.h",
            "source/editor/**.lua"}
 
-    files {"source/extern/box2d/**.cpp"}
-
     files {"source/gen/*_embedded.cpp"}
-    -- files {"source/gen/*_luaot.c"}
 
     files {"source/game/**.lua"}
 
     files {"premake5.lua"}
 
-    links {"base"}
+    links {"deps"}
 
-    links {"ws2_32", "wininet", "glfw3"}
-end
-
-project "luaot"
-do
-    kind "ConsoleApp"
-    language "C++"
-    targetdir "./bin"
-    debugdir "./bin"
-
-    includedirs {"source", "source/extern/luaot"}
-
-    defines {"LUAOT_USE_GOTOS"}
-
-    files {"source/extern/luaot/luaot.c"}
-
-    files {"premake5.lua"}
-
-    links {"base"}
+    links {"ws2_32", "wininet"}
 end

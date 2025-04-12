@@ -14,9 +14,9 @@
 #include "engine/event.h"
 #include "engine/graphics.h"
 #include "engine/imgui.hpp"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/reflection.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 #include "engine/renderer/renderer.h"
 #include "engine/editor.h"
@@ -266,7 +266,7 @@ void CL::game_draw() {
                 float viewportAspectRatio = state.width / state.height;
                 float scale = std::min(contentSize.x / state.width, contentSize.y / state.height);
 
-                ImGui::Image(currentRenderViewSource.rt->output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
+                ImGui::Image((ImTextureID)currentRenderViewSource.rt->output, ImVec2(state.width * scale, state.height * scale), ImVec2(0, 1), ImVec2(1, 0));
 
                 bool on_hovered = ImGui::IsItemHovered();
                 auto &editor = the<Editor>();

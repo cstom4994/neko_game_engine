@@ -7,7 +7,7 @@
 #include "base/common/color.hpp"
 #include "base/common/vfs.hpp"
 #include "base/common/xml.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"

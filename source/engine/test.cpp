@@ -1,4 +1,4 @@
-﻿#include "engine/test.h"
+#include "engine/test.h"
 
 #include <algorithm>
 #include <chrono>
@@ -20,9 +20,9 @@
 #include "engine/edit.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/reflection.hpp"
-#include "base/scripting/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
 #pragma region test

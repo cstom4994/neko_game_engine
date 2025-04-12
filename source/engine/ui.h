@@ -8,11 +8,11 @@
 #include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "engine/renderer/renderer.h"
 
 // deps
-#include "extern/ui.h"
+#include "deps/ui.h"
 
 #ifdef __cplusplus
 #define ui_widths(...)                            \

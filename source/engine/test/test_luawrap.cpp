@@ -6,7 +6,7 @@
 #include <string>
 #include <thread>
 
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 constexpr static inline const_str table_show_src = R"lua(
 function _table_show(t, name, indent)

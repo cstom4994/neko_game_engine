@@ -8,7 +8,7 @@
 
 #include "engine/base.hpp"
 #include "engine/event.h"
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 #include <miniaudio.h>
 

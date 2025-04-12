@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "base/scripting/lua_wrapper.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 #include "engine/draw.h"
 #include "engine/sound.h"
