@@ -1,9 +1,9 @@
 
-#include "wrap_draw.h"
+#include "engine/scripting/wrap_meta.h"
 
 #include "engine/bootstrap.h"
 
-namespace Neko::mt_font {
+namespace Neko::FontWrap {
 
 static FontFamily &to(lua_State *L, int idx) { return luabind::checkudata<FontFamily>(L, idx); }
 
@@ -17,6 +17,7 @@ static int mt_font_gc(lua_State *L) {
     lua_getiuservalue(L, 1, 1);
     String name = luax_check_string(L, -1);
     font.trash();
+    destroyudata<FontFamily>(L);
     return 0;
 }
 
@@ -87,9 +88,9 @@ int neko_font_load(lua_State *L) {
     return 1;
 }
 
-}  // namespace Neko::mt_font
+}  // namespace Neko::FontWrap
 
-namespace Neko::mt_sprite {
+namespace Neko::SpriteWrap {
 
 static AseSprite &to(lua_State *L, int idx) { return luabind::checkudata<AseSprite>(L, idx); }
 
@@ -183,6 +184,7 @@ static int mt_close(lua_State *L) {
 
 static int mt_sprite_gc(lua_State *L) {
     auto &self = to(L, 1);
+    destroyudata<AseSprite>(L);
     return 0;
 }
 
@@ -218,4 +220,4 @@ int neko_sprite_load(lua_State *L) {
     return 1;
 }
 
-}  // namespace Neko::mt_sprite
+}  // namespace Neko::SpriteWrap

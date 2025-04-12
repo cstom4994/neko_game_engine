@@ -626,7 +626,7 @@ void CL::init() {
             {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
-            {EventMask::Update, [](Event evt) -> int { return the<Sound>().sound_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<Sound>().OnUpdate(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Editor>().edit_update_all(evt); }},
 
@@ -635,7 +635,7 @@ void CL::init() {
                  the<EventHandler>().EventPushLuaType(OnPostUpdate);
                  return 0;
              }},
-            {EventMask::PostUpdate, [](Event evt) -> int { return the<Sound>().sound_postupdate(evt); }},
+            {EventMask::PostUpdate, [](Event evt) -> int { return the<Sound>().OnPostUpdate(evt); }},
             {EventMask::PostUpdate, [](Event evt) -> int { return the<Entity>().entity_update_all(evt); }},
 
             {EventMask::Draw,

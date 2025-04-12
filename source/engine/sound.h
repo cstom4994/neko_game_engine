@@ -22,32 +22,39 @@ struct AudioFile {
 
 struct SoundSource {
     ma_sound ma;
-    bool zombie;
-    bool dead_end;
-
-    void trash();
+    bool zombie;  // 是否已经脱离lua的gc管理
+    bool end;     //
+    bool dead;
 };
 
-SoundSource *sound_load(String filepath);
+struct SoundIndex {
+    SoundSource *ptr;
+};
 
-int open_mt_sound(lua_State *L);
-
-inline int neko_sound_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    SoundSource *sound = sound_load(str);
-    if (sound == nullptr) {
-        return 0;
-    }
-
-    luax_ptr_userdata(L, sound, "mt_sound");
-    return 1;
-}
+struct SoundGarbage {
+    SoundSource *ptr;
+};
 
 class Sound : public SingletonClass<Sound> {
+    void *miniaudio_vfs;
+    ma_engine audio_engine;
+    Array<SoundGarbage> garbage_sounds;
+    Mutex garbage_collect_mutex;
+
 public:
     void sound_init();
     void sound_fini();
-    int sound_update_all(Event evt);
-    int sound_postupdate(Event evt);
+    int OnUpdate(Event evt);
+    int OnPostUpdate(Event evt);
+
+    void GarbageCollect();
+
+    inline u64 GarbageCount() const { return garbage_sounds.len; }
+
+    inline void PushSoundGarbage(SoundGarbage g) {
+        LockGuard<Mutex> lock(garbage_collect_mutex);
+        garbage_sounds.push(g);
+    }
+
+    inline ma_engine *GetAudioEngine() { return &audio_engine; };
 };

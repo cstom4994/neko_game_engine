@@ -1,4 +1,4 @@
-﻿
+
 
 #include <filesystem>
 
@@ -22,8 +22,8 @@
 #include "engine/window.h"
 #include "engine/scripting/lua_util.h"
 #include "engine/scripting/lua_database.h"
-#include "engine/scripting/wrap_draw.h"
 #include "engine/components/transform.h"
+#include "engine/scripting/wrap_meta.h"
 
 // lua
 #include "lapi.h"
@@ -137,6 +137,24 @@ static int open_mt_channel(lua_State *L) {
 #if 0
 
 // mt_image
+
+static int neko_image_load(lua_State *L) {
+    String str = luax_check_string(L, 1);
+    bool generate_mips = lua_toboolean(L, 2);
+
+    AssetLoadData desc = {};
+    desc.kind = AssetKind_Image;
+    // desc.generate_mips = generate_mips;
+
+    Asset asset = {};
+    bool ok = asset_load(desc, str, &asset);
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, asset.hash, "mt_image");
+    return 1;
+}
 
 static int mt_image_draw(lua_State *L) {
     Image img = check_asset_mt(L, 1, "mt_image").image;
@@ -623,7 +641,7 @@ static int neko_scissor_rect(lua_State *L) {
 
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
-    ma_engine_set_volume(&the<CL>().audio_engine, (float)vol);
+    ma_engine_set_volume(the<Sound>().GetAudioEngine(), (float)vol);
     return 0;
 }
 
@@ -635,7 +653,7 @@ static int neko_get_channel(lua_State *L) {
         return 0;
     }
 
-    luax_ptr_userdata(L, chan, "mt_channel");
+    luax_new_userdata(L, chan, "mt_channel");
     return 1;
 }
 
@@ -724,7 +742,7 @@ static int neko_make_thread(lua_State *L) {
     String contents = luax_check_string(L, 1);
     LuaThread *lt = (LuaThread *)mem_alloc(sizeof(LuaThread));
     lt->make(contents, "thread");
-    luax_ptr_userdata(L, lt, "mt_thread");
+    luax_new_userdata(L, lt, "mt_thread");
     return 1;
 }
 
@@ -736,25 +754,7 @@ static int neko_make_channel(lua_State *L) {
     }
 
     LuaChannel *chan = lua_channel_make(name, len);
-    luax_ptr_userdata(L, chan, "mt_channel");
-    return 1;
-}
-
-static int neko_image_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-    bool generate_mips = lua_toboolean(L, 2);
-
-    AssetLoadData desc = {};
-    desc.kind = AssetKind_Image;
-    // desc.generate_mips = generate_mips;
-
-    Asset asset = {};
-    bool ok = asset_load(desc, str, &asset);
-    if (!ok) {
-        return 0;
-    }
-
-    luax_new_userdata(L, asset.hash, "mt_image");
+    luax_new_userdata(L, chan, "mt_channel");
     return 1;
 }
 
@@ -2649,10 +2649,10 @@ static int open_neko(lua_State *L) {
             // construct types
             {"make_thread", neko_make_thread},
             {"make_channel", neko_make_channel},
-            {"image_load", neko_image_load},
-            {"font_load", mt_font::neko_font_load},
-            {"sound_load", neko_sound_load},
-            {"sprite_load", mt_sprite::neko_sprite_load},
+            //{"image_load", neko_image_load},
+            {"font_load", FontWrap::neko_font_load},
+            {"sound_load", SoundWrap::neko_sound_load},
+            {"sprite_load", SpriteWrap::neko_sprite_load},
             // {"atlas_load", neko_atlas_load},
             // {"tilemap_load", neko_tilemap_load},
             {"bindata_load", mt_bindata::neko_bindata_load},
@@ -2766,10 +2766,10 @@ void open_neko_api(lua_State *L) {
     lua_CFunction funcs[] = {
             open_mt_thread,
             open_mt_channel,
-            open_mt_sound,
 
-            mt_font::open_mt_font,
-            mt_sprite::open_mt_sprite,
+            SoundWrap::open_mt_sound,
+            FontWrap::open_mt_font,
+            SpriteWrap::open_mt_sprite,
             mt_bindata::open_mt_bindata,
 
     // open_mt_image,

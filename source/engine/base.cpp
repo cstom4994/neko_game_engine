@@ -105,6 +105,9 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #define MA_NO_ENCODING
 #define MA_NO_GENERATION
 #define MINIAUDIO_IMPLEMENTATION
+#define MA_MALLOC(sz) mem_alloc((sz))
+#define MA_REALLOC(p, sz) mem_realloc((p), (sz))
+#define MA_FREE(p) mem_free((p))
 #include "extern/miniaudio.h"
 
 #ifdef __clang__

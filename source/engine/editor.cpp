@@ -1649,6 +1649,10 @@ void Editor::OnImGui() {
                 // the<EventHandler>().EventPushLuaArgs(L, );
                 errcheck(L, luax_pcall_nothrow(L, 1, 0));
 
+                ImGui::Text("待回收音效数量: %llu", the<Sound>().GarbageCount());
+                ImGui::SameLine();
+                if (ImGui::Button("回收")) the<Sound>().GarbageCollect();
+
                 ImGui::EndTabItem();
             }
 

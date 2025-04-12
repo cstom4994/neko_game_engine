@@ -113,20 +113,6 @@ public:
     void font_init();
 };
 
-namespace Neko {
-
-namespace mt_font {
-int open_mt_font(lua_State* L);
-int neko_font_load(lua_State* L);
-}  // namespace mt_font
-
-namespace mt_sprite {
-int open_mt_sprite(lua_State* L);
-int neko_sprite_load(lua_State* L);
-}  // namespace mt_sprite
-
-}  // namespace Neko
-
 typedef struct {
     float position[2];
     float texcoord[2];

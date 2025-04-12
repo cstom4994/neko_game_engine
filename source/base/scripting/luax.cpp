@@ -347,7 +347,7 @@ void LuaVariant::push(lua_State *L) {
             break;
         }
         case LUA_TUSERDATA: {
-            luax_ptr_userdata(L, udata.ptr, udata.tname.data);
+            luax_new_userdata(L, udata.ptr, udata.tname.data);
             break;
         }
         default:

@@ -863,14 +863,14 @@ static int l_ui_check_clip(lua_State *L) {
 
 static int l_ui_get_current_container(lua_State *L) {
     ui_container_t *container = ui_get_current_container(ui_ctx());
-    luax_ptr_userdata(L, container, "mt_ui_container");
+    luax_new_userdata(L, container, "mt_ui_container");
     return 1;
 }
 
 static int l_ui_get_container(lua_State *L) {
     String name = luax_check_string(L, 1);
     ui_container_t *container = ui_get_container(ui_ctx(), name.data);
-    luax_ptr_userdata(L, container, "mt_ui_container");
+    luax_new_userdata(L, container, "mt_ui_container");
     return 1;
 }
 
@@ -1164,7 +1164,7 @@ static int l_ui_get_last_id(lua_State *L) {
 }
 
 static int l_ui_get_style(lua_State *L) {
-    luax_ptr_userdata(L, ui_ctx()->style, "mt_ui_style");
+    luax_new_userdata(L, ui_ctx()->style, "mt_ui_style");
     return 1;
 }
 
@@ -1189,7 +1189,7 @@ static int l_ui_color(lua_State *L) {
 static int l_ui_ref(lua_State *L) {
     MUIRef *ref = (MUIRef *)mem_alloc(sizeof(MUIRef));
     lua_ui_set_ref(L, ref, 1);
-    luax_ptr_userdata(L, ref, "mt_ui_ref");
+    luax_new_userdata(L, ref, "mt_ui_ref");
     return 1;
 }
 
