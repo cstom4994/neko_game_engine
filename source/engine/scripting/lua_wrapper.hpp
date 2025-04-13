@@ -208,7 +208,6 @@ constexpr T *udata_new(lua_State *L, int nupvalue) {
     } else {
         void *storage = lua_newuserdatauv(L, sizeof(T), nupvalue);
         std::memset(storage, 0, sizeof(T));
-        std::memset(storage, 0, sizeof(T));
         return udata_align<T>(storage);
     }
 }
@@ -266,9 +265,30 @@ T &newudata(lua_State *L, Args &&...args) {
     return *o;
 }
 
+template <typename T, typename... Args>
+T &newudata_raw(lua_State *L, Args &&...args) {
+    int nupvalue = 0;
+    if constexpr (udata_has_nupvalue<T>::value) {
+        nupvalue = udata<T>::nupvalue;
+    }
+
+    T *o = static_cast<T *>(lua_newuserdatauv(L, sizeof(T), nupvalue));
+    std::memset(o, 0, sizeof(T));
+
+    new (o) T(std::forward<Args>(args)...);
+    getmetatable<T>(L);
+    lua_setmetatable(L, -2);
+    return *o;
+}
+
 template <typename T>
 T &checkudata(lua_State *L, int arg, const_str tname = reflection::name_v<T>.data()) {
     return *udata_align<T>(luaL_checkudata(L, arg, tname));
+}
+
+template <typename T>
+T &checkudata_raw(lua_State *L, int arg, const_str tname = reflection::name_v<T>.data()) {
+    return *static_cast<T *>(luaL_checkudata(L, arg, tname));
 }
 
 inline std::string_view checkstrview(lua_State *L, int idx) {
@@ -2388,7 +2408,7 @@ public:
         auto &meta = GetMeta();
         size_t magic_idx = meta.field_offsets[meta.magic_key];
         const TValue *magic = gval(gnode(t, magic_idx));
-        if (!ttisfloat(magic) || fltvalue(magic) != meta.magic_value) {
+        if (fltvalue(magic) != meta.magic_value) {
             index = lua_absindex(L, index);
             T struct_instance;
             constexpr std::size_t field_count = reflection::field_count<T>;

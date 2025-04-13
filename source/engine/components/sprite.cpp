@@ -1,4 +1,4 @@
-﻿
+
 #include "sprite.h"
 
 #include "base/common/profiler.hpp"
@@ -22,7 +22,7 @@ static void _set_atlas(const char *filename, bool err) {
     bool ok = asset_load(AssetLoadData{AssetKind_Image, true}, filename, NULL);
 
     if (!ok) {
-        if (err) error("couldn't load atlas from path '%s', check path and format", filename);
+        if (err) errorf_marco("couldn't load atlas from path '%s', check path and format", filename);
         return;
     }
 

@@ -281,9 +281,9 @@ NEKO_API() void errorf(const char *fmt, ...);
 #define line_str_(line) line_str__(line)
 #define line_str() line_str_(__LINE__)
 
-#define error(...) errorf(line_str() __VA_ARGS__)
+#define errorf_marco(...) errorf(line_str() __VA_ARGS__)
 
-#define error_assert(cond, ...) ((cond) ? 0 : (error("assertion '" #cond "' failed ... " __VA_ARGS__), 0))
+#define error_assert(cond, ...) ((cond) ? 0 : (errorf_marco("assertion '" #cond "' failed ... " __VA_ARGS__), 0))
 
 #define normal_assert(cond, ...) ((cond) ? 0 : (neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n" __VA_ARGS__, #cond, __func__, __FILE__, __LINE__), 0))
 

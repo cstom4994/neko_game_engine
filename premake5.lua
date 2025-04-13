@@ -1,5 +1,5 @@
 workspace "neko"
-configurations {"Debug", "Debug_Profiler", "Release"}
+configurations {"Debug", "Debug_Profiler", "Debug_Sanitize", "Release"}
 
 buildoptions {"/utf-8", "/Zc:__cplusplus", "/permissive", "/bigobj", "/Zc:preprocessor", "/Zc:wchar_t", "/Zc:forScope",
               "/MP"}
@@ -21,15 +21,13 @@ defines {"WIN32", "_WIN32", "_WINDOWS", "NOMINMAX", "_CRT_SECURE_NO_DEPRECATE", 
          "_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING", "WIN32_LEAN_AND_MEAN", "_SCL_SECURE_NO_WARNINGS",
          "_CRT_NONSTDC_NO_DEPRECATE"}
 
-defines {"LUA_USE_LONGJMP", "NEKO_CFFI", "NEKO_BOX2D"}
+defines {"NEKO_CFFI", "NEKO_BOX2D"}
 
 defines {"UNICODE", "_UNICODE"}
 
 defines {"GLFW_INCLUDE_NONE"}
 
-includedirs {"source", "source/deps", "source/deps/lua", "source/deps/glfw/include"}
-
-libdirs {"source/deps/glfw/lib-vc2022"}
+includedirs {"source", "source/deps", "source/deps/lua"}
 
 local function runlua(name)
     return function(config)
@@ -400,6 +398,20 @@ do
     defines {"_WIN64"}
 
     targetsuffix("_debug_profiler")
+end
+
+filter "configurations:Debug_Sanitize"
+do
+    defines {"_DEBUG", "DEBUG", "_CONSOLE"}
+    symbols "on"
+    optimize "debug"
+    sanitize {"Address"}
+    editandcontinue "off"
+    architecture(arch)
+
+    defines {"_WIN64"}
+
+    targetsuffix("_debug_sanitize")
 end
 
 filter "configurations:Release"

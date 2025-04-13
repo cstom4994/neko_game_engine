@@ -155,7 +155,8 @@ function CPlayer:update(dt)
         -- neko.sound_load(choose({"@gamedata/assets/sounds/attackBow01.wav", "@gamedata/assets/sounds/attackBow02.wav"})):start()
 
         -- neko.sound_load("@gamedata/assets/sounds/attackBow01.wav")
-        neko.sound_load("@gamedata/assets/sounds/Shooting0002.wav"):start()
+        neko.sound_load("@gamedata/assets/sounds/Shooting0002.ogg"):start()
+        -- shoot_sound_1:start()
 
         LocalGame.world:add(Bullet(ox + dx, oy + dy - 5, angle))
 

@@ -220,6 +220,8 @@ function haha()
         -- arrow_img = neko.sprite_load "@gamedata/assets/arrow.ase"
         bullet_img = neko.sprite_load "@gamedata/assets/bullet002.ase"
 
+        shoot_sound_1 = neko.sound_load("@gamedata/assets/sounds/Shooting0002.wav")
+
         local objs = LocalGame.level_1_obj
         for object_group_name, object_groups in pairs(objs) do
             if object_group_name == "collisions" then

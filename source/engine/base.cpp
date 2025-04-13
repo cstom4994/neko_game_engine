@@ -93,6 +93,9 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
+#define STB_VORBIS_HEADER_ONLY
+#include <stb_vorbis.c>
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
@@ -113,3 +116,6 @@ Color color(f32 r, f32 g, f32 b, f32 a) { return Color{r, g, b, a}; }
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+#undef STB_VORBIS_HEADER_ONLY
+#include <stb_vorbis.c>

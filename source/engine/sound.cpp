@@ -115,7 +115,7 @@ void sound_trash(SoundSource *v) {
     mem_del(v);
 }
 
-bool sound_load(SoundIndex &idx, String filepath) {
+SoundSource *sound_load(String filepath) {
     PROFILE_FUNC();
 
     ma_result res = MA_SUCCESS;
@@ -128,22 +128,20 @@ bool sound_load(SoundIndex &idx, String filepath) {
     res = ma_sound_init_from_file(the<Sound>().GetAudioEngine(), cpath.data, 0, nullptr, nullptr, &v->ma);
     if (res != MA_SUCCESS) {
         sound_trash(v);
-        return false;
+        return nullptr;
     }
 
-    res = ma_sound_set_end_callback(&v->ma, on_sound_end, &v);
+    res = ma_sound_set_end_callback(&v->ma, on_sound_end, v);
     if (res != MA_SUCCESS) {
         sound_trash(v);
-        return false;
+        return nullptr;
     }
 
     v->zombie = false;
     v->end = false;
     v->dead = false;
 
-    idx.ptr = v;
-
-    return true;
+    return v;
 }
 
 namespace Neko {
@@ -176,11 +174,11 @@ static int mt_sound_gc(lua_State *L) {
         idx.ptr = nullptr;
     } else {
         v->zombie = true;
-        SoundGarbage garbage = {v};
+        SoundIndex garbage = {v};
         the<Sound>().PushSoundGarbage(garbage);
     }
 
-    // destroyudata<SoundIndex>(L);
+    destroyudata<SoundIndex>(L);
 
     return 0;
 }
@@ -367,15 +365,16 @@ int open_mt_sound(lua_State *L) { return 0; }
 int neko_sound_load(lua_State *L) {
     String str = luax_check_string(L, 1);
 
-    SoundIndex &sound = luabind::newudata<SoundIndex>(L);
+    SoundIndex &idx = luabind::newudata<SoundIndex>(L);
     lua_pushstring(L, str.cstr());
     lua_setiuservalue(L, -2, 1);
-    // lua_pushinteger(L, LUA_NOREF);
-    // lua_setiuservalue(L, -2, 2);
-    bool ok = sound_load(sound, str);
-    if (!ok) {
+    SoundSource *sound = sound_load(str);
+    if (sound == nullptr) {
         return 0;
     }
+
+    idx.ptr = sound;
+
     return 1;
 }
 
@@ -415,16 +414,13 @@ int Sound::OnUpdate(Event evt) { return 0; }
 int Sound::OnPostUpdate(Event evt) {
     PROFILE_FUNC();
 
-    LockGuard<Mutex> lock(garbage_collect_mutex);
-
-    Array<SoundGarbage> &sounds = garbage_sounds;
+    Array<SoundIndex> &sounds = garbage_sounds;
     for (u64 i = 0; i < sounds.len;) {
         SoundSource *v = sounds[i].ptr;
 
         if (v->end) {
             assert(v->zombie);
             sound_trash(v);
-
             sounds[i] = sounds[sounds.len - 1];
             sounds.len--;
         } else {
@@ -435,8 +431,7 @@ int Sound::OnPostUpdate(Event evt) {
 }
 
 void Sound::GarbageCollect() {
-    LockGuard<Mutex> lock(garbage_collect_mutex);
-    for (SoundGarbage sound : garbage_sounds) {
+    for (SoundIndex &sound : garbage_sounds) {
         sound_trash(sound.ptr);
     }
     garbage_sounds.len = 0;

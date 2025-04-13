@@ -31,15 +31,10 @@ struct SoundIndex {
     SoundSource *ptr;
 };
 
-struct SoundGarbage {
-    SoundSource *ptr;
-};
-
 class Sound : public SingletonClass<Sound> {
     void *miniaudio_vfs;
     ma_engine audio_engine;
-    Array<SoundGarbage> garbage_sounds;
-    Mutex garbage_collect_mutex;
+    Array<SoundIndex> garbage_sounds;
 
 public:
     void sound_init();
@@ -51,10 +46,7 @@ public:
 
     inline u64 GarbageCount() const { return garbage_sounds.len; }
 
-    inline void PushSoundGarbage(SoundGarbage g) {
-        LockGuard<Mutex> lock(garbage_collect_mutex);
-        garbage_sounds.push(g);
-    }
+    inline void PushSoundGarbage(SoundIndex g) { garbage_sounds.push(g); }
 
     inline ma_engine *GetAudioEngine() { return &audio_engine; };
 };
