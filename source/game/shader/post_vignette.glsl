@@ -5,17 +5,14 @@ layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aTexCoords;
 
 out vec2 TexCoords;
-out vec2 vert_pos;
 
-// 电影效果
-out vec2 vert_uv;
+out vec2 vert_pos;
 
 void main()
 {
     gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0); 
     TexCoords = aTexCoords;
 	vert_pos = aPos;
-	vert_uv = vert_pos / 2 + 0.5f;
 }
 
 #end VERTEX
@@ -47,14 +44,6 @@ float kernel[] = {
 4.0f / sum, 16.0f / sum, 26.0f / sum, 16.0f / sum, 4.0f / sum,
 1.0f / sum, 4.0f / sum, 7.0f / sum, 4.0f / sum, 1.0f / sum
 };
-
-// 电影效果
-in vec2 vert_uv;
-
-uniform float chromatic_aberration_effect_start = 1;
-uniform float rOffset = 0.005;
-uniform float gOffset = 0.005;
-uniform float bOffset = -0.005;
 
 uniform vec2 pixel_count = vec2(512.0, 512.0 * (9.0/16.0));
 
@@ -122,15 +111,6 @@ void main()
     //     }
     // }
     // FragColor = vec4(blur_pixel, pixel.a);
-
-	// 电影效果
-    // float chromatic_aberration_effect = dot(vec2(vert_pos), vec2(vert_pos)) / chromatic_aberration_effect_start;
-    // pixel = vec4(
-	// 	texture(NekoTextureInput, vert_uv + rOffset * chromatic_aberration_effect).r,
-	// 	texture(NekoTextureInput, vert_uv + gOffset * chromatic_aberration_effect).g,
-	// 	texture(NekoTextureInput, vert_uv + bOffset * chromatic_aberration_effect).b,
-	// 	1
-    // );
 
 
 

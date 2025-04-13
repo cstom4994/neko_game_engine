@@ -49,7 +49,7 @@ function CPlayer:idle(dt)
 
     while true do
         -- if player.health > 0 then
-        if neko.key_down "w" or neko.key_down "s" or neko.key_down "a" or neko.key_down "d" then
+        if neko.key_down "w" or neko.key_down "s" or neko.key_down "a" or neko.key_down "d" or neko.key_down "space" then
             self:run(dt)
             self.sprite:play "Idle"
         end
@@ -64,6 +64,8 @@ function CPlayer:run(dt)
 
     while true do
         local vx, vy = 0, 0
+
+        local jump = 0
 
         local mag = 100
 
@@ -80,9 +82,12 @@ function CPlayer:run(dt)
         if neko.key_down "d" then
             vx = vx + 1
         end
+        if neko.key_down "space" then
+            jump = jump + 1
+        end
         -- end
 
-        if vx == 0 and vy == 0 then
+        if vx == 0 and vy == 0 and jump == 0 then
             return
         end
 
@@ -158,7 +163,7 @@ function CPlayer:update(dt)
         neko.sound_load("@gamedata/assets/sounds/Shooting0002.ogg"):start()
         -- shoot_sound_1:start()
 
-        LocalGame.world:add(Bullet(ox + dx, oy + dy - 5, angle))
+        LocalGame.world:add(Bullet(ox + dx, oy + dy - 5, angle, 500, "player_bullet"))
 
         -- score = score - 1
     end
@@ -218,12 +223,14 @@ function CEnemy:new(x, y, name, brain)
     self.sprite = neko.sprite_load "@gamedata/assets/enemy.ase"
     self.facing_left = false
     self.hit_cooldown = 0
+    self.shoot_cooldown = 0
     self.health = 100
     self.health_max = 100
     self.spring = Spring()
     self.update_thread = coroutine.create(self.co_update)
     self.hpbar = Hpbar(self)
     self.type = "enemy"
+    self.can_shoot = false
 
     self.name = name or "chort"
 
@@ -241,6 +248,10 @@ function CEnemy:new(x, y, name, brain)
     end
 
     self.draw_info_on_world = {}
+
+    if self.name == "skel" then
+        self.shoot_cooldown = 1.5
+    end
 
 end
 
@@ -292,8 +303,10 @@ function CEnemy:hit(other, damage)
     self.hit_cooldown = 0.2
 
     if getmetatable(other) == Bullet then
-        self.body:set_velocity(heading(other.angle, 200))
-        self.spring:pull(0.3)
+        if other.type == "player_bullet" then
+            self.body:set_velocity(heading(other.angle, 200))
+            self.spring:pull(0.3)
+        end
     end
 end
 
@@ -336,6 +349,25 @@ function CEnemy:co_update(dt)
 
                 local mag = 40
                 self.body:set_velocity(dx * mag, dy * mag)
+
+                if self.shoot_cooldown < 0 and self.can_shoot then
+                    if self.name == "skel" then
+                        local ox = self.x
+                        local oy = self.y
+
+                        local mx, my = player.x, player.y
+
+                        local angle = direction(ox, oy, mx, my)
+                        self.shoot_angle = angle
+                        local dx, dy = heading(angle, 16)
+
+                        -- neko.sound_load(choose({"@gamedata/assets/sounds/attackBow01.wav",
+                        --                         "@gamedata/assets/sounds/attackBow02.wav"})):start()
+
+                        LocalGame.world:add(Bullet(ox + dx, oy + dy - 5, angle, 200, "enemy_bullet"))
+                    end
+                    self.shoot_cooldown = 1.5
+                end
             end
 
         end
@@ -346,6 +378,7 @@ end
 
 function CEnemy:update(dt)
     self.hit_cooldown = self.hit_cooldown - dt
+    self.shoot_cooldown = self.shoot_cooldown - dt
     self.x, self.y = self.body:position()
     self.sprite:update(dt)
     self.spring:update(dt)
@@ -415,7 +448,9 @@ function CEnemy.begin_contact(a, b)
         -- LocalGame.world:kill(self)
         hit_player(choose {4, 5, 6})
     elseif mt == Bullet then
-        self:hit(other, 50)
+        if other.type == "player_bullet" then
+            self:hit(other, 50)
+        end
     end
 end
 
@@ -513,15 +548,17 @@ end
 
 class "Bullet"
 
-function Bullet:new(x, y, angle)
+function Bullet:new(x, y, angle, v, type)
     self.x = x
     self.y = y
     self.angle = angle
     self.lifetime = 0
+    self.type = type or "player_bullet"
+    self.v = v or 500
 end
 
 function Bullet:on_create()
-    local vx, vy = heading(self.angle, 500)
+    local vx, vy = heading(self.angle, self.v)
 
     self.body = LocalGame.b2:make_dynamic_body{
         x = self.x,
@@ -570,11 +607,17 @@ function Bullet.begin_contact(a, b)
     local self = LocalGame.world:query_id(a:udata())
     local is_player = b:udata() == player.id
 
-    if not is_player then
-        LocalGame.world:kill(self)
-        -- 播放弓箭音效
-        -- choose({sound_hitbow_1, sound_hitbow_2, sound_hitbow_3}):start()
+    if self.type == "enemy_bullet" then
+        if is_player then
+            hit_player(choose {4, 5, 6})
+            LocalGame.world:kill(self)
+        end
+    else
+        if not is_player then
+            LocalGame.world:kill(self)
+        end
     end
+
 end
 
 class "Hpbar"
@@ -702,7 +745,7 @@ function Target:draw()
                     if enemy_mt == CEnemy then
                         v:hit(self, 30)
                     else
-                        v:hit(self)
+                        -- v:hit(self) -- 这是什么
                     end
                 end
                 if local_pos:distance(enemy_pos) <= 100 and v.type == "player" then

@@ -95,6 +95,10 @@ public:
         f32 posteffect_gamma = 2.2f;
         f32 posteffect_bloom_scalar = 0.5f;
         f32 posteffect_saturation = 2.0f;
+        f32 posteffect_chromatic_start = 1.0f;
+        f32 posteffect_chromatic_rOffset = 0.005f;
+        f32 posteffect_chromatic_gOffset = 0.005f;
+        f32 posteffect_chromatic_bOffset = -0.005f;
     } state{};
 
     int currentRenderViewIndex = 0;
@@ -168,7 +172,11 @@ _Fs(posteffect_intensity,""),
 _Fs(posteffect_exposure,""),
 _Fs(posteffect_gamma,""),
 _Fs(posteffect_bloom_scalar,""),
-_Fs(posteffect_saturation,"")
+_Fs(posteffect_saturation,""),
+_Fs(posteffect_chromatic_start,""),
+_Fs(posteffect_chromatic_rOffset,""),
+_Fs(posteffect_chromatic_gOffset,""),
+_Fs(posteffect_chromatic_bOffset,"")
 );
 
 // clang-format on

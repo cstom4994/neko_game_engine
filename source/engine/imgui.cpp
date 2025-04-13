@@ -746,7 +746,6 @@ void ImGuiRender::imgui_init() {
     ImGui_ImplGlfw_InitForOpenGL(the<Window>().glfwWindow(), true);
     ImGui_ImplOpenGL3_Init();
 
-#if defined(DEBUG)
     if (the<CL>().state.default_font.len > 0) {
         auto& io = ImGui::GetIO();
 
@@ -757,7 +756,6 @@ void ImGuiRender::imgui_init() {
         the<VFS>().read_entire_file(&ttf_file, the<CL>().state.default_font.cstr());
         io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 16.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     }
-#endif
 
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 
@@ -768,6 +766,8 @@ void ImGuiRender::imgui_init() {
                         .Method("End", &ImGui::End)                                                  //
                         .Method("EndTabBar", &ImGui::EndTabBar)                                      //
                         .Method("EndTabItem", &ImGui::EndTabItem)                                    //
+                        .Method("BeginGroup", &ImGui::BeginGroup)                                    //
+                        .Method("EndGroup", &ImGui::EndGroup)                                        //
                         .Method("Separator", &ImGui::Separator)                                      //
                         .Method("SeparatorText", &ImGui::SeparatorText)                              //
                         .Method("IsItemHovered", &ImGui::IsItemHovered)                              //

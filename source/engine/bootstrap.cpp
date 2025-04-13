@@ -32,16 +32,10 @@
 
 #include <ranges>
 
-#if 1
-
 CBase gBase;
 
-#endif
-
-#if 1
-
 RenderTarget renderview_source;
-PostProcessor posteffect_dark;
+PostProcessor posteffect_vignette;
 PostProcessor posteffect_bright;
 PostProcessor posteffect_blur_h;
 PostProcessor posteffect_blur_v;
@@ -63,7 +57,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
     if (renderview_source.valid()) {
         renderview_source.resize(width, height);
-        posteffect_dark.Resize(neko_v2(width, height));
+        posteffect_vignette.Resize(neko_v2(width, height));
         posteffect_bright.Resize(neko_v2(width, height));
         posteffect_blur_h.Resize(neko_v2(width, height));
         posteffect_blur_v.Resize(neko_v2(width, height));
@@ -169,10 +163,14 @@ void CL::game_draw() {
             posteffect_blur_v.Flush([](auto &shader) {});
 
             posteffect_composite.GetRenderTarget().bind();
-            posteffect_dark.FlushTarget(renderview_source, [&](auto &shader) {
+            posteffect_vignette.FlushTarget(renderview_source, [&](auto &shader) {
                 neko_shader_set_float(shader.id, "intensity", state.posteffect_intensity);
                 neko_shader_set_int(shader.id, "enable", 1);
             });
+            // posteffect_cloud.FlushTarget(renderview_source, [&](auto &shader) {
+            //     neko_shader_set_float(shader.id, "iTime", timing_get_elapsed() / 5000.f);
+            //     glUniformMatrix3fv(glGetUniformLocation(shader.id, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
+            // });
             posteffect_composite.GetRenderTarget().unbind();
 
             posteffect_composite.Flush([&](auto &shader) {
@@ -180,6 +178,10 @@ void CL::game_draw() {
                 neko_shader_set_float(shader.id, "u_gamma", state.posteffect_gamma);
                 neko_shader_set_float(shader.id, "u_bloom_scalar", state.posteffect_bloom_scalar);
                 neko_shader_set_float(shader.id, "u_saturation", state.posteffect_saturation);
+                neko_shader_set_float(shader.id, "chromatic_start", state.posteffect_chromatic_start);
+                neko_shader_set_float(shader.id, "chromatic_rOffset", state.posteffect_chromatic_rOffset);
+                neko_shader_set_float(shader.id, "chromatic_gOffset", state.posteffect_chromatic_gOffset);
+                neko_shader_set_float(shader.id, "chromatic_bOffset", state.posteffect_chromatic_bOffset);
                 neko_shader_set_int(shader.id, "u_blur_tex", 1);
 
                 glActiveTexture(GL_TEXTURE1);
@@ -213,6 +215,11 @@ void CL::game_draw() {
                 draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
 
                 Neko::ImGuiWrap::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
+
+                if (ImGui::Begin("Man")) {
+                    ImGuiWrap::Auto(the<Camera>().GetInverseViewMatrix(), "inverse_view_matrix");
+                }
+                ImGui::End();
             }
         } else {
         }
@@ -651,7 +658,7 @@ void CL::init() {
 
     renderview_source.create(state.width, state.height);
 
-    posteffect_dark.create("@code/game/shader/post_dark.glsl", false);
+    posteffect_vignette.create("@code/game/shader/post_vignette.glsl", false);
     posteffect_bright.create("@code/game/shader/post_bright.glsl", false);
     posteffect_blur_h.create("@code/game/shader/post_blur_h.glsl");
     posteffect_blur_v.create("@code/game/shader/post_blur_v.glsl");
@@ -687,7 +694,7 @@ void CL::fini() {
     posteffect_blur_h.release();
     posteffect_blur_v.release();
     posteffect_bright.release();
-    posteffect_dark.release();
+    posteffect_vignette.release();
 
     quadrenderer.free_renderer();
 
@@ -808,8 +815,6 @@ int CL::update_time(Event evt) {
 
     return 0;
 }
-
-#endif
 
 // 处理引擎状态变量和功能
 

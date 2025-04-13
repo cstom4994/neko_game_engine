@@ -256,8 +256,9 @@ function haha()
         end
 
         print(LocalGame.level_1_obj["collisions"])
-
-        neko.tiled_make_collision(LocalGame.b2, LocalGame.level_1_obj["collisions"])
+        if LocalGame.level_1_obj["collisions"] ~= nil then
+            neko.tiled_make_collision(LocalGame.b2, LocalGame.level_1_obj["collisions"])
+        end
 
         -- LocalGame.world:add(WorkingMan(50, -50))
     end

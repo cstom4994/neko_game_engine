@@ -1215,13 +1215,30 @@ int Inspector::OnImGui(lua_State* L) {
             }
 
             if (ImGui::BeginTabItem("贴图")) {
-                asset_view_each([](const Asset& view) {
-                    if (view.kind == AssetKind_Image) {
-                        const auto tex = assets_get<AssetTexture>(view);
-                        f32 scale = 250.0 / tex.height;
-                        ImGui::Image((ImTextureID)tex.id, ImVec2(tex.width, tex.height) * scale);
-                    }
-                });
+                if (ImGui::BeginChild("##贴图")) {
+                    asset_view_each([](const Asset& view) {
+                        if (view.kind == AssetKind_Image) {
+                            const auto tex = assets_get<AssetTexture>(view);
+                            f32 scale = 250.0 / tex.height;
+
+                            ImGui::BeginGroup();
+                            ImGui::Image((ImTextureID)tex.id, ImVec2(tex.width, tex.height) * scale);
+                            ImGui::EndGroup();
+
+                            ImGui::SameLine();
+
+                            ImGui::BeginGroup();
+                            ImGui::Text("%s", view.name.cstr());
+                            ImGui::Text("宽度: %d", tex.width);
+                            ImGui::Text("高度: %d", tex.height);
+                            ImGui::Text("通道数: %d", tex.components);
+                            ImGui::Text("Flags: %d", tex.flags);
+                            ImGui::Text("内部资源: %s", NEKO_BOOL_STR(view.is_internal));
+                            ImGui::EndGroup();
+                        }
+                    });
+                }
+                ImGui::EndChild();
                 ImGui::EndTabItem();
             }
 
@@ -1852,10 +1869,12 @@ void Editor::OnImGui() {
 
                     if (ImGui::BeginTabItem("实体")) {
 
+                        ImGui::BeginGroup();
                         ImGui::Text("实体总数: %d/%d", world->entity_count, world->entity_cap);
                         ImGui::Text("下一个闲置实体ID: %d", world->entity_free_id);
                         ImGui::Text("下一个将亡实体ID: %d", world->entity_dead_id);
                         ImGui::Text("当前最大组件索引: %d", world->type_idx);
+                        ImGui::EndGroup();
 
                         lua_getiuservalue(L, ecs_ud, WORLD_COMPONENTS);
                         {
@@ -1884,7 +1903,7 @@ void Editor::OnImGui() {
 
                                 std::string name = std::format("{} {}", eid, ent_name);
 
-                                if (ImGui::CollapsingHeader(name.c_str())) {
+                                auto draw_node = [&]() {
                                     ImGui::Text("name: %s", ent_name.cstr());
                                     ImGui::Text("__eid: %d", eid);
                                     ImGui::Text("附着组件数量: %d", e->components_count);
@@ -1916,20 +1935,21 @@ void Editor::OnImGui() {
 
                                         ImGui::Unindent();
                                     }
+                                };
+
+                                if (ImGui::BeginChild("##Hierarchy")) {
+                                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+                                    bool nodeOpen = ImGui::TreeNodeEx(name.c_str(), flags);
+                                    // if (ImGui::IsItemClicked()) {
+                                    //     ImGui::Text("Node '%s' clicked!", name.c_str());
+                                    // }
+                                    if (nodeOpen) {
+                                        draw_node();
+                                        ImGui::TreePop();
+                                    }
                                 }
+                                ImGui::EndChild();
 
-#if 0
-                                lua_pushnil(L);
-                                while (lua_next(L, -2) != 0) {  // cid
-
-                                    String name = luax_check_string(L, -2);
-                                    String value = luax_check_string(L, -1);
-                                    ImGui::Text("%s %s", name.cstr(), value.cstr());
-
-
-                                    lua_pop(L, 1);  // pop value
-                                }
-#endif
                                 lua_pop(L, 1);  // pop value
                             }
                             lua_pop(L, 1);  // pop WORLD_COMPONENTS[tid]

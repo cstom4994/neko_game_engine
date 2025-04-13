@@ -1,4 +1,4 @@
-﻿
+
 
 #include "tiledmap.hpp"
 
@@ -727,6 +727,12 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             object.y = object_node->Attribute<double>("y");
 
             XMLAttribute *attrib;
+            if ((attrib = object_node->FindAttribute("visible"))) {
+                object.visible = std::get<double>(attrib->value);
+            } else {
+                object.visible = 1;
+            }
+
             if ((attrib = object_node->FindAttribute("width"))) {
                 object.width = std::get<double>(attrib->value);
             } else {

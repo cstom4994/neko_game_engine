@@ -49,7 +49,7 @@ typedef struct object_t {
     u32 id;
     String name;
     String class_name;
-    i32 x, y, width, height;
+    i32 x, y, width, height, visible;
     Array<object_property_t> properties;
 } object_t;
 
