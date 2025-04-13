@@ -9,9 +9,8 @@ using namespace Neko::reflection;
 
 int Test_Shader() {
 
-    HashMap<String> tokenTypeNames;
+    std::unordered_map<int, std::string> tokenTypeNames;
     guess_enum_range<TokenType, 0>(tokenTypeNames, std::make_integer_sequence<int, (int)TokenType::OTHER + 1>());
-    neko_defer(for (const auto& value : tokenTypeNames) { value.value->trash(); } tokenTypeNames.trash(););
 
     std::string source = R"(
 #nekoshader version 1
@@ -71,7 +70,7 @@ void main() {
 
         std::cout << "Tokens:\n";
         for (const auto& token : tokens) {
-            std::string name = tokenTypeNames[(int)token.type].cstr();
+            std::string name = tokenTypeNames[(int)token.type];
             name = name.substr(14, name.length());
             std::cout << std::setw(20) << std::left << name         //
                       << std::setw(20) << std::left << token.value  //

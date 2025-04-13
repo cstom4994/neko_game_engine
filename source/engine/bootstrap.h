@@ -33,7 +33,7 @@ extern CBase gBase;
 struct lua_State;
 
 namespace Neko {
-struct LuaInspector;
+struct Inspector;
 }
 
 struct RenderViewSource {

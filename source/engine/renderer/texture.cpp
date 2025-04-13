@@ -202,7 +202,8 @@ AssetTexture texure_aseprite_simple(String filename) {
     return tex;
 }
 
-static void ase_default_blend_bind(ase_t* ase) {
+void ase_blend_bind(ase_t* ase) {
+    PROFILE_FUNC();
 
     neko_assert(ase);
     neko_assert(ase->frame_count);
@@ -215,7 +216,7 @@ static void ase_default_blend_bind(ase_t* ase) {
         memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
         ase_color_t* dst = frame->pixels;
 
-        LOG_INFO("neko_aseprite_default_blend_bind: frame: {} cel_count: {}", i, frame->cel_count);
+        // LOG_INFO("neko_aseprite_default_blend_bind: frame: {} cel_count: {}", i, frame->cel_count);
 
         for (int j = 0; j < frame->cel_count; ++j) {  //
 

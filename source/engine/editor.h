@@ -59,13 +59,13 @@ struct luainspector_property {
 
 inline bool incomplete_chunk_error(const char* err, std::size_t len) { return err && (std::strlen(err) >= 5u) && (0 == std::strcmp(err + len - 5u, "<eof>")); }
 
-class LuaInspector;
+class Inspector;
 
 struct command_line_input_callback_UserData {
     std::string* Str;
     ImGuiInputTextCallback ChainCallback;
     void* ChainCallbackUserData;
-    LuaInspector* luainspector_ptr;
+    Inspector* luainspector_ptr;
 };
 
 struct inspect_table_config {
@@ -73,7 +73,7 @@ struct inspect_table_config {
     bool is_non_function = false;
 };
 
-class LuaInspector {
+class Inspector {
 public:
     struct Hints {
         static std::string clean_table_list(const std::string& str);
@@ -83,6 +83,8 @@ public:
         static bool collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden);
         static std::string common_prefix(const std::vector<std::string>& possible);
     };
+
+    std::unordered_map<int, std::string> aseModeNames;
 
 private:
     lua_State* L{};
@@ -98,6 +100,8 @@ private:
 
     std::deque<std::string> messageLog;
 
+    bool hotload_enable;
+
 private:
     inline int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
         if (color) {
@@ -107,14 +111,17 @@ private:
         return 0;
     }
 
+    void GuiAnalysisWindow();
+    void GuiAsepriteWindow();
+
 public:
-    LuaInspector();
-    ~LuaInspector();
+    Inspector();
+    ~Inspector();
 
     void console_draw(bool& textbox_react) noexcept;
 
     void inspect_table(lua_State* L, inspect_table_config& cfg);
-    int luainspector_init(lua_State* L);
+    int init(lua_State* L);
     int OnImGui(lua_State* L);
 
     void setL(lua_State* L);
@@ -157,7 +164,7 @@ private:
     bool enabled;
     bool ViewportOnEvent;
 
-    LuaInspector* inspector{};
+    Inspector* inspector{};
     int ctag_tid;
 
     int callbackId;

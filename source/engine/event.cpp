@@ -18,11 +18,6 @@ void EventHandler::init() {
 
 void EventHandler::fini() {
 
-    for (auto& v : eventNames) {
-        mem_free(v.value->data);
-    }
-    eventNames.trash();
-
     m_evqueue.trash();
 
     for (int i = 0; i < NUM_EVENTS; i++) {

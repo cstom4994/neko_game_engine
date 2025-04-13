@@ -153,7 +153,6 @@ bool AseSpriteData::load(String filepath) {
         PROFILE_BLOCK("aseprite load");
         ase = cute_aseprite_load_from_memory(contents.data, (i32)contents.len, nullptr);
     }
-    neko_defer(cute_aseprite_free(ase));
 
     Arena arena = {};
 
@@ -181,11 +180,8 @@ bool AseSpriteData::load(String filepath) {
         memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
     }
 
-    // sg_image_desc desc = {};
     int ase_width = ase->w;
     int ase_height = ase->h * ase->frame_count;
-    // desc.data.subimage[0][0].ptr = pixels.data;
-    // desc.data.subimage[0][0].size = ase->frame_count * rect;
 
     u8 *data = reinterpret_cast<u8 *>(pixels.data);
 
@@ -223,8 +219,9 @@ bool AseSpriteData::load(String filepath) {
         s.tags.push(tag_data.name);
     }
 
-    LOG_INFO("created sprite with image id: {} and {} frames", new_tex.id, (unsigned long long)frames.len);
+    LOG_TRACE("created sprite with image id: {} and {} frames", new_tex.id, (unsigned long long)frames.len);
 
+    s.ase = ase;
     s.arena = arena;
     s.tex = new_tex;
     s.frames = frames;
@@ -232,6 +229,54 @@ bool AseSpriteData::load(String filepath) {
     s.width = ase->w;
     s.height = ase->h;
     *this = s;
+    return true;
+}
+
+bool AseSpriteData::reload_palette() {
+    PROFILE_FUNC();
+
+    neko_assert(ase && tex.id);
+
+    // 因为在cute_aseprite_load_from_memory加载的时候
+    // palette颜色已经依值处理到frame->pixels
+    // 所以在修改palette颜色后 重新加载时
+    // 需要再次进行混合处理 新的palette颜色才会应用到frame->pixels
+    ase_blend_bind(ase);
+
+    i32 rect = ase->w * ase->h * 4;
+
+    Array<char> pixels = {};
+    pixels.reserve(ase->frame_count * rect);
+    neko_defer(pixels.trash());
+
+    for (i32 i = 0; i < ase->frame_count; i++) {
+        ase_frame_t &frame = ase->frames[i];
+
+        AseSpriteFrame sf = {};
+        sf.duration = frame.duration_milliseconds;
+
+        sf.u0 = 0;
+        sf.v0 = (float)i / ase->frame_count;
+        sf.u1 = 1;
+        sf.v1 = (float)(i + 1) / ase->frame_count;
+
+        frames[i] = sf;
+        memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
+    }
+
+    int ase_width = ase->w;
+    int ase_height = ase->h * ase->frame_count;
+
+    u8 *data = reinterpret_cast<u8 *>(pixels.data);
+
+    {
+        PROFILE_BLOCK("remake image");
+
+        texture_create(&tex, data, ase_width, ase_height, 4, TEXTURE_ALIASED);
+    }
+
+    LOG_TRACE("reload sprite with image id: {} and {} frames", tex.id, (unsigned long long)frames.len);
+
     return true;
 }
 
@@ -245,6 +290,8 @@ void AseSpriteData::trash() {
     by_tag.trash();
     tags.trash();
     arena.trash();
+
+    cute_aseprite_free(ase);
 }
 
 void AseSprite::make() {}

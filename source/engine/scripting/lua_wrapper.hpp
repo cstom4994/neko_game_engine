@@ -1959,17 +1959,15 @@ inline bool LuaTypeIsEnum(lua_State *L, LuaTypeid type) {
 
 template <typename Enum, int min_value = -64, int max_value = 64>
 void LuaEnum(lua_State *L) {
-    HashMap<String> values;
-    neko_defer(values.trash());
+    std::unordered_map<int, std::string> values;
     reflection::guess_enum_range<Enum, min_value>(values, std::make_integer_sequence<int, max_value - min_value>());
     reflection::guess_enum_bit_range<Enum>(values, std::make_integer_sequence<int, 32>());
 
     LuaTypeid id = LuaType<Enum>(L);
     LuaEnumAddType(L, id, sizeof(Enum));
     for (const auto &value : values) {
-        const Enum enum_value[] = {(Enum)value.key};
-        LuaEnumAddValue(L, id, enum_value, value.value->cstr());
-        mem_free(value.value->data);
+        const Enum enum_value[] = {(Enum)value.first};
+        LuaEnumAddValue(L, id, enum_value, value.second.c_str());
     }
 }
 

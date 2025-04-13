@@ -6,8 +6,6 @@
 #include "base/common/singleton.hpp"
 #include "engine/input_keycode.h"
 
-
-
 struct lua_State;
 
 #define EVENT_TYPES   \
@@ -93,7 +91,7 @@ private:
     HashMap<DelegateArray> m_delegate_map;
     u64 m_prev_len;
 
-    HashMap<String> eventNames;
+    std::unordered_map<int, std::string> eventNames;
 
 public:
     void init();
@@ -115,7 +113,7 @@ public:
     template <typename... Args>
     inline void EventPushLuaType(EventEnum type, Args&&... args) {
         lua_State* L = ENGINE_LUA();
-        String& name = eventNames[type];
+        String name = eventNames[type];
         int n = sizeof...(args);
         EventPushLua(name.cstr());
         EventPushLuaArgs(L, std::forward<Args>(args)...);

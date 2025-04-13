@@ -28,20 +28,20 @@
 using namespace Neko::ImGuiWrap;
 
 template <>
-struct std::formatter<Neko::LuaInspector*> : std::formatter<void*> {
-    auto format(Neko::LuaInspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
+struct std::formatter<Neko::Inspector*> : std::formatter<void*> {
+    auto format(Neko::Inspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
 };
 
 namespace Neko {
 
 static int __luainspector_echo(lua_State* L) {
-    LuaInspector* m = *static_cast<LuaInspector**>(lua_touserdata(L, lua_upvalueindex(1)));
+    Inspector* m = *static_cast<Inspector**>(lua_touserdata(L, lua_upvalueindex(1)));
     if (m) m->print(luaL_checkstring(L, 1), Logger::Level::INFO);
     return 0;
 }
 
 static int __luainspector_gc(lua_State* L) {
-    LuaInspector* m = *static_cast<LuaInspector**>(lua_touserdata(L, 1));
+    Inspector* m = *static_cast<Inspector**>(lua_touserdata(L, 1));
     if (m) {
         m->setL(0x0);
     }
@@ -210,7 +210,7 @@ void RenderConsoleLogs() noexcept {
     }
 }
 
-std::string LuaInspector::Hints::clean_table_list(const std::string& str) {
+std::string Inspector::Hints::clean_table_list(const std::string& str) {
     std::string ret;
     bool got_dot = false, got_white = false;
     std::size_t whitespace_start = 0u;
@@ -236,7 +236,7 @@ std::string LuaInspector::Hints::clean_table_list(const std::string& str) {
     return ret;
 }
 
-void LuaInspector::Hints::prepare_hints(lua_State* L, std::string str, std::string& last) {
+void Inspector::Hints::prepare_hints(lua_State* L, std::string str, std::string& last) {
     str = clean_table_list(str);
 
     std::vector<std::string> tables;
@@ -262,7 +262,7 @@ void LuaInspector::Hints::prepare_hints(lua_State* L, std::string str, std::stri
     }
 }
 
-bool LuaInspector::Hints::collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left) {
+bool Inspector::Hints::collect_hints_recurse(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden, unsigned left) {
     if (left == 0u) return true;
 
     const bool skip_under_score = last.empty() && !usehidden;
@@ -295,7 +295,7 @@ bool LuaInspector::Hints::collect_hints_recurse(lua_State* L, std::vector<std::s
 }
 
 // Replace the value at the top of the stack with the __index TABLE from the metatable
-bool LuaInspector::Hints::try_replace_with_metaindex(lua_State* L) {
+bool Inspector::Hints::try_replace_with_metaindex(lua_State* L) {
     if (!luaL_getmetafield(L, -1, "__index")) return false;
 
     if (lua_type(L, -1) != LUA_TTABLE) {
@@ -308,13 +308,13 @@ bool LuaInspector::Hints::try_replace_with_metaindex(lua_State* L) {
     return true;
 }
 
-bool LuaInspector::Hints::collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden) {
+bool Inspector::Hints::collect_hints(lua_State* L, std::vector<std::string>& possible, const std::string& last, bool usehidden) {
     if (lua_type(L, -1) != LUA_TTABLE && !Hints::try_replace_with_metaindex(L)) return false;
     // table so just collect on it
     return collect_hints_recurse(L, possible, last, usehidden, 10u);
 }
 
-std::string LuaInspector::Hints::common_prefix(const std::vector<std::string>& possible) {
+std::string Inspector::Hints::common_prefix(const std::vector<std::string>& possible) {
     std::string ret;
     std::size_t maxindex = 1000000000u;
     for (std::size_t i = 0u; i < possible.size(); ++i) maxindex = std::min(maxindex, possible[i].size());
@@ -330,7 +330,7 @@ std::string LuaInspector::Hints::common_prefix(const std::vector<std::string>& p
     return ret;
 }
 
-void LuaInspector::print_luastack(int first, int last, Logger::Level logtype) {
+void Inspector::print_luastack(int first, int last, Logger::Level logtype) {
     std::stringstream ss;
     for (int i = first; i <= last; ++i) {
         switch (lua_type(L, i)) {
@@ -355,7 +355,7 @@ void LuaInspector::print_luastack(int first, int last, Logger::Level logtype) {
     print(ss.str(), logtype);
 }
 
-bool LuaInspector::try_eval(std::string m_buffcmd, bool addreturn) {
+bool Inspector::try_eval(std::string m_buffcmd, bool addreturn) {
     if (addreturn) {
         const std::string code = "return " + m_buffcmd;
         if (LUA_OK == luaL_loadstring(L, code.c_str())) {
@@ -376,12 +376,12 @@ static inline std::string adjust_error_msg(lua_State* L, int idx) {
     return std::string("(non string error value - ") + lua_typename(L, t) + ")";
 }
 
-void LuaInspector::setL(lua_State* L) {
+void Inspector::setL(lua_State* L) {
     this->L = L;
 
     if (!L) return;
 
-    // LuaInspector** ptr = static_cast<LuaInspector**>(lua_newuserdata(L, sizeof(LuaInspector*)));
+    // Inspector** ptr = static_cast<Inspector**>(lua_newuserdata(L, sizeof(Inspector*)));
     //(*ptr) = this;
 
     // luaL_newmetatable(L, kMetaname);  // table
@@ -398,7 +398,7 @@ void LuaInspector::setL(lua_State* L) {
     // lua_setglobal(L, "echo");
 }
 
-std::string LuaInspector::read_history(int change) {
+std::string Inspector::read_history(int change) {
     const bool was_promp = static_cast<std::size_t>(m_hindex) == m_history.size();
 
     m_hindex += change;
@@ -412,7 +412,7 @@ std::string LuaInspector::read_history(int change) {
     }
 }
 
-std::string LuaInspector::try_complete(std::string inputbuffer) {
+std::string Inspector::try_complete(std::string inputbuffer) {
     if (!L) {
         print("Lua state pointer is NULL, no completion available", Logger::Level::ERR);
         return inputbuffer;
@@ -450,7 +450,7 @@ std::string LuaInspector::try_complete(std::string inputbuffer) {
     return inputbuffer;
 }
 
-void LuaInspector::print(std::string msg, Logger::Level logtype) {
+void Inspector::print(std::string msg, Logger::Level logtype) {
     if (messageLog.size() >= 64) {
         messageLog.pop_front();
     }
@@ -496,10 +496,10 @@ void LuaInspector::print(std::string msg, Logger::Level logtype) {
 
 int command_line_callback_st(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
-    return reinterpret_cast<LuaInspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
+    return reinterpret_cast<Inspector*>(user_data->luainspector_ptr)->command_line_input_callback(data);
 }
 
-int LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
+int Inspector::command_line_input_callback(ImGuiInputTextCallbackData* data) {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
 
     auto paste_buffer = [data](auto begin, auto end, auto buffer_shift) {
@@ -544,7 +544,7 @@ int LuaInspector::command_line_input_callback(ImGuiInputTextCallbackData* data) 
     return 0;
 }
 
-bool LuaInspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool Inspector::command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -556,7 +556,7 @@ bool LuaInspector::command_line_input(const char* label, std::string* str, ImGui
     return ImGui::InputText(label, (char*)str->c_str(), str->capacity() + 1, flags, command_line_callback_st, &cb_user_data);
 }
 
-void LuaInspector::show_autocomplete() noexcept {
+void Inspector::show_autocomplete() noexcept {
     constexpr ImGuiWindowFlags overlay_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
                                                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
 
@@ -663,11 +663,223 @@ void LuaInspector::show_autocomplete() noexcept {
     }
 }
 
-LuaInspector::LuaInspector() {}
+void Inspector::GuiAnalysisWindow() {
+    if (ImGui::BeginTabItem("信息")) {
+        lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
+        lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+        Assets& g_assets = the<Assets>();
 
-LuaInspector::~LuaInspector() {}
+        auto UpdateLuaMemPlot = [](float bytes) {
+            static std::deque<float> frameTimes;
+            static std::mutex frameTimesMutex;
+            {
+                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
 
-void LuaInspector::console_draw(bool& textbox_react) noexcept {
+                // 如果 deque 为空或最后一个值不等于当前 bytes，则添加新数据
+                if (frameTimes.empty() || frameTimes.back() != bytes) {
+                    frameTimes.push_back(bytes);
+
+                    // 限制 deque 的最大大小为 100，超过时移除头部数据
+                    if (frameTimes.size() > 100) {
+                        frameTimes.pop_front();
+                    }
+                }
+            }
+            float minVal = 0.0f, maxVal = 4000.0f;  // 默认范围
+            {
+                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+                if (!frameTimes.empty()) {
+                    minVal = *std::min_element(frameTimes.begin(), frameTimes.end());
+                    maxVal = *std::max_element(frameTimes.begin(), frameTimes.end());
+                }
+            }
+            std::vector<float> dataCopy;
+            {
+                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+                dataCopy.assign(frameTimes.begin(), frameTimes.end());
+            }
+            ImGui::PlotLines("LuaVM Memory", dataCopy.data(), static_cast<int>(dataCopy.size()), 0, nullptr, minVal, maxVal, ImVec2(0, 80.0f));
+        };
+        UpdateLuaMemPlot(bytes);
+
+        ImGui::Text("Lua 内存使用: %.2lf mb", ((f64)kb / 1024.0f));
+        ImGui::Text("Lua 空闲内存: %.2lf mb", ((f64)bytes / 1024.0f));
+
+        if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
+
+        ImGui::Text("待回收音效数量: %llu", the<Sound>().GarbageCount());
+        ImGui::SameLine();
+        if (ImGui::Button("回收")) the<Sound>().GarbageCollect();
+
+        for (auto kv : g_assets.table) {
+            ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());
+        }
+
+        ImGui::EndTabItem();
+    }
+}
+
+const int PALETTE_COLUMNS = 10;
+
+void RenderPalette(std::vector<Color>& palette, ase_palette_t& originalPalette, Color& selectedColor) {
+    int count = 0;
+    for (size_t i = 0; i < palette.size(); ++i) {
+        auto& color = palette[i];
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(color.r, color.g, color.b, color.a));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(color.r * 1.2f, color.g * 1.2f, color.b * 1.2f, color.a));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(color.r * 0.8f, color.g * 0.8f, color.b * 0.8f, color.a));
+
+        if (ImGui::Button(("##颜色" + std::to_string(i)).c_str(), ImVec2(20, 20))) {
+            selectedColor = color;
+        }
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) {  // 右键点击修改颜色
+            ImGui::OpenPopup(("修改颜色" + std::to_string(i)).c_str());
+        }
+
+        if (ImGui::BeginPopup(("修改颜色" + std::to_string(i)).c_str())) {
+            float col[4] = {color.r, color.g, color.b, color.a};
+            if (ImGui::ColorPicker4("选择颜色", col)) {
+
+                color.r = col[0];
+                color.g = col[1];
+                color.b = col[2];
+                color.a = col[3];
+
+                originalPalette.entries[i].color.r = static_cast<uint8_t>(col[0] * 255.0f);
+                originalPalette.entries[i].color.g = static_cast<uint8_t>(col[1] * 255.0f);
+                originalPalette.entries[i].color.b = static_cast<uint8_t>(col[2] * 255.0f);
+                originalPalette.entries[i].color.a = static_cast<uint8_t>(col[3] * 255.0f);
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::PopStyleColor(3);
+
+        count++;
+        if (count % PALETTE_COLUMNS != 0) {
+            ImGui::SameLine();
+        }
+    }
+}
+
+void Inspector::GuiAsepriteWindow() {
+
+    static u64 selected_hash = 0;
+    static int selected_sprite_tag_index = 0;
+    static Color selectedColor = {1.0f, 1.0f, 1.0f, 1.0f};  // 默认选中的颜色
+
+    if (ImGui::BeginTabItem("Aseprite")) {
+
+        ImGui::BeginChild("ThumbnailsRegion", ImVec2(0, 300), true, ImGuiWindowFlags_HorizontalScrollbar);
+        asset_view_each([&](const Asset& view) {
+            if (view.kind == AssetKind_AseSprite) {
+                const AseSpriteData& spr = assets_get<AseSpriteData>(view);
+
+                f32 scale = 100.0f / spr.tex.height;
+                if (ImGui::ImageButton((ImTextureID)spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale)) {
+                    selected_hash = view.hash;
+                    selected_sprite_tag_index = 0;
+                }
+
+                ImGui::SameLine();
+
+                ImGui::BeginGroup();
+                ImGui::Text("%s", view.name.cstr());
+                ImGui::Text("宽度: %d", spr.width);
+                ImGui::Text("高度: %d", spr.height);
+                ImGui::EndGroup();
+            }
+        });
+        ImGui::EndChild();
+
+        if (selected_hash) {
+            ImGui::Separator();
+
+            Asset a{};
+
+            bool ok = asset_read(selected_hash, &a);
+            neko_assert(ok);
+
+            AseSpriteData& selected_spr = assets_get<AseSpriteData>(a);
+
+            ImGui::Text("选择 AseSprite: %s", a.name.cstr());
+
+            f32 scale = 250.0f / selected_spr.tex.height;
+            ImGui::BeginGroup();
+            ImGui::Image((ImTextureID)selected_spr.tex.id, ImVec2(selected_spr.tex.width, selected_spr.tex.height) * scale);
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+
+            ImGui::BeginGroup();
+            if (selected_spr.tags.len > 0 && selected_sprite_tag_index < selected_spr.tags.len) {
+                if (ImGui::BeginCombo("选择预览Tag", selected_spr.tags.data[selected_sprite_tag_index].cstr())) {
+                    for (int i = 0; i < selected_spr.tags.len; ++i) {
+                        if (ImGui::Selectable(selected_spr.tags.data[i].cstr(), selected_sprite_tag_index == i)) {
+                            selected_sprite_tag_index = i;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+
+            ImGui::Text("当前Tag序号: %d", selected_sprite_tag_index);
+            ImGui::Text("总帧数: %d", selected_spr.frames.len);
+            ImGui::Text("单帧宽度: %d", selected_spr.width);
+            ImGui::Text("单帧高度: %d", selected_spr.height);
+            ImGui::Text("颜色模式: %s", aseModeNames[static_cast<int>(selected_spr.ase->mode)].c_str());
+            ImGui::Text("调色板大小: %d", selected_spr.ase->palette.entry_count);
+
+            ase_palette_t& palette = selected_spr.ase->palette;
+
+            int palette_size = palette.entry_count;
+
+            // 生成调色盘适配 ase_palette_t
+            auto GeneratePalette = [&](const ase_palette_t& palette) -> std::vector<Color> {
+                std::vector<Color> generatedPalette;
+                generatedPalette.reserve(palette.entry_count);
+
+                for (int i = 0; i < palette.entry_count; ++i) {
+                    const ase_color_t& color = palette.entries[i].color;
+                    generatedPalette.push_back(Color{color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f});
+                }
+
+                return generatedPalette;
+            };
+
+            auto generatedPalette = GeneratePalette(palette);
+
+            ImGui::BeginGroup();
+            {
+                RenderPalette(generatedPalette, palette, selectedColor);
+            }
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+
+            ImGui::BeginGroup();
+            {
+                if (hotload_enable) {
+                    if (ImGui::Button("重新生成")) {
+                        selected_spr.reload_palette();
+                    }
+                }
+            }
+            ImGui::EndGroup();
+
+            ImGui::EndGroup();
+        }
+
+        ImGui::EndTabItem();
+    }
+}
+
+Inspector::Inspector() {}
+
+Inspector::~Inspector() {}
+
+void Inspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
@@ -750,7 +962,7 @@ void LuaInspector::console_draw(bool& textbox_react) noexcept {
     show_autocomplete();
 }
 
-void LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
+void Inspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
         while (*str != '\0') {
             if (*str == '\n') return true;
@@ -926,21 +1138,24 @@ void LuaInspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     }
 }
 
-int LuaInspector::luainspector_init(lua_State* L) {
+int Inspector::init(lua_State* L) {
 
     this->setL(L);
     this->m_history.resize(8);
 
+    hotload_enable = gBase.hot_reload_enabled.load();
+
+    reflection::guess_enum_range<ase_mode_t, 0>(aseModeNames, std::make_integer_sequence<int, 3>());
+
     return 1;
 }
 
-int LuaInspector::OnImGui(lua_State* L) {
+int Inspector::OnImGui(lua_State* L) {
 
-    Assets& g_assets = the<Assets>();
     auto& GameCL = the<CL>();
 
-    // ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("LuaInspector")) {
+    ImGui::SetNextWindowDockID(GameCL.dockspace_id, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Inspector")) {
 
         if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
             if (ImGui::BeginTabItem("LuaRepl")) {
@@ -990,54 +1205,7 @@ int LuaInspector::OnImGui(lua_State* L) {
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("信息")) {
-                lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-                lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
-
-                auto UpdateLuaMemPlot = [](float bytes) {
-                    static std::deque<float> frameTimes;
-                    static std::mutex frameTimesMutex;
-                    {
-                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
-
-                        // 如果 deque 为空或最后一个值不等于当前 bytes，则添加新数据
-                        if (frameTimes.empty() || frameTimes.back() != bytes) {
-                            frameTimes.push_back(bytes);
-
-                            // 限制 deque 的最大大小为 100，超过时移除头部数据
-                            if (frameTimes.size() > 100) {
-                                frameTimes.pop_front();
-                            }
-                        }
-                    }
-                    float minVal = 0.0f, maxVal = 4000.0f;  // 默认范围
-                    {
-                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
-                        if (!frameTimes.empty()) {
-                            minVal = *std::min_element(frameTimes.begin(), frameTimes.end());
-                            maxVal = *std::max_element(frameTimes.begin(), frameTimes.end());
-                        }
-                    }
-                    std::vector<float> dataCopy;
-                    {
-                        std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
-                        dataCopy.assign(frameTimes.begin(), frameTimes.end());
-                    }
-                    ImGui::PlotLines("LuaVM Memory", dataCopy.data(), static_cast<int>(dataCopy.size()), 0, nullptr, minVal, maxVal, ImVec2(0, 80.0f));
-                };
-                UpdateLuaMemPlot(bytes);
-
-                ImGui::Text("Lua 内存使用: %.2lf mb", ((f64)kb / 1024.0f));
-                ImGui::Text("Lua 空闲内存: %.2lf mb", ((f64)bytes / 1024.0f));
-
-                if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
-
-                for (auto kv : g_assets.table) {
-                    ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());
-                }
-
-                ImGui::EndTabItem();
-            }
+            GuiAnalysisWindow();
 
             if (ImGui::BeginTabItem("着色器")) {
                 asset_view_each([](const Asset& view) {
@@ -1057,72 +1225,7 @@ int LuaInspector::OnImGui(lua_State* L) {
                 ImGui::EndTabItem();
             }
 
-            static u64 selected_hash = 0;
-            static int selected_sprite_tag_index = 0;
-
-            if (ImGui::BeginTabItem("Aseprite")) {
-
-                ImGui::BeginChild("ThumbnailsRegion", ImVec2(0, 300), true, ImGuiWindowFlags_HorizontalScrollbar);
-                asset_view_each([&](const Asset& view) {
-                    if (view.kind == AssetKind_AseSprite) {
-                        const AseSpriteData& spr = assets_get<AseSpriteData>(view);
-
-                        f32 scale = 100.0f / spr.tex.height;
-                        if (ImGui::ImageButton((ImTextureID)spr.tex.id, ImVec2(spr.tex.width, spr.tex.height) * scale)) {
-                            selected_hash = view.hash;
-                            selected_sprite_tag_index = 0;
-                        }
-
-                        ImGui::SameLine();
-
-                        ImGui::BeginGroup();
-                        ImGui::Text("%s", view.name.cstr());
-                        ImGui::Text("宽度: %d", spr.width);
-                        ImGui::Text("高度: %d", spr.height);
-                        ImGui::EndGroup();
-                    }
-                });
-                ImGui::EndChild();
-
-                if (selected_hash) {
-                    ImGui::Separator();
-
-                    Asset a{};
-
-                    bool ok = asset_read(selected_hash, &a);
-                    neko_assert(ok);
-
-                    const AseSpriteData& selected_spr = assets_get<AseSpriteData>(a);
-
-                    ImGui::Text("选择 AseSprite: %s", a.name.cstr());
-
-                    f32 scale = 250.0f / selected_spr.tex.height;
-                    ImGui::BeginGroup();
-                    ImGui::Image((ImTextureID)selected_spr.tex.id, ImVec2(selected_spr.tex.width, selected_spr.tex.height) * scale);
-                    ImGui::EndGroup();
-
-                    ImGui::SameLine();
-
-                    ImGui::BeginGroup();
-                    if (selected_spr.tags.len > 0 && selected_sprite_tag_index < selected_spr.tags.len) {
-                        if (ImGui::BeginCombo("选择预览Tag", selected_spr.tags.data[selected_sprite_tag_index].cstr())) {
-                            for (int i = 0; i < selected_spr.tags.len; ++i) {
-                                if (ImGui::Selectable(selected_spr.tags.data[i].cstr(), selected_sprite_tag_index == i)) {
-                                    selected_sprite_tag_index = i;
-                                }
-                            }
-                            ImGui::EndCombo();
-                        }
-                        ImGui::Text("当前Tag序号: %d", selected_sprite_tag_index);
-                        ImGui::Text("总帧数: %d", selected_spr.frames.len);
-                        ImGui::Text("单帧宽度: %d", selected_spr.width);
-                        ImGui::Text("单帧高度: %d", selected_spr.height);
-                    }
-                    ImGui::EndGroup();
-                }
-
-                ImGui::EndTabItem();
-            }
+            GuiAsepriteWindow();
 
             ImGui::EndTabBar();
         }
@@ -1573,8 +1676,8 @@ void Editor::edit_init() {
 
     edit_init_impl(L);
 
-    inspector = mem_new<LuaInspector>();
-    inspector->luainspector_init(L);
+    inspector = mem_new<Inspector>();
+    inspector->init(L);
 
     ctag_tid = EcsGetTid(L, "CTag");
 
@@ -1710,10 +1813,6 @@ void Editor::OnImGui() {
                 lua_pushstring(L, "E");
                 // the<EventHandler>().EventPushLuaArgs(L, );
                 errcheck(L, luax_pcall_nothrow(L, 1, 0));
-
-                ImGui::Text("待回收音效数量: %llu", the<Sound>().GarbageCount());
-                ImGui::SameLine();
-                if (ImGui::Button("回收")) the<Sound>().GarbageCollect();
 
                 ImGui::EndTabItem();
             }

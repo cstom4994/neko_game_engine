@@ -51,8 +51,10 @@ struct AseSpriteData {
     AssetTexture tex;
     i32 width;
     i32 height;
+    ase_t* ase;
 
     bool load(String filepath);
+    bool reload_palette();
     void trash();
 };
 
