@@ -37,7 +37,7 @@ class Sound : public SingletonClass<Sound> {
     Array<SoundIndex> garbage_sounds;
 
 public:
-    void sound_init();
+    void init();
     void sound_fini();
     int OnUpdate(Event evt);
     int OnPostUpdate(Event evt);

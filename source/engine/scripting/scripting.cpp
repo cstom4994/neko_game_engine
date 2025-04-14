@@ -109,6 +109,8 @@ int luax_aot_load(lua_State *L, lua_CFunction f, const char *name) {
 }
 
 void luax_run_bootstrap(lua_State *L) {
+    PROFILE_FUNC();
+
     if (luaL_loadbuffer(L, bootstrap_lua().data, bootstrap_lua().len, "<bootstrap>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load bootstrap");
@@ -331,6 +333,8 @@ int app_stop(Event evt) {
 }
 
 void Scripting::init_lua() {
+    PROFILE_FUNC();
+
     LuaVM vm;
     L = vm.Create(true);
 
@@ -387,6 +391,8 @@ end
     }
 
     if (1) {
+        PROFILE_BLOCK("init vfs");
+
         luabind::detail::StackGuard p(L);
 
         lua_getfield(L, -1, "vfs");

@@ -4,10 +4,12 @@
 #include "base/common/logger.hpp"
 #include "base/common/reflection.hpp"
 #include "engine/bootstrap.h"
+#include "engine/base/common/profiler.hpp"
 
 namespace Neko {
 
 void EventHandler::init() {
+    PROFILE_FUNC();
 
     assert(NUM_EVENTS < 32);
     m_evqueue.make();

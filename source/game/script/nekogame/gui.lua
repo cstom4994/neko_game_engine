@@ -491,6 +491,9 @@ EditorTestPanel = function(dt)
                 local id1 = mathstack:v3(v1.x, v1.y, v1.z)
                 local id2 = mathstack:v3(v2.x, v2.y, v2.z)
                 local cross_id = mathstack:v3_cross(id1, id2)
+                id1 = mathstack:v3_cross(id2, cross_id)
+                id2 = mathstack:v3_cross(cross_id, id1)
+                cross_id = mathstack:v3_cross(id1, id2)
                 local result = {
                     x = 0,
                     y = 0,
@@ -503,6 +506,9 @@ EditorTestPanel = function(dt)
             local lua_time = os.clock()
             for i = 1, iterations do
                 local result = lua_cross(v1, v2)
+                v1 = lua_cross(v2, result)
+                v2 = lua_cross(result, v1)
+                result = lua_cross(v1, v2)
             end
             lua_time = os.clock() - lua_time
 

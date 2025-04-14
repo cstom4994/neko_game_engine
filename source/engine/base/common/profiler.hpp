@@ -26,7 +26,7 @@ struct Instrument {
     ~Instrument();
 };
 
-#define PROFILE_FUNC() auto JOIN_2(_profile_, __COUNTER__) = Instrument("function", __func__);
+#define PROFILE_FUNC() auto JOIN_2(_profile_, __COUNTER__) = Instrument("function", __FUNCSIG__);
 
 #define PROFILE_BLOCK(name) auto JOIN_2(_profile_, __COUNTER__) = Instrument("block", name);
 

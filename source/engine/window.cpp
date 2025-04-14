@@ -1,6 +1,7 @@
 
 #include "window.h"
 #include "bootstrap.h"
+#include "engine/base/common/profiler.hpp"
 
 int game_set_window_vsync(bool vsync) {
     glfwSwapInterval(vsync);
@@ -77,6 +78,8 @@ void Window::SetFramebufferSizeCallback(GLFWframebuffersizefun func) { glfwSetFr
 void Window::SwapBuffer() { glfwSwapBuffers(window); }
 
 void Window::create() {
+    PROFILE_FUNC();
+
     // create glfw window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);

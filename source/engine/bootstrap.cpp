@@ -30,6 +30,7 @@
 #include "engine/components/cloud.h"
 #include "engine/components/tiledmap.hpp"
 #include "engine/components/transform.h"
+#include "engine/base/common/job.hpp"
 
 #include <ranges>
 
@@ -429,13 +430,20 @@ void CL::quit() { g_quit = true; }
 CL::CL() {}
 
 void CL::init() {
+    PROFILE_FUNC();
 
     LockGuard<Mutex> lock(g_init_mtx);
 
     window = &Neko::the<Window>();
 
-    window->create();
-    window->SetFramebufferSizeCallback(framebuffer_size_callback);
+    {
+        Job::Execute([] { the<Sound>().init(); });
+
+        window->create();
+        window->SetFramebufferSizeCallback(framebuffer_size_callback);
+
+        Job::Wait();
+    }
 
     the<Renderer>().InitOpenGL();
 
@@ -447,8 +455,6 @@ void CL::init() {
     // time set
     time.startup = TimeUtil::now();
     time.last = TimeUtil::now();
-
-    PROFILE_FUNC();
 
     the<Scripting>().script_init();
 
@@ -488,27 +494,35 @@ void CL::init() {
 
     game.SplashScreen();
 
-    neko_default_font();
-
-    auto &input = Neko::the<Input>();
-    input.init();
-
-    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Editor, DebugDraw, Cloud>;
+    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Editor, DebugDraw, Cloud>;
 
     Neko::modules::initializeModulesHelper(Modules{}, std::make_index_sequence<std::tuple_size_v<Modules>>{});
 
-    the<Entity>().entity_init();
-    the<Transform>().transform_init();
-    the<Camera>().camera_init();
-    the<Batch>().batch_init(state.batch_vertex_capacity);
-    the<Sprite>().sprite_init();
-    the<Cloud>().cloud_init();
-    the<Tiled>().tiled_init();
-    the<Font>().font_init();
-    the<ImGuiRender>().imgui_init();
-    the<Sound>().sound_init();
-    the<Editor>().edit_init();
-    the<DebugDraw>().debug_draw_init();
+    {
+        Job::Execute([&] {
+
+        });
+        Job::Execute([] { neko_default_font(); });
+
+        auto &input = Neko::the<Input>();
+        input.init();
+
+        the<Entity>().entity_init();
+        the<Transform>().transform_init();
+        the<Camera>().camera_init();
+
+        {
+            the<Batch>().batch_init(state.batch_vertex_capacity);
+            the<Sprite>().sprite_init();
+            the<Cloud>().cloud_init();
+            the<Tiled>().tiled_init();
+            the<Font>().font_init();
+            the<ImGuiRender>().imgui_init();
+            the<Editor>().edit_init();
+            the<DebugDraw>().debug_draw_init();
+        }
+        Job::Wait();
+    }
 
     gBase.reload_interval.store(state.reload_interval);
 
@@ -838,6 +852,7 @@ Int32 Main(int argc, const char *argv[]) {
     Neko::modules::initialize<Input>();
     Neko::modules::initialize<Assets>();
     Neko::modules::initialize<Renderer>();
+    Neko::modules::initialize<Sound>();
 
     auto &game = Neko::the<CL>();
     game.init();

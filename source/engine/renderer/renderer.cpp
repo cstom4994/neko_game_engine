@@ -6,6 +6,7 @@
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
 #include "engine/renderer/texture.h"
+#include "engine/base/common/profiler.hpp"
 
 #include <assert.h>
 #include <stdio.h>
@@ -637,6 +638,7 @@ void PostProcessor::Flush(std::function<void(AssetShader&)> op) {
 extern "C" int GLAD_GL_ARB_direct_state_access;
 
 void Renderer::InitOpenGL() {
+    PROFILE_FUNC();
 
     // initialize GLEW
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {

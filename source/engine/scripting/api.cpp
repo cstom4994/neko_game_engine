@@ -2761,6 +2761,7 @@ void createStructTables(lua_State *L) {
 }
 
 void open_neko_api(lua_State *L) {
+    PROFILE_FUNC();
 
     luaL_checkversion(L);
 

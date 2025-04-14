@@ -382,11 +382,11 @@ int neko_sound_load(lua_State *L) {
 
 }  // namespace Neko
 
-void Sound::sound_init() {
+void Sound::init() {
     PROFILE_FUNC();
 
     {
-        PROFILE_BLOCK("miniaudio");
+        PROFILE_BLOCK("init miniaudio");
 
         miniaudio_vfs = vfs_for_miniaudio();
 

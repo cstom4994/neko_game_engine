@@ -3,6 +3,7 @@
 #include "engine/scripting/lua_wrapper.hpp"
 #include "base/common/logger.hpp"
 #include "engine/ecs/lua_ecs.hpp"
+#include "engine/base/common/profiler.hpp"
 
 using namespace Neko;
 using namespace Neko::ecs;
@@ -504,6 +505,7 @@ struct EcsLuaWrap {
 };
 
 int EcsCreateWorld(lua_State* L) {
+    PROFILE_FUNC();
 
     MatchCtx* mctx;
     EcsWorld* world = (EcsWorld*)lua_newuserdatauv(L, sizeof(*world), WORLD_UPVAL_N);

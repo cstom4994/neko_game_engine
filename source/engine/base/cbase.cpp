@@ -7,6 +7,7 @@
 #include "base/common/string.hpp"
 #include "base/common/logger.hpp"
 #include "engine/scripting/scripting.h"
+#include "engine/base/common/job.hpp"
 
 #include <cstdlib>
 
@@ -53,6 +54,8 @@ void CBase::Init(int argc, const char* argv[]) {
     TimeUtil::initialize();
 
     Logger::init();
+
+    Job::init();
 
     profile_setup();
     PROFILE_FUNC();

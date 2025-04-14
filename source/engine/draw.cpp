@@ -695,6 +695,7 @@ float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float 
 }
 
 void Font::font_init() {
+    PROFILE_FUNC();
 
     // 编译着色器并创建程序
     bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/font.glsl", &font_shader);
@@ -718,6 +719,8 @@ void Font::font_init() {
 }
 
 void Batch::batch_init(int vertex_capacity) {
+    PROFILE_FUNC();
+
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -890,6 +893,8 @@ void DebugDraw::debug_draw_add_line(vec2 a, vec2 b, f32 line_width, Color color)
 }
 
 void DebugDraw::debug_draw_init() {
+    PROFILE_FUNC();
+
     debug_renderer = mem_new<DebugRenderer>();
 
     bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/debug_line.glsl", &debug_renderer->lines_shader);
