@@ -32,6 +32,7 @@
 using namespace Neko::luabind;
 
 extern int open_tools_spritepack(lua_State *L);
+extern int open_math(lua_State *L);
 
 namespace Neko {
 
@@ -2822,6 +2823,9 @@ void open_neko_api(lua_State *L) {
 
     open_db(L);
     lua_setfield(L, -2, "db");
+
+    open_math(L);
+    lua_setfield(L, -2, "math");
 
     lua_pop(L, 1);
 

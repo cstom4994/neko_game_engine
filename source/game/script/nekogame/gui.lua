@@ -421,6 +421,132 @@ EditorTestPanel = function(dt)
 
     end
 
+    if ImGui.Button("test_math") then
+
+        local mathx = neko.math
+
+        local function lua_cross(a, b)
+            return {
+                x = a.y * b.z - a.z * b.y,
+                y = a.z * b.x - a.x * b.z,
+                z = a.x * b.y - a.y * b.x
+            }
+        end
+
+        local function test_mathx()
+            local v1 = {
+                x = 1,
+                y = 2,
+                z = 3
+            }
+            local v2 = {
+                x = 4,
+                y = 5,
+                z = 6
+            }
+            local result_true = {
+                x = -3,
+                y = 6,
+                z = -3
+            }
+            local result = {
+                x = 0,
+                y = 0,
+                z = 0
+            }
+
+            local mathstack<close> = mathx.push()
+            local id1 = mathstack:v3(v1.x, v1.y, v1.z)
+            local id2 = mathstack:v3(v2.x, v2.y, v2.z)
+            local cross_id = mathstack:v3_cross(id1, id2)
+            print("Mathx:", id1, id2, cross_id)
+            mathstack:pop(cross_id, result)
+
+            print("Mathx result:", result.x, result.y, result.z)
+
+            -- 验证结果
+            local expected = lua_cross(v1, v2)
+            assert(math.abs(result.x - expected.x) < 0.0001)
+            assert(math.abs(result.y - expected.y) < 0.0001)
+            assert(math.abs(result.z - expected.z) < 0.0001)
+            print("Validation passed!")
+        end
+
+        local function performance_test()
+            local iterations = 1000000
+            local v1 = {
+                x = 1,
+                y = 2,
+                z = 3
+            }
+            local v2 = {
+                x = 4,
+                y = 5,
+                z = 6
+            }
+
+            local mathx_time = os.clock()
+            for i = 1, iterations do
+                local mathstack<close> = mathx.push()
+                local id1 = mathstack:v3(v1.x, v1.y, v1.z)
+                local id2 = mathstack:v3(v2.x, v2.y, v2.z)
+                local cross_id = mathstack:v3_cross(id1, id2)
+                local result = {
+                    x = 0,
+                    y = 0,
+                    z = 0
+                }
+                mathstack:pop(cross_id, result)
+            end
+            mathx_time = os.clock() - mathx_time
+
+            local lua_time = os.clock()
+            for i = 1, iterations do
+                local result = lua_cross(v1, v2)
+            end
+            lua_time = os.clock() - lua_time
+
+            print(string.format("Mathx time: %.3f sec", mathx_time))
+            print(string.format("Lua table time: %.3f sec", lua_time))
+            print(string.format("Speedup: %.2fx", lua_time / mathx_time))
+
+            if collectgarbage("count") then
+                collectgarbage("collect")
+                local before = collectgarbage("count")
+
+                for i = 1, iterations do
+                    local result = lua_cross(v1, v2)
+                end
+                collectgarbage("collect")
+                local lua_mem = collectgarbage("count") - before
+
+                collectgarbage("collect")
+                before = collectgarbage("count")
+                for i = 1, iterations do
+                    local mathstack<close> = mathx.push()
+                    local id1 = mathstack:v3(v1.x, v1.y, v1.z)
+                    local id2 = mathstack:v3(v2.x, v2.y, v2.z)
+                    local cross_id = mathstack:v3_cross(id1, id2)
+                    local result = {
+                        x = 0,
+                        y = 0,
+                        z = 0
+                    }
+                    mathstack:pop(cross_id, result)
+                end
+                collectgarbage("collect")
+                local mathx_mem = collectgarbage("count") - before
+
+                print(string.format("Lua table memory: %.2f KB", lua_mem))
+                print(string.format("Mathx memory: %.2f KB", mathx_mem))
+            end
+        end
+
+        test_mathx()
+        performance_test()
+
+    end
+
     -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)
 
     ImGui.Separator()
