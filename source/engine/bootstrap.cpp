@@ -27,6 +27,7 @@
 #include "engine/components/camera.h"
 #include "engine/components/edit.h"
 #include "engine/components/sprite.h"
+#include "engine/components/cloud.h"
 #include "engine/components/tiledmap.hpp"
 #include "engine/components/transform.h"
 
@@ -34,7 +35,6 @@
 
 CBase gBase;
 
-RenderTarget renderview_source;
 PostProcessor posteffect_vignette;
 PostProcessor posteffect_bright;
 PostProcessor posteffect_blur_h;
@@ -55,8 +55,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     CLGame.state.width = width;
     CLGame.state.height = height;
 
-    if (renderview_source.valid()) {
-        renderview_source.resize(width, height);
+    if (CLGame.renderview_source.valid()) {
+        CLGame.renderview_source.resize(width, height);
         posteffect_vignette.Resize(neko_v2(width, height));
         posteffect_bright.Resize(neko_v2(width, height));
         posteffect_blur_h.Resize(neko_v2(width, height));
@@ -141,6 +141,7 @@ void CL::game_draw() {
 
             the<Sprite>().sprite_draw_all();
             the<Batch>().batch_draw_all();
+            the<Cloud>().cloud_draw_all();
             the<Editor>().edit_draw_all();
             the<DebugDraw>().debug_draw_all();
         }
@@ -167,10 +168,6 @@ void CL::game_draw() {
                 neko_shader_set_float(shader.id, "intensity", state.posteffect_intensity);
                 neko_shader_set_int(shader.id, "enable", 1);
             });
-            // posteffect_cloud.FlushTarget(renderview_source, [&](auto &shader) {
-            //     neko_shader_set_float(shader.id, "iTime", timing_get_elapsed() / 5000.f);
-            //     glUniformMatrix3fv(glGetUniformLocation(shader.id, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
-            // });
             posteffect_composite.GetRenderTarget().unbind();
 
             posteffect_composite.Flush([&](auto &shader) {
@@ -496,7 +493,7 @@ void CL::init() {
     auto &input = Neko::the<Input>();
     input.init();
 
-    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Editor, DebugDraw>;
+    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Sound, Editor, DebugDraw, Cloud>;
 
     Neko::modules::initializeModulesHelper(Modules{}, std::make_index_sequence<std::tuple_size_v<Modules>>{});
 
@@ -505,6 +502,7 @@ void CL::init() {
     the<Camera>().camera_init();
     the<Batch>().batch_init(state.batch_vertex_capacity);
     the<Sprite>().sprite_init();
+    the<Cloud>().cloud_init();
     the<Tiled>().tiled_init();
     the<Font>().font_init();
     the<ImGuiRender>().imgui_init();
@@ -632,6 +630,7 @@ void CL::init() {
 
             {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<Cloud>().cloud_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sound>().OnUpdate(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
@@ -712,6 +711,7 @@ void CL::fini() {
     the<Sound>().sound_fini();
     the<Tiled>().tiled_fini();
     the<Sprite>().sprite_fini();
+    the<Cloud>().cloud_fini();
     the<Batch>().batch_fini();
     the<Camera>().camera_fini();
     the<Transform>().transform_fini();

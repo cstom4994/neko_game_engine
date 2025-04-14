@@ -84,6 +84,10 @@ function haha()
         -- gui_test = {}
     }
 
+    local cloud = ng.add {
+        cloud = {}
+    }
+
     -- local player_ent = ng.add {
     --     transform = {
     --         position = ng.Vec2(0, 0),

@@ -21,6 +21,7 @@
 #include "engine/scripting/lua_util.h"
 #include "engine/components/transform.h"
 #include "engine/components/camera.h"
+#include "engine/components/cloud.h"
 #include "engine/components/edit.h"
 #include "engine/components/sprite.h"
 #include "engine/components/tiledmap.hpp"
@@ -1919,7 +1920,7 @@ void Editor::OnImGui() {
                                         ImGui::Indent();
                                         ImGui::Text("cap=%d free_idx=%d", cp->cap, cp->free_idx);
 
-                                        using ComponentTypes = std::tuple<Transform, Camera, Sprite, Tiled>;
+                                        using ComponentTypes = std::tuple<Transform, Camera, Sprite, Tiled, Cloud>;
 
                                         auto InspectHelper = [&]<typename Tuple, std::size_t... Indices>(Tuple&& tuple, std::index_sequence<Indices...>) {
                                             auto f = [&]<typename T>(T&) {

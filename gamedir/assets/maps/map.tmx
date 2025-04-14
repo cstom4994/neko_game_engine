@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="50">
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="32" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="51">
  <editorsettings>
   <export target="map.lua" format="lua"/>
  </editorsettings>
@@ -55,7 +55,7 @@
 0,0,49,50,51,52,53,54,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,65,66,67,68,69,70,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,81,82,83,84,85,86,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,7,8,7,8,9,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -77,11 +77,12 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup color="#64ffffff" id="3" name="collisions">
+ <objectgroup color="#64ffffff" id="3" name="collisionsgg">
   <object id="34" name="col3" x="-5.432" y="-39.5153" width="521.773" height="42.2116"/>
   <object id="45" name="col4" x="-33.8448" y="-17.0225" width="37.6897" height="546.087"/>
   <object id="46" name="col1" x="-0.8865" y="508.228" width="521.773" height="42.2116"/>
   <object id="47" name="col2" x="508.655" y="-16.5435" width="37.6897" height="546.087"/>
+  <object id="50" name="wall1" x="32" y="192" width="96" height="16" visible="0"/>
  </objectgroup>
  <objectgroup color="#ff0000" id="6" name="object_goood">
   <object id="39" name="test_obj" type="game_lua" x="93.9773" y="58.7727" width="20" height="15.5">

@@ -104,6 +104,8 @@ public:
     int currentRenderViewIndex = 0;
     std::vector<RenderViewSource> renderview_sources{};
 
+    RenderTarget renderview_source;
+
 public:
     CL();
 
