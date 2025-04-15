@@ -85,7 +85,7 @@ function haha()
     }
 
     local cloud = ng.add {
-        cloud = {}
+        rectangle = {}
     }
 
     -- local player_ent = ng.add {

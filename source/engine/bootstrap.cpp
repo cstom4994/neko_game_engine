@@ -27,7 +27,7 @@
 #include "engine/components/camera.h"
 #include "engine/components/edit.h"
 #include "engine/components/sprite.h"
-#include "engine/components/cloud.h"
+#include "engine/components/rectangle.h"
 #include "engine/components/tiledmap.hpp"
 #include "engine/components/transform.h"
 #include "engine/base/common/job.hpp"
@@ -42,7 +42,8 @@ PostProcessor posteffect_blur_h;
 PostProcessor posteffect_blur_v;
 PostProcessor posteffect_composite;
 
-Asset sprite_shader = {};
+Asset sprite_shader{};
+Asset cloud_shader{};
 
 QuadRenderer quadrenderer;
 
@@ -142,7 +143,13 @@ void CL::game_draw() {
 
             the<Sprite>().sprite_draw_all();
             the<Batch>().batch_draw_all();
-            the<Cloud>().cloud_draw_all();
+
+            the<RectangleBox>().draw(assets_get<AssetShader>(cloud_shader), []() {
+                GLuint sid = assets_get<AssetShader>(cloud_shader).id;
+                neko_shader_set_float(sid, "u_time", the<CL>().timing_get_elapsed() / 8000.f);
+                neko_shader_set_v3f(sid, "u_groundColor", neko_v3(0.1, 0.1, 0.1));
+            });
+
             the<Editor>().edit_draw_all();
             the<DebugDraw>().debug_draw_all();
         }
@@ -494,7 +501,7 @@ void CL::init() {
 
     game.SplashScreen();
 
-    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Editor, DebugDraw, Cloud>;
+    using Modules = std::tuple<Entity, Transform, Camera, Batch, Sprite, Tiled, Font, ImGuiRender, Editor, DebugDraw, RectangleBox>;
 
     Neko::modules::initializeModulesHelper(Modules{}, std::make_index_sequence<std::tuple_size_v<Modules>>{});
 
@@ -512,9 +519,14 @@ void CL::init() {
         the<Camera>().camera_init();
 
         {
+            bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/cloud.glsl", &cloud_shader);
+            error_assert(ok);
+        }
+
+        {
             the<Batch>().batch_init(state.batch_vertex_capacity);
             the<Sprite>().sprite_init();
-            the<Cloud>().cloud_init();
+            the<RectangleBox>().init();
             the<Tiled>().tiled_init();
             the<Font>().font_init();
             the<ImGuiRender>().imgui_init();
@@ -644,7 +656,7 @@ void CL::init() {
 
             {EventMask::Update, [](Event evt) -> int { return the<Camera>().camera_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sprite>().sprite_update_all(evt); }},
-            {EventMask::Update, [](Event evt) -> int { return the<Cloud>().cloud_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<RectangleBox>().update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sound>().OnUpdate(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
@@ -725,7 +737,7 @@ void CL::fini() {
     the<Sound>().sound_fini();
     the<Tiled>().tiled_fini();
     the<Sprite>().sprite_fini();
-    the<Cloud>().cloud_fini();
+    the<RectangleBox>().fini();
     the<Batch>().batch_fini();
     the<Camera>().camera_fini();
     the<Transform>().transform_fini();

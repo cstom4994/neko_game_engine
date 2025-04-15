@@ -35,9 +35,9 @@ float F = 0.30;
 float W = 11.20;
 
 uniform float chromatic_start = 1;
-uniform float chromatic_rOffset = 0.005;
-uniform float chromatic_gOffset = 0.005;
-uniform float chromatic_bOffset = -0.005;
+uniform float chromatic_rOffset = 0.001;
+uniform float chromatic_gOffset = 0.001;
+uniform float chromatic_bOffset = -0.001;
 
 in vec2 vert_pos;
 

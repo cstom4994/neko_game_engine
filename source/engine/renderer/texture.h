@@ -33,6 +33,7 @@ void ase_blend_bind(ase_t* ase);
 bool texture_create(AssetTexture* tex, u8* data, u32 width, u32 height, u32 num_comps, TextureFlags flags);
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
 void texture_bind_byname(String filename, u32 slot = 0);
+void texture_bind(u32 id, u32 slot = 0);
 void texture_bind(AssetTexture* texture, u32 slot = 0);
 vec2 texture_get_size(String filename);  // (width, height)
 AssetTexture texture_get_ptr(String filename);

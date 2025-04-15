@@ -90,15 +90,15 @@ public:
         f32 width;
         f32 height;
         f32 bg[3];  //
-        f32 posteffect_intensity = 2.0f;
+        f32 posteffect_intensity = 5.0f;
         f32 posteffect_exposure = 0.5f;
         f32 posteffect_gamma = 2.2f;
         f32 posteffect_bloom_scalar = 0.5f;
         f32 posteffect_saturation = 2.0f;
         f32 posteffect_chromatic_start = 1.0f;
-        f32 posteffect_chromatic_rOffset = 0.005f;
-        f32 posteffect_chromatic_gOffset = 0.005f;
-        f32 posteffect_chromatic_bOffset = -0.005f;
+        f32 posteffect_chromatic_rOffset = 0.001f;
+        f32 posteffect_chromatic_gOffset = 0.001f;
+        f32 posteffect_chromatic_bOffset = -0.001f;
     } state{};
 
     int currentRenderViewIndex = 0;

@@ -21,7 +21,7 @@
 #include "engine/scripting/lua_util.h"
 #include "engine/components/transform.h"
 #include "engine/components/camera.h"
-#include "engine/components/cloud.h"
+#include "engine/components/rectangle.h"
 #include "engine/components/edit.h"
 #include "engine/components/sprite.h"
 #include "engine/components/tiledmap.hpp"
@@ -670,38 +670,31 @@ void Inspector::GuiAnalysisWindow() {
         lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
         Assets& g_assets = the<Assets>();
 
-        auto UpdateLuaMemPlot = [](float bytes) {
-            static std::deque<float> frameTimes;
-            static std::mutex frameTimesMutex;
-            {
-                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
+        static std::deque<float> data_lua;
+        static std::deque<float> data_neko;
 
-                // 如果 deque 为空或最后一个值不等于当前 bytes，则添加新数据
-                if (frameTimes.empty() || frameTimes.back() != bytes) {
-                    frameTimes.push_back(bytes);
+        auto MemPlot = [](std::deque<float>& data, float bytes, const char* name) {
+            // 如果 deque 为空或最后一个值不等于当前 bytes 则添加新数据
+            if (data.empty() || data.back() != bytes) {
+                data.push_back(bytes);
 
-                    // 限制 deque 的最大大小为 100，超过时移除头部数据
-                    if (frameTimes.size() > 100) {
-                        frameTimes.pop_front();
-                    }
+                // 限制 deque 的最大大小为 100 超过时移除头部数据
+                if (data.size() > 100) {
+                    data.pop_front();
                 }
             }
             float minVal = 0.0f, maxVal = 4000.0f;  // 默认范围
-            {
-                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
-                if (!frameTimes.empty()) {
-                    minVal = *std::min_element(frameTimes.begin(), frameTimes.end());
-                    maxVal = *std::max_element(frameTimes.begin(), frameTimes.end());
-                }
+            if (!data.empty()) {
+                minVal = *std::min_element(data.begin(), data.end());
+                maxVal = *std::max_element(data.begin(), data.end());
             }
             std::vector<float> dataCopy;
-            {
-                std::lock_guard<std::mutex> lock(frameTimesMutex);  // 加锁以保证线程安全
-                dataCopy.assign(frameTimes.begin(), frameTimes.end());
-            }
-            ImGui::PlotLines("LuaVM Memory", dataCopy.data(), static_cast<int>(dataCopy.size()), 0, nullptr, minVal, maxVal, ImVec2(0, 80.0f));
+            dataCopy.assign(data.begin(), data.end());
+            ImGui::PlotLines(name, dataCopy.data(), static_cast<int>(dataCopy.size()), 0, nullptr, minVal, maxVal, ImVec2(0, 80.0f));
         };
-        UpdateLuaMemPlot(bytes);
+
+        MemPlot(data_lua, bytes, "LuaVM Memory");
+        MemPlot(data_neko, (f32)g_allocator->alloc_size / (1024 * 1024), "Neko Memory");
 
         ImGui::Text("Lua 内存使用: %.2lf mb", ((f64)kb / 1024.0f));
         ImGui::Text("Lua 空闲内存: %.2lf mb", ((f64)bytes / 1024.0f));
@@ -1209,9 +1202,12 @@ int Inspector::OnImGui(lua_State* L) {
             GuiAnalysisWindow();
 
             if (ImGui::BeginTabItem("着色器")) {
-                asset_view_each([](const Asset& view) {
-                    if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), assets_get<AssetShader>(view).id);
-                });
+                if (ImGui::BeginChild("##着色器")) {
+                    asset_view_each([](const Asset& view) {
+                        if (view.kind == AssetKind_Shader) inspect_shader(view.name.cstr(), assets_get<AssetShader>(view).id);
+                    });
+                }
+                ImGui::EndChild();
                 ImGui::EndTabItem();
             }
 
@@ -1920,7 +1916,7 @@ void Editor::OnImGui() {
                                         ImGui::Indent();
                                         ImGui::Text("cap=%d free_idx=%d", cp->cap, cp->free_idx);
 
-                                        using ComponentTypes = std::tuple<Transform, Camera, Sprite, Tiled, Cloud>;
+                                        using ComponentTypes = std::tuple<Transform, Camera, Sprite, Tiled, RectangleBox>;
 
                                         auto InspectHelper = [&]<typename Tuple, std::size_t... Indices>(Tuple&& tuple, std::index_sequence<Indices...>) {
                                             auto f = [&]<typename T>(T&) {

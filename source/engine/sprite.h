@@ -58,7 +58,7 @@ struct AseSpriteData {
     void trash();
 };
 
-constexpr int SpriteEffectCounts = 4;
+constexpr int SpriteEffectCounts = 5;
 
 struct AseSprite {
     u64 sprite;  // index into assets
@@ -67,6 +67,8 @@ struct AseSprite {
     i32 current_frame;
 
     std::bitset<SpriteEffectCounts> effects;
+
+    float pixelate_value;
 
     void make();
     bool play(String tag);

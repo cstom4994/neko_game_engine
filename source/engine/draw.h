@@ -135,6 +135,8 @@ struct batch_renderer {
     bool glow;
     bool bloom;
     bool trans;
+    bool pixelate;
+    float pixelate_value;
 };
 
 class Batch : public SingletonClass<Batch> {

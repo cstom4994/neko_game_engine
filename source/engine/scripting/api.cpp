@@ -2572,6 +2572,10 @@ int wrap_pixels_to_unit(lua_State *L) {
 DEFINE_LUAOPEN_EXTERN(unittest)
 
 static int open_neko(lua_State *L) {
+
+    lua_pushfstring(L, "Neko %d", neko_buildnum());
+    lua_setglobal(L, "_NEKO_VERSION");
+
     luaL_Reg reg[] = {
             // internal
             {"__registry_load", neko_registry_load},

@@ -834,6 +834,32 @@ inline mat4 mat4_translate(mat4 m, vec3 v) {
     return mat4_mul(m, r);
 }
 
+inline mat4 mat4_rotate(float angle) {
+    mat4 top = mat4_identity();
+
+#ifdef NEKO_USE_SSE
+    __m128 v0 = top.sse[0];
+    __m128 v1 = top.sse[1];
+    __m128 c = _mm_set1_ps(cos(-angle));
+    __m128 s = _mm_set1_ps(sin(-angle));
+
+    top.sse[0] = _mm_sub_ps(_mm_mul_ps(c, v0), _mm_mul_ps(s, v1));
+    top.sse[1] = _mm_add_ps(_mm_mul_ps(s, v0), _mm_mul_ps(c, v1));
+#else
+    float c = cos(-angle);
+    float s = sin(-angle);
+
+    for (i32 i = 0; i < 4; i++) {
+        float x = c * top.m[0][i] - s * top.m[1][i];
+        float y = s * top.m[0][i] + c * top.m[1][i];
+        top.m[0][i] = x;
+        top.m[1][i] = y;
+    }
+#endif
+
+    return top;
+}
+
 inline mat4 mat4_rotate(mat4 m, f32 a, vec3 v) {
     mat4 r = mat4_identity();
 

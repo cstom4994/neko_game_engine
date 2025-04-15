@@ -45,8 +45,6 @@ float kernel[] = {
 1.0f / sum, 4.0f / sum, 7.0f / sum, 4.0f / sum, 1.0f / sum
 };
 
-uniform vec2 pixel_count = vec2(512.0, 512.0 * (9.0/16.0));
-
 float pixel_w = 3.0; // 15.0
 float pixel_h = 2.0; // 10.0
 
@@ -64,9 +62,6 @@ void main()
 
     if(enable==1){
         vec2 uv = TexCoords;
-        uv *= pixel_count;
-        uv = floor(uv);
-        uv = uv / pixel_count;
 
         // vec4 pixel = texelFetch(NekoTextureInput, ivec2(vert_pos.xy), 0);
         pixel = texture(NekoTextureInput, uv);

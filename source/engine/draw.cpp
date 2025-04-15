@@ -113,7 +113,7 @@ bool renderer_pop_matrix() {
 void renderer_translate(float x, float y) {
     Matrix4 top = renderer_peek_matrix();
 
-#ifdef SSE_AVAILABLE
+#ifdef NEKO_USE_SSE
     __m128 xx = _mm_mul_ps(_mm_set1_ps(x), top.sse[0]);
     __m128 yy = _mm_mul_ps(_mm_set1_ps(y), top.sse[1]);
     top.sse[3] = _mm_add_ps(_mm_add_ps(xx, yy), _mm_add_ps(top.sse[2], top.sse[3]));
@@ -131,7 +131,7 @@ void renderer_translate(float x, float y) {
 void renderer_scale(float x, float y) {
     Matrix4 top = renderer_peek_matrix();
 
-#ifdef SSE_AVAILABLE
+#ifdef NEKO_USE_SSE
     top.sse[0] = _mm_mul_ps(top.sse[0], _mm_set1_ps(x));
     top.sse[1] = _mm_mul_ps(top.sse[1], _mm_set1_ps(y));
 #else
@@ -319,32 +319,6 @@ void draw_line(float x0, float y0, float x1, float y1) {
 
 #endif
 
-mat4 _rotate(float angle) {
-    mat4 top = mat4_identity();
-
-#ifdef SSE_AVAILABLE
-    __m128 v0 = top.sse[0];
-    __m128 v1 = top.sse[1];
-    __m128 c = _mm_set1_ps(cos(-angle));
-    __m128 s = _mm_set1_ps(sin(-angle));
-
-    top.sse[0] = _mm_sub_ps(_mm_mul_ps(c, v0), _mm_mul_ps(s, v1));
-    top.sse[1] = _mm_add_ps(_mm_mul_ps(s, v0), _mm_mul_ps(c, v1));
-#else
-    float c = cos(-angle);
-    float s = sin(-angle);
-
-    for (i32 i = 0; i < 4; i++) {
-        float x = c * top.m[0][i] - s * top.m[1][i];
-        float y = s * top.m[0][i] + c * top.m[1][i];
-        top.m[0][i] = x;
-        top.m[1][i] = y;
-    }
-#endif
-
-    return top;
-}
-
 DrawDescription draw_description_args(lua_State *L, i32 arg_start) {
     DrawDescription dd;
 
@@ -454,9 +428,15 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
         batch.GetBatch()->glow = spr->effects[1];
         batch.GetBatch()->bloom = spr->effects[2];
         batch.GetBatch()->trans = spr->effects[3];
+        batch.GetBatch()->pixelate = spr->effects[4];
+        batch.GetBatch()->pixelate_value = spr->pixelate_value;
         batch.batch_flush();
     } else {
-        batch.GetBatch()->outline = batch.GetBatch()->glow = batch.GetBatch()->bloom = batch.GetBatch()->trans = false;
+        batch.GetBatch()->outline =                  //
+                batch.GetBatch()->glow =             //
+                batch.GetBatch()->bloom =            //
+                batch.GetBatch()->trans =            //
+                batch.GetBatch()->pixelate = false;  //
     }
 }
 
@@ -837,6 +817,8 @@ void Batch::batch_flush() {
     glUniform1i(glGetUniformLocation(sid, "glow_enable"), batch->glow);
     glUniform1i(glGetUniformLocation(sid, "bloom_enable"), batch->bloom);
     glUniform1i(glGetUniformLocation(sid, "trans_enable"), batch->trans);
+    glUniform1i(glGetUniformLocation(sid, "pixelate_enable"), batch->pixelate);
+    glUniform1f(glGetUniformLocation(sid, "pixelate_value"), batch->pixelate_value);
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
     // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&batch->mvp.cols[0]);

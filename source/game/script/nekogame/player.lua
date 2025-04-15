@@ -206,6 +206,8 @@ function CPlayer:draw()
     if sx < 0 then
         weapen_angle = weapen_angle + math.pi
     end
+    -- weapon_img:effect("00001")
+    -- weapon_img:effect_pixelate(32.0)
     weapon_img:draw(self.x, self.y, weapen_angle, sx * 1, -1, sx * 8, oy)
     -- end
 
@@ -766,7 +768,7 @@ function Target:draw()
     end
 
     if highlight then
-        self.sprite:effect("1100")
+        self.sprite:effect("11000")
     else
         self.sprite:effect(0)
     end

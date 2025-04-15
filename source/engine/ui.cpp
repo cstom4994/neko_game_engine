@@ -208,7 +208,7 @@ void neko_flush_ui_renderer(engine_ui_renderer_t *renderer) {
     renderer->vb.draw_vb_n(renderer->quad_count * 6);
     renderer->vb.bind_vb_for_draw(false);
 
-    texture_bind({}, 0);
+    texture_bind((u32)0, 0);
     neko_bind_shader(NULL);
 
     renderer->quad_count = 0;

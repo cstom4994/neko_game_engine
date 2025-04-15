@@ -88,7 +88,11 @@ void main() {
     float morph_time = 200.0;
     float freq = 3.5;
 
-    vec2 uv = vec2(v_texindex.x, 1.0 - v_texindex.y);;
+    vec2 uv = vec2(v_texindex.x, 1.0 - v_texindex.y);
+
+    float pixelate = 1024.0;
+
+    uv = (floor((uv * pixelate) / 2.0) * 2.0 + 1.0) / pixelate; // 像素化处理
 
     float height = cloud_noise(uv, freq, 0.0, mod(u_time / morph_time, 1.0));
     float other = cloud_noise(uv - light_dir.xy/v_texindex.xy, freq, 0.0, mod(u_time / morph_time, 1.0));

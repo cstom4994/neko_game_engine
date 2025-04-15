@@ -143,6 +143,17 @@ static int mt_sprite_effect(lua_State *L) {
     return 0;
 }
 
+static int mt_sprite_effect_pixelate(lua_State *L) {
+    AseSprite &spr = check_sprite_udata(L, 1);
+    int te = lua_type(L, 2);
+    if (te == LUA_TNUMBER) {
+        spr.pixelate_value = lua_tonumber(L, 2);
+    } else {
+        return luaL_error(L, "error mt_sprite_effect_pixelate arg type");
+    }
+    return 0;
+}
+
 static int mt_sprite_width(lua_State *L) {
     AseSprite &spr = check_sprite_udata(L, 1);
     AseSpriteData data = assets_get<AseSpriteData>(check_asset(L, spr.sprite));
@@ -189,11 +200,20 @@ static int mt_sprite_gc(lua_State *L) {
 }
 
 void metatable(lua_State *L) {
+    // clang-format off
     static luaL_Reg lib[] = {
-            {"play", mt_sprite_play},   {"update", mt_sprite_update}, {"draw", mt_sprite_draw},           {"effect", mt_sprite_effect},
-            {"width", mt_sprite_width}, {"height", mt_sprite_height}, {"set_frame", mt_sprite_set_frame}, {"total_frames", mt_sprite_total_frames},
-            {nullptr, nullptr},
+        {"play", mt_sprite_play},   
+        {"update", mt_sprite_update}, 
+        {"draw", mt_sprite_draw},           
+        {"effect", mt_sprite_effect},
+        {"effect_pixelate", mt_sprite_effect_pixelate},
+        {"width", mt_sprite_width},
+        {"height", mt_sprite_height}, 
+        {"set_frame", mt_sprite_set_frame}, 
+        {"total_frames", mt_sprite_total_frames},
+        {nullptr, nullptr},
     };
+    // clang-format on
     luaL_newlibtable(L, lib);
     luaL_setfuncs(L, lib, 0);
     lua_setfield(L, -2, "__index");

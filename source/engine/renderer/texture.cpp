@@ -312,7 +312,6 @@ bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical) 
 }
 
 void texture_bind_byname(String filename, u32 slot) {
-    LockGuard<Mutex> lock{gBase.gpu_mtx};
 
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
@@ -320,15 +319,19 @@ void texture_bind_byname(String filename, u32 slot) {
     if (ok && assets_get<AssetTexture>(a).id != 0) texture_bind(&assets_get<AssetTexture>(a), slot);
 }
 
-void texture_bind(AssetTexture* texture, u32 slot) {
+void texture_bind(u32 id, u32 slot) {
+    LockGuard<Mutex> lock{gBase.gpu_mtx};
+
     bool EnableDSA = the<Renderer>().EnableDSA;
     if (EnableDSA) [[likely]] {
-        glBindTextureUnit(slot, texture ? texture->id : 0);
+        glBindTextureUnit(slot, id);
     } else {
         glActiveTexture(GL_TEXTURE0 + slot);
-        glBindTexture(GL_TEXTURE_2D, texture ? texture->id : 0);
+        glBindTexture(GL_TEXTURE_2D, id);
     }
 }
+
+void texture_bind(AssetTexture* texture, u32 slot) { texture_bind(texture ? texture->id : 0, slot); }
 
 vec2 texture_get_size(String filename) {
     Asset a = {};
