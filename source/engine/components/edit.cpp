@@ -1,4 +1,4 @@
-﻿
+
 #include "edit.h"
 
 #include "base/common/profiler.hpp"
@@ -118,7 +118,7 @@ static void _bboxes_update_all() {
 
     entitypool_foreach(elem, BBoxPoolElem__pool) {
         ent = elem->ent;
-        if (!the<Transform>().transform_has(ent)) continue;
+        if (!the<Transform>().ComponentHas(ent)) continue;
 
         elem->wmat = the<Transform>().transform_get_world_matrix(ent);
 

@@ -1,4 +1,4 @@
-﻿
+
 #pragma once
 
 #include "engine/ecs/entity.h"
@@ -24,9 +24,9 @@ public:
 
     // 如果当前没有摄像机 逆视图矩阵为单位矩阵
     // 这意味着视图是世界中心的一个 2x2 单位框
-    CCamera *camera_add(CEntity ent);
-    void camera_remove(CEntity ent);
-    bool camera_has(CEntity ent);
+    CCamera *ComponentAdd(CEntity ent) override;
+    void ComponentRemove(CEntity ent) override;
+
     void camera_set_edit_camera(CEntity ent);
     void camera_set_current(CEntity ent, bool current);  // 设置/获取当前激活的摄像机 如果没有则返回 entity_nil
     bool camera_get_current(CEntity ent);
@@ -44,8 +44,6 @@ public:
     inline mat3 GetInverseViewMatrix() { return inverse_view_matrix; }
 
     inline const mat3 *GetInverseViewMatrixPtr() { return &inverse_view_matrix; }  // for quick GLSL binding
-
-    CCamera *wrap_camera_add(CEntity ent);
 
     int Inspect(CEntity ent) override;
 };

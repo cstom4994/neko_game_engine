@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "engine/asset.h"
 #include "engine/ecs/entity.h"
@@ -158,11 +158,8 @@ public:
     const char* tiled_get_map(CEntity ent);
     int tiled_get_object_groups(CEntity ent, lua_State* L);
     void tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id);
-    CTiledMap* tiled_add(CEntity ent);
-    void tiled_remove(CEntity ent);
-    bool tiled_has(CEntity ent);
-
-    CTiledMap* wrap_sprite_add(CEntity ent);
+    CTiledMap* ComponentAdd(CEntity ent) override;
+    void ComponentRemove(CEntity ent) override;
 
     int Inspect(CEntity ent) override;
 

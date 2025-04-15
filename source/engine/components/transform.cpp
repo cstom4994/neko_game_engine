@@ -12,7 +12,7 @@
 void Transform::UpdateChild(CTransform *parent, CEntity ent) {
     CTransform *transform;
 
-    transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->worldmat_cache = mat3_mul(parent->worldmat_cache, transform->mat_cache);
     if (transform->children.len) {
@@ -30,7 +30,7 @@ void Transform::Modified(CTransform *transform) {
     transform->mat_cache = mat3_scaling_rotation_translation(transform->scale, transform->rotation, transform->position);
 
     // 更新世界矩阵
-    parent = ComponentTypeBase::EntityPool->GetPtr(transform->parent);
+    parent = ComponentGetPtr(transform->parent);
     if (parent) {
         transform->worldmat_cache = mat3_mul(parent->worldmat_cache, transform->mat_cache);
     } else {
@@ -66,7 +66,7 @@ void Transform::DetachAll(CTransform *t) {
 
     // our parent
     if (!CEntityEq(t->parent, entity_nil)) {
-        p = ComponentTypeBase::EntityPool->GetPtr(t->parent);
+        p = ComponentGetPtr(t->parent);
         error_assert(p);
         Detach(p, t);
     }
@@ -74,7 +74,7 @@ void Transform::DetachAll(CTransform *t) {
     // our children -- unset each child's parent then clear children array
     if (t->children.len) {
         for (auto &child : t->children) {
-            c = ComponentTypeBase::EntityPool->GetPtr(child);
+            c = ComponentGetPtr(child);
             error_assert(c);
             c->parent = entity_nil;
             Modified(c);
@@ -85,10 +85,10 @@ void Transform::DetachAll(CTransform *t) {
     Modified(t);
 }
 
-CTransform *Transform::transform_add(CEntity ent) {
+CTransform *Transform::ComponentAdd(CEntity ent) {
     CTransform *transform;
 
-    if (ComponentTypeBase::EntityPool->GetPtr(ent)) return nullptr;
+    if (ComponentGetPtr(ent)) return nullptr;
 
     transform = ComponentTypeBase::EntityPool->Add(ent);
     transform->position = luavec2(0.0f, 0.0f);
@@ -105,12 +105,11 @@ CTransform *Transform::transform_add(CEntity ent) {
     return transform;
 }
 
-void Transform::transform_remove(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+void Transform::ComponentRemove(CEntity ent) {
+    CTransform *transform = ComponentGetPtr(ent);
     if (transform) DetachAll(transform);
     ComponentTypeBase::EntityPool->Remove(ent);
 }
-bool Transform::transform_has(CEntity ent) { return ComponentTypeBase::EntityPool->GetPtr(ent) != NULL; }
 
 // 根转换具有父级 = entity_nil
 void Transform::transform_set_parent(CEntity ent, CEntity parent) {
@@ -118,14 +117,14 @@ void Transform::transform_set_parent(CEntity ent, CEntity parent) {
 
     if (CEntityEq(ent, parent)) return;  // can't be child of self
 
-    t = ComponentTypeBase::EntityPool->GetPtr(ent);
+    t = ComponentGetPtr(ent);
     error_assert(t);
 
     if (CEntityEq(t->parent, parent)) return;  // already set
 
     // detach from old
     if (!CEntityEq(t->parent, entity_nil)) {
-        oldp = ComponentTypeBase::EntityPool->GetPtr(t->parent);
+        oldp = ComponentGetPtr(t->parent);
         error_assert(oldp);
         Detach(oldp, t);
     }
@@ -133,7 +132,7 @@ void Transform::transform_set_parent(CEntity ent, CEntity parent) {
     // attach to new
     t->parent = parent;
     if (!CEntityEq(parent, entity_nil)) {
-        newp = ComponentTypeBase::EntityPool->GetPtr(parent);
+        newp = ComponentGetPtr(parent);
         error_assert(newp);
         if (!newp->children.len) {
             newp->children.reserve(4);  // TODO: 可以优化
@@ -144,30 +143,30 @@ void Transform::transform_set_parent(CEntity ent, CEntity parent) {
     Modified(t);
 }
 CEntity Transform::transform_get_parent(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->parent;
 }
 EcsId Transform::transform_get_num_children(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->children.len;
 }
 CEntity *Transform::transform_get_children(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->children.len ? transform->children.begin() : NULL;
 }
 // 脱离父项和所有子项
 void Transform::transform_detach_all(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     DetachAll(transform);
 }
 void Transform::transform_destroy_rec(CEntity ent) {
     CTransform *transform;
 
-    transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    transform = ComponentGetPtr(ent);
     if (transform && transform->children.len) {
         for (auto &child : transform->children) transform_destroy_rec(child);
     }
@@ -176,65 +175,65 @@ void Transform::transform_destroy_rec(CEntity ent) {
 }
 
 void Transform::transform_set_position(CEntity ent, vec2 pos) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->position = pos;
     Modified(transform);
 }
 vec2 Transform::transform_get_position(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->position;
 }
 void Transform::transform_translate(CEntity ent, vec2 trans) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->position = vec2_add(transform->position, trans);
     Modified(transform);
 }
 
 void Transform::transform_set_rotation(CEntity ent, f32 rot) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->rotation = rot;
     Modified(transform);
 }
 f32 Transform::transform_get_rotation(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->rotation;
 }
 void Transform::transform_rotate(CEntity ent, f32 rot) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->rotation += rot;
     Modified(transform);
 }
 
 void Transform::transform_set_scale(CEntity ent, vec2 scale) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     transform->scale = scale;
     Modified(transform);
 }
 vec2 Transform::transform_get_scale(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->scale;
 }
 
 vec2 Transform::transform_get_world_position(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
 }
 f32 Transform::transform_get_world_rotation(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);
 }
 vec2 Transform::transform_get_world_scale(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return mat3_get_scale(transform->worldmat_cache);
 }
@@ -244,7 +243,7 @@ mat3 Transform::transform_get_world_matrix(CEntity ent) {
 
     if (CEntityEq(ent, entity_nil)) return mat3_identity();
 
-    transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->worldmat_cache;
 }
@@ -254,24 +253,24 @@ mat3 Transform::transform_get_matrix(CEntity ent) {
 
     if (CEntityEq(ent, entity_nil)) return mat3_identity();
 
-    transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->mat_cache;
 }
 
 vec2 Transform::transform_local_to_world(CEntity ent, vec2 v) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return mat3_transform(transform->worldmat_cache, v);
 }
 vec2 Transform::transform_world_to_local(CEntity ent, vec2 v) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return mat3_transform(mat3_inverse(transform->worldmat_cache), v);
 }
 
 EcsId Transform::transform_get_dirty_count(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
     return transform->dirty_count;
 }
@@ -281,27 +280,11 @@ void Transform::transform_set_save_filter_rec(CEntity ent, bool filter) {
 
     // entity_set_save_filter(ent, filter);
 
-    transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    transform = ComponentGetPtr(ent);
     error_assert(transform);
     if (transform->children.len) {
         for (auto &child : transform->children) transform_set_save_filter_rec(child, filter);
     }
-}
-
-// -------------------------------------------------------------------------
-
-CTransform *Transform::wrap_transform_add(CEntity ent) {
-    CTransform *ptr = transform_add(ent);
-
-    auto L = ENGINE_LUA();
-
-    EcsWorld *world = ENGINE_ECS();
-    EntityData *e = EcsGetEnt(L, world, ent.id);
-    LuaRef tb = LuaRef::NewTable(L);
-    tb["__ud"] = ptr;
-    int cid1 = EcsComponentSet(L, e, the<Transform>().GetTid(), tb);
-
-    return ptr;
 }
 
 // -------------------------------------------------------------------------
@@ -311,8 +294,7 @@ void Transform::transform_init() {
 
     auto L = ENGINE_LUA();
 
-    ComponentTypeBase::Tid = EcsRegisterCType<CTransform>(L);
-    ComponentTypeBase::EntityPool = EcsProtoGetCType<CTransform>(L);
+    ComponentTypeBase::ComponentReg();
 
     // clang-format off
 
@@ -334,9 +316,9 @@ void Transform::transform_init() {
         .MemberMethod("transform_get_dirty_count", this, &Transform::transform_get_dirty_count)
         .MemberMethod("transform_set_save_filter_rec", this, &Transform::transform_set_save_filter_rec)
 
-        .MemberMethod("transform_add", this, &Transform::wrap_transform_add)
-        .MemberMethod("transform_remove", this, &Transform::transform_remove)
-        .MemberMethod("transform_has", this, &Transform::transform_has)
+        .MemberMethod<ComponentTypeBase>("transform_add", this, &ComponentTypeBase::WrapAdd)
+        .MemberMethod<ComponentTypeBase>("transform_has", this, &ComponentTypeBase::ComponentHas)
+        .MemberMethod("transform_remove", this, &Transform::ComponentRemove)
         .MemberMethod("transform_set_parent", this, &Transform::transform_set_parent)
         .MemberMethod("transform_get_parent", this, &Transform::transform_get_parent)
         .MemberMethod("transform_get_num_children", this, &Transform::transform_get_num_children)
@@ -359,7 +341,7 @@ int Transform::transform_update_all(Event evt) {
     CTransform *transform;
     static BBox bbox = {{0, 0}, {0, 0}};
 
-    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { transform_remove(ent); });
+    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
     // update edit bbox
     if (edit_get_enabled()) entitypool_foreach(transform, ComponentTypeBase::EntityPool) edit_bboxes_update(transform->ent, bbox);
@@ -377,7 +359,7 @@ DEFINE_IMGUI_BEGIN(template <>, CTransform) {
 DEFINE_IMGUI_END()
 
 int Transform::Inspect(CEntity ent) {
-    CTransform *transform = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTransform *transform = ComponentGetPtr(ent);
     error_assert(transform);
 
     ImGuiWrap::Auto(transform, "CTransform");

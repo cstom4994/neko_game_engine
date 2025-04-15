@@ -1047,7 +1047,7 @@ static void tiled_map_edit_w(CTiledMap *tiled, u32 layer_idx, u32 x, u32 y, u32 
 }
 
 void Tiled::tiled_map_edit(CEntity ent, u32 layer_idx, u32 x, u32 y, u32 id) {
-    CTiledMap *tiled = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTiledMap *tiled = ComponentGetPtr(ent);
     error_assert(tiled);
 
     tiled_map_edit_w(tiled, layer_idx, x, y, id);
@@ -1113,11 +1113,11 @@ int Tiled::RenderMap(CTiledMap *tiled) {
     return 0;
 }
 
-CTiledMap *Tiled::tiled_add(CEntity ent) {
+CTiledMap *Tiled::ComponentAdd(CEntity ent) {
 
-    if (ComponentTypeBase::EntityPool->GetPtr(ent)) return nullptr;
+    if (ComponentGetPtr(ent)) return nullptr;
 
-    the<Transform>().transform_add(ent);
+    the<Transform>().ComponentAdd(ent);
 
     CTiledMap *tiled = ComponentTypeBase::EntityPool->Add(ent);
 
@@ -1129,23 +1129,7 @@ CTiledMap *Tiled::tiled_add(CEntity ent) {
     return tiled;
 }
 
-CTiledMap *Tiled::wrap_sprite_add(CEntity ent) {
-    CTiledMap *ptr = tiled_add(ent);
-
-    auto L = ENGINE_LUA();
-
-    EcsWorld *world = ENGINE_ECS();
-    EntityData *e = EcsGetEnt(L, world, ent.id);
-    LuaRef tb = LuaRef::NewTable(L);
-    tb["__ud"] = ptr;
-    int cid1 = EcsComponentSet(L, e, ComponentTypeBase::Tid, tb);
-
-    return ptr;
-}
-
-void Tiled::tiled_remove(CEntity ent) { ComponentTypeBase::EntityPool->Remove(ent); }
-
-bool Tiled::tiled_has(CEntity ent) { return ComponentTypeBase::EntityPool->GetPtr(ent) != NULL; }
+void Tiled::ComponentRemove(CEntity ent) { ComponentTypeBase::EntityPool->Remove(ent); }
 
 DEFINE_IMGUI_BEGIN(template <>, CTiledMap) {
     ImGuiWrap::Auto(var.map_name, "map_name");
@@ -1155,7 +1139,7 @@ DEFINE_IMGUI_BEGIN(template <>, CTiledMap) {
 DEFINE_IMGUI_END()
 
 int Tiled::Inspect(CEntity ent) {
-    CTiledMap *tiled = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTiledMap *tiled = ComponentGetPtr(ent);
     error_assert(tiled);
 
     ImGuiWrap::Auto(tiled, "CTiledMap");
@@ -1168,8 +1152,7 @@ void Tiled::tiled_init() {
 
     auto L = ENGINE_LUA();
 
-    ComponentTypeBase::Tid = EcsRegisterCType<CTiledMap>(L);
-    ComponentTypeBase::EntityPool = EcsProtoGetCType<CTiledMap>(L);
+    ComponentTypeBase::ComponentReg();
 
     bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/tiled.glsl", &CTiledMap::tiled_shader);
     error_assert(ok);
@@ -1177,9 +1160,9 @@ void Tiled::tiled_init() {
     // clang-format off
 
     auto type = BUILD_TYPE(Tiled)
-        .MemberMethod("tiled_add", this, &Tiled::wrap_sprite_add)
-        .MemberMethod("tiled_remove", this, &Tiled::tiled_remove)
-        .MemberMethod("tiled_has", this, &Tiled::tiled_has)
+        .MemberMethod<ComponentTypeBase>("tiled_add", this, &ComponentTypeBase::WrapAdd)
+        .MemberMethod<ComponentTypeBase>("tiled_has", this, &ComponentTypeBase::ComponentHas)
+        .MemberMethod("tiled_remove", this, &Tiled::ComponentRemove)
         .MemberMethod("tiled_set_map", this, &Tiled::tiled_set_map)
         .MemberMethod("tiled_get_map", this, &Tiled::tiled_get_map)
         .MemberMethod("tiled_map_edit", this, &Tiled::tiled_map_edit)
@@ -1204,7 +1187,7 @@ void Tiled::tiled_fini() {
 
 int Tiled::tiled_update_all(Event evt) {
 
-    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { tiled_remove(ent); });
+    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
     ComponentTypeBase::EntityPool->ForEach([](CTiledMap *tiled) {
         tiled->pos = the<Transform>().transform_get_position(tiled->ent);
@@ -1220,7 +1203,7 @@ void Tiled::tiled_draw_all() {
 }
 
 void Tiled::tiled_set_map(CEntity ent, const char *str) {
-    CTiledMap *tiled = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTiledMap *tiled = ComponentGetPtr(ent);
     error_assert(tiled);
     tiled->map_name = to_cstr(String(str));
 
@@ -1232,13 +1215,13 @@ void Tiled::tiled_set_map(CEntity ent, const char *str) {
 }
 
 const char *Tiled::tiled_get_map(CEntity ent) {
-    CTiledMap *tiled = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTiledMap *tiled = ComponentGetPtr(ent);
     error_assert(tiled);
     return tiled->map_name.cstr();
 }
 
 int Tiled::tiled_get_object_groups(CEntity ent, lua_State *L) {
-    CTiledMap *tiled = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CTiledMap *tiled = ComponentGetPtr(ent);
     error_assert(tiled);
 
     Asset asset = {};

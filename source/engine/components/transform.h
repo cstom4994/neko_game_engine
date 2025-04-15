@@ -29,9 +29,9 @@ public:
     void transform_fini();
     int transform_update_all(Event evt);
 
-    CTransform *transform_add(CEntity ent);
-    void transform_remove(CEntity ent);
-    bool transform_has(CEntity ent);
+    CTransform *ComponentAdd(CEntity ent) override;
+    void ComponentRemove(CEntity ent) override;
+
     void transform_set_parent(CEntity ent, CEntity parent);
     CEntity transform_get_parent(CEntity ent);
     EcsId transform_get_num_children(CEntity ent);
@@ -56,8 +56,6 @@ public:
     vec2 transform_world_to_local(CEntity ent, vec2 v);
     EcsId transform_get_dirty_count(CEntity ent);
     void transform_set_save_filter_rec(CEntity ent, bool filter);
-
-    CTransform *wrap_transform_add(CEntity ent);
 
     int Inspect(CEntity ent) override;
 };

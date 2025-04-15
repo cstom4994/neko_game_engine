@@ -26,11 +26,8 @@ class Cloud : public SingletonClass<Cloud>, public ComponentTypeBase<CCloud> {
     int vertex_count;
 
 public:
-    CCloud *Add(CEntity ent);
-    void Remove(CEntity ent);
-    bool Has(CEntity ent);
-
-    CCloud *wrap_add(CEntity ent);
+    CCloud *ComponentAdd(CEntity ent) override;
+    void ComponentRemove(CEntity ent) override;
 
     void cloud_init();
     void cloud_fini();

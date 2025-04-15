@@ -11,12 +11,12 @@
 
 // -------------------------------------------------------------------------
 
-CCamera *Camera::camera_add(CEntity ent) {
+CCamera *Camera::ComponentAdd(CEntity ent) {
     CCamera *camera{};
 
-    if (ComponentTypeBase::EntityPool->GetPtr(ent)) return nullptr;
+    if (ComponentGetPtr(ent)) return nullptr;
 
-    the<Transform>().transform_add(ent);
+    the<Transform>().ComponentAdd(ent);
 
     camera = ComponentTypeBase::EntityPool->Add(ent);
     camera->viewport_height = 1.0;
@@ -28,15 +28,13 @@ CCamera *Camera::camera_add(CEntity ent) {
     return camera;
 }
 
-void Camera::camera_remove(CEntity ent) {
+void Camera::ComponentRemove(CEntity ent) {
     ComponentTypeBase::EntityPool->Remove(ent);
 
     if (CEntityEq(curr_camera, ent)) {
         curr_camera = entity_nil;
     }
 }
-
-bool Camera::camera_has(CEntity ent) { return ComponentTypeBase::EntityPool->GetPtr(ent) != NULL; }
 
 void Camera::camera_set_edit_camera(CEntity ent) { edit_camera = ent; }
 
@@ -61,13 +59,13 @@ CEntity Camera::camera_get_current_camera() {
 }
 
 void Camera::camera_set_viewport_height(CEntity ent, f32 height) {
-    CCamera *camera = (CCamera *)ComponentTypeBase::EntityPool->GetPtr(ent);
+    CCamera *camera = (CCamera *)ComponentGetPtr(ent);
     error_assert(camera);
     camera->viewport_height = height;
 }
 
 f32 Camera::camera_get_viewport_height(CEntity ent) {
-    CCamera *camera = (CCamera *)ComponentTypeBase::EntityPool->GetPtr(ent);
+    CCamera *camera = (CCamera *)ComponentGetPtr(ent);
     error_assert(camera);
     return camera->viewport_height;
 }
@@ -77,7 +75,7 @@ DEFINE_IMGUI_END()
 
 int Camera::Inspect(CEntity ent) {
 
-    CCamera *camera = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CCamera *camera = ComponentGetPtr(ent);
     error_assert(camera);
 
     ImGuiWrap::Auto(camera, "CCamera");
@@ -105,27 +103,12 @@ vec2 Camera::camera_unit_to_world(vec2 p) {
 
 // -------------------------------------------------------------------------
 
-CCamera *Camera::wrap_camera_add(CEntity ent) {
-    CCamera *ptr = camera_add(ent);
-
-    auto L = ENGINE_LUA();
-
-    EcsWorld *world = ENGINE_ECS();
-    EntityData *e = EcsGetEnt(L, world, ent.id);
-    LuaRef tb = LuaRef::NewTable(L);
-    tb["__ud"] = ptr;
-    int cid1 = EcsComponentSet(L, e, ComponentTypeBase::Tid, tb);
-
-    return ptr;
-}
-
 void Camera::camera_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
 
-    ComponentTypeBase::Tid = EcsRegisterCType<CCamera>(L);
-    ComponentTypeBase::EntityPool = EcsProtoGetCType<CCamera>(L);
+    ComponentTypeBase::ComponentReg();
 
     curr_camera = entity_nil;
     edit_camera = entity_nil;
@@ -138,9 +121,9 @@ void Camera::camera_init() {
         .MemberMethod("camera_world_to_unit", this, &Camera::camera_world_to_unit)
         .MemberMethod("camera_pixels_to_world", this, &Camera::camera_pixels_to_world)
         .MemberMethod("camera_unit_to_world", this, &Camera::camera_unit_to_world)
-        .MemberMethod("camera_add", this, &Camera::wrap_camera_add)
-        .MemberMethod("camera_remove", this, &Camera::camera_remove)
-        .MemberMethod("camera_has", this, &Camera::camera_has)
+        .MemberMethod<ComponentTypeBase>("camera_add", this, &ComponentTypeBase::WrapAdd)
+        .MemberMethod<ComponentTypeBase>("camera_has", this, &ComponentTypeBase::ComponentHas)
+        .MemberMethod("camera_remove", this, &Camera::ComponentRemove)
         .MemberMethod("camera_set_edit_camera", this, &Camera::camera_set_edit_camera)
         .MemberMethod("camera_set_current", this, &Camera::camera_set_current)
         .MemberMethod("camera_get_current", this, &Camera::camera_get_current)
@@ -164,7 +147,7 @@ int Camera::camera_update_all(Event evt) {
     vec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 
-    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { camera_remove(ent); });
+    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
     win_size = Neko::the<CL>().get_window_size();
     aspect = win_size.x / win_size.y;

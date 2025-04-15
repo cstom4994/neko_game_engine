@@ -8,12 +8,12 @@
 #include "engine/components/transform.h"
 #include "engine/components/camera.h"
 
-CCloud *Cloud::Add(CEntity ent) {
+CCloud *Cloud::ComponentAdd(CEntity ent) {
 
-    CCloud *cloud = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CCloud *cloud = ComponentGetPtr(ent);
     if (cloud) return cloud;
 
-    // the<Transform>().transform_add(ent);
+    // the<Transform>().Add(ent);
 
     cloud = ComponentTypeBase::EntityPool->Add(ent);
 
@@ -23,31 +23,14 @@ CCloud *Cloud::Add(CEntity ent) {
     return cloud;
 }
 
-CCloud *Cloud::wrap_add(CEntity ent) {
-    CCloud *ptr = Add(ent);
-
-    auto L = ENGINE_LUA();
-
-    EcsWorld *world = ENGINE_ECS();
-    EntityData *e = EcsGetEnt(L, world, ent.id);
-    LuaRef tb = LuaRef::NewTable(L);
-    tb["__ud"] = ptr;
-    int cid1 = EcsComponentSet(L, e, ComponentTypeBase::Tid, tb);
-
-    return ptr;
-}
-
-void Cloud::Remove(CEntity ent) { ComponentTypeBase::EntityPool->Remove(ent); }
-
-bool Cloud::Has(CEntity ent) { return ComponentTypeBase::EntityPool->GetPtr(ent) != nullptr; }
+void Cloud::ComponentRemove(CEntity ent) { ComponentTypeBase::EntityPool->Remove(ent); }
 
 void Cloud::cloud_init() {
     PROFILE_FUNC();
 
     auto L = ENGINE_LUA();
 
-    ComponentTypeBase::Tid = EcsRegisterCType<CCloud>(L);
-    ComponentTypeBase::EntityPool = EcsProtoGetCType<CCloud>(L);
+    ComponentTypeBase::ComponentReg();
 
     bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/cloud.glsl", &cloud_shader);
     error_assert(ok);
@@ -72,9 +55,9 @@ void Cloud::cloud_init() {
     // clang-format off
 
     auto type = BUILD_TYPE(Cloud)
-        .MemberMethod("cloud_add", this, &Cloud::wrap_add)
-        .MemberMethod("cloud_remove", this, &Cloud::Remove)
-        .MemberMethod("cloud_has", this, &Cloud::Has)
+        .MemberMethod<ComponentTypeBase>("cloud_add", this, &ComponentTypeBase::WrapAdd)
+        .MemberMethod<ComponentTypeBase>("cloud_has", this, &ComponentTypeBase::ComponentHas)
+        .MemberMethod("cloud_remove", this, &Cloud::ComponentRemove)
         .Build();
 
     // clang-format on
@@ -103,7 +86,7 @@ void Cloud::cloud_push_vertex(float x, float y, float u, float v) {
 
 int Cloud::cloud_update_all(Event evt) {
 
-    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { Remove(ent); });
+    entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
     ComponentTypeBase::EntityPool->ForEach([this](CCloud *cloud) {
         float x1 = cloud->pos.x;
@@ -155,7 +138,7 @@ DEFINE_IMGUI_BEGIN(template <>, CCloud) {
 DEFINE_IMGUI_END()
 
 int Cloud::Inspect(CEntity ent) {
-    CCloud *cloud = ComponentTypeBase::EntityPool->GetPtr(ent);
+    CCloud *cloud = ComponentGetPtr(ent);
     error_assert(cloud);
 
     ImGuiWrap::Auto(cloud, "CCloud");

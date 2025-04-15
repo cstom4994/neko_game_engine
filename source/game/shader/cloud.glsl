@@ -86,7 +86,7 @@ void main() {
     }
 
     float morph_time = 200.0;
-    float freq = 1.5;
+    float freq = 3.5;
 
     vec2 uv = vec2(v_texindex.x, 1.0 - v_texindex.y);;
 
