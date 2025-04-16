@@ -1,8 +1,5 @@
 #include "engine/scripting/scripting.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "engine/editor.h"
 #include "engine/asset.h"
 #include "engine/base.hpp"
@@ -18,6 +15,8 @@
 #include "engine/scripting/luax.h"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
+
+#include <ranges>
 
 using namespace Neko::luabind;
 
@@ -516,6 +515,37 @@ void Scripting::script_fini() {
     LuaVM vm{ENGINE_LUA()};
 
     vm.Fini(ENGINE_LUA());
+}
+
+void Scripting::load_all_lua_scripts(lua_State *L) {
+    PROFILE_FUNC();
+
+    std::vector<std::string> files = {};
+
+    bool ok = false;
+
+#if defined(_DEBUG) || 1
+    ok = the<VFS>().list_all_files("code", &files);
+#else
+    ok = the<VFS>().list_all_files("gamedata", &files);
+#endif
+
+    if (!ok) {
+        neko_panic("failed to list all files");
+    }
+
+    auto is_internal_lua = [](const std::string &file) -> bool {
+        static std::vector<std::string> internal_lua_list = {"nekomain.lua", "nekogame.lua", "nekoeditor.lua", "bootstrap.lua"};
+        for (auto internal_lua : internal_lua_list)
+            if (file.ends_with(internal_lua)) return true;
+        return false;
+    };
+
+    auto filtered_files = files | std::views::filter([&](const std::string &file) { return file.ends_with(".lua") && !is_internal_lua(file); });
+
+    for (const auto &file : filtered_files) {
+        asset_load_kind(AssetKind_LuaRef, file, nullptr);
+    }
 }
 
 void script_save_all(CL *app) {

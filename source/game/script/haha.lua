@@ -84,9 +84,9 @@ function haha()
         -- gui_test = {}
     }
 
-    local cloud = ng.add {
-        rectangle = {}
-    }
+    -- local cloud = ng.add {
+    --     rectangle = {}
+    -- }
 
     -- local player_ent = ng.add {
     --     transform = {

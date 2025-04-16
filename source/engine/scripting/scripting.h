@@ -23,6 +23,7 @@ public:
     void init_lua();
     void script_init();
     void script_fini();
+    void load_all_lua_scripts(lua_State *L);
 };
 
 void luax_run_bootstrap(lua_State *L);

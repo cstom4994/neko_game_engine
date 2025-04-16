@@ -35,7 +35,8 @@ public:
     void fini();
     void push_vertex(float x, float y, float u, float v);
     int update_all(Event evt);
-    void draw(const AssetShader &shader, std::function<void(void)> setter);
+    void immediate_push(CEntity ent);
+    void immediate_draw(const AssetShader &shader, std::function<void(void)> setter);
 
     int Inspect(CEntity ent) override;
 };

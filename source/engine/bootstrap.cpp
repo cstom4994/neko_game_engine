@@ -32,8 +32,6 @@
 #include "engine/components/transform.h"
 #include "engine/base/common/job.hpp"
 
-#include <ranges>
-
 CBase gBase;
 
 PostProcessor posteffect_vignette;
@@ -44,8 +42,14 @@ PostProcessor posteffect_composite;
 
 Asset sprite_shader{};
 Asset cloud_shader{};
+Asset grass_shader{};
 
 QuadRenderer quadrenderer;
+
+CEntity cloud_ent;
+CEntity grass_ent;
+
+AssetTexture grass_texture;
 
 extern void draw_gui();
 
@@ -82,37 +86,6 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     }
 }
 
-void CL::load_all_lua_scripts(lua_State *L) {
-    PROFILE_FUNC();
-
-    std::vector<std::string> files = {};
-
-    bool ok = false;
-
-#if defined(_DEBUG) || 1
-    ok = the<VFS>().list_all_files("code", &files);
-#else
-    ok = the<VFS>().list_all_files("gamedata", &files);
-#endif
-
-    if (!ok) {
-        neko_panic("failed to list all files");
-    }
-
-    auto is_internal_lua = [](const std::string &file) -> bool {
-        static std::vector<std::string> internal_lua_list = {"nekomain.lua", "nekogame.lua", "nekoeditor.lua", "bootstrap.lua"};
-        for (auto internal_lua : internal_lua_list)
-            if (file.ends_with(internal_lua)) return true;
-        return false;
-    };
-
-    auto filtered_files = files | std::views::filter([&](const std::string &file) { return file.ends_with(".lua") && !is_internal_lua(file); });
-
-    for (const auto &file : filtered_files) {
-        asset_load_kind(AssetKind_LuaRef, file, nullptr);
-    }
-}
-
 void CL::game_draw() {
 
     lua_State *L = ENGINE_LUA();
@@ -139,16 +112,41 @@ void CL::game_draw() {
 
             the<Tiled>().tiled_draw_all();
 
+            {
+                the<RectangleBox>().immediate_push(grass_ent);
+                the<RectangleBox>().immediate_draw(assets_get<AssetShader>(grass_shader), [&]() {
+                    GLuint sid = assets_get<AssetShader>(grass_shader).id;
+                    neko_shader_set_float(sid, "u_time", the<CL>().timing_get_elapsed() / 8000.f);
+
+                    neko_shader_set_v2f(sid, "NekoScreenSize", neko_v2(state.width, state.height));
+
+                    // 设置草尖颜色
+                    glUniform4f(glGetUniformLocation(sid, "uTipColor"), 0.6f, 0.9f, 0.3f, 1.0f);
+
+                    // 设置风吹颜色
+                    glUniform4f(glGetUniformLocation(sid, "uWindColor"), 0.3f, 0.5f, 0.4f, 1.0f);
+
+                    glUniform1i(glGetUniformLocation(sid, "tex0"), 0);
+
+                    texture_bind(grass_texture.id, 0);
+                });
+            }
+
             the<EventHandler>().EventPushLuaType(OnDraw);
 
             the<Sprite>().sprite_draw_all();
             the<Batch>().batch_draw_all();
 
-            the<RectangleBox>().draw(assets_get<AssetShader>(cloud_shader), []() {
-                GLuint sid = assets_get<AssetShader>(cloud_shader).id;
-                neko_shader_set_float(sid, "u_time", the<CL>().timing_get_elapsed() / 8000.f);
-                neko_shader_set_v3f(sid, "u_groundColor", neko_v3(0.1, 0.1, 0.1));
-            });
+            {
+                the<RectangleBox>().immediate_push(cloud_ent);
+                the<RectangleBox>().immediate_draw(assets_get<AssetShader>(cloud_shader), [&]() {
+                    GLuint sid = assets_get<AssetShader>(cloud_shader).id;
+                    neko_shader_set_float(sid, "u_time", the<CL>().timing_get_elapsed() / 8000.f);
+                    neko_shader_set_v3f(sid, "u_groundColor", neko_v3(0.1, 0.1, 0.1));
+
+                    neko_shader_set_v2f(sid, "NekoScreenSize", neko_v2(state.width, state.height));
+                });
+            }
 
             the<Editor>().edit_draw_all();
             the<DebugDraw>().debug_draw_all();
@@ -220,11 +218,6 @@ void CL::game_draw() {
                 draw_list->AddRectFilled(footer_pos, footer_pos + footer_size, background_color);
 
                 Neko::ImGuiWrap::OutlineText(draw_list, ImVec2(footer_pos.x + 3, footer_pos.y + 3), "%.1f FPS", io.Framerate);
-
-                if (ImGui::Begin("Man")) {
-                    ImGuiWrap::Auto(the<Camera>().GetInverseViewMatrix(), "inverse_view_matrix");
-                }
-                ImGui::End();
             }
         } else {
         }
@@ -519,11 +512,6 @@ void CL::init() {
         the<Camera>().camera_init();
 
         {
-            bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/cloud.glsl", &cloud_shader);
-            error_assert(ok);
-        }
-
-        {
             the<Batch>().batch_init(state.batch_vertex_capacity);
             the<Sprite>().sprite_init();
             the<RectangleBox>().init();
@@ -541,7 +529,7 @@ void CL::init() {
     luax_run_nekogame(L);
 
     if (!gBase.error_mode.load() && state.startup_load_scripts) {
-        load_all_lua_scripts(L);
+        the<Scripting>().load_all_lua_scripts(L);
     }
 
     // run main.lua
@@ -699,6 +687,32 @@ void CL::init() {
             {&posteffect_blur_v.GetRenderTarget(), "posteffect_blur"},          //
             {&posteffect_composite.GetRenderTarget(), "posteffect_composite"},  //
     };
+
+    {
+        {
+            bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/cloud.glsl", &cloud_shader);
+            error_assert(ok);
+        }
+        cloud_ent = entity_create("cloud");
+        the<RectangleBox>().WrapAdd(cloud_ent);
+        auto cloud_component = the<RectangleBox>().ComponentGetPtr(cloud_ent);
+        cloud_component->pos = neko_v2(0, 0);
+        cloud_component->size = neko_v2(500, 300);
+    }
+
+    {
+        {
+            bool ok = asset_load_kind(AssetKind_Shader, "@code/game/shader/grass.glsl", &grass_shader);
+            error_assert(ok);
+
+            grass_texture = texure_aseprite_simple("@gamedata/assets/grass.ase");
+        }
+        grass_ent = entity_create("grass");
+        the<RectangleBox>().WrapAdd(grass_ent);
+        auto grass_component = the<RectangleBox>().ComponentGetPtr(grass_ent);
+        grass_component->pos = neko_v2(150, 150);
+        grass_component->size = neko_v2(50, 50);
+    }
 }
 
 int CL::set_window_title(const char *title) {

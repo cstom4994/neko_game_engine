@@ -130,8 +130,6 @@ public:
     void game_draw();
     void SplashScreen();
 
-    void load_all_lua_scripts(lua_State *L);
-
     inline CL::TimeInfo GetTimeInfo() const { return the<CL>().time; }
     inline f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
     inline void timing_set_scale(f32 s) { the<CL>().scale = s; }

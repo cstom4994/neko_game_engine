@@ -18,7 +18,7 @@ CRectangle *RectangleBox::ComponentAdd(CEntity ent) {
     rectangle = ComponentTypeBase::EntityPool->Add(ent);
 
     rectangle->pos = neko_v2(0, 0);
-    rectangle->size = neko_v2(500, 300);
+    rectangle->size = neko_v2(0, 0);
 
     return rectangle;
 }
@@ -85,7 +85,32 @@ int RectangleBox::update_all(Event evt) {
 
     entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
-    ComponentTypeBase::EntityPool->ForEach([this](CRectangle *rectangle) {
+    // ComponentTypeBase::EntityPool->ForEach([this](CRectangle *rectangle) {
+    //     float x1 = rectangle->pos.x;
+    //     float y1 = -rectangle->pos.y;
+    //     float x2 = x1 + rectangle->size.x;
+    //     float y2 = y1 - rectangle->size.y;
+
+    //    float u1 = 0.f;
+    //    float v1 = 0.f;
+    //    float u2 = 1.f;
+    //    float v2 = 1.f;
+
+    //    push_vertex(x1, y1, u1, v2);
+    //    push_vertex(x2, y2, u2, v1);
+    //    push_vertex(x1, y2, u1, v1);
+
+    //    push_vertex(x1, y1, u1, v2);
+    //    push_vertex(x2, y1, u2, v2);
+    //    push_vertex(x2, y2, u2, v1);
+    //});
+
+    return 0;
+}
+
+void RectangleBox::immediate_push(CEntity ent) {
+    CRectangle *rectangle = ComponentGetPtr(ent);
+    {
         float x1 = rectangle->pos.x;
         float y1 = -rectangle->pos.y;
         float x2 = x1 + rectangle->size.x;
@@ -103,12 +128,10 @@ int RectangleBox::update_all(Event evt) {
         push_vertex(x1, y1, u1, v2);
         push_vertex(x2, y1, u2, v2);
         push_vertex(x2, y2, u2, v1);
-    });
-
-    return 0;
+    }
 }
 
-void RectangleBox::draw(const AssetShader &shader, std::function<void(void)> setter) {
+void RectangleBox::immediate_draw(const AssetShader &shader, std::function<void(void)> setter) {
 
     GLuint sid = shader.id;
 

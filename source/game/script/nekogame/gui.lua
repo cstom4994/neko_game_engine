@@ -399,6 +399,58 @@ EditorTestPanel = function(dt)
 
     end
 
+    if ImGui.Button("test_solver") then
+
+        local e = solver:expr{"力量 = 基础力量 + 装备力量 + buff力量",
+                              "敏捷 = 基础敏捷 + 装备敏捷", "体质 = sqrt(基础体质^2 + 额外体质)",
+                              "攻击力 = 力量 * 2 + 敏捷 * 0.5", "防御力 = (体质 + 敏捷 * 0.3) * 1.5",
+                              "暴击率 = min(100, 敏捷 * 0.8)", "命中率 = sin(敏捷 / 100) * 100",
+                              "回避率 = cos(敏捷 / 50) * 100", "幸运值 = log(幸运基值 + 1) * 5",
+                              "综合战斗力 = (攻击力 + 防御力 + 命中率 + 幸运值) * (1 + 暴击率 / 100)",
+                              "状态描述 = 暴击率 > 50 and 1 or 0"}
+
+        local timer = os.clock()
+
+        -- for i = 1, 1, 1 do
+
+        local a = solver:create(e)
+
+        -- 设置基础数据
+        a["基础力量"] = 20
+        a["装备力量"] = 10
+        a["buff力量"] = 5
+
+        a["基础敏捷"] = 18
+        a["装备敏捷"] = 7
+
+        a["基础体质"] = 15
+        a["额外体质"] = 36
+
+        a["幸运基值"] = 32
+
+        a["新值1"] = 32
+
+        -- for k, v in pairs(e.deps) do
+        --     for _, v in pairs(v) do
+        --         print(k, v)
+        --     end
+        -- end
+
+        for k, v in pairs(e.alias2name) do
+            print(k, v)
+        end
+
+        for k, v in pairs(a) do
+            print(k, v)
+        end
+        -- end
+
+        timer = os.clock() - timer
+
+        print(string.format("use time: %.3f sec", timer))
+
+    end
+
     if ImGui.Button("spritepack") then
 
         local tools = require("__neko.spritepack")
