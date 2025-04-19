@@ -2,6 +2,7 @@
 #include "window.h"
 #include "bootstrap.h"
 #include "engine/base/common/profiler.hpp"
+#include "engine/scripting/lua_util.h"
 
 int game_set_window_vsync(bool vsync) {
     glfwSwapInterval(vsync);
@@ -76,6 +77,56 @@ double Window::Scale() {
 void Window::SetFramebufferSizeCallback(GLFWframebuffersizefun func) { glfwSetFramebufferSizeCallback(window, func); }
 
 void Window::SwapBuffer() { glfwSwapBuffers(window); }
+
+int wrap_window_clipboard(lua_State *L) {
+    const_str v = the<Window>().GetClipboard();
+    lua_pushstring(L, v);
+    return 1;
+}
+int wrap_window_prompt(lua_State *L) {
+    const_str msg = lua_tostring(L, 1);
+    const_str title = lua_tostring(L, 2);
+    int v = the<Window>().ShowMsgBox(msg, title);
+    lua_pushinteger(L, v);
+    return 1;
+}
+int wrap_window_setclipboard(lua_State *L) {
+    const_str str = lua_tostring(L, 1);
+    the<Window>().SetClipboard(str);
+    return 0;
+}
+int wrap_window_focus(lua_State *L) {
+    the<Window>().Focus();
+    return 0;
+}
+int wrap_window_has_focus(lua_State *L) {
+    int v = the<Window>().HasFocus();
+    lua_pushinteger(L, v);
+    return 1;
+}
+int wrap_window_scale(lua_State *L) {
+    f64 v = the<Window>().Scale();
+    lua_pushnumber(L, v);
+    return 1;
+}
+int wrap_window_size(lua_State *L) {
+    vec2 v = luavec2(the<CL>().state.width, the<CL>().state.height);
+    LuaPush<vec2>(L, v);
+    return 1;
+}
+
+void Window::init() {
+
+    auto type = BUILD_TYPE(Window)
+                        .CClosure({{"window_clipboard", wrap_window_clipboard},
+                                   {"window_prompt", wrap_window_prompt},
+                                   {"window_setclipboard", wrap_window_setclipboard},
+                                   {"window_focus", wrap_window_focus},
+                                   {"window_has_focus", wrap_window_has_focus},
+                                   {"window_scale", wrap_window_scale},
+                                   {"window_size", wrap_window_size}})
+                        .Build();
+}
 
 void Window::create() {
     PROFILE_FUNC();

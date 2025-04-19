@@ -284,14 +284,13 @@ void CL::game_draw() {
                     ImVec2 windowPos = ImGui::GetWindowPos();
                     ImVec2 cursorStartPos = ImGui::GetCursorScreenPos();
                     ImVec2 relativeMousePos = ImVec2(mousePos.x - cursorStartPos.x, mousePos.y - cursorStartPos.y);
-                    float viewportMouseX = relativeMousePos.x / scale;
-                    float viewportMouseY = (relativeMousePos.y + (state.height * scale)) / scale;
-                    viewportMouseX = std::clamp(viewportMouseX, 0.0f, state.width);
-                    viewportMouseY = std::clamp(viewportMouseY, 0.0f, state.height);
 
-                    the<Editor>().PushEditorEvent(OnMouseMove, luavec2(viewportMouseX, viewportMouseY));
+                    editor.viewportMouseX = std::clamp(relativeMousePos.x / scale, 0.0f, state.width);
+                    editor.viewportMouseY = std::clamp((relativeMousePos.y + (state.height * scale)) / scale, 0.0f, state.height);
 
-                    ImGui::Text("%f,%f", viewportMouseX, viewportMouseY);
+                    editor.PushEditorEvent(OnMouseMove, luavec2(editor.viewportMouseX, editor.viewportMouseY));
+
+                    ImGui::Text("%f,%f", editor.viewportMouseX, editor.viewportMouseY);
                 }
             }
             ImGui::End();
@@ -507,6 +506,8 @@ void CL::init() {
         auto &input = Neko::the<Input>();
         input.init();
 
+        the<Window>().init();
+
         the<Entity>().entity_init();
         the<Transform>().transform_init();
         the<Camera>().camera_init();
@@ -648,13 +649,14 @@ void CL::init() {
             {EventMask::Update, [](Event evt) -> int { return the<Batch>().batch_update_all(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Sound>().OnUpdate(evt); }},
             {EventMask::Update, [](Event evt) -> int { return the<Tiled>().tiled_update_all(evt); }},
-            {EventMask::Update, [](Event evt) -> int { return the<Editor>().edit_update_all(evt); }},
+            {EventMask::Update, [](Event evt) -> int { return the<Editor>().OnUpdate(evt); }},
 
             {EventMask::PostUpdate,
              [](Event) -> int {
                  the<EventHandler>().EventPushLuaType(OnPostUpdate);
                  return 0;
              }},
+            {EventMask::PostUpdate, [](Event evt) -> int { return the<Editor>().OnPostUpdate(evt); }},
             {EventMask::PostUpdate, [](Event evt) -> int { return the<Sound>().OnPostUpdate(evt); }},
             {EventMask::PostUpdate, [](Event evt) -> int { return the<Entity>().entity_update_all(evt); }},
 
@@ -713,6 +715,8 @@ void CL::init() {
         grass_component->pos = neko_v2(150, 150);
         grass_component->size = neko_v2(50, 50);
     }
+
+    the<Editor>().initializeEditCamera();
 }
 
 int CL::set_window_title(const char *title) {

@@ -10,6 +10,7 @@
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/scripting.h"
+#include "engine/scripting/lua_util.h"
 #include "engine/ui.h"
 #include "engine/components/camera.h"
 
@@ -93,6 +94,45 @@ static void _scroll_callback(GLFWwindow* window, double x, double y) {
     for (auto f : Neko::the<Input>().scroll_cbs) (*f)(luavec2(x, y));
 }
 
+int wrap_input_keycode_str(lua_State* L) {
+    KeyCode type_val = (KeyCode)lua_tointeger(L, 1);
+    LuaPush<KeyCode>(L, type_val);
+    return 1;
+}
+int wrap_input_key_down(lua_State* L) {
+    KeyCode code = LuaGet<KeyCode>(L, 1);
+    bool v = input_key_down(code);
+    LuaPush(L, v);
+    return 1;
+}
+int wrap_input_key_release(lua_State* L) {
+    KeyCode code = LuaGet<KeyCode>(L, 1);
+    bool v = input_key_release(code);
+    LuaPush(L, v);
+    return 1;
+}
+int wrap_input_get_mouse_pos_pixels_fix(lua_State* L) {
+    vec2 v = input_get_mouse_pos_pixels_fix();
+    LuaPush<vec2>(L, v);
+    return 1;
+}
+int wrap_input_get_mouse_pos_pixels(lua_State* L) {
+    vec2 v = input_get_mouse_pos_pixels();
+    LuaPush<vec2>(L, v);
+    return 1;
+}
+int wrap_input_get_mouse_pos_unit(lua_State* L) {
+    vec2 v = input_get_mouse_pos_unit();
+    LuaPush<vec2>(L, v);
+    return 1;
+}
+int wrap_input_mouse_down(lua_State* L) {
+    MouseCode code = LuaGet<MouseCode>(L, 1);
+    bool v = input_mouse_down(code);
+    LuaPush(L, v);
+    return 1;
+}
+
 void Input::init() {
     PROFILE_FUNC();
 
@@ -124,6 +164,16 @@ void Input::init() {
 
         lua_pop(L, 1);
     }
+
+    auto type = BUILD_TYPE(Input)
+                        .CClosure({{"input_keycode_str", wrap_input_keycode_str},
+                                   {"input_key_down", wrap_input_key_down},
+                                   {"input_key_release", wrap_input_key_release},
+                                   {"input_get_mouse_pos_pixels_fix", wrap_input_get_mouse_pos_pixels_fix},
+                                   {"input_get_mouse_pos_pixels", wrap_input_get_mouse_pos_pixels},
+                                   {"input_get_mouse_pos_unit", wrap_input_get_mouse_pos_unit},
+                                   {"input_mouse_down", wrap_input_mouse_down}})
+                        .Build();
 }
 
 void Input::fini() {
@@ -145,7 +195,7 @@ int Input::OnPreUpdate() {
     double x, y;
     glfwGetCursorPos(the<CL>().window->glfwWindow(), &x, &y);
 
-    vec2 p = the<Camera>().camera_pixels_to_world({(f32)x, -(f32)y});
+    vec2 p = Camera::camera_pixels_to_world({(f32)x, -(f32)y});
     LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "x") = p.x;
     LuaTableAccess<InputMousePos>::Fields<lua_Number>(MousePosTable, "y") = p.y;
 

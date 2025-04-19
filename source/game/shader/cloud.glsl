@@ -28,6 +28,9 @@ uniform vec3 light_pos = vec3(0.0, 0.0, 0.0);
 uniform mat3 inverse_view_matrix;
 uniform vec3 u_groundColor = vec3(0.1, 0.1, 0.1);
 
+uniform float u_morph_time = 200.0;
+uniform float u_freq = 3.5;
+
 out vec4 FragColor;
 
 vec2 rand_vec(uvec2 p) {
@@ -85,17 +88,14 @@ void main() {
         light_dir = vec3(normalize(light_pos.xy - center), 0.0);
     }
 
-    float morph_time = 200.0;
-    float freq = 3.5;
-
     vec2 uv = vec2(v_texindex.x, 1.0 - v_texindex.y);
 
     float pixelate = 1024.0;
 
     uv = (floor((uv * pixelate) / 2.0) * 2.0 + 1.0) / pixelate; // 像素化处理
 
-    float height = cloud_noise(uv, freq, 0.0, mod(u_time / morph_time, 1.0));
-    float other = cloud_noise(uv - light_dir.xy/v_texindex.xy, freq, 0.0, mod(u_time / morph_time, 1.0));
+    float height = cloud_noise(uv, u_freq, 0.0, mod(u_time / u_morph_time, 1.0));
+    float other = cloud_noise(uv - light_dir.xy/v_texindex.xy, u_freq, 0.0, mod(u_time / u_morph_time, 1.0));
     float brightness = mix(0.8, 1.0, ceil(other - height));
 
     height = min(ceil(max(height, 0.0)), 1.0);

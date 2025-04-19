@@ -15,6 +15,7 @@ private:
 public:
 
     void create();
+    void init();
 
     GLFWwindow *glfwWindow() const { return window; }
 

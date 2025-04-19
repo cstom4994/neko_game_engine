@@ -143,27 +143,6 @@ function ns.edit.pause_toggle()
     ns.timing.set_paused(not ns.timing.get_paused())
 end
 
---- undo -----------------------------------------------------------------------
-
-ns.edit.history = {}
-
-function ns.edit.undo_save()
-
-end
-
-function ns.edit.undo()
-    if #ns.edit.history <= 1 then
-        print('nothing to undo')
-        return
-    end
-
-    table.remove(ns.edit.history)
-    local str = ns.edit.history[#ns.edit.history]
-    -- local s = ng.store_open_str(str)
-    -- ns.system.load_all(s)
-    -- ng.store_close(s)
-end
-
 --- normal mode ----------------------------------------------------------------
 
 ns.edit.modes.normal = {}
@@ -176,347 +155,30 @@ ns.edit.mode = 'normal' -- start in normal mode
 
 --- edit camera ----------------------------------------------------------------
 
-local camera_default_height = 150
-ns.edit.camera = ng.add {
-    edit = {
-        editable = false
-    },
-    camera = {
-        viewport_height = camera_default_height,
-        current = false
-    }
-}
-ns.camera.set_edit_camera(ns.edit.camera)
-
--- drag
-
-local camera_drag_mouse_prev
 function ns.edit.camera_drag_start()
-    camera_drag_mouse_prev = EditorGetMouseUnit()
-    ns.edit_camera_drag.enabled = true
+    neko.Editor_camera_drag_start()
 end
 
 function ns.edit.camera_drag_end()
-    ns.edit_camera_drag.enabled = false
-end
-
-ns.edit_camera_drag = {
-    enabled = false
-}
-function ns.edit_camera_drag.OnUpdate()
-    if not ns.edit.get_enabled() then
-        ns.edit_camera_drag.enabled = false
-        return
-    end
-
-    local m = EditorGetMouseUnit()
-
-    -- find screen mouse motion in world coordinates, move opposite way
-    local campos = ns.transform.local_to_world(ns.edit.camera, ng.vec2_zero)
-    local mp = ns.camera.unit_to_world(camera_drag_mouse_prev) - campos
-    local mc = ns.camera.unit_to_world(m) - campos
-    ns.transform.translate(ns.edit.camera, mp - mc)
-    camera_drag_mouse_prev = m
-end
-
--- zoom
-local camera_zoom_factor = 0
-function ns.edit.camera_zoom(f)
-    camera_zoom_factor = camera_zoom_factor + f
-    local h = math.pow(0.8, camera_zoom_factor) * camera_default_height
-    ns.camera.set_viewport_height(ns.edit.camera, h)
+    neko.Editor_camera_drag_end()
 end
 
 function ns.edit.camera_zoom_in()
-    ns.edit.camera_zoom(1)
+    neko.Editor_camera_zoom_in()
 end
 
 function ns.edit.camera_zoom_out()
-    ns.edit.camera_zoom(-1)
-end
-
--- 编辑器内容
-local SelectTable = ng.entity_table()
-local SingleSelectID = 0
-local SingleSelectEnt = nil
-
--- 获取一些选定的实体 如果没有则返回nil
-function ns.edit.select_get_first()
-    for ent in pairs(SelectTable) do
-        return ent
-    end
-    return nil
-end
-
-function ns.edit.select_toggle(ent)
-    if SelectTable[ent] then
-        SelectTable[ent] = nil
-    else
-        SelectTable[ent] = true
-    end
-end
-
-function ns.edit.select_clear()
-    SelectTable = ng.entity_table()
+    neko.Editor_camera_zoom_out()
 end
 
 --- 单击选择 ---------------------------------------------------------------
 
-local function GetEntitiesUnderMouse()
-    local ents = {}
-    local mouse_pos = ns.camera.unit_to_world(EditorGetMouseUnit())
-    for i = 0, ns.edit.bboxes_get_num() - 1 do
-        local ent = ns.edit.bboxes_get_nth_ent(i)
-        local bbox = neko.edit_bboxes_get_nth_bbox(i)
-        local wmat = neko.transform_get_world_matrix(ent)
-        local on = false
-        if neko.bbox_contains2(bbox, wmat, mouse_pos) then
-            table.insert(ents, ent)
-            on = true
-        end
-
-        print("GetEntitiesUnderMouse", ent, ent.id, bbox, on)
-    end
-    -- 按与鼠标的距离排序
-    local distcomp = function(e1, e2)
-        local p1 = ns.transform.get_world_position(e1)
-        local p2 = ns.transform.get_world_position(e2)
-        return ng.vec2_dist(p1, mouse_pos) < ng.vec2_dist(p2, mouse_pos)
-    end
-    table.sort(ents, distcomp)
-    return ents
-end
-
 function ns.edit.select_click_single()
-    -- 判断鼠标下有东西
-    local ents = GetEntitiesUnderMouse()
-
-    if #ents == 0 then
-        SelectTable = ng.entity_table()
-        ns.edit.undo_save()
-        return
-    end
-
-    -- 如果已经选择了什么 则选择下一个实体
-    local sel = 0
-    for i = 1, #ents do
-        if SelectTable[ents[i]] then
-            sel = i
-            break
-        end
-    end
-    SelectTable = ng.entity_table()
-    sel = (sel % #ents) + 1
-    SelectTable[ents[sel]] = true
-
-    print("上一个选择", SingleSelectEnt, SingleSelectID)
-    -- ns.edit_inspector.remove(SingleSelectEnt, "transform")
-    -- ns.edit_inspector.remove(SingleSelectEnt, "sprite")
-
-    SingleSelectID = ents[sel].id
-    SingleSelectEnt = ents[sel]
-
-    print("选择", ents[sel], ents[sel].id)
-    -- ns.edit_inspector.add(SingleSelectEnt, "transform")
-    -- ns.edit_inspector.add(SingleSelectEnt, "sprite")
-
-    ns.edit.undo_save()
+    neko.SelectClickSingle()
 end
 
 function ns.edit.select_click_multi()
-    -- 判断鼠标下是否有实体
-    local ents = GetEntitiesUnderMouse()
-    if #ents == 0 then
-        ns.edit.undo_save()
-        return
-    end
-
-    -- 如果没有东西被选择则选择一个实体
-    for i = 1, #ents do
-        if not SelectTable[ents[i]] then
-            SelectTable[ents[i]] = true
-            ns.edit.undo_save()
-            return
-        end
-    end
-
-    -- 否则取消第一个选择
-    SelectTable[ents[1]] = nil
-
-    ns.edit.undo_save()
-end
-
---- 抓取模式 -----------------------------------------------------------------------
-local grab_old_pos, grab_mouse_start
-local grab_disp -- 'extra' displacement on top of mouse motion
-local grab_snap -- whether snapping to grid
-
-function ns.edit.grab_start()
-    ns.edit.SetMode('grab')
-end
-
-function ns.edit.grab_end()
-    ns.edit.SetMode('normal')
-    ns.edit.undo_save()
-end
-
-function ns.edit.grab_cancel()
-    for ent in pairs(SelectTable) do
-        ns.transform.set_position(ent, grab_old_pos[ent])
-    end
-    ns.edit.SetMode('normal')
-end
-
-function ns.edit.grab_snap_on()
-    grab_snap = true
-end
-
-function ns.edit.grab_snap_off()
-    grab_snap = false
-end
-
--- move all selected grid size times mult in a direction
-function ns.edit.grab_move_left(mult)
-    local g = ns.edit.get_grid_size()
-    grab_disp.x = grab_disp.x - (mult or 1) * (g.x > 0 and g.x or 1)
-end
-
-function ns.edit.grab_move_right(mult)
-    local g = ns.edit.get_grid_size()
-    grab_disp.x = grab_disp.x + (mult or 1) * (g.x > 0 and g.x or 1)
-end
-
-function ns.edit.grab_move_up(mult)
-    local g = ns.edit.get_grid_size()
-    grab_disp.y = grab_disp.y + (mult or 1) * (g.y > 0 and g.y or 1)
-end
-
-function ns.edit.grab_move_down(mult)
-    local g = ns.edit.get_grid_size()
-    grab_disp.y = grab_disp.y - (mult or 1) * (g.y > 0 and g.y or 1)
-end
-
-ns.edit.modes.grab = {}
-
-function ns.edit.modes.grab.enter()
-    grab_mouse_start = EditorGetMouseUnit()
-    grab_disp = ng.Vec2(ng.vec2_zero)
-    grab_snap = false
-
-    -- store old positions
-    grab_old_pos = ng.entity_table()
-    for ent in pairs(SelectTable) do
-        grab_old_pos[ent] = ns.transform.get_position(ent)
-    end
-end
-
-function ns.edit.modes.grab.OnUpdate()
-    local ms = ns.camera.unit_to_world(grab_mouse_start)
-    local mc = ns.camera.unit_to_world(EditorGetMouseUnit())
-
-    -- snap mc to grid if needed
-    if grab_snap then
-        local g = ns.edit.get_grid_size()
-        if g.x > 0 then
-            mc.x = g.x * math.floor(0.5 + (mc.x - ms.x) / g.x) + ms.x
-        end
-        if g.y > 0 then
-            mc.y = g.y * math.floor(0.5 + (mc.y - ms.y) / g.y) + ms.y
-        end
-    end
-
-    -- move selected objects
-    for ent in pairs(SelectTable) do
-        -- move only if no ancestor is being moved (avoid double-move)
-        local anc = ns.transform.get_parent(ent)
-        while not ng.is_nil_entity(anc) and not SelectTable[anc] do
-            anc = ns.transform.get_parent(anc)
-        end
-        if ng.is_nil_entity(anc) then
-            -- find translation in parent space
-            local parent = ns.transform.get_parent(ent)
-            local m = ng.mat3_inverse(ns.transform.get_world_matrix(parent))
-            local d = ng.mat3_transform(m, mc) - ng.mat3_transform(m, ms)
-            d = d + ng.mat3_transform(m, grab_disp) - ng.mat3_transform(m, ng.vec2_zero)
-            ns.transform.set_position(ent, grab_old_pos[ent] + d)
-        end
-    end
-
-    -- update
-    local snap_text = grab_snap and 'snap ' or ''
-    local d = mc - ms + grab_disp
-    local mode_text = string.format('grab %s%.4f, %.4f', snap_text, d.x, d.y)
-    ns.edit.set_mode_text(mode_text)
-end
-
---- rotate ---------------------------------------------------------------------
-
-local rotate_old_posrot, rotate_mouse_start, rotate_pivot
-
-function ns.edit.rotate_start()
-    ns.edit.SetMode('rotate')
-end
-
-function ns.edit.rotate_end()
-    ns.edit.SetMode('normal')
-    ns.edit.undo_save()
-end
-
-function ns.edit.rotate_cancel()
-    for ent in pairs(SelectTable) do
-        ns.transform.set_position(ent, rotate_old_posrot[ent].pos)
-        ns.transform.set_rotation(ent, rotate_old_posrot[ent].rot)
-    end
-    ns.edit.SetMode('normal')
-end
-
-ns.edit.modes.rotate = {}
-
-function ns.edit.modes.rotate.enter()
-    ns.edit.set_mode_text('rotate')
-
-    rotate_mouse_start = EditorGetMouseUnit()
-
-    -- store old positions, rotations
-    rotate_old_posrot = ng.entity_table()
-    for ent in pairs(SelectTable) do
-        rotate_old_posrot[ent] = {
-            pos = ns.transform.get_position(ent),
-            rot = ns.transform.get_rotation(ent)
-        }
-    end
-
-    -- compute pivot (currently just the median)
-    local n = 0
-    rotate_pivot = ng.vec2_zero
-    for ent in pairs(SelectTable) do
-        rotate_pivot = rotate_pivot + ns.transform.get_world_position(ent)
-        n = n + 1
-    end
-    rotate_pivot = rotate_pivot / n
-end
-
-function ns.edit.modes.rotate.OnUpdate()
-    local ms = ns.camera.unit_to_world(rotate_mouse_start)
-    local mc = ns.camera.unit_to_world(EditorGetMouseUnit())
-    local ang = ng.vec2_atan2(mc - rotate_pivot) - ng.vec2_atan2(ms - rotate_pivot)
-
-    for ent in pairs(SelectTable) do
-        -- set new rotation
-        ns.transform.set_rotation(ent, rotate_old_posrot[ent].rot + ang)
-
-        -- compute new position
-        local parent = ns.transform.get_parent(ent)
-        local m = ns.transform.get_world_matrix(parent)
-        local wpos = ng.mat3_transform(m, rotate_old_posrot[ent].pos)
-        local d = wpos - rotate_pivot
-        d = ng.vec2_rot(d, ang)
-        wpos = rotate_pivot + d
-
-        -- set new position
-        local im = ng.mat3_inverse(m)
-        ns.transform.set_position(ent, ng.mat3_transform(im, wpos))
-    end
+    neko.SelectClickMulti()
 end
 
 --- edit_field -----------------------------------------------------------------
@@ -994,10 +656,6 @@ local function remove_destroyed()
             end
         end
     end
-
-    if some_closed then
-        ns.edit.undo_save()
-    end
 end
 
 local function update_inspector(inspector)
@@ -1094,8 +752,6 @@ function ns.edit.destroy_rec()
     for ent in pairs(SelectTable) do
         ns.transform.destroy_rec(ent)
     end
-
-    ns.edit.undo_save()
 end
 
 -- 递归销毁实体
@@ -1103,8 +759,6 @@ function ns.edit.destroy()
     for ent in pairs(SelectTable) do
         ns.entity.destroy(ent)
     end
-
-    ns.edit.undo_save()
 end
 
 function ns.edit.duplicate()
@@ -1129,14 +783,11 @@ function ns.edit.duplicate()
     -- local d = ng.store_open_str(str)
     -- ns.system.load_all(d)
     -- ng.store_close(d)
-
-    ns.edit.undo_save()
 end
 
 -- 默认按键绑定
 
 -- 正常模式
-ns.edit.modes.normal["KC_U"] = ns.edit.undo
 
 ns.edit.modes.normal["KC_P"] = ns.edit.pause_toggle
 ns.edit.modes.normal["S-KC_P"] = ns.edit.stop
@@ -1159,35 +810,6 @@ ns.edit.modes.normal["KC_EQUAL"] = ns.edit.camera_zoom_in
 ns.edit.modes.normal["KC_G"] = ns.edit.grab_start
 ns.edit.modes.normal["KC_R"] = ns.edit.rotate_start
 
--- 抓取模式
-ns.edit.modes.grab["KC_ENTER"] = ns.edit.grab_end
-ns.edit.modes.grab["KC_ESCAPE"] = ns.edit.grab_cancel
-ns.edit.modes.grab["MC_LEFT"] = ns.edit.grab_end
-ns.edit.modes.grab["MC_RIGHT"] = ns.edit.grab_cancel
-ns.edit.modes.grab["KC_G"] = ns.edit.grab_snap_on
-ns.edit.modes.grab["KC_LEFT"] = ns.edit.grab_move_left
-ns.edit.modes.grab["KC_RIGHT"] = ns.edit.grab_move_right
-ns.edit.modes.grab["KC_UP"] = ns.edit.grab_move_up
-ns.edit.modes.grab["KC_DOWN"] = ns.edit.grab_move_down
-ns.edit.modes.grab["S-KC_LEFT"] = function()
-    ns.edit.grab_move_left(5)
-end
-ns.edit.modes.grab["S-KC_RIGHT"] = function()
-    ns.edit.grab_move_right(5)
-end
-ns.edit.modes.grab["S-KC_UP"] = function()
-    ns.edit.grab_move_up(5)
-end
-ns.edit.modes.grab["S-KC_DOWN"] = function()
-    ns.edit.grab_move_down(5)
-end
-
--- 旋转模式
-ns.edit.modes.rotate["KC_ENTER"] = ns.edit.rotate_end
-ns.edit.modes.rotate["KC_ESCAPE"] = ns.edit.rotate_cancel
-ns.edit.modes.rotate["MC_LEFT"] = ns.edit.rotate_end
-ns.edit.modes.rotate["MC_RIGHT"] = ns.edit.rotate_cancel
-
 --- 主事件 ----------------------------------------------------------------
 
 function ns.edit.__OnKeyUp(key)
@@ -1207,7 +829,7 @@ function ns.edit.__OnMouseUp(mouse)
 end
 
 function ns.edit.__OnMouseScroll(scroll)
-    ns.edit.camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
+    neko.Editor_camera_zoom((scroll.y > 0 and 0.9 or -0.9) + 0.1 * scroll.y)
 end
 
 function ns.edit.__OnEvent(evt, args)
@@ -1235,11 +857,6 @@ function ns.edit.__OnEvent(evt, args)
 end
 
 function ns.edit.OnUpdate()
-    for ent in pairs(SelectTable) do
-        if ns.entity.destroyed(ent) then
-            SelectTable[ent] = nil
-        end
-    end
 
     if not ns.timing.get_paused() then
         ns.edit.stopped = false
@@ -1251,9 +868,6 @@ function ns.edit.OnUpdate()
         return
     end
     ns.edit.devui_visible = true
-
-    -- forward to mode
-    ns.edit.mode_event('OnUpdate')
 
 end
 
@@ -1282,17 +896,17 @@ function ns.edit.__OnImGui(args)
                     ImGui.Text(s)
                 end
 
-                local nselect = 0
-                for w in pairs(SelectTable) do
-                    nselect = nselect + 1
-                    ImGui.Text(tostring(w))
-                end
-                if nselect > 0 then
-                    ImGui.Text("SelectN: " .. nselect)
-                    ImGui.Text("Select: " .. SingleSelectID .. " [" .. tostring(SingleSelectEnt) .. "]")
-                else
-                    ImGui.Text("no select")
-                end
+                -- local nselect = 0
+                -- for w in pairs(SelectTable) do
+                --     nselect = nselect + 1
+                --     ImGui.Text(tostring(w))
+                -- end
+                -- if nselect > 0 then
+                --     ImGui.Text("SelectN: " .. nselect)
+                --     ImGui.Text("Select: " .. SingleSelectID .. " [" .. tostring(SingleSelectEnt) .. "]")
+                -- else
+                --     ImGui.Text("no select")
+                -- end
 
                 -- update play/stop text
                 if ns.edit.stopped then
@@ -1326,29 +940,7 @@ function ns.edit.__OnImGui(args)
 end
 
 function ns.edit.OnPostUpdate()
-    ns.edit.mode_event("OnPostUpdate")
 
-    -- 设置选中的bbox高光
-    for i = 0, ns.edit.bboxes_get_num() - 1 do
-        local ent = ns.edit.bboxes_get_nth_ent(i)
-        -- local bbox = neko.edit_bboxes_get_nth_bbox(i)
-        ns.edit.bboxes_set_selected(ent, SelectTable[ent] ~= nil)
-    end
-
-    if stop_save_next_frame then
-        stop_save()
-        stop_save_next_frame = false
-    end
-end
-
-function ns.edit.save_all()
-    return {
-        sel = SelectTable
-    }
-end
-
-function ns.edit.load_all(d)
-    ng.entity_table_merge(SelectTable, d.sel)
 end
 
 --- C 系统属性 --------------------------------------------------------

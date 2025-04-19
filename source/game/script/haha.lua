@@ -212,6 +212,53 @@ function haha()
             meter = 16
         }
 
+        local b2_world = LocalGame.b2
+
+        sensor_box = {}
+        sensor_box.collisions = 0
+        sensor_box.x = 200
+        sensor_box.y = -100
+        sensor_box.w = 50
+        sensor_box.h = 50
+        sensor_box.body = b2_world:make_static_body{
+            x = sensor_box.x,
+            y = sensor_box.y
+        }
+        sensor_box.body:make_box_fixture{
+            w = sensor_box.w / 2,
+            h = sensor_box.h / 2,
+            sensor = true,
+            friction = 1,
+            udata = "sensor box"
+        }
+
+        b2_world:begin_contact(function(a, b)
+            local sensor
+            local other
+            if a:udata() == "sensor box" then
+                sensor, other = a, b
+            elseif b:udata() == "sensor box" then
+                sensor, other = b, a
+            end
+
+            if sensor ~= nil then
+                sensor_box.collisions = sensor_box.collisions + 1
+            end
+        end)
+
+        b2_world:end_contact(function(a, b)
+            local sensor
+            if a:udata() == "sensor box" then
+                sensor = a
+            elseif b:udata() == "sensor box" then
+                sensor = b
+            end
+
+            if sensor ~= nil then
+                sensor_box.collisions = sensor_box.collisions - 1
+            end
+        end)
+
         LocalGame.world = World()
 
         -- LocalGame.world:add(CEnemy(100, 100, "chort", true))
@@ -325,7 +372,22 @@ function haha()
 
         if draw_fixtures then
             LocalGame.b2:debugdraw()
+
         end
+
+        local col = ng.color(1, 1, 1, 1)
+
+        if sensor_box.collisions > 0 then
+            -- spry.push_color(255, 0, 0, 255)
+            col = ng.color(1, 0, 0, 1)
+        else
+            -- spry.push_color(255, 255, 255, 255)
+        end
+        -- sensor_box.body:draw_fixtures()
+
+        neko.draw_aabb(ng.Vec2(sensor_box.x - sensor_box.w * 0.5, sensor_box.y - sensor_box.h * 0.5), ng.Vec2(
+            sensor_box.x + sensor_box.w - sensor_box.w * 0.5, sensor_box.y + sensor_box.h - sensor_box.h * 0.5), 2.0,
+            col)
 
         if not ns.edit.get_enabled() then
             cursor:draw()

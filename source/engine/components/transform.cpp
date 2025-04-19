@@ -88,7 +88,7 @@ void Transform::DetachAll(CTransform *t) {
 CTransform *Transform::ComponentAdd(CEntity ent) {
     CTransform *transform;
 
-    if (ComponentGetPtr(ent)) return nullptr;
+    if (transform = ComponentGetPtr(ent)) return transform;
 
     transform = ComponentTypeBase::EntityPool->Add(ent);
     transform->position = luavec2(0.0f, 0.0f);

@@ -33,6 +33,9 @@ struct std::formatter<Neko::Inspector*> : std::formatter<void*> {
     auto format(Neko::Inspector* ptr, std::format_context& ctx) const { return std::formatter<void*>::format(static_cast<void*>(ptr), ctx); }
 };
 
+int wrap_GetEntitiesUnderPos(lua_State* L);
+int wrap_GetEntitiesUnderMouse(lua_State* L);
+
 namespace Neko {
 
 static int __luainspector_echo(lua_State* L) {
@@ -1696,19 +1699,30 @@ void Editor::edit_init() {
     ctag_tid = EcsGetTid(L, "CTag");
 
     auto type = BUILD_TYPE(Editor)
-                        .Method("EditorTestPanelInternal", &EditorTestPanelInternal)    //
-                        .Method("edit_set_editable", &edit_set_editable)                //
-                        .Method("edit_get_editable", &edit_get_editable)                //
-                        .Method("edit_set_grid_size", &edit_set_grid_size)              //
-                        .Method("edit_get_grid_size", &edit_get_grid_size)              //
-                        .Method("edit_bboxes_has", &edit_bboxes_has)                    //
-                        .Method("edit_bboxes_get_num", &edit_bboxes_get_num)            //
-                        .Method("edit_bboxes_get_nth_ent", &edit_bboxes_get_nth_ent)    //
-                        .Method("edit_bboxes_set_selected", &edit_bboxes_set_selected)  //
+                        .Method("EditorTestPanelInternal", &EditorTestPanelInternal)                 //
+                        .Method("edit_set_editable", &edit_set_editable)                             //
+                        .Method("edit_get_editable", &edit_get_editable)                             //
+                        .Method("edit_set_grid_size", &edit_set_grid_size)                           //
+                        .Method("edit_get_grid_size", &edit_get_grid_size)                           //
+                        .Method("edit_bboxes_has", &edit_bboxes_has)                                 //
+                        .Method("edit_bboxes_get_num", &edit_bboxes_get_num)                         //
+                        .Method("edit_bboxes_get_nth_ent", &edit_bboxes_get_nth_ent)                 //
+                        .Method("edit_bboxes_set_selected", &edit_bboxes_set_selected)               //
+                        .MemberMethod("GetSingleSelectID", this, &Editor::GetSingleSelectID)         //
+                        .MemberMethod("GetSingleSelectEnt", this, &Editor::GetSingleSelectEnt)       //
+                        .MemberMethod("Editor_camera_drag_start", this, &Editor::camera_drag_start)  //
+                        .MemberMethod("Editor_camera_drag_end", this, &Editor::camera_drag_end)      //
+                        .MemberMethod("Editor_camera_zoom", this, &Editor::camera_zoom)              //
+                        .MemberMethod("Editor_camera_zoom_in", this, &Editor::camera_zoom_in)        //
+                        .MemberMethod("Editor_camera_zoom_out", this, &Editor::camera_zoom_out)      //
+                        .MemberMethod("SelectClickSingle", this, &Editor::SelectClickSingle)         //
+                        .MemberMethod("SelectClickMulti", this, &Editor::SelectClickMulti)           //
                         .CClosure({{"edit_bboxes_get_nth_bbox", l_edit_bboxes_get_nth_bbox},
                                    {"edit_line_add", l_edit_line_add},
                                    {"edit_set_enabled", l_edit_set_enabled},
-                                   {"edit_get_enabled", l_edit_get_enabled}})
+                                   {"edit_get_enabled", l_edit_get_enabled},
+                                   {"GetEntitiesUnderPos", wrap_GetEntitiesUnderPos},
+                                   {"GetEntitiesUnderMouse", wrap_GetEntitiesUnderMouse}})
                         .Build();
 
     callbackId = Logger::getInstance()->registerCallback([this](const std::string& msg, const Logger::Level& level) { ConsoleLogAdd(msg, level); });
@@ -1723,8 +1737,22 @@ void Editor::edit_fini() {
     edit_fini_impl();
 }
 
-int Editor::edit_update_all(Event evt) {
+int Editor::OnPostUpdate(Event evt) {
+
+    for (int i = 0; i < edit_bboxes_get_num(); ++i) {
+        CEntity ent = edit_bboxes_get_nth_ent(i);
+        edit_bboxes_set_selected(ent, SelectTable.find(ent) != SelectTable.end());
+    }
+
+    return 0;
+}
+
+int Editor::OnUpdate(Event evt) {
     edit_update_impl();
+
+    if (edit_camera_drag) camera_drag_OnUpdate();
+
+    std::erase_if(SelectTable, [](const auto& s) { return entity_destroyed(s); });
 
     return 0;
 }
@@ -1995,3 +2023,180 @@ int Editor::GetEditorLuaFunc(String name) {
     lua_remove(L, -2);
     return 1;
 }
+
+std::vector<CEntity> Editor::GetEntitiesUnderPos(vec2 pos) {
+    std::vector<CEntity> ents;
+
+    auto& trans = the<Transform>();
+
+    int num_bboxes = edit_bboxes_get_num();
+    for (int i = 0; i < num_bboxes; ++i) {
+        CEntity ent = edit_bboxes_get_nth_ent(i);
+        BBox bbox = edit_bboxes_get_nth_bbox(i);
+        mat3 wmat = trans.transform_get_world_matrix(ent);
+        bool on = false;
+
+        if (bbox_contains(bbox, mat3_transform(mat3_inverse(wmat), pos))) {
+            ents.push_back(ent);
+            on = true;
+        }
+
+        // LOG_TRACE("GetEntitiesUnderPos id:{} on:{}", ent.id, on);
+    }
+
+    // 按与鼠标的距离排序
+    auto distcomp = [&pos, &trans](const CEntity& e1, const CEntity& e2) {
+        vec2 p1 = trans.transform_get_world_position(e1);
+        vec2 p2 = trans.transform_get_world_position(e2);
+        return vec2_dist(p1, pos) < vec2_dist(p2, pos);
+    };
+    std::sort(ents.begin(), ents.end(), distcomp);
+
+    return ents;
+}
+
+vec2 Editor::EditorGetMouseUnit() { return the<CL>().pixels_to_unit({viewportMouseX, -viewportMouseY}); }
+
+std::vector<CEntity> Editor::GetEntitiesUnderMouse() {
+    vec2 mouse_pos = Camera::camera_unit_to_world(EditorGetMouseUnit());
+    return GetEntitiesUnderPos(mouse_pos);
+}
+
+int PushEntitesVector(lua_State* L, const std::vector<CEntity>& entities) {
+    lua_createtable(L, entities.size(), 0);
+    int index = 1;
+    for (const CEntity& entity : entities) {
+        LuaPush<CEntity>(L, entity);  // 将实体压入栈
+        lua_rawseti(L, -2, index);    // 将实体设置到表中 索引为index
+        index++;
+    }
+    return 1;
+}
+
+int wrap_GetEntitiesUnderPos(lua_State* L) {
+    vec2* v1 = LuaGet<vec2>(L, 1);
+    std::vector<CEntity> entities = the<Editor>().GetEntitiesUnderPos(*v1);
+    return PushEntitesVector(L, entities);
+}
+
+int wrap_GetEntitiesUnderMouse(lua_State* L) {
+    std::vector<CEntity> entities = the<Editor>().GetEntitiesUnderMouse();
+    return PushEntitesVector(L, entities);
+}
+
+void Editor::SelectClickSingle() {
+    auto ents = GetEntitiesUnderMouse();
+
+    if (ents.empty()) {
+        SelectTable.clear();  // 清空选择集
+        return;
+    }
+
+    // 查找当前已选择的实体
+    size_t sel = 0;
+    for (size_t i = 0; i < ents.size(); ++i) {
+        if (SelectTable.count(ents[i])) {
+            sel = i;
+            break;
+        }
+    }
+
+    // 清空并选择下一个实体
+    SelectTable.clear();
+    LOG_TRACE("1 sel {} ents.size() {}", sel, ents.size());
+    sel = (sel % ents.size()) + 1;
+    LOG_TRACE("2 sel {} ents.size() {}", sel, ents.size());
+
+    CEntity selent = entity_nil;
+
+    if (sel < ents.size()) {
+        selent = ents[sel];
+    } else {
+    }
+
+    SelectTable.insert(selent);
+
+    LOG_TRACE("上一个选择: {}", SingleSelectID);
+
+    // 更新单选状态
+    SingleSelectID = selent.id;
+    SingleSelectEnt = selent;
+
+    LOG_TRACE("选择: {}", selent.id);
+}
+
+void Editor::SelectClickMulti() {
+    const auto& ents = GetEntitiesUnderMouse();
+
+    if (ents.empty()) {
+        return;
+    }
+
+    // 尝试选择第一个未选择的实体
+    for (const auto& ent : ents) {
+        if (SelectTable.find(ent) == SelectTable.end()) {
+            SelectTable.insert(ent);
+            return;
+        }
+    }
+
+    // 取消选择第一个实体
+    if (!ents.empty()) {
+        SelectTable.erase(ents[0]);
+        // 更新单选状态 如果取消的是当前单选实体
+        if (SingleSelectEnt.id == ents[0].id) {
+            SingleSelectID = 0;
+            SingleSelectEnt = entity_nil;
+        }
+    }
+}
+
+// edit camera ----------------------------------------------------------------
+
+void Editor::initializeEditCamera() {
+    editCamera = entity_create("editor_camera");
+
+    // CTransform* transform = the<Transform>().WrapAdd(editCamera);
+    CCamera* camera = the<Camera>().WrapAdd(editCamera);
+
+    camera->viewport_height = camera_default_height;
+
+    the<Camera>().camera_set_current(editCamera, false);
+
+    edit_set_editable(editCamera, false);
+
+    the<Camera>().camera_set_edit_camera(editCamera);
+}
+
+void Editor::camera_drag_start() {
+    camera_drag_mouse_prev = EditorGetMouseUnit();
+    edit_camera_drag = true;
+}
+
+void Editor::camera_drag_end() { edit_camera_drag = false; }
+
+void Editor::camera_drag_OnUpdate() {
+    if (!edit_get_enabled()) {
+        edit_camera_drag = false;
+        return;
+    }
+
+    vec2 m = EditorGetMouseUnit();
+
+    // 找到世界坐标中的屏幕鼠标移动，向相反方向移动
+    vec2 campos = the<Transform>().transform_local_to_world(editCamera, vec2_zero);
+    vec2 mp = vec2_sub(Camera::camera_unit_to_world(camera_drag_mouse_prev), campos);
+    vec2 mc = vec2_sub(Camera::camera_unit_to_world(m), campos);
+    the<Transform>().transform_translate(editCamera, vec2_sub(mp, mc));
+    camera_drag_mouse_prev = m;
+}
+
+void Editor::camera_zoom(float f) {
+    camera_zoom_factor += f;
+    float h = std::pow(0.8f, camera_zoom_factor) * camera_default_height;
+    the<Camera>().camera_set_viewport_height(editCamera, h);
+}
+
+void Editor::camera_zoom_in() { camera_zoom(1.0f); }
+
+void Editor::camera_zoom_out() { camera_zoom(-1.0f); }

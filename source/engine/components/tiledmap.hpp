@@ -121,7 +121,6 @@ typedef struct tiled_renderer {
     HashMap<TiledQuadList> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
     u32 quad_count;
     u64 map_asset;  // tiled data
-    mat3 camera_mat;
 } tiled_renderer;
 
 void tiled_render_init(tiled_renderer* renderer);
@@ -138,6 +137,7 @@ class CTiledMap : public CEntityBase {
 public:
     tiled_renderer* render;
     vec2 pos;
+    vec2 size;
     String map_name;
     bool draw_object_groups_rect;
 

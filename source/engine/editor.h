@@ -170,13 +170,51 @@ private:
     int callbackId;
 
 public:
+    f32 viewportMouseX, viewportMouseY;
+
+    std::unordered_set<CEntity, CEntityHash, CEntityEqual> SelectTable;
+    EcsId SingleSelectID{0};
+    CEntity SingleSelectEnt;
+
+    CEntity editCamera;
+
+    // 拖拽功能
+    vec2 camera_drag_mouse_prev;
+    bool edit_camera_drag{false};
+
+    // 缩放功能
+    float camera_zoom_factor = 0.0f;
+
+    float camera_default_height = 150.0f;
+
+public:
     void edit_init();
     void edit_fini();
-    int edit_update_all(Event evt);
+    int OnPostUpdate(Event evt);
+    int OnUpdate(Event evt);
     void edit_draw_all();
     void OnImGui();
 
     int GetEditorLuaFunc(String name);
+
+    std::vector<CEntity> GetEntitiesUnderPos(vec2 pos);
+    vec2 EditorGetMouseUnit();
+    std::vector<CEntity> GetEntitiesUnderMouse();
+
+    inline EcsId GetSingleSelectID() const { return SingleSelectID; }
+    inline CEntity GetSingleSelectEnt() const { return SingleSelectEnt; }
+
+    void SelectClickSingle();
+    void SelectClickMulti();
+
+    void initializeEditCamera();
+
+    void camera_drag_OnUpdate();
+    void camera_drag_start();
+    void camera_drag_end();
+    void camera_zoom(float f);
+    void camera_zoom_in();
+    void camera_zoom_out();
 
     template <typename... Args>
     inline void PushEditorEvent(EventEnum type, Args&&... args) {

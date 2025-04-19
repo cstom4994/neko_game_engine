@@ -2298,82 +2298,6 @@ int wrap_timing_get_paused(lua_State *L) {
     return 1;
 }
 
-int wrap_window_clipboard(lua_State *L) {
-    const_str v = the<Window>().GetClipboard();
-    lua_pushstring(L, v);
-    return 1;
-}
-int wrap_window_prompt(lua_State *L) {
-    const_str msg = lua_tostring(L, 1);
-    const_str title = lua_tostring(L, 2);
-    int v = the<Window>().ShowMsgBox(msg, title);
-    lua_pushinteger(L, v);
-    return 1;
-}
-int wrap_window_setclipboard(lua_State *L) {
-    const_str str = lua_tostring(L, 1);
-    the<Window>().SetClipboard(str);
-    return 0;
-}
-int wrap_window_focus(lua_State *L) {
-    the<Window>().Focus();
-    return 0;
-}
-int wrap_window_has_focus(lua_State *L) {
-    int v = the<Window>().HasFocus();
-    lua_pushinteger(L, v);
-    return 1;
-}
-int wrap_window_scale(lua_State *L) {
-    f64 v = the<Window>().Scale();
-    lua_pushnumber(L, v);
-    return 1;
-}
-int wrap_window_size(lua_State *L) {
-    vec2 v = luavec2(the<CL>().state.width, the<CL>().state.height);
-    LuaPush<vec2>(L, v);
-    return 1;
-}
-
-int wrap_input_keycode_str(lua_State *L) {
-    KeyCode type_val = (KeyCode)lua_tointeger(L, 1);
-    LuaPush<KeyCode>(L, type_val);
-    return 1;
-}
-int wrap_input_key_down(lua_State *L) {
-    KeyCode code = LuaGet<KeyCode>(L, 1);
-    bool v = input_key_down(code);
-    LuaPush(L, v);
-    return 1;
-}
-int wrap_input_key_release(lua_State *L) {
-    KeyCode code = LuaGet<KeyCode>(L, 1);
-    bool v = input_key_release(code);
-    LuaPush(L, v);
-    return 1;
-}
-int wrap_input_get_mouse_pos_pixels_fix(lua_State *L) {
-    vec2 v = input_get_mouse_pos_pixels_fix();
-    LuaPush<vec2>(L, v);
-    return 1;
-}
-int wrap_input_get_mouse_pos_pixels(lua_State *L) {
-    vec2 v = input_get_mouse_pos_pixels();
-    LuaPush<vec2>(L, v);
-    return 1;
-}
-int wrap_input_get_mouse_pos_unit(lua_State *L) {
-    vec2 v = input_get_mouse_pos_unit();
-    LuaPush<vec2>(L, v);
-    return 1;
-}
-int wrap_input_mouse_down(lua_State *L) {
-    MouseCode code = LuaGet<MouseCode>(L, 1);
-    bool v = input_mouse_down(code);
-    LuaPush(L, v);
-    return 1;
-}
-
 int wrap_luamat3(lua_State *L) {
     f32 v1 = LuaGet<f32>(L, 1);
     f32 v2 = LuaGet<f32>(L, 2);
@@ -2671,21 +2595,6 @@ static int open_neko(lua_State *L) {
             {"timing_set_paused", wrap_timing_set_paused},
             {"timing_get_paused", wrap_timing_get_paused},
 
-            {"window_clipboard", wrap_window_clipboard},
-            {"window_prompt", wrap_window_prompt},
-            {"window_setclipboard", wrap_window_setclipboard},
-            {"window_focus", wrap_window_focus},
-            {"window_has_focus", wrap_window_has_focus},
-            {"window_scale", wrap_window_scale},
-            {"window_size", wrap_window_size},
-
-            {"input_keycode_str", wrap_input_keycode_str},
-            {"input_key_down", wrap_input_key_down},
-            {"input_key_release", wrap_input_key_release},
-            {"input_get_mouse_pos_pixels_fix", wrap_input_get_mouse_pos_pixels_fix},
-            {"input_get_mouse_pos_pixels", wrap_input_get_mouse_pos_pixels},
-            {"input_get_mouse_pos_unit", wrap_input_get_mouse_pos_unit},
-            {"input_mouse_down", wrap_input_mouse_down},
             {"pixels_to_unit", wrap_pixels_to_unit},
 
             {"luamat3", wrap_luamat3},

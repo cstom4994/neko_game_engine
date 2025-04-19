@@ -14,7 +14,7 @@
 CCamera *Camera::ComponentAdd(CEntity ent) {
     CCamera *camera{};
 
-    if (ComponentGetPtr(ent)) return nullptr;
+    if (camera = ComponentGetPtr(ent)) return camera;
 
     the<Transform>().ComponentAdd(ent);
 
@@ -87,13 +87,13 @@ vec2 Camera::camera_world_to_pixels(vec2 p) { return Neko::the<CL>().unit_to_pix
 
 vec2 Camera::camera_world_to_unit(vec2 p) {
     // use cached inverse view matrix
-    return mat3_transform(inverse_view_matrix, p);
+    return mat3_transform(the<Camera>().inverse_view_matrix, p);
 }
 
 vec2 Camera::camera_pixels_to_world(vec2 p) { return camera_unit_to_world(Neko::the<CL>().pixels_to_unit(p)); }
 
 vec2 Camera::camera_unit_to_world(vec2 p) {
-    CEntity cam = camera_get_current_camera();
+    CEntity cam = the<Camera>().camera_get_current_camera();
     if (!CEntityEq(cam, entity_nil)) {
         return the<Transform>().transform_local_to_world(cam, p);
     } else {
@@ -117,10 +117,10 @@ void Camera::camera_init() {
     // clang-format off
 
     auto type = BUILD_TYPE(Camera)
-        .MemberMethod("camera_world_to_pixels", this, &Camera::camera_world_to_pixels)
-        .MemberMethod("camera_world_to_unit", this, &Camera::camera_world_to_unit)
-        .MemberMethod("camera_pixels_to_world", this, &Camera::camera_pixels_to_world)
-        .MemberMethod("camera_unit_to_world", this, &Camera::camera_unit_to_world)
+        .Method("camera_world_to_pixels",  &Camera::camera_world_to_pixels)
+        .Method("camera_world_to_unit",  &Camera::camera_world_to_unit)
+        .Method("camera_pixels_to_world",  &Camera::camera_pixels_to_world)
+        .Method("camera_unit_to_world",  &Camera::camera_unit_to_world)
         .MemberMethod<ComponentTypeBase>("camera_add", this, &ComponentTypeBase::WrapAdd)
         .MemberMethod<ComponentTypeBase>("camera_has", this, &ComponentTypeBase::ComponentHas)
         .MemberMethod("camera_remove", this, &Camera::ComponentRemove)

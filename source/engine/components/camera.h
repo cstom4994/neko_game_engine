@@ -36,10 +36,10 @@ public:
     f32 camera_get_viewport_height(CEntity ent);
 
     // screen-space coordinates <-> world coordinates transformations
-    vec2 camera_world_to_pixels(vec2 p);
-    vec2 camera_world_to_unit(vec2 p);
-    vec2 camera_pixels_to_world(vec2 p);
-    vec2 camera_unit_to_world(vec2 p);
+    static vec2 camera_world_to_pixels(vec2 p);
+    static vec2 camera_world_to_unit(vec2 p);
+    static vec2 camera_pixels_to_world(vec2 p);
+    static vec2 camera_unit_to_world(vec2 p);
 
     inline mat3 GetInverseViewMatrix() { return inverse_view_matrix; }
 

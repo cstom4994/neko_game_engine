@@ -899,7 +899,7 @@ void tiled_render_flush(tiled_renderer *renderer) {
     gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
     gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
 
-    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, false, (const GLfloat *)the<Camera>().GetInverseViewMatrixPtr());
 
     GLuint tex_id = renderer->batch_texture.id;
 
@@ -1059,8 +1059,6 @@ int Tiled::RenderMap(CTiledMap *tiled) {
 
     vec2 xform = tiled->pos;
 
-    tiled->render->camera_mat = the<Camera>().GetInverseViewMatrix();
-
     Asset asset = {};
     bool ok = asset_read(tiled->render->map_asset, &asset);
     error_assert(ok);
@@ -1117,7 +1115,7 @@ CTiledMap *Tiled::ComponentAdd(CEntity ent) {
 
     if (ComponentGetPtr(ent)) return nullptr;
 
-    the<Transform>().ComponentAdd(ent);
+    CTransform *transform = the<Transform>().ComponentAdd(ent);
 
     CTiledMap *tiled = ComponentTypeBase::EntityPool->Add(ent);
 
@@ -1187,11 +1185,17 @@ void Tiled::tiled_fini() {
 
 int Tiled::tiled_update_all(Event evt) {
 
+    static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
+
     entitypool_remove_destroyed(ComponentTypeBase::EntityPool, [this](CEntity ent) { ComponentRemove(ent); });
 
     ComponentTypeBase::EntityPool->ForEach([](CTiledMap *tiled) {
         tiled->pos = the<Transform>().transform_get_position(tiled->ent);
         tiled->draw_object_groups_rect = edit_get_enabled();
+
+        if (edit_get_enabled()) {
+            edit_bboxes_update(tiled->ent, bbox(vec2_mul(tiled->size, min), vec2_mul(tiled->size, max)));
+        }
     });
 
     return 0;

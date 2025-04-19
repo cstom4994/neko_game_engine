@@ -259,4 +259,17 @@ CEntityPool<T>* EcsProtoGetCType(lua_State* L) {
     return pool;
 }
 
+template <>
+struct std::hash<CEntity> {
+    std::size_t operator()(const CEntity& k) const { return k.id; }
+};
+
+struct CEntityHash {
+    std::size_t operator()(const CEntity& entity) const { return std::hash<int>()(entity.id); }
+};
+
+struct CEntityEqual {
+    bool operator()(const CEntity& lhs, const CEntity& rhs) const { return lhs.id == rhs.id; }
+};
+
 #endif
